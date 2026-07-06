@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.cangjie
 
 import com.huawei.excelsior.jet.compiler.Environment
+import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.symlevel.*
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.{ClassType as RefClassType, InterfaceType as RefInterfaceType}
 import xscala.io.Path
@@ -30,10 +31,12 @@ trait CHIRSymLevelBuilder {
   
   def setVTable(clazz: ClassType, vtable: CHIRVTable): Unit
 
+  def markAsEnum(clazz: ClassType): Unit
+  def setEnumInfo(clazz: ClassType, enumInfo: CangjieEnumInfo): Unit
+
   def addField(clazz: ClassType, name: String, sig: SignatureType, exportedName: String, modifiers: Int): Field
   def addMethod(clazz: ClassType, name: String, sig: MethodSignature, exportedName: String, modifiers: Int, genericInfo: GenericInfo,
-                hasUGDesc: Boolean, hasThisTypeInfoParam: Boolean, isCFunc: Boolean,
-                hasOuterTypeInfo: Boolean, genericFuncParamsCount: Int, isMutWrapper: Boolean): Method
+                abiDesc: ABI.Description): Method
 
   def markAsConstructor(method: Method): Unit
   def markAsPackageInit(method: Method): Unit

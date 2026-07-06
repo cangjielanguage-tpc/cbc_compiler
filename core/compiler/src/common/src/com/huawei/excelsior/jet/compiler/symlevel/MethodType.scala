@@ -149,7 +149,6 @@ object MethodType {
     case SMutObject extends SpecialParameter(Start)
     case Receiver extends SpecialParameter(Start)
     case GenericFuncParams extends SpecialParameter(Custom)
-    case UGDesc extends SpecialParameter(End)
     case OuterTypeInfo extends SpecialParameter(End)
     case ThisTypeInfo extends SpecialParameter(End)
     case CFuncRetByVal extends SpecialParameter(End)
@@ -240,11 +239,13 @@ case class MethodType (signature: MethodSignature, callConv: CallConv,
     case Start => specialParameters.getElementIndex(specialParameter)
     case End => parameterCount - specialParameters.getElementIndex(specialParameter) - 1
     case Custom => (specialParameter: @unchecked) match {
-      case GenericFuncParams => startSpecialParamsCount + signature.parameterTypes.size
+      case GenericFuncParams => signature.parameterTypes.size - endSpecialParamsCount
     }
   }
 
   def startSpecialParamsCount: Int = specialParameters.specialParametersStart.size
+
+  def endSpecialParamsCount: Int = specialParameters.specialParametersEnd.size
 
   def getReceiverArgIdx: Int = getSpecialArgIdx(Receiver)
 
@@ -252,9 +253,9 @@ case class MethodType (signature: MethodSignature, callConv: CallConv,
 
   def getMutRecordArgIdx: Int = getSpecialArgIdx(if (isStandalone) SMutRecord else MutRecord)
 
-  def getUGDescArgIdx: Int = getSpecialArgIdx(UGDesc)
+  def getGenericFuncParamsStartIdx(genericParamsCount: Int): Int = getGenericFuncParamsEndIdx - genericParamsCount
 
-  def getGenericFuncParamsStartIdx: Int = getSpecialArgIdx(GenericFuncParams)
+  def getGenericFuncParamsEndIdx: Int = getSpecialArgIdx(GenericFuncParams)
 
   def getOuterTypeInfoArgIdx: Int = getSpecialArgIdx(OuterTypeInfo)
 
@@ -267,14 +268,15 @@ case class MethodType (signature: MethodSignature, callConv: CallConv,
   /** Returns true iff MethodType has information about receiver arg. */
   def hasReceiverParameter: Boolean = hasSpecialArg(Receiver)
 
+  def hasReferenceReceiver: Boolean = hasReceiverParameter && parameterType(getReceiverArgIdx).isReference
+
+  def hasRecordReceiver: Boolean = hasReceiverParameter && parameterType(getReceiverArgIdx).isRecord
+
   /** Returns true iff MethodType has information about mut_object arg. */
   def hasMutObjectParameter: Boolean = hasSpecialArg(if (isStandalone) SMutObject else MutObject)
 
   /** Returns true iff MethodType has information about mut_record arg. */
   def hasMutRecordParameter: Boolean = hasSpecialArg(if (isStandalone) SMutRecord else MutRecord)
-
-  /** Returns true iff MethodType has information about ug_desc arg. */
-  def hasUGDescParameter: Boolean = hasSpecialArg(UGDesc)
 
   def hasGenericFuncParams: Boolean = hasSpecialArg(GenericFuncParams)
 

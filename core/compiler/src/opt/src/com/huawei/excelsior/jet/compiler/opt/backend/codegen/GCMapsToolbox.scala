@@ -8,10 +8,8 @@
 
 package com.huawei.excelsior.jet.compiler.opt.backend.codegen
 
-import com.huawei.excelsior.common.Arch.CBC
 import com.huawei.excelsior.jet.assembler.Location
 import com.huawei.excelsior.jet.assembler.Location.AnyReg
-import com.huawei.excelsior.jet.compiler.Env.{isStandalone, targetArch}
 import com.huawei.excelsior.jet.compiler.opt.backend.BackEnd
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.{Resources, Universe}
@@ -55,19 +53,12 @@ trait GCMapsToolbox { self: Universe with BackEnd with CodeGenerator =>
             }
             case _ =>
           }
-          if (targetArch == CBC && !isStandalone) {
-            // Mark all arguments alive in the node, so liveness hints which are generated before the node`s instruction
-            // do not kill arguments.
-            // It increases conservativeness for calls, so we do it only for CBC, where Lowering JIT generates both PRE_CALL and
-            // IN_CALL, so it needs this alive arguments before the call instruction.
-            curr |= (node.groupedValueArgs filter valuesFilter).toSet
-          }
+
           if (needGCMap(node)) {
             updateLive(node, curr)
           }
-          if (targetArch != CBC || isStandalone) {
-            curr |= (node.groupedValueArgs filter valuesFilter).toSet
-          }
+
+          curr |= (node.groupedValueArgs filter valuesFilter).toSet
         }
         curr
       }

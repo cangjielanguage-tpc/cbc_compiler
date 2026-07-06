@@ -674,51 +674,29 @@ object MemoryAccess {
   }
 
   enum LoadAccessKind {
-                    // ldk  | MW* | extension | dst,w  | remarks
-                    //-------------------------------------------
-    case LD_U8      // 0000 |  8  | zeroext32 | ir*,32 |
-    case LD_U16     // 0001 | 16  | zeroext32 | ir*,32 |
-    case LD_32      // 0010 | 32  |    no     | ir*,32 |
-    case SPECIAL    // 0011 | --  |   ---     | ir*,64 | get address/offset of the object's/record's field/array element
-    case LD_S8      // 0100 |  8  | signext32 | ir*,32 |
-    case LD_S16     // 0101 | 16  | signext32 | ir*,32 |
-    case LD_F32     // 0110 | 32  |    no     | fr*,32 |
-    case LD_F64     // 0111 | 64  |    no     | fr*,64 |
-    case LD_U8TO64  // 1000 |  8  | zeroext64 | ir*,64 |
-    case LD_U16TO64 // 1001 | 16  | zeroext64 | ir*,64 |
-    case LD_U32     // 1010 | 32  | zeroext64 | ir*,64 |
-    case LD_64      // 1011 | 64  |    no     | ir*,64 | used to load pointer values
-    case LD_S8TO64  // 1100 |  8  | signext64 | ir*,64 |
-    case LD_S16TO64 // 1101 | 16  | signext64 | ir*,64 |
-    case LD_S32     // 1110 | 32  | signext64 | ir*,64 |
-    case LD_REF     // 1111 | 64  |    no     | ir*,64 | load traced objref
+                    // ldk  | dst,w  | remarks
+                    //-------------------------
+    case LD_U8      // 0000 | ir*,32 |
+    case LD_U16     // 0001 | ir*,32 |
+    case LD_32      // 0010 | ir*,32 |
+    case SPECIAL    // 0011 | ir*,64 | load effective address
+    case LD_S8      // 0100 | ir*,32 |
+    case LD_S16     // 0101 | ir*,32 |
+    case LD_F32     // 0110 | fr*,32 |
+    case LD_F64     // 0111 | fr*,64 |
+    case LD_REC     // 1000 | ir*,64 | load pointer to record
+    case LD_UNUSED1 // 1001 | ------ |
+    case LD_U32     // 1010 | ir*,64 |
+    case LD_64      // 1011 | ir*,64 |
+    case LD_UNUSED2 // 1100 | ------ |
+    case LD_UNUSED3 // 1101 | ------ |
+    case LD_S32     // 1110 | ir*,64 |
+    case LD_REF     // 1111 | ir*,64 | load traced objref
 
     def ldk: Int = ordinal
   }
 
   object LoadAccessKind {
-    def apply(accessWidth: Width, signExt: Boolean, fp: Boolean, resultWidth: Width): LoadAccessKind = {
-      (accessWidth, signExt, fp, resultWidth) match {
-        case (W8,  false, false, W32) => LD_U8
-        case (W16, false, false, W32) => LD_U16
-        case (W32, _,     false, W32) => LD_32
-                                      // SPECIAL
-        case (W8,  true,  false, W32) => LD_S8
-        case (W16, true,  false, W32) => LD_S16
-        case (W32, _,     true,  W32) => LD_F32
-        case (W64, _,     true,  W64) => LD_F64
-        case (W8,  false, false, W64) => LD_U8TO64
-        case (W16, false, false, W64) => LD_U16TO64
-        case (W32, false, false, W64) => LD_U32
-        case (W64, _,     false, W64) => LD_64
-        case (W8,  true,  false, W64) => LD_S8TO64
-        case (W16, true,  false, W64) => LD_S16TO64
-        case (W32, true,  false, W64) => LD_S32
-                                      // LD_REF
-        case x => shouldNotReachHere(s"Denied load access kind: $x")
-      }
-    }
-
     // TODO: replace CbcTypeKind usages with LoadAccessKind
     def from(cbcTypeKind: CbcTypeKind): LoadAccessKind = {
       import CbcTypeKind.*

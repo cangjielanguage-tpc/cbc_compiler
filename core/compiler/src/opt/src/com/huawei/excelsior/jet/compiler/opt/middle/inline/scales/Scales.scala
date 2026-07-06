@@ -253,6 +253,7 @@ trait Scales { self: Universe =>
             if (op.signed) checkedOpShiftWeight
             else           checkedOpIntConstWeight(0)
             )
+        case CheckedOp.Kind.POW => notImplemented("not implemented")
       }
 
       case _: Evacuate => directCallWeight(1)

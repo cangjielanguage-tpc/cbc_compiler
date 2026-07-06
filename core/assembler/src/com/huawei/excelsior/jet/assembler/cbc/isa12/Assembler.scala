@@ -115,6 +115,7 @@ class Assembler extends OldAssembler with MemoryAccess with SymbolicObjectContro
   override def add (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Add,  w, d, l, r)
   override def sub (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Sub,  w, d, l, r)
   override def mul (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Mul,  w, d, l, r)
+  override def pow (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Pow,  w, d, l, r)
   override def and (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.And,  w, d, l, r)
   override def or  (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Or,   w, d, l, r)
   override def xor (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Xor,  w, d, l, r)
@@ -137,6 +138,7 @@ class Assembler extends OldAssembler with MemoryAccess with SymbolicObjectContro
   override def addi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Add,  w, Sign.Signed, d, l, imm)
   override def subi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = addi(w, d, l, -imm)
   override def muli (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Mul,  w, Sign.Signed, d, l, imm)
+  override def powi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Pow,  w, Sign.Signed, d, l, imm)
   override def andi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.And,  w, Sign.Signed, d, l, imm)
   override def ori  (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Or ,  w, Sign.Signed, d, l, imm)
   override def xori (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Xor,  w, Sign.Signed, d, l, imm)
@@ -765,6 +767,10 @@ object Assembler {
     case Sub
     case Mul
     case Div
+    case UAdd
+    case USub
+    case UMul
+    case Pow
 
     inline def opc: Int = ordinal
     inline def format(width: Width): Int = p(s2(opc), freeBits = 2) | s2(width.opc)
@@ -804,6 +810,8 @@ object Assembler {
     case LSR  // 0b1010
     case ASR  // 0b1011
     case LSL  // 0b1100
+
+    case Pow // 0b1101
 
     def b2rAllowed: Boolean = this.ordinal >> 3 == 0
   }

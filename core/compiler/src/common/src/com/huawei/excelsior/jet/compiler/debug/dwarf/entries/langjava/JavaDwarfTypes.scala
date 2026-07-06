@@ -24,7 +24,7 @@ import com.huawei.excelsior.jet.compiler.debug.dwarf.sections.DebugAbbrev.*
 import com.huawei.excelsior.jet.compiler.debug.info.DebugLabels.LocalVarLabel
 import com.huawei.excelsior.jet.compiler.debug.info.*
 import com.huawei.excelsior.jet.compiler.ir.LineNumber
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{ArraySlice, Box, BString, CPointer, CangjieArray, CangjieEnumWrapper, InstantiatedRecord, InstantiatedReference, JavaArray, Primitive, Record, Reference, ThisTypeInfo, Tuple, TypeVariable, VArray, fromSymType}
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{ArraySlice, BString, Box, CPointer, CangjieArray, CangjieEnum, CangjieEnumWrapper, InstantiatedRecord, InstantiatedReference, JavaArray, Primitive, Record, Reference, ThisTypeInfo, Tuple, TypeVariable, VArray, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.{ClassType, SignatureType, Type}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.compiler.symlevel.TypeKind.*
@@ -41,7 +41,7 @@ object JavaDwarfTypes {
     case _: Reference => typeToDebugType(tpe.symType)
     case JavaArray(baseType, dimNum) => DTUnit() // FIXME: figure out array dimensions
     case _: Record | _: ArraySlice | BString | _: CPointer | _: VArray | _: CangjieArray |
-         _: InstantiatedReference | _: InstantiatedRecord | _: Tuple | _: TypeVariable | ThisTypeInfo | _: Box =>
+         _: InstantiatedReference | _: InstantiatedRecord | _: Tuple | _: TypeVariable | ThisTypeInfo | _: Box | _: CangjieEnum =>
       shouldNotReachHere(s"unsupported type $tpe")
   }
 

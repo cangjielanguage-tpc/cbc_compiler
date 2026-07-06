@@ -34,7 +34,7 @@ trait Preparation extends SimpleSteps with SpecialSteps with RMACombining
    for (n <- allNodes if n.tpe == VoidType) (n: @unchecked) match {
      case _: Void =>
      case x: (Call | Param | UniversalGeneric.FromHolder) => x.replaceValueUsesBy(Void())
-     case x => assert(x.valueUses.isEmpty)
+     case x => assert(x.valueUses.isEmpty, x)
     }
   }
 

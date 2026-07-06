@@ -20,6 +20,7 @@ import com.huawei.excelsior.jet.assembler.cbc.Token.KeywordKind.{Type, *}
 import com.huawei.excelsior.jet.assembler.cbc.Token.StructuralKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W32, W64}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessAnalyzer
+import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.{LoadAccessKind, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.LoadAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.StoreAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, ForkedAssembler, MemSpace}
@@ -132,10 +133,20 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
         case Kw(AotRef) => AotTypeSignature(name, subtypes, true)
         case Kw(Rec)    => TypeSignature(name, subtypes, false)
         case Kw(AotRec) => AotTypeSignature(name, subtypes, false)
+        case Kw(KeywordKind.NullableOption) => OptionSignature(name, subtypes, true)
+        case Kw(KeywordKind.UnionOption) => OptionSignature(name, subtypes, false)
         case t =>
           errors += newError("failed to parse type modifier", t)
           BuiltinSignature.Nothing
       }
+    }
+
+    def parseTypeSeq(): Seq[Signature] = {
+      val list = mutable.ArrayBuffer.empty[Signature]
+      while (!current.isEnd) {
+        list += parseType()
+      }
+      list.toSeq
     }
 
     def parseType(): Signature = tokens match {
@@ -156,6 +167,16 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       case Kw(F16) +: tail      => tokens = tail; BuiltinSignature.F16
       case Kw(F32) +: tail      => tokens = tail; BuiltinSignature.F32
       case Kw(F64) +: tail      => tokens = tail; BuiltinSignature.F64
+
+      case Kw(KeywordKind.Box) +: tail =>
+        tokens = tail
+        val args = parseTypeList(LBracket, RBracket)
+        if (args.length != 1) {
+          errors += newError("failed to parse box args", tail.head)
+          BuiltinSignature.Nothing
+        } else {
+          CbcFileFormat.Box(args.head)
+        }
 
       case Punct(LBracket) +: tail => Tuple(parseTypeList(LBracket, RBracket))
       case Punct(LParen) +: tail   => parseFunctional()
@@ -364,6 +385,28 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
     def parseAsmType(): AsmType = parse("asm type", AsmType.I64) {
       case Kw(kw) if Conversion.asmTypeMapping.contains(kw) => Conversion.asmTypeMapping(kw)
     }
+
+    def parseStoreAccessKind(): StoreAccessKind = {
+      val tok = current
+      val ident = parseIdent()
+      StoreAccessKind.values.find(_.toString == ident) match {
+        case Some(stk) => stk
+        case _ =>
+          errors += newError("failed to parse load access kind", tok)
+          StoreAccessKind.ST_8
+      }
+    }
+
+    def parseLoadAccessKind(): LoadAccessKind = {
+      val tok = current
+      val ident = parseIdent()
+      LoadAccessKind.values.find(_.toString == ident) match {
+        case Some(ldk) => ldk
+        case _ =>
+          errors += newError("failed to parse load access kind", tok)
+          LoadAccessKind.LD_U8
+      }
+    }
   }
 
   private def tokenize(s: String): Seq[Token] = AsmTokenizer(s)
@@ -482,14 +525,24 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
         }
         Continue
       case Kw(Super) =>
-        builder.setSuperClass(stream.parseType())
+        builder.setSuperOrEnumType(stream.parseType())
+        Continue
+      case Kw(Enum) =>
+        builder.setSuperOrEnumType(stream.parseType())
         Continue
       case Kw(Interfaces) =>
-        val interfaces = mutable.ArrayBuffer.empty[Signature]
-        while (!stream.current.isEnd) {
-          interfaces += stream.parseType()
+        builder.setInterfaces(stream.parseTypeSeq())
+        Continue
+      case Kw(UnionFields) =>
+        builder.setUnionFields(stream.parseTypeSeq())
+        Continue
+      case Kw(EnumKind) =>
+        val tok = stream.current
+        val name = stream.parseIdent()
+        TypeEnumKind.values.find(_.toString == name) match {
+          case Some(kind) => builder.setEnumKind(kind)
+          case _ => errors += stream.newError("unexpected enum kind", tok)
         }
-        builder.setInterfaces(interfaces.toSeq)
         Continue
       case Kw(KeywordKind.Method) =>
         val mb = builder.newMethodBuilder()
@@ -611,6 +664,8 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
     def cc: BranchOp = comma(stream.parseCC())
     def asmType: AsmType = comma(stream.parseAsmType())
     def tk: BuiltinSignature = comma(stream.parseTypeKind())
+    def ldk: LoadAccessKind = comma(stream.parseLoadAccessKind())
+    def stk: StoreAccessKind = comma(stream.parseStoreAccessKind())
 
     def fields: Seq[FieldReference] = {
       val frs = mutable.ArrayBuffer.empty[FieldReference]
@@ -814,6 +869,8 @@ private trait ArgStream {
   def cc: BranchOp
   def asmType: AsmType
   def tk: BuiltinSignature
+  def ldk: LoadAccessKind
+  def stk: StoreAccessKind
 }
 
 private object ArgParseError extends Throwable
@@ -954,6 +1011,7 @@ private object InstructionParser {
   instr("cuadd.64") { (a, s) => a.cuadd(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("cusub.64") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("cumul.64") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("cpow.64")  { (a, s) => a.cpow(s.ireg, s.ireg, s.ireg, Width.W64) }
 
   // 32-bit checked immediate arithmetic
   instr("caddi.32")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W32) }
@@ -970,6 +1028,7 @@ private object InstructionParser {
   instr("cuaddi.64") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("cusubi.64") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("cumuli.64") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("cpowi.64")  { (a, s) => a.cpowi(s.ireg, s.ireg, s.int, Width.W64) }
 
   // 32-bit float arithmetic
   instr("fadd.32") { (a, s) => a.fadd(Width.W32, s.freg, s.freg, s.freg) }
@@ -1027,6 +1086,7 @@ private object InstructionParser {
   instr("w.jmp") { (a, s) => a.doJmp(s.label, wide = true) }
 
   // misc
+  instr("new.closure")  { (a, s) => a.newClosure(IR.IR1, s.tpe) }
   instr("newobj")       { (a, s) => a.newobj(s.tpe) }
   instr("throw")        { (a, s) => a.throwEx(s.ireg) }
   instr("catch")        { (a, s) => a.catchEx(s.ireg) }
@@ -1035,9 +1095,15 @@ private object InstructionParser {
   instr("arr.ic")       { (a, s) => a.arrIC(s.ireg, s.ireg) }
   instr("gcpoint")      { (a, s) => a.gcpoint() }
   instr("iof")          { (a, s) => a.isInstanceOf(s.ireg, s.ireg, s.tpe) }
-  instr("zero.refs")    { (a, s) => a.zerorefs(s.ts) }
+  instr("prepare.rec")  { (a, s) => a.prepareRecord(s.ts) }
+  instr("zero.refs")    { (a, s) => a.prepareRecord(s.ts) }
+  instr("ld.stack.rec") { (a, s) => a.ldstackrec(s.ireg, s.ts) }
   instr("nop")          { (a, s) => a.nop() }
   instr("const.string") { (a, s) => a.initConstString(s.ts, StringLiteral(s.str)) }
+  instr("tag.g")        { (a, s) => a.tagGeneric(s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("payload.g")    { (a, s) => a.payloadGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("new.none.g")   { (a, s) => a.newNoneGeneric(s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("new.some.g")   { (a, s) => a.newSomeGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
 
   // memory access - field
   instr("ld.ref.field")   { (a, s) => val dst = s.ireg; MemSpace.Builder().obj(s.ireg).field(s.field).load(dst).gen(a) }
@@ -1081,10 +1147,16 @@ private object InstructionParser {
   instr("st.tslot.f")   { (a, s) => val src = s.freg; MemSpace.Builder().typed(s.ts).field(s.field).store(src).gen(a) }
   instr("st.tslot.imm") { (a, s) => val src = s.int;  MemSpace.Builder().typed(s.ts).field(s.field).storeImm(src).gen(a) }
 
+  // memory access - raw
+  instr("ld.raw") { (a, s) => a.loadRawMemory(ldk = s.ldk, dst = s.ireg, base = s.ireg, offset = s.int) }
+  instr("st.raw") { (a, s) => a.storeRawMemory(stk = s.stk, src = s.ireg, base = s.ireg, offset = s.int) }
+
   // calls
-  instr("call.direct") { (a, s) => a.callDirect(s.ireg, s.method) }
-  instr("call.virt")   { (a, s) => a.callVirt(s.ireg, s.method) }
-  instr("call.interf") { (a, s) => a.callInterf(s.ireg, s.method) }
+  instr("call.direct")    { (a, s) => a.callDirect(s.ireg, s.method) }
+  instr("call.virt")      { (a, s) => a.callVirt(s.ireg, s.method) }
+  instr("call.interf")    { (a, s) => a.callInterf(s.ireg, s.method) }
+  instr("call.closure")   { (a, s) => a.callClosure(IR.IR1, s.tpe) }
+  instr("call.closure.g") { (a, s) => a.callClosureGeneric(IR.IR1, s.tpe) }
 
   // bfx
   instr("bfxs.32.32")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W32, Width.W32, true,  s.int.toInt, s.int.toInt) }
@@ -1099,7 +1171,6 @@ private object InstructionParser {
   // thread spawn
   instr("spawn")        { (a, s) => a.spawn(s.ireg, s.tpe) }
   instr("spawn.future") { (a, s) => a.spawnFuture(s.ireg, s.tpe) }
-  instr("new.closure")  { (a, s) => a.newClosure(IR.IR1, s.tpe) }
 
   // generics
   instr("load.type.info")   { (a, s) => a.loadTypeInfoSig(s.ireg, s.tpe) }
@@ -1111,6 +1182,8 @@ private object InstructionParser {
   instr("type.arg")         { (a, s) => a.typeArg(dst = s.ireg, idx = s.int.toInt, ti = s.ireg) }
   instr("offset")           { (a, s) => a.offset(dst = s.ireg, fr = s.field, ti = s.ireg) }
   instr("add.offset")       { (a, s) => a.addOffset(s.ireg, s.field, s.ireg) } // TODO: name params
+
+  instr("load.type.info.obj") { (a, s) => a.loadTypeInfoObj(s.ireg, s.ireg) }
 
   // memspace
   memInstr("ms.const.idx") { (b, s) => b.constIndex(s.int.toInt, s.tpe) }
@@ -1130,4 +1203,6 @@ private object InstructionParser {
   tailInstr("ms.st.f")   { (b, s) => b.store(s.freg) }
   tailInstr("ms.st.imm") { (b, s) => b.storeImm(s.int) }
   tailInstr("ms.st.g")   { (b, s) => b.storeGeneric(s.ireg, s.ireg) }
+
+  tailInstr("ms.copy.typed") { (b, s) => b.copyTyped(s.ts, Seq.empty) }
 }

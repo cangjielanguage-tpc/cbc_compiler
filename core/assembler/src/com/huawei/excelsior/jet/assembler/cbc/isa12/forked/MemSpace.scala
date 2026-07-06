@@ -151,7 +151,7 @@ object MemSpace {
       lastType = refType match {
         case CangjieArray(elem) => elem
         case CbcFileFormat.Tuple(args) => args(idx)
-        case x => shouldNotReachHere("unexpected type $x")
+        case x => shouldNotReachHere(s"unexpected type $x")
       }
       op(BodyOperation.ConstIndex(idx, refType))
     }
@@ -160,7 +160,7 @@ object MemSpace {
       lastType = refType match {
         case CangjieArray(elem) => elem
         case CbcFileFormat.Tuple(args) => args(idx)
-        case x => shouldNotReachHere("unexpected type $x")
+        case x => shouldNotReachHere(s"unexpected type $x")
       }
       op(BodyOperation.ConstIndexGeneric(idx, refType, ti))
     }
@@ -347,7 +347,7 @@ object MemSpace {
         if (h.isRef) asm.analyzer.useRef(h.base) else asm.analyzer.useRec(h.base)
         stream
           .opc8(Opcode.MemHeadReg)
-          .bits(_.w4(asm.analyzer.useRef(h.base)).write(0, 3).w1(h.isRef))
+          .bits(_.w4(h.base).write(0, 3).w1(h.isRef))
       case h: MemField =>
         if (h.fr.refType.isReference) asm.analyzer.useRef(h.base) else asm.analyzer.useRec(h.base)
         // TODO: isRef is computable in runtime

@@ -65,6 +65,9 @@ class MethodReference(val methodType: MethodType,
     assert(!_refClass.symType.isCangjieType || _refClass.sigType.isUniversalGeneric == asClassType(_refClass.symType).isUniversalGeneric,
       s"erased reference type ${_refClass.sigType.toJETSignature}")
 
+    assert(_accessKind != MethodReferenceAccessKind.VIRTUAL || !isStandalone || explicitVNum.nonEmpty,
+      "missing explicit vnum for virtual method")
+
     // Transform interface calls of java/lang/Object methods into virtual calls.
     // TODO: this is not correct, see JET-7343
     if (_accessKind == MethodReferenceAccessKind.INTERFACE && _method.getDeclaringClass.isJavaLangObject) {
@@ -185,7 +188,7 @@ class MethodReference(val methodType: MethodType,
   def isCangjieMut: Boolean = hasMethod && method.isCangjieMut
 
   def hasNonRecordReceiverParameter(implicit typeProvider: TypeProvider): Boolean =
-    hasReceiverParameter && !methodType.parameterType(getReceiverArgIndex).isRecord
+    hasReceiverParameter && methodType.parameterType(getReceiverArgIndex).isReference
 
   def hasRefClass = rawRefClass != null
 

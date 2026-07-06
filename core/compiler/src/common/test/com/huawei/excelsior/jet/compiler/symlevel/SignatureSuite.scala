@@ -246,7 +246,6 @@ class SignatureSuite extends CompilerSuite {
     tp("!i32", None),
     tp("!!ARi32", None), // multiple non-nullable prefixes are not allowed
     tp("i33", None),
-    tp("EWSfoo;MyEnum;", None), // only primitive and reference types are allowed as enum base type
     tp("AJ-2i32", None), // negative dimensions are prohibited
     tp(s"AJ${Long.MaxValue}", None),
     tp("AV-3i16", None),

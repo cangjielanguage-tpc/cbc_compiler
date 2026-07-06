@@ -14,8 +14,9 @@ import com.huawei.excelsior.common.Language.{JAVA, SCALA}
 import com.huawei.excelsior.jet.common.*
 import com.huawei.excelsior.jet.common.XString.xstr
 import com.huawei.excelsior.jet.compiler.Env.*
+import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.abi.ABI.makeABISignature
-import com.huawei.excelsior.jet.compiler.cangjie.{CHIRVTable, CangjieSymLevelMaker}
+import com.huawei.excelsior.jet.compiler.cangjie.{CHIRVTable, CangjieEnumInfo, CangjieSymLevelMaker}
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker.{CONSTRUCTOR_NAME, isArraySliceConstructor}
 import com.huawei.excelsior.jet.compiler.debug.info.{CompilationUnitInfo, DebugType, Language}
 import com.huawei.excelsior.jet.compiler.driver.CompilationMode.{O1, O2}
@@ -134,7 +135,7 @@ object pcOModule {
   val ctag_UNUSED_1                   : CTAG = UByte( 1)
   val ctag_num_virtual                : CTAG = UByte( 2)
   val ctag_num_instance_layout        : CTAG = UByte( 3)
-  val ctag_UNUSED_4                   : CTAG = UByte( 4)
+  val ctag_cangjie_enum               : CTAG = UByte( 4) // class is cangjie enum
   val ctag_is_namespace               : CTAG = UByte( 5) // class is specified with AJ annotation Namespace
   val ctag_is_thin_class              : CTAG = UByte( 6) // class is specified with AJ annotation Thin
   val ctag_recompile_class            : CTAG = UByte( 7) // class could be used from cache, but it was explicitly stated that we should recompile it
@@ -326,6 +327,7 @@ object pcOModule {
     def markAsUniversalGeneric()          : Unit = ctags += ctag_is_generic
     def markAsEvacuatedType()             : Unit = ctags += ctag_evacuated_type
     def markAsHasOuterClass()             : Unit = ctags += ctag_has_outer_class
+    def markAsCangjieEnum()               : Unit = ctags += ctag_cangjie_enum
 
     def isForcedO1Compiled                : Boolean = ctags contains ctag_forced_o1_compiled
     def virtualNumbersAreNumerated        : Boolean = ctags contains ctag_num_virtual
@@ -366,6 +368,7 @@ object pcOModule {
     def isUniversalGeneric                : Boolean = ctags contains ctag_is_generic
     def isEvacuatedType                   : Boolean = ctags contains ctag_evacuated_type
     def hasOuterClass                     : Boolean = ctags contains ctag_has_outer_class
+    def isCangjieEnum                     : Boolean = ctags contains ctag_cangjie_enum
 
     def isInActiveEnvironment: Boolean = !isInInactiveEnvironment
 
@@ -501,7 +504,22 @@ object pcOModule {
     }
 
     def getCHIRVTable: Option[CHIRVTable] = {
-      fextOption[CHIRVTableFEXT](chirVTable).map(_.vtable)
+      fextOption[CHIRVTableFEXT](chirVTable).map(_.getVTable)
+    }
+
+    def setCangjieEnumInfo(info: CangjieEnumInfo): Unit = {
+      assert(isCangjieEnum)
+      if (!hasFEXT(cangjieEnumInfo)) {
+        // TODO: stop serializing everything
+        for (c <- info.constructors) {
+          c.params.foreach(addImport)
+        }
+        addFEXT(CangjieEnumInfoFEXT(info), cangjieEnumInfo)
+      }
+    }
+
+    def getCangjieEnumInfo: Option[CangjieEnumInfo] = {
+      fextOption[CangjieEnumInfoFEXT](cangjieEnumInfo).map(_.info)
     }
 
     def addLambdaInfo(info: LambdaInfo): Unit = {
@@ -975,6 +993,7 @@ object pcOModule {
     }
 
     def setSuperInterfaces(iarray: Array[RefInterfaceType]): Unit = {
+      interfaces.clear()
       if (iarray != null) {
         iarray foreach addImport
         interfaces ++= iarray
@@ -1492,12 +1511,11 @@ object pcOModule {
 
     def newMethod(name: XString, sig: XString, accf: Set32, addSignatureImport: Boolean): Method = {
       val msig = typeProvider.resolveMethodSignature(sig, classByO2Object(this))
-      newMethod(name, msig, accf, addSignatureImport)
+      newMethod(name, msig, accf, addSignatureImport, ABI.Description(Option.unless(accf contains xjRTS.mdf_static)(SignatureType.fromSymType(symType))))
     }
 
     def newMethod(name: XString, sig: MethodSignature, accf: MTAG_ANNOT_SET, addSignatureImport: Boolean,
-                  hasUGDesc: Boolean = false, hasThisTypeInfoParam: Boolean = false, isCFunc: Boolean = false,
-                  hasOuterTypeInfo: Boolean = false, genericFuncParamsCount: Int = 0, isMutWrapper: Boolean = false) = {
+                  abiDesc: ABI.Description) = {
       // SET of xjRTS.mdf_*
       // accf contains both bytecode access flags & JET-specific modifiers
       var m: Method = null
@@ -1509,13 +1527,12 @@ object pcOModule {
 
       this.beforeNewMethod()
       m = new Method(this.mno, pcNames.NameAndSig(name, sig), methods.size + 1)
-      this.afterNewMethod(m, name, sig, accf, addSignatureImport, hasUGDesc, hasThisTypeInfoParam, isCFunc, hasOuterTypeInfo, genericFuncParamsCount, isMutWrapper)
+      this.afterNewMethod(m, name, sig, accf, addSignatureImport, abiDesc)
       m
     }
 
     def afterNewMethod(m: Method, name: XString, msig: MethodSignature, accf: MTAG_ANNOT_SET, addSignatureImport: Boolean,
-                       hasUGDesc: Boolean, hasThisTypeInfoParam: Boolean, isCFunc: Boolean,
-                       hasOuterTypeInfo: Boolean, genericFuncParamsCount: Int, isMutWrapper: Boolean): Unit = {
+                       abiDesc: ABI.Description): Unit = {
       // SET of xjRTS.mdf_*
       // accf contains both bytecode access flags & JET-specific modifiers
       declareMember(this, m)
@@ -1554,19 +1571,9 @@ object pcOModule {
 
 
       val arraySliceConstructor = isArraySliceConstructor(name.toString)
-      val hasMutParam = (m.getDeclaringClass.isRecord && m.modifiers.contains(pcOModule.CangjieMethod.MUT_MODIFIER)) || arraySliceConstructor
       val msigAdjusted = if (arraySliceConstructor) msig.copy(parameterTypes = msig.parameterTypes.tail) else msig
 
-      val receiver = if (!m.isStatic && isMutWrapper) {
-        assert(!hasMutParam)
-        Some(SignatureType.Box(SignatureType.fromSymType(symType)))
-      } else if (!m.isStatic && !hasMutParam) {
-        Some(SignatureType.fromSymType(symType)) // TODO: not nullable?
-      } else {
-        None
-      }
-      val (abiSig, specialParamSet) = makeABISignature(msigAdjusted, receiver, hasUGDesc, hasMutParam,
-                                                       hasThisTypeInfoParam, isCFunc, hasOuterTypeInfo, genericFuncParamsCount)
+      val (abiSig, specialParamSet) = makeABISignature(msigAdjusted, abiDesc)
       m.abiSig = abiSig
       m.specialParamSet = specialParamSet
 
@@ -3333,10 +3340,25 @@ object pcOModule {
 
   private class CHIRVTableFEXT extends FEXT {
     private[pcOModule] var vtable: CHIRVTable = _
+    private[pcOModule] var unresolvedVTable: CHIRVTable = _
+    private[pcOModule] var unresolvedImpls: Seq[Seq[Option[MethodFEXT]]] = _
     def this(vtable: CHIRVTable) = { this(); this.vtable = vtable }
 
+    def getVTable: CHIRVTable = {
+      if (vtable == null) {
+        vtable = CHIRVTable(
+          unresolvedVTable.extDefs.zip(unresolvedImpls).map { (extDef, extDefImpls) =>
+            extDef.copy(funcTable = extDef.funcTable.zip(extDefImpls).map { (entry, entryImpl) =>
+              entry.copy(impl = entryImpl.map(f => methodByO2Object(f.getMethod)))
+            })
+          }
+        )
+      }
+      vtable
+    }
+
     override def internalize(si: SymIO): Unit = {
-      vtable = CHIRVTable(
+      unresolvedVTable = CHIRVTable(
         si.readSeq { () =>
           CHIRVTable.ExtDef(
             si.readSignatureType(),
@@ -3345,7 +3367,7 @@ object pcOModule {
                 si.readString(),
                 si.readMethodSignature(),
                 si.readSeq(si.readSignatureType),
-                Option.when(si.readBool()) { methodByO2Object(si.readClassRefSelfIncluded().methods(si.readInt())) },
+                None, // will be resolved later
                 Modifiers(si.readInt()),
                 si.readMethodSignature(),
                 si.readSignatureType(),
@@ -3355,6 +3377,15 @@ object pcOModule {
           )
         }
       )
+      unresolvedImpls = si.readSeq { () =>
+        si.readSeq { () =>
+          Option.when(si.readBool()) {
+            val fext = new MethodFEXT
+            fext.internalize(si)
+            fext
+          }
+        }
+      }
     }
     override def externalize(si: SymIO): Unit = {
       si.writeSeq(vtable.extDefs) { extDef =>
@@ -3363,19 +3394,40 @@ object pcOModule {
           si.writeString(entry.name)
           si.writeMethodSignature(entry.sig)
           si.writeSeq(entry.genericParams)(si.writeSignatureType)
-          entry.impl match {
-            case None =>
-              si.writeBool(false)
-            case Some(m) =>
-              si.writeBool(true)
-              si.writeClassRefSelfIncluded(getO2Method(m).getDeclaringClass)
-              si.writeInt(m.getHostedIndex)
-          }
           si.writeInt(entry.modifiers.value)
           si.writeMethodSignature(entry.originalSig)
           si.writeSignatureType(entry.instantiatedRefType)
           si.writeSignatureType(entry.instantiatedReturnType)
         }
+      }
+      si.writeSeq(vtable.extDefs) { extDef =>
+        si.writeSeq(extDef.funcTable) { entry =>
+          entry.impl match {
+            case None =>
+              si.writeBool(false)
+            case Some(m) =>
+              si.writeBool(true)
+              val fext = new MethodFEXT
+              fext.method = methodToO2Method(m)
+              fext.externalize(si)
+          }
+        }
+      }
+    }
+  }
+
+  private class CangjieEnumInfoFEXT extends FEXT {
+    import CangjieEnumInfo.*
+
+    private[pcOModule] var info: CangjieEnumInfo = _
+    def this(info: CangjieEnumInfo) = { this(); this.info = info }
+
+    override def internalize(si: SymIO): Unit = {
+      info = CangjieEnumInfo(si.readSeq(() => CangjieEnumInfo.Constructor(si.readSeq(si.readSignatureType))))
+    }
+    override def externalize(si: SymIO): Unit = {
+      si.writeSeq(info.constructors) { c =>
+        si.writeSeq(c.params)(si.writeSignatureType)
       }
     }
   }
@@ -4050,6 +4102,27 @@ object pcOModule {
         case t: Box =>
           curFile.writePackedInt(20)
           writeSignatureType(t.base)
+        case t: ZeroSizedEnum =>
+          curFile.writePackedInt(21)
+          writeJString(xstr(t.name))
+          writeSeq(t.params)(writeSignatureType)
+        case t: PrimitiveBasedEnum =>
+          curFile.writePackedInt(22)
+          writeJString(xstr(t.name))
+          writeSeq(t.params)(writeSignatureType)
+        case t: ClassBasedEnum =>
+          curFile.writePackedInt(23)
+          writeJString(xstr(t.name))
+          writeSeq(t.params)(writeSignatureType)
+        case t: UnionBasedEnum =>
+          curFile.writePackedInt(24)
+          writeJString(xstr(t.name))
+          writeSeq(t.params)(writeSignatureType)
+        case t: OptionLikeEnum =>
+          curFile.writePackedInt(25)
+          writeJString(xstr(t.name))
+          writeSeq(t.params)(writeSignatureType)
+          writeSignatureType(t.someType)
       }
     }
 
@@ -4173,6 +4246,11 @@ object pcOModule {
         case 18 => ClassTypeVariable(curFile.readPackedInt())
         case 19 => Tuple(readSeq(readSignatureType))
         case 20 => Box(readSignatureType())
+        case 21 => ZeroSizedEnum(curFile.readJString().toString, readSeq(readSignatureType))
+        case 22 => PrimitiveBasedEnum(curFile.readJString().toString, readSeq(readSignatureType))
+        case 23 => ClassBasedEnum(curFile.readJString().toString, readSeq(readSignatureType))
+        case 24 => UnionBasedEnum(curFile.readJString().toString, readSeq(readSignatureType))
+        case 25 => OptionLikeEnum(curFile.readJString().toString, readSeq(readSignatureType), readSignatureType())
       }
     }
 
@@ -4759,7 +4837,8 @@ object pcOModule {
   private val cangjieArrayElementType: Byte = 47
   private val ajDelayedIntrinsic: Byte = 48
   private val cangjieBoxValueType: Byte = 49
-  val lastpersistenttype: Byte = 49
+  private val cangjieEnumInfo: Byte = 50
+  val lastpersistenttype: Byte = 50
 
   /*----------------------------------------------------------------*/
   private var classLookupTable: Hashtable = _
@@ -5150,6 +5229,8 @@ object pcOModule {
       new DataAnnotFEXT
     case `chirVTable` =>
       new CHIRVTableFEXT
+    case `cangjieEnumInfo` =>
+      new CangjieEnumInfoFEXT
     case _ =>
       throw new AssertionError(type0)
   }

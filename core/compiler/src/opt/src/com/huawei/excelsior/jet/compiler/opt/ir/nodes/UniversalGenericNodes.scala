@@ -42,8 +42,8 @@ trait UniversalGenericNodes { self: Universe with Nodes =>
       case class Proto private[ToHolder](from: SignatureType, to: SignatureType)
         extends FixedArgs[ToHolder](ValueType.fromSig(from, instantiateRich = true))(HolderType(from)) {
 
-        require(!from.isInstanceOf[TypeVariable])
-        require(to.isInstanceOf[TypeVariable])
+        require(!from.isTypeVariable)
+        require(to.isTypeVariable)
         def newInstance() = new ToHolder(this)
       }
 
@@ -61,8 +61,8 @@ trait UniversalGenericNodes { self: Universe with Nodes =>
       case class Proto private[FromHolder](from: SignatureType, to: SignatureType)
         extends FixedArgs[FromHolder](HolderType(to))(ValueType.fromSig(to, instantiateRich = true)) {
 
-        require(from.isInstanceOf[TypeVariable])
-        require(!to.isInstanceOf[TypeVariable])
+        require(from.isTypeVariable)
+        require(!to.isTypeVariable)
         def newInstance() = new FromHolder(this)
       }
 
@@ -71,7 +71,7 @@ trait UniversalGenericNodes { self: Universe with Nodes =>
 
     def convertHolder(from: SignatureType, to: SignatureType)(n: Node) = {
       assert(!isStandalone)
-      (from.isInstanceOf[TypeVariable], to.isInstanceOf[TypeVariable]) match {
+      (from.isTypeVariable, to.isTypeVariable) match {
         case (false, true) => ToHolder.proto(from, to)(n)
         case (true, false) => FromHolder.proto(from, to)(n)
         case _ => n // no conversion
@@ -97,7 +97,7 @@ trait UniversalGenericNodes { self: Universe with Nodes =>
         extends FixedArgs[CopyUniversalVariable](ControlType, MemoryType, ValueType(universalVariableType), ValueType(universalVariableType))(ValueType(universalVariableType))
           with ControlMemoryValueTagged[CopyUniversalVariable] {
 
-        require(universalVariableType.isInstanceOf[TypeVariable])
+        require(universalVariableType.isTypeVariable)
 
         override def newInstance() = new CopyUniversalVariable(this)
       }

@@ -52,8 +52,8 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
     case _: WeakCast => COMPLEX
 
     case _: TauSwitch => COMPLEX
-    case n: InstanceOf if n.targetType.symType.getKind.isClass => COMPLEX
-    case n: BitcodeDeferred.InstanceOf if n.targetType.symType.getKind.isClass => COMPLEX
+    case n: InstanceOf if n.targetType.symKindErased.isClass => COMPLEX
+    case n: BitcodeDeferred.InstanceOf if n.targetType.symKindErased.isClass => COMPLEX
 
     case e: Evacuate => COMPLEX
 

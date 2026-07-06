@@ -11,7 +11,8 @@ package com.huawei.excelsior.jet.compiler.o2lib.fe
 import com.huawei.excelsior.common.Language
 import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.Env.languagePack
-import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTable, CangjieSymLevelMaker}
+import com.huawei.excelsior.jet.compiler.abi.ABI
+import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTable, CangjieEnumInfo, CangjieSymLevelMaker}
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.*
 import com.huawei.excelsior.jet.compiler.o2lib.u.xiFilesModule
@@ -137,8 +138,16 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
     typeToO2Class(clazz).setCHIRVTable(vtable)
   }
 
+  override def markAsEnum(clazz: ClassType): Unit = {
+    typeToO2Class(clazz).markAsCangjieEnum()
+  }
+
+  override def setEnumInfo(clazz: ClassType, enumInfo: CangjieEnumInfo): Unit = {
+    typeToO2Class(clazz).setCangjieEnumInfo(enumInfo)
+  }
+
   override def addField(clazz: ClassType, name: String, sig: SignatureType, exportedName: String, modifiers: Int): Field = {
-    val dup = clazz.findDeclaredFieldOrNull(XString(name), sig)
+    val dup = clazz.findDeclaredFieldOrNull(XString(name), null)
     if (dup != null) {
       // TODO: checks?
       dup
@@ -158,16 +167,14 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
   }
 
   override def addMethod(clazz: ClassType, name: String, sig: MethodSignature, exportedName: String, modifiers: Int, genericInfo: GenericInfo,
-                         hasUGDesc: Boolean, hasThisTypeInfoParam: Boolean, isCFunc: Boolean,
-                         hasOuterTypeInfo: Boolean, genericFuncParamsCount: Int, isMutWrapper: Boolean) = {
+                         abiDesc: ABI.Description) = {
     val dup = clazz.findDeclaredMethodOrNull(XString(name), sig)
     if (dup != null) {
       // TODO: checks?
       dup
 
     } else {
-      val m = SymLevelBuilderModule.addMethod(typeToO2Class(clazz), XString(name), sig, Set32(modifiers),
-        hasUGDesc, hasThisTypeInfoParam, isCFunc, hasOuterTypeInfo, genericFuncParamsCount, isMutWrapper)
+      val m = SymLevelBuilderModule.addMethod(typeToO2Class(clazz), XString(name), sig, Set32(modifiers), abiDesc)
 
       if (genericInfo != GenericInfo.none) {
         m.markAsUniversalGeneric()

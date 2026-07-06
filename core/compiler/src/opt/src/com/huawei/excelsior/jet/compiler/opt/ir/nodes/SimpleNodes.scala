@@ -200,16 +200,34 @@ trait SimpleNodes { self: Universe with Nodes =>
     object SecondArg extends EdgeMatcher[UMulH](1)
   }
 
+  class Pow private(proto: Pow.Proto) extends ArithCommutativeOp(proto) with FloatingNode
+
+  object Pow {
+    case class Proto private[Pow](keyType: Type) extends BinaryOp.Floating[Pow](keyType)(keyType) {
+      def newInstance() = new Pow(this)
+    }
+
+    def proto(tpe: Type) = Prototype.intern(Proto(tpe))
+
+    def apply(l: Node, r: Node) = proto((l.tpe | r.tpe) ensuring (_.isNumericType))(l, r)
+
+    def unapply(pow: Pow): Option[(Node, Node)] = Some((pow.l, pow.r))
+
+    object SecondArg extends EdgeMatcher[Pow](1)
+  }
+
   class CheckedOp(proto: CheckedOp.Proto) extends BinaryOp(proto) with SpinalNode with CanThrow with ProducesValue {
     def throwProc: RTSProc = (kind, managed) match {
       case (CheckedOp.Kind.ADD, true) => RTSProc.JR_ThrowAJAddOverflowException
       case (CheckedOp.Kind.SUB, true) => RTSProc.JR_ThrowAJSubOverflowException
       case (CheckedOp.Kind.MUL, true) => RTSProc.JR_ThrowAJMulOverflowException
       case (CheckedOp.Kind.DIV, true) => RTSProc.JR_ThrowAJDivOverflowException
+      case (CheckedOp.Kind.POW, true) => shouldNotReachHere("not implemented")
       case (CheckedOp.Kind.ADD, false) => RTSProc.JR_ThrowManualAJAddOverflowException
       case (CheckedOp.Kind.SUB, false) => RTSProc.JR_ThrowManualAJSubOverflowException
       case (CheckedOp.Kind.MUL, false) => RTSProc.JR_ThrowManualAJMulOverflowException
       case (CheckedOp.Kind.DIV, false) => RTSProc.JR_ThrowManualAJDivOverflowException
+      case (CheckedOp.Kind.POW, false) => RTSProc.JR_ThrowManualAJMulOverflowException
     }
 
     def width = proto.width
@@ -221,7 +239,7 @@ trait SimpleNodes { self: Universe with Nodes =>
 
   object CheckedOp {
     enum Kind:
-      case ADD, SUB, MUL, DIV
+      case ADD, SUB, MUL, DIV, POW
     import Kind._
 
     def normalizeArg(tpe: Type, from: Width, signed: Boolean, x: Node): Node = BitFieldExtract.BFX(tpe, 0, from.nbits, signed, x)
@@ -927,6 +945,11 @@ trait SimpleNodes { self: Universe with Nodes =>
 
     def apply(from: Type, to: Type) = Prototype.intern(Proto(from, to))
     def unapply(cast: ReinterpretCast) = Some(cast.from, cast.to, cast.arg)
+
+    def skip(x: Node): Node = x match {
+      case x: ReinterpretCast => x.arg
+      case x => x
+    }
   }
 
   class ValueConvert(proto: ValueConvert.Proto) extends Cast(proto) {
@@ -1857,10 +1880,13 @@ trait SimpleNodes { self: Universe with Nodes =>
   /////////////////////////////////////////
   // Stack allocation node.
 
-  class StackAlloc private (val kind: FrameSlot.Kind)
-    extends LeafNode[StackAlloc](StackAlloc.tpeByKind(kind)) with StructurallyUnique with Constant {
-
+  trait HasFrameSlot extends Node {
     var slot: FrameSlot = _
+    def kind: FrameSlot.Kind
+  }
+
+  class StackAlloc private (val kind: FrameSlot.Kind)
+    extends LeafNode[StackAlloc](StackAlloc.tpeByKind(kind)) with HasFrameSlot with StructurallyUnique with Constant {
 
     def size = kind.size
     def alignment = kind.alignment

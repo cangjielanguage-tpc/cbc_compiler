@@ -92,18 +92,18 @@ trait CodeGeneratorAmd64 extends CodeGenerator { self: Universe with BackEndAmd6
       case lea: Lea if lea.attachedAsArg => convertLeaArgsToAddrMode(lea)
       case ac: AddrConst => M(ac.symbol, ac.offset)
       case DWordConst(addr) => absolute(addr)
-      case sa: StackAlloc => addrMode(sa.slot)
+      case sa: HasFrameSlot => addrMode(sa.slot)
       case _ => M(gpr(n))
     }
 
     private def convertLeaArgsToAddrMode(lea: Lea) = lea match {
       case Lea.Base(base, disp) => base match {
-        case sa: StackAlloc => addrMode(sa.slot).disposed(disp)
+        case sa: HasFrameSlot => addrMode(sa.slot).disposed(disp)
         case _ => M(gpr(base), disp)
       }
 
       case Lea.Scaled(base, index, scale, disp) => base match {
-        case sa: StackAlloc => addrMode(sa.slot).indexed(Width(scale), gpr(index)).disposed(disp)
+        case sa: HasFrameSlot => addrMode(sa.slot).indexed(Width(scale), gpr(index)).disposed(disp)
         case _ => M(gpr(base), scaled(Width(scale), gpr(index)), disp)
       }
 

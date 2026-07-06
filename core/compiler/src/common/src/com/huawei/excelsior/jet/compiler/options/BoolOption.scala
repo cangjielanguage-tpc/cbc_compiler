@@ -123,6 +123,7 @@ enum BoolOption(override val isAlias: Boolean,
 
   case GenCoverageInCBC            extends BoolOption(false)
   case ZipCbcChunks                extends BoolOption(_ => targetArch == CBC && !isStandalone)
+  case LogCbcFileStats             extends BoolOption(false)
 
   case AICLoopVersioning           extends BoolOption(!_.enabled(GenDebug))
   case AICLoopVersioningInPGOHosts extends BoolOption(false)
@@ -352,8 +353,6 @@ enum BoolOption(override val isAlias: Boolean,
   case StackAllocZeroingForValueTypes extends BoolOption(_ => isStandalone || RTConst.ThreadLocalGC.TLGC_ENABLED.boolValue) // TODO: disable for TOP GC as soon as SmartRecordZeroing works for CBC (JET-16939)
   case SmartRecordZeroing extends BoolOption(_ => languagePack.supports(CANGJIE) && targetArch != CBC) // TODO: support for CBC (JET-16939)
 
-  case RealCheckedOps extends BoolOption(false)
-
   case XScala extends BoolOption(false)
 
   case LogUnresolvedErrors extends BoolOption(false)
@@ -366,7 +365,6 @@ enum BoolOption(override val isAlias: Boolean,
   case StrictHLIRLinkageNameChecks extends BoolOption(false)
 
   case PackageInitFromMain extends BoolOption(true)
-  case SkipCHIRGarbageCalls extends BoolOption(true)
 
   case AllowMappingOfJDKIOToXScala extends BoolOption(false)
 

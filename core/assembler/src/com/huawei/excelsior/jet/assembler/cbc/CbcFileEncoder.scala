@@ -10,12 +10,14 @@ package com.huawei.excelsior.jet.assembler.cbc
 
 import com.huawei.excelsior.jet.assembler.{Segment, Symbol}
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileEncoder.{FILE_VERSION, Index, Offset}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.TypeEnumKind.{NotEnum, Option0, Option1, Primitive, Union}
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, *}
 import com.huawei.excelsior.jet.assembler.cbc.FieldTag.{SlebConst, U64Const, UlebConst}
 import com.huawei.excelsior.jet.assembler.cbc.Utils.writeSequence
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind
-import xscala.io.{ByteBuffer, DataOutput, LEB128Encoder}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Fixups
+import xscala.io.{ByteBuffer, DataOutput, LEB128Encoder, TextOutput}
 import xscala.util.MathUtils
 
 import scala.annotation.nowarn
@@ -41,20 +43,91 @@ object CbcFileEncoder {
     s.asInstanceOf[BytecodeReferenceSymbol]
 }
 
+class Statistics {
+  private val counters: Array[Int] = new Array[Int](StatTag.values.length)
+
+  def listener(statTag: StatTag): Int => Unit = size => {
+    counters(statTag.ordinal) += size
+  }
+
+  def count(statTag: StatTag, out: DataOutput)(gen: DataOutput => Unit): Unit = {
+    var counter = 0
+    val countingStream = new DataOutput {
+      override def putByte(b: Int): Unit = {
+        counter += 1
+        out.putByte(b)
+      }
+
+      override def putBytes(data: Array[Byte], offset: Index, size: Index): Unit = {
+        counter += size
+        out.putBytes(data, offset, size)
+      }
+
+      override def putBytes(data: Array[Byte]): Unit = {
+        counter += data.length
+        out.putBytes(data)
+      }
+    }
+
+    gen(countingStream)
+    counters(statTag.ordinal) += counter
+  }
+
+  def print(out: TextOutput): Unit = {
+    val roots = StatTag.values.filter(_.isRoot)
+
+    def dump(statTag: StatTag, indent: String): Unit = {
+      out.println(s"$indent- ${statTag.name}: ${counters(statTag.ordinal)}")
+      for (c <- statTag.children) {
+        dump(c, s"$indent  ")
+      }
+    }
+    for (tag <- roots) {
+      dump(tag, "")
+    }
+  }
+}
+
+enum StatTag(val name: String, val children: StatTag*) {
+  case MC_Instructions extends StatTag("instructions")
+  case MC_Exceptions extends StatTag("exceptions")
+  case MC_GCData extends StatTag("gc maps")
+  case MC_StackChecks extends StatTag("stack maps")
+
+  case String extends StatTag("strings")
+  case ByteArray extends StatTag("raw data")
+  case Signature extends StatTag("signature types")
+  case MethodCode extends StatTag("method code", MC_Instructions, MC_Exceptions, MC_GCData, MC_StackChecks)
+  case FieldDef extends StatTag("field definitions")
+  case FieldRef extends StatTag("field references")
+  case MethodDef extends StatTag("method definitions")
+  case MethodRef extends StatTag("method references")
+  case TypeDef extends StatTag("type definitions")
+  case AotData extends StatTag("aot data")
+
+  case TypeIndex extends StatTag("type index")
+  case RefIndex extends StatTag("ref index")
+  case AotDataTables extends StatTag("aot data tables")
+
+  lazy val isRoot = !StatTag.values.exists(_.children.contains(this))
+}
+
 class CbcFileEncoder(file: CbcFile) { self =>
   private val globalPoolBuffer: ByteBuffer = new ByteBuffer()
 
-  private val strings = DedupPool(new StringPool with PoolView with GlobalPool)
-  private val byteArrays = DedupPool(new ByteArrayPool with GlobalPool)
-  private val signaturePool = DedupPool(new SignaturePool with PoolView with GlobalPool)
-  private val methodCodes = new MethodCodePool with PoolView with GlobalPool
-  private val methods = new MethodPool with PoolView with GlobalPool
-  private val fields = new FieldPool with PoolView with GlobalPool
-  private val fieldRefPool = DedupPool(new FieldReferencePool with PoolView with GlobalPool)
-  private val methodRefPool = DedupPool(new MethodReferencePool with PoolView with GlobalPool)
-  private val typeIndex = new MemberTable[Type](new TypePool with PoolView with GlobalPool)
+  private val statistics = Statistics()
 
-  private val aotTablePool = new AotDataPool with PoolView with GlobalPool
+  private val strings = DedupPool(CountingPool(new StringPool with PoolView with GlobalPool, statistics.listener(StatTag.String)))
+  private val byteArrays = DedupPool(CountingPool(new ByteArrayPool with GlobalPool, statistics.listener(StatTag.ByteArray)))
+  private val signaturePool = DedupPool(CountingPool(new SignaturePool with PoolView with GlobalPool, statistics.listener(StatTag.Signature)))
+  private val methodCodes = CountingPool(new MethodCodePool(statistics) with PoolView with GlobalPool, statistics.listener(StatTag.MethodCode))
+  private val methods = DedupPool(CountingPool(new MethodPool with PoolView with GlobalPool, statistics.listener(StatTag.MethodDef)))
+  private val fields = CountingPool(new FieldPool with PoolView with GlobalPool, statistics.listener(StatTag.FieldDef))
+  private val fieldRefPool = DedupPool(CountingPool(new FieldReferencePool with PoolView with GlobalPool, statistics.listener(StatTag.FieldRef)))
+  private val methodRefPool = DedupPool(CountingPool(new MethodReferencePool with PoolView with GlobalPool, statistics.listener(StatTag.MethodRef)))
+  private val typeIndex = new MemberTable[Type](CountingPool(new TypePool with PoolView with GlobalPool, statistics.listener(StatTag.TypeDef)))
+
+  private val aotTablePool = DedupPool(CountingPool(new AotDataPool with PoolView with GlobalPool, statistics.listener(StatTag.AotData)))
   private val directCallAotTable = new AotTable(aotTablePool)
   private val virtualCallAotTable = new AotTable(aotTablePool)
   private val interfaceCallAotTable = new AotTable(aotTablePool)
@@ -92,6 +165,14 @@ class CbcFileEncoder(file: CbcFile) { self =>
     def instanceFieldAotTable = self.instanceFieldAotTable
   }
 
+  def printStats(out: TextOutput): Unit = statistics.print(out)
+
+  def stats(): String = {
+    val b = StringBuilder()
+    printStats(TextOutput(b))
+    b.toString()
+  }
+
   def addType(tpe: Type): Unit = typeIndex.add(tpe)
 
   def generate(output: DataOutput): Unit = {
@@ -122,14 +203,17 @@ class CbcFileEncoder(file: CbcFile) { self =>
 
     poolOffset.elem = layout.bytes(globalPoolBuffer.toByteArray)
 
+    layout.setStatListener(statistics.listener(StatTag.TypeIndex))
     typeIndexOffs.elem = layout.bytes(typeIndex.asByteArray())
 
+    layout.setStatListener(statistics.listener(StatTag.AotDataTables))
     directCallAotTableOffset.elem = layout.bytes(directCallAotTable.asByteArray())
     virtualCallAotTableOffset.elem = layout.bytes(virtualCallAotTable.asByteArray())
     interfaceCallAotTableOffset.elem = layout.bytes(interfaceCallAotTable.asByteArray())
     staticFieldAotTableOffset.elem = layout.bytes(staticFieldAotTable.asByteArray())
     instanceFieldAotTableOffset.elem = layout.bytes(instanceFieldAotTable.asByteArray())
 
+    layout.setStatListener(statistics.listener(StatTag.RefIndex))
     val methodRefIndex  = layout.bytes(methodRefs.asByteArray())
     val fieldRefIndex = layout.bytes(fieldRefs.asByteArray())
     val signatureIndex = layout.bytes(signatures.asByteArray())
@@ -138,12 +222,14 @@ class CbcFileEncoder(file: CbcFile) { self =>
     layout.alignment(4) // TODO: why only here?
     indexSectionOffs.elem = layout.w16(0) // type_idx_size TODO: remove
     layout.w32(0) // type_idx_off TODO: remove
-    layout.w16(methodRefs.size) // method_idx_size
+    layout.uleb(methodRefs.size) // method_idx_size
     layout.offset(methodRefIndex) // method_idx_off
-    layout.w16(fieldRefs.size) // field_idx_size
+    layout.uleb(fieldRefs.size) // field_idx_size
     layout.offset(fieldRefIndex) // field_idx_off
     layout.uleb(signatures.size) // sig_idx_size
     layout.offset(signatureIndex) // sig_idx_off
+
+    layout.setStatListener(null)
 
     layout.write(output)
   }
@@ -152,6 +238,10 @@ class CbcFileEncoder(file: CbcFile) { self =>
 private final class Layout { self =>
 
   private val elementPositions = mutable.LinkedHashMap[Element, Int]()
+  private val elementStatListener = mutable.LinkedHashMap[Element, Int => Unit]()
+  private var listener: Int => Unit = _
+
+  def setStatListener(listener: Int => Unit): Unit = this.listener = listener
 
   def alignment(value: Int): Alignment = add(Alignment(value))
   def bytes(arr: Array[Byte]): Bytes = add(Bytes(arr))
@@ -180,11 +270,17 @@ private final class Layout { self =>
           position += elem.size
       }
     }
+    elementStatListener.foreach((elem, statListener) => {
+      if (statListener != null) {
+        statListener(elem.size)
+      }
+    })
     elementPositions.keys.foreach(_.write(out))
   }
 
   private def add[T <: Element](elem: T): T = {
     elementPositions.put(elem, 0)
+    elementStatListener.put(elem, listener)
     elem
   }
 
@@ -246,13 +342,21 @@ private enum SignatureTag(val tag: Byte) {
   case GenericAotRef    extends SignatureTag(0x10)
   case GenericAotRec    extends SignatureTag(0x11)
   case Tuple            extends SignatureTag(0x12)
+  case Box              extends SignatureTag(0x13)
+  case Fst              extends SignatureTag(0x14)
+  case Option           extends SignatureTag(0x15)
+  case UnionEnum        extends SignatureTag(0x16)
+  case PrimitiveEnum    extends SignatureTag(0x17)
 }
 
 private enum TypeTag(val tag: Byte) {
   case Nothing extends TypeTag(0x00)
   case Interfaces extends TypeTag(0x01)
   case GenericParameters extends TypeTag(0x05)
-  case GenericConstraints extends TypeTag(0x06)
+  case UnionFields extends TypeTag(0x06)
+  case Option0 extends TypeTag(0x07)
+  case Option1 extends TypeTag(0x08)
+  case Primitive extends TypeTag(0x09)
 }
 
 private enum MethodTag(val tag: Byte) {
@@ -261,6 +365,7 @@ private enum MethodTag(val tag: Byte) {
   case SourceFullName extends MethodTag(0x02)
   case SourceFile extends MethodTag(0x03)
   case LinkageName extends MethodTag(0x04)
+  case GenericParameters extends MethodTag(0x05)
 }
 
 private enum FieldTag(val tag: Byte) {
@@ -338,13 +443,10 @@ private class MethodRefTable(pool: Pool[MethodReference]) extends Table[MethodRe
 
   override def add(data: MethodReference): Index = {
     val idx = super.add(data)
-    data.refType match {
-      case _: AotTypeSignature => data.aotData.get match {
-        case x: DirectCallAotData => directCallAotTable.add(idx, IndexedAotData(idx, x))
-        case x: VirtualCallAotData => virtualCallAotTable.add(idx, IndexedAotData(idx, x))
-        case x: InterfaceCallAotData => interfaceCallAotTable.add(idx, IndexedAotData(idx, x))
-        case _ => assert(false, "should not reach here")
-      }
+    data.aotData.foreach {
+      case x: DirectCallAotData => directCallAotTable.add(idx, IndexedAotData(idx, x))
+      case x: VirtualCallAotData => virtualCallAotTable.add(idx, IndexedAotData(idx, x))
+      case x: InterfaceCallAotData => interfaceCallAotTable.add(idx, IndexedAotData(idx, x))
       case _ =>
     }
     idx
@@ -371,24 +473,25 @@ private class FieldRefTable(pool: Pool[FieldReference]) extends Table[FieldRefer
 private abstract class BucketBasedHashTable[Key, Data](pool: Pool[Data]) {
   private type bucketId = Int
   private val loadFactor = 0.75
-  val map = mutable.LinkedHashMap.empty[Key, Offset]
+  private val entries = mutable.ArrayBuffer.empty[(Key, Offset)]
 
-  def size = map.size
+  def size = entries.size
 
   def add(key: Key, data: Data): Unit = {
     val offs = pool.add(data)
-    map.getOrElseUpdate(key, offs)
+    entries.append((key, offs))
   }
 
   def hash(key: Key): Int
 
   private def encode(): (Seq[bucketId], Seq[Offset]) = {
-    val N = map.knownSize ensuring (_ >= 0)
+    val entries = this.entries.distinct
+    val N = entries.size ensuring (_ >= 0)
     val d = ((1 / loadFactor) - 1) ensuring (_ > 0)
     val bucketCount = math.max(((1 + d) * N).toInt, N)
 
     val buckets = Array.fill(bucketCount)(mutable.Seq.empty[Offset])
-    for ((key, offset) <- map) {
+    for ((key, offset) <- entries) {
       val idx = MathUtils.urem(hash(key), bucketCount)
       buckets(idx) = buckets(idx) :+ offset
     }
@@ -448,6 +551,16 @@ private trait RawPool {
 
     val offset = buffer.length
     buffer.putBytes(data.toByteArray)
+    offset
+  }
+}
+
+private final class CountingPool[Data](private val pool: Pool[Data] & RawPool, listener: Int => Unit) extends Pool[Data] {
+  override def add(data: Data): Offset = {
+    val offset = pool.add(data)
+    val size = pool.buffer.length - offset
+    assert(size >= 0)
+    listener(size)
     offset
   }
 }
@@ -536,6 +649,27 @@ private class SignaturePool extends Pool[Signature] { self: RawPool with PoolPro
       case FuncTypeVariable(id) =>
         output.putW8(SignatureTag.FuncTypeVar.tag)
         output.putW8(id)
+      case Box(sig) =>
+        output.putW8(SignatureTag.Box.tag)
+        output.putULEB(signatures.add(sig))
+      case Fst(sig) =>
+        output.putW8(SignatureTag.Fst.tag)
+        output.putULEB(signatures.add(sig))
+      case OptionSignature(name, args, _) => // TODO: add short form of encoding
+        output.putW8(SignatureTag.Option.tag)
+        output.putULEB(strings.add(name))
+        output.putW8(args.length)
+        args.map(signatures.add).foreach(output.putULEB)
+      case UnionEnum(name, args) => // TODO: add short form of encoding
+        output.putW8(SignatureTag.UnionEnum.tag)
+        output.putULEB(strings.add(name))
+        output.putW8(args.length)
+        args.map(signatures.add).foreach(output.putULEB)
+      case PrimitiveEnum(name, args) => // TODO: add short form of encoding
+        output.putW8(SignatureTag.PrimitiveEnum.tag)
+        output.putULEB(strings.add(name))
+        output.putW8(args.length)
+        args.map(signatures.add).foreach(output.putULEB)
       case _ => assert(false, s"ShouldNotReachHere: writing $data to CBC file")
     }
   }
@@ -552,13 +686,21 @@ private class FieldReferencePool extends Pool[FieldReference] { self: RawPool wi
 private class MethodReferencePool extends Pool[MethodReference] { self: RawPool with PoolProvider =>
   override def add(data: MethodReference): Offset = put { output =>
     output.putW32(strings.add(data.name))
+
+    val hasTVars = data.typeVars.nonEmpty
+    var flags = data.flags.mask
+    if (data.aotData.isDefined) flags |= MethodRefFlag.AOT.mask
+    if (hasTVars) flags |= MethodRefFlag.HAS_FTVARS.mask
+    output.putW8(flags)
+
     output.putULEB(signatures.add(data.refType))
     output.putULEB(signatures.add(data.signature))
-    output.putW8(data.flags.mask)
+
+    if (hasTVars) output.putULEB(signatures.add(Tuple(data.typeVars)))
   }
 }
 
-private class MethodCodePool extends Pool[MethodCode] { self: RawPool with PoolProvider =>
+private class MethodCodePool(stats: Statistics) extends Pool[MethodCode] { self: RawPool with PoolProvider =>
   override def add(data: MethodCode): Offset = put { output =>
     output.putULEB(data.untypedStackSlotsCount)
     output.putULEB(data.stackAllocatedTypeSigs.length)
@@ -570,39 +712,51 @@ private class MethodCodePool extends Pool[MethodCode] { self: RawPool with PoolP
     output.putULEB(data.maxCalleeStackArgsCount)
     output.putW8(if (data.mayHaveNativeCalls) 1 else 0)
 
-    data.segment.finish((pos, kind, _target) => {
-      val ref = _target.asInstanceOf[BytecodeReferenceSymbol].ref
-      kind match {
-        case RelocationKind.CBC_ID16 =>
-          data.segment.setW16(pos, ref match {
-            case sig: Signature => signatures.add(sig)
-            case ref: MethodReference => methodRefs.add(ref)
-            case ref: FieldReference => fieldRefs.add(ref)
-            case ref => assert(false, s"should not reach here $ref")
-          })
-        case RelocationKind.CBC_ID32 =>
-          data.segment.setW32(pos, ref match {
-            case literal: StringLiteral => strings.add(literal.s)
-            case data: RawData => byteArrays.add(data.data)
-            case ref => assert(false, s"should not reach here $ref")
-          })
-        case x => assert(false, s"should not reach here $x")
-      }
-    })
-    output.putULEB(data.segment.length)
-    output.putULEB(0) // FIXME: remove literal offset
-    output.putBytes(data.segment.toByteArray)
+    assert(!data.segment.frozen)
+    prepareReferenceFixups(data.segment)
+    data.segment.finish((_, _, _) => {})
 
-    if (data.exTable.regionRefs.nonEmpty) {
-      outExTable(output, data.segment, data.exTable)
-    } else {
-      output.putULEB(0)
+    stats.count(StatTag.MC_Instructions, output) { output =>
+      output.putULEB(data.segment.length)
+      output.putULEB(0) // FIXME: remove literal offset
+      output.putBytes(data.segment.toByteArray)
     }
 
-    if (data.liveness != null) {
-      outLiveness(output, data.liveness)
-    } else {
-      output.putULEB(0)
+    stats.count(StatTag.MC_Exceptions, output) { output =>
+      if (data.exTable.regionRefs.nonEmpty) {
+        outExTable(output, data.segment, data.exTable)
+      } else {
+        output.putULEB(0)
+      }
+    }
+
+    stats.count(StatTag.MC_GCData, output) { output =>
+      if (data.liveness.liveStates != null) {
+        outLiveStates(output, data.liveness.liveStates)
+      } else {
+        output.putULEB(0)
+      }
+    }
+
+    stats.count(StatTag.MC_GCData, output) { output =>
+      if (data.liveness.stackCheckStates != null) {
+        outStackCheckStates(output, data.liveness.stackCheckStates)
+      } else {
+        output.putULEB(0)
+      }
+    }
+  }
+
+  private def prepareReferenceFixups(segment: Segment): Unit = {
+    segment.getFixups foreach {
+      case fixup: Fixups.Reference => fixup.setId(fixup.target.ref match {
+        case sig: Signature => signatures.add(sig)
+        case ref: MethodReference => methodRefs.add(ref)
+        case ref: FieldReference => fieldRefs.add(ref)
+        case literal: StringLiteral => strings.add(literal.s)
+        case data: RawData => byteArrays.add(data.data)
+      })
+      case _ =>
     }
   }
 
@@ -613,16 +767,36 @@ private class MethodCodePool extends Pool[MethodCode] { self: RawPool with PoolP
     output.putBytes(exTableBuffer.toByteArray)
   }
 
-  private def outLiveness(output: DataOutput, savedStates: Seq[LivenessInfoCollector.LiveState]): Unit = {
+  // TODO encode more efficiently
+  private def outLiveStates(output: DataOutput, savedStates: Seq[LivenessInfoCollector.LiveState]): Unit = {
     val livenessInfoBuffer = new ByteBuffer()
     for (state <- savedStates) {
       livenessInfoBuffer.putULEB(state.label.position)
       livenessInfoBuffer.putW16(state.regMask)
       livenessInfoBuffer.putULEB(state.untypedSlots.length)
       state.untypedSlots.foreach(livenessInfoBuffer.putULEB)
+      livenessInfoBuffer.putULEB(state.derivedPairs.length)
+      state.derivedPairs.foreach { (base, derived) =>
+        livenessInfoBuffer.putULEB(base)
+        livenessInfoBuffer.putULEB(derived)
+      }
     }
     output.putULEB(livenessInfoBuffer.length)
     output.putBytes(livenessInfoBuffer.toByteArray)
+  }
+
+  // TODO encode more efficiently
+  private def outStackCheckStates(output: DataOutput, savedStates: Seq[LivenessInfoCollector.StackCheckState]): Unit = {
+    val infoBuilder = new ByteBuffer()
+    for (state <- savedStates) {
+      infoBuilder.putULEB(state.label.position)
+      infoBuilder.putULEB(state.stackPtrHolders.length)
+      state.stackPtrHolders.foreach { resource =>
+        infoBuilder.putULEB(resource)
+      }
+    }
+    output.putULEB(infoBuilder.length)
+    output.putBytes(infoBuilder.toByteArray)
   }
 }
 
@@ -648,6 +822,10 @@ private class MethodPool extends Pool[Method] { self: RawPool with PoolProvider 
     for (linkageName <- data.linkageName) {
       output.putW8(MethodTag.LinkageName.tag)
       output.putULEB(strings.add(linkageName))
+    }
+    if (data.genericParameters > 0) {
+      output.putW8(MethodTag.GenericParameters.tag)
+      output.putW8(data.genericParameters)
     }
     output.putW8(MethodTag.Nothing.tag)
   }
@@ -679,7 +857,7 @@ private class TypePool extends Pool[Type] { self: RawPool with PoolProvider =>
     output.putW32(strings.add(data.name))
     output.putW8(0) // region id
     output.putW16(data.flags.mask)
-    output.putULEB(signatures.add(data.superClass.getOrElse(BuiltinSignature.Nil)))
+    output.putULEB(signatures.add(data.superOrEnumType.getOrElse(BuiltinSignature.Nil)))
 
     val (virtualMethods, stationaryMethods) = data.methods.partition(_.flags.contains(MethodFlag.VIRTUAL))
 
@@ -703,13 +881,19 @@ private class TypePool extends Pool[Type] { self: RawPool with PoolProvider =>
       output.putW8(TypeTag.Interfaces.tag)
       writeSequence(output, data.interfaces.map(signatures.add))
     }
-    if (data.genericConstraints.nonEmpty && data.genericConstraints.exists(_ != BuiltinSignature.Nil)) {
-      output.putW8(TypeTag.GenericConstraints.tag)
-      output.putULEB(data.genericConstraints.length)
-      data.genericConstraints.map(signatures.add).foreach(output.putULEB)
-    } else if (data.genericConstraints.nonEmpty) {
+    if (data.genericConstraints.nonEmpty) {
       output.putW8(TypeTag.GenericParameters.tag)
       output.putULEB(data.genericConstraints.length)
+    }
+
+    data.enumKind match {
+      case Option0 => output.putW8(TypeTag.Option0.tag)
+      case Option1 => output.putW8(TypeTag.Option1.tag)
+      case Primitive => output.putW8(TypeTag.Primitive.tag)
+      case Union =>
+        output.putW8(TypeTag.UnionFields.tag)
+        writeSequence(output, data.unionFields.map(signatures.add))
+      case NotEnum =>
     }
 
     output.putW8(TypeTag.Nothing.tag)

@@ -40,7 +40,15 @@ import scala.annotation.nowarn
   * @author conwor
   */
 @nowarn("msg=match may not be exhaustive")
-trait CodeGenerator extends DataGenerator with LayoutComponent with GCMapsToolbox with XSitesToolbox with ProfilingRegions with DebugGenerator with CallGenerator { self: Universe with BackEnd with MachineDescription =>
+trait CodeGenerator extends DataGenerator
+  with LayoutComponent
+  with GCMapsToolbox
+  with MutPairsDataGenerator
+  with StackPtrsDataGenerator
+  with XSitesToolbox
+  with ProfilingRegions
+  with DebugGenerator
+  with CallGenerator { self: Universe with BackEnd with MachineDescription =>
 
   protected def asmTypeForReadWrite(opType: AsmType, forceZX: Boolean = false): AsmType = {
     if (!forceZX) {
@@ -69,7 +77,24 @@ trait CodeGenerator extends DataGenerator with LayoutComponent with GCMapsToolbo
 
 
     /** Map from every point in IR which [[needGCMap]] to set of nodes which [[willBeCollectedInGCMap]] and live at this point. */
-    lazy val gcMaps = calcGCMaps()
+    lazy val gcMaps: collection.Map[Node, Set[Node]] = calcGCMaps()
+
+    /** Map from every point in IR which [[needGCMap]] to set of nodes which [[willBeCollectedInGCMap]] and live at this point. */
+    lazy val stackPtrsData: collection.Map[Node, Set[Node]] = stackPointers()
+
+    /** Map from every point in IR which [[needMutInfo]] to set of mut pairs at this point. */
+    lazy val mutPairsData: collection.Map[Node, Set[(Node, Node)]] = {
+      val data = calcMutPairs()
+      // Every base pointer resource must also be present in GC maps since it's a traceable reference
+      val missing = data flatMap { (node, pairs) =>
+        val maps = gcMaps(node)
+        pairs flatMap { (base, ptr) =>
+          Option.unless(maps.exists(_.resource == base.resource))((base, ptr, node, maps))
+        }
+      }
+      assert(missing.isEmpty, missing)
+      data
+    }
 
     private val startLabels = all[Block].map(b => (b, segment.newLabel)).toMap
     private val endLabels = all[Block].map(b => (b, segment.newLabel)).toMap
@@ -288,7 +313,7 @@ trait CodeGenerator extends DataGenerator with LayoutComponent with GCMapsToolbo
       case (RegNode(dst), RegNode(src)) =>
         emit.copyAny(dst, src, asmType(transfer))
 
-      case (IRegNode(dst), sa: StackAlloc) =>
+      case (IRegNode(dst), sa: HasFrameSlot) =>
         emit.lea(dst, sa.slot.mem)
 
       case (IRegNode(dst), ac: AddrConst) =>
@@ -519,7 +544,7 @@ trait CodeGenerator extends DataGenerator with LayoutComponent with GCMapsToolbo
               case _: Halt => true
               case n => noCodeShouldBeGenerated(n)
             }
-            assert(genDebug || (positionAfterHints != asm.currentPosition) || acceptableEmptyBlock,
+            assert(isO1Compiled || genDebug || (positionAfterHints != asm.currentPosition) || acceptableEmptyBlock,
               s"Empty block in layout: ${CodeOrder.in(block).mkString("[", ", ", "]")}")
           }
         }
@@ -532,7 +557,7 @@ trait CodeGenerator extends DataGenerator with LayoutComponent with GCMapsToolbo
         }
 
         asm.alignStart(requiredMethodAlignment)
-        asm.freeze()
+        doFreeze()
       }
 
       assert(expectedXSitesCount == xInfo.getCollectedXSites.size)
@@ -542,6 +567,8 @@ trait CodeGenerator extends DataGenerator with LayoutComponent with GCMapsToolbo
     }
 
     protected def genCode0(segment: Segment, layout: Layout, xInfo: XInfo, methodStart: Label, slowPathStubStart: Label): Code
+    
+    protected def doFreeze(): Unit
 
     protected def genXHandlerInfo(b: Block): Unit = { /* do nothing */ }
   }
@@ -558,6 +585,10 @@ trait CodeGenerator extends DataGenerator with LayoutComponent with GCMapsToolbo
 
       val markedRegions = calculateMarkedRegions(methodStart, siberiaStart, layout.order)
       CodeMach(segment, xInfo, markedRegions, siberiaOffset)
+    }
+
+    override def doFreeze(): Unit = {
+      asm.freeze()
     }
   }
 }

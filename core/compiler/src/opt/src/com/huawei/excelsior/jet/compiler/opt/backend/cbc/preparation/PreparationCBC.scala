@@ -141,11 +141,12 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
         }
       }
       for {
-        n <- all[GetFieldSeqRef].toList
+        n <- (all[GetFieldSeqRef] ++ all[GetFieldSeqRefGeneric]).toList
         m <- Node.rematerializeCompletely(n)
       } {
         m.singleUse match {
           case use: Call =>
+          case use: Box =>
           case use => shouldNotReachHere(use)
         }
       }

@@ -12,7 +12,7 @@ import com.huawei.excelsior.jet.classfile.NameAndSigComparable
 import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.bytecode.{ConstantPool, ConstantPoolAccessResult}
 import com.huawei.excelsior.jet.compiler.bytecode.ConstantPool.{DeferredAccessInfo, ErrorAccessInfo}
-import com.huawei.excelsior.jet.compiler.cangjie.{CHIRVTable, CangjieSymLevelMaker}
+import com.huawei.excelsior.jet.compiler.cangjie.{CHIRVTable, CangjieEnumInfo, CangjieSymLevelMaker}
 import com.huawei.excelsior.jet.compiler.debug.info.DebugType
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.layout.{FieldsLayout, MethodTables, MethodTablesScala}
@@ -496,4 +496,12 @@ class FakeType private (val klass: Class[?], name: String, private val kind: Typ
   override def getGenericInfo: GenericInfo = null
 
   override def getCHIRVTable: CHIRVTable = null
+
+  override def isCangjieEnum = enumInfo != null
+
+  private var enumInfo: CangjieEnumInfo = null
+  override def getCangjieEnumInfo = enumInfo
+  def setCangjieEnumInfo(info: CangjieEnumInfo): Unit = {
+    enumInfo = info
+  }
 }

@@ -75,6 +75,7 @@ object JavaSymbolsImpl {
                _: SignatureType.InstantiatedRecord |
                _: SignatureType.Tuple |
                _: SignatureType.Box |
+               _: SignatureType.CangjieEnum |
                _: SignatureType.TypeVariable |
                SignatureType.ThisTypeInfo =>
             shouldNotReachHere(tpe)

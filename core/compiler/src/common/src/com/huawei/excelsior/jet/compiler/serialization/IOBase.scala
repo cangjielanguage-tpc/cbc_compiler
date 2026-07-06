@@ -14,7 +14,7 @@ import com.huawei.excelsior.jet.common.XString.xstr
 import com.huawei.excelsior.jet.compiler.*
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.{SpecialParamSet, SpecialParameter}
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{ArraySlice, Box, BString, CPointer, CangjieArray, CangjieEnumWrapper, ClassTypeVariable, InstantiatedRecord, InstantiatedReference, JavaArray, LocalTypeVariable, NameBased, NamedRecord, NonNullableWrapper, NullableWrapper, Primitive, Record, Reference, SymRecord, SymTypeBased, ThisTypeInfo, Tuple, VArray}
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{ArraySlice, BString, Box, CPointer, CangjieArray, CangjieEnum, CangjieEnumWrapper, ClassBasedEnum, ClassTypeVariable, InstantiatedRecord, InstantiatedReference, JavaArray, LocalTypeVariable, NameBased, NamedRecord, NonNullableWrapper, NullableWrapper, OptionLikeEnum, Primitive, PrimitiveBasedEnum, Record, Reference, SymRecord, SymTypeBased, ThisTypeInfo, Tuple, UnionBasedEnum, VArray, ZeroSizedEnum}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeFieldReference, BitcodeMethodReference, BytecodeMethodReference, CallConv, CallKind, ConstraintCallMethodReference, Field, FrameDescSymbol, InstantiatedMethodReference, Method, MethodReference, MethodReferenceAccessKind, MethodSignature, MethodType, Signature, SignatureType, SymlevelReader, SymlevelWriter, TypeKind, Type as SymType}
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.{ClassType, ReferenceType}
@@ -206,6 +206,27 @@ trait IOBase {
       case t: Box =>
         number(20)
         sigType(t.base)
+      case t: ZeroSizedEnum =>
+        number(21)
+        xstring(XString(t.name))
+        seq(t.params)(sigType)
+      case t: PrimitiveBasedEnum =>
+        number(22)
+        xstring(XString(t.name))
+        seq(t.params)(sigType)
+      case t: ClassBasedEnum =>
+        number(23)
+        xstring(XString(t.name))
+        seq(t.params)(sigType)
+      case t: UnionBasedEnum =>
+        number(24)
+        xstring(XString(t.name))
+        seq(t.params)(sigType)
+      case t: OptionLikeEnum =>
+        number(25)
+        xstring(XString(t.name))
+        seq(t.params)(sigType)
+        sigType(t.someType)
     }
 
     def methodSignature(sig: MethodSignature): Unit = {
@@ -432,6 +453,11 @@ trait IOBase {
       case 18 => ClassTypeVariable(number())
       case 19 => Tuple(seq(sigType))
       case 20 => Box(sigType())
+      case 21 => ZeroSizedEnum(xstring().toString, seq(sigType))
+      case 22 => PrimitiveBasedEnum(xstring().toString, seq(sigType))
+      case 23 => ClassBasedEnum(xstring().toString, seq(sigType))
+      case 24 => UnionBasedEnum(xstring().toString, seq(sigType))
+      case 25 => OptionLikeEnum(xstring().toString, seq(sigType), sigType())
     }
 
     def methodSignature(): MethodSignature = {

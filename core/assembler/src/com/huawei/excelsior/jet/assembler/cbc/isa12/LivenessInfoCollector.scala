@@ -13,21 +13,33 @@ import com.huawei.excelsior.jet.assembler.cbc.Register.IR
 import com.huawei.excelsior.jet.assembler.cbc.StackSlot
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessAnalyzer.LivenessMark
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.FlowAnalyzer.Resource
-import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
+import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.{AllStates, LiveState, StackCheckState}
 
 import scala.collection.mutable
 
 object LivenessInfoCollector {
-  case class LiveState(label: Label, regMask: Int, untypedSlots: Seq[Int])
+  case class LiveState(label: Label, regMask: Int, untypedSlots: Seq[Int], derivedPairs: Seq[(Int, Int)])
+  case class StackCheckState(label: Label, stackPtrHolders: Seq[Int])
+
+  case class AllStates(liveStates: Seq[LiveState], stackCheckStates: Seq[StackCheckState])
+
+  def empty: AllStates = AllStates(Seq.empty, Seq.empty)
 }
 
 class LivenessInfoCollector {
 
   private val liveStates = mutable.ArrayBuffer.empty[LiveState]
 
-  def saveStates(seg: Segment, state: Seq[(Resource, LivenessMark)]): Unit = {
-    assert(seg != null)
+  private val stackCheckStates = mutable.ArrayBuffer.empty[StackCheckState]
 
+  private def resToIdx(res: Resource): Int = res match {
+    case ireg: IR => ireg.idx
+    case untyped: StackSlot.Untyped => IR.count + untyped.slot
+  }
+  
+  def saveStates(seg: Segment, state: Seq[(Resource, LivenessMark)], dpairs: Seq[(Resource, Resource)] = Seq.empty): Unit = {
+    assert(seg != null)
+    
     val label = seg.newBoundLabel
     val regsMask = state.collect {
       case (r: IR, LivenessMark.REF) => 1 << r.idx
@@ -35,12 +47,20 @@ class LivenessInfoCollector {
     val slots = state.collect {
       case (us: StackSlot.Untyped, LivenessMark.REF) => us.slot
     }
-    liveStates.addOne(LiveState(label, regsMask, slots))
+    val derivedPairs = dpairs.map((base, derived) => (resToIdx(base), resToIdx(derived)))
+    liveStates.addOne(LiveState(label, regsMask, slots, derivedPairs))
   }
 
-  def saveResources(seg: Segment, refResources: Seq[Resource]): Unit =
-    saveStates(seg, refResources.map(res => res -> LivenessMark.REF))
+  def saveResources(seg: Segment, refResources: Seq[Resource], dpairs: Seq[(Resource, Resource)]): Unit =
+    saveStates(seg, refResources.map(res => res -> LivenessMark.REF), dpairs)
 
-  def collect: Seq[LiveState] = liveStates.toSeq
+  def saveStackPtrs(seg: Segment, resources: Seq[Resource]) = {
+    assert(seg != null)
+
+    val label = seg.newBoundLabel
+    stackCheckStates.addOne(StackCheckState(label, resources.map(resToIdx)))
+  }
+
+  def collect: AllStates = AllStates(liveStates.toSeq, stackCheckStates.toSeq)
 
 }

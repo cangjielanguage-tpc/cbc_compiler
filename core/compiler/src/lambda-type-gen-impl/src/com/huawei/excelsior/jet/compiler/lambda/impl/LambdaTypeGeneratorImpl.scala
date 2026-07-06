@@ -142,6 +142,7 @@ object LambdaTypeGeneratorImpl extends LambdaTypeGenerator {
     // Create symlevel class.
     val classNameObject = pcNamesModule.newLambdaClassName(className, OptEnvModule.hostClassloaderID(typeToO2Class(hostClass)))
     val cls = SymLevelBuilderModule.newClass(classNameObject, Modifiers(FINAL, SYNTHETIC), null)
+    val rcvType = SignatureType.fromSymType(cls.symType)
 
     if (hostClass.isXScalaType) {
       cls.setSuperClass(RefClassType(env.getXScalaAnyRef))
@@ -166,19 +167,19 @@ object LambdaTypeGeneratorImpl extends LambdaTypeGenerator {
     }
 
     // Create constructor.
-    SymLevelBuilderModule.addMethod(cls, XString("<init>"), MethodSignature(closureTypes*)(SignatureType.Void), Set32(Modifiers(PUBLIC).value), hasUGDesc = false, hasThisTypeInfoParam = false, isCFunc = false)
+    SymLevelBuilderModule.addMethod(cls, XString("<init>"), MethodSignature(closureTypes*)(SignatureType.Void), Set32(Modifiers(PUBLIC).value), Some(rcvType))
 
     // Create actual implementation method and additional bridge methods.
     val samMethodName = info.samMethodName
     for (sig <- info.samMethodType +: bridges) {
       // Note: we don't set BRIDGE access flag for bridge methods as it doesn't affect anything
-      SymLevelBuilderModule.addMethod(cls, samMethodName, sig.signature, Set32(Modifiers(PUBLIC).value), hasUGDesc = false, hasThisTypeInfoParam = false, isCFunc = false)
+      SymLevelBuilderModule.addMethod(cls, samMethodName, sig.signature, Set32(Modifiers(PUBLIC).value), Some(rcvType))
     }
     
     if (!hostClass.isXScalaType) {
       // Support serialization if needed.
       if (serializable) {
-        SymLevelBuilderModule.addMethod(cls, XString("writeReplace"), MethodSignature()(SignatureType.javaLangObject(env)), Set32(Modifiers(PRIVATE).value), hasUGDesc = false, hasThisTypeInfoParam = false, isCFunc = false)
+        SymLevelBuilderModule.addMethod(cls, XString("writeReplace"), MethodSignature()(SignatureType.javaLangObject(env)), Set32(Modifiers(PRIVATE).value), Some(rcvType))
       } else {
         val serializableType = env.getSerializableType
         if (interfs exists serializableType.isAssignableFrom) {
@@ -187,15 +188,11 @@ object LambdaTypeGeneratorImpl extends LambdaTypeGenerator {
           SymLevelBuilderModule.addMethod(cls, XString("writeObject"),
             MethodSignature(SignatureType.JBCReference("java/io/ObjectOutputStream"))(SignatureType.Void),
             Set32(Modifiers(PRIVATE).value),
-            hasUGDesc = false, 
-            hasThisTypeInfoParam = false,
-            isCFunc = false)
+            Some(rcvType))
           SymLevelBuilderModule.addMethod(cls, XString("readObject"),
             MethodSignature(SignatureType.JBCReference("java/io/ObjectInputStream"))(SignatureType.Void),
             Set32(Modifiers(PRIVATE).value),
-            hasUGDesc = false, 
-            hasThisTypeInfoParam = false,
-            isCFunc = false)
+            Some(rcvType))
         }
       }
     }

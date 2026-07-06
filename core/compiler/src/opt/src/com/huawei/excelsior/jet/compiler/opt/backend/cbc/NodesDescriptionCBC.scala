@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.opt.backend.cbc
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
+import com.huawei.excelsior.jet.assembler.cbc.Register.IR
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
 import com.huawei.excelsior.jet.compiler.opt.backend.NodesDescription
 import com.huawei.excelsior.jet.compiler.opt.backend.cbc.BackEndCBC
@@ -38,6 +39,8 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
 
     case _: EndLocalUnmovable     => simpleForm // overrides base form
 
+    case _: LoadTypeInfoGeneric => loadTypeInfoGenericForm
+
     case _: Return if Isa12Mode => simpleForm
 
     case _ => super.nodeClassFormImpl(node)
@@ -54,12 +57,13 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
     * See [[MachineDescriptionCBC.extraVolatileRegistersOnAnyExit]].
     */
   protected def canGenerateWithVolatiles(n: Node) = n match {
-    case _: (Transfer | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Add | Sub | Mul | Neg | LogicalBinaryOp | IDivRemOp
+    case _: (Transfer | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Add | Sub | Mul | Pow | Neg | LogicalBinaryOp | IDivRemOp
       | DivisorCheck | FDiv | MathIntrinsic | Cmp | TypeTest | Shift | ReinterpretCast | ValueConvert | BitFieldExtract | New
       | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | AbstractNullCheck | SingletonObject | LoadTailParam
       | GetField | FieldChainRead | PutField | FieldChainWrite | ExtractEnrichment | DepriveOperation | EnrichOperation
       | CopyStructure | CopyStructureCBC | Throw | CheckedOp | EndLocalUnmovable
-      | MutFuncArgNode | MutFunc.Combine | RecordArrayGet | Return | UniversalGeneric.ConvertHolder | BulldozerHint) => true
+      | MutFuncArgNode | MutFunc.Combine | RecordArrayGet | Return | UniversalGeneric.ConvertHolder | BulldozerHint 
+      | LoadTypeInfoGeneric | StoreFieldSeqGeneric | GenericTypeArg) => true
 
     case x: BitcodeDeferred.FieldOp => x.hasObj
 
@@ -127,6 +131,13 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
         case Edge(_, _: MutFunc.OffsetCBC) =>
           callParamSet(call, call.methodType.getMutObjectArgIdx, e) // object arg
       }
+    }
+  }
+
+  private lazy val loadTypeInfoGenericForm: NodeForm = new NodeForm {
+    override protected def argumentRegisters(e: Edge): ResourceSet = {
+      // 0th argument is inCtrl, so the rest of arguments are mapped to IR one-to-one
+      setOf(IR.fromOrdinal(e.targetArgIndex))
     }
   }
 }

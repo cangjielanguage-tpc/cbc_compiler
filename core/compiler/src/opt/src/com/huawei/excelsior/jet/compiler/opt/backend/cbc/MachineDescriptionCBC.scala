@@ -40,7 +40,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   /////////////////////////////////////////////////////////////////////////////
 
   override def mayImmediateBeMovedToMemoryDirectly(source: Node, isStack: Boolean): Boolean = source match {
-    case _: StackAlloc | _: ConstString | _: AJString | _: AnyNull => false
+    case _: HasFrameSlot | _: ConstString | _: AJString | _: AnyNull => false
     case DWordConst(_) => isStack // Only W32-fitted values could be stored directly, due to Intel limitations
     case _ => false
   }
@@ -53,7 +53,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   }
 
   override def temporaryResourcesForIntermediateCopy(source: Node): Option[ResourceSet] = source match {
-    case _: StackAlloc | _: ConstString | _: AJString => Some(allIRegsSet)
+    case _: HasFrameSlot | _: ConstString | _: AJString => Some(allIRegsSet)
 
     case _ => super.temporaryResourcesForIntermediateCopy(source)
   }
@@ -95,9 +95,9 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
             op.isDiv && Isa12Mode
         }
 
-      case Edge(_: StackAlloc, offs: MutFunc.Offset) if isRecordConstructor(offs.groupRoot) => true
+      case Edge(_: HasFrameSlot, offs: MutFunc.Offset) if isRecordConstructor(offs.groupRoot) => true
 
-      case Edge(_: StackAlloc, _: (Box | Unbox)) => true
+      case Edge(_: HasFrameSlot, _: Box) => true
 
       case _ => super.shouldBeUsedAsImmediate(use)
     }
@@ -116,6 +116,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       case (Add.SecondArg(_), IntegralConst(_)) => true
       case (Sub.SecondArg(_), IntegralConst(_)) => true
       case (Mul.SecondArg(_), IntegralConst(_)) => true
+      case (Pow.SecondArg(_), IntegralConst(_)) => true
       case (MulH.SecondArg(_), IntegralConst(_)) => true
       case (UMulH.SecondArg(_), IntegralConst(_)) => true
       case (LogicalBinaryOp.SecondArg(_), IntegralConst(_)) => true
@@ -128,7 +129,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       // TODO-ISA12: enable back when `newarfill.const` is supported
       //case (NewArrayFill.ValueEdge(_), NumericalConst(_)) => true
 
-      case (Edge(sa: StackAlloc, access: LoadStoreMemoryAccess), _) if use == access.addrEdge =>
+      case (Edge(sa: HasFrameSlot, access: LoadStoreMemoryAccess), _) if use == access.addrEdge =>
         sa.kind match {
           case FrameSlot.Typed(_: VArray) =>
             // TODO: JET-16640: leave only second `case` of this `match` when `VArray{Get,Set}` nodes are introduced,
@@ -141,17 +142,17 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
 
       case (Edge(_, FieldChainWrite(_: RecordArrayGet, _, _)), _) => false // TODO: support movi for ISA12
 
-      case (Edge(sa: StackAlloc, _: InitStringRecord), _) => typedFrameSlot(sa.kind).nonEmpty
-      case (Edge(sa: StackAlloc, gf: (GetField | FieldChainRead)), _) if gf.obj == sa => typedFrameSlot(sa.kind).nonEmpty
-      case (Edge(sa: StackAlloc, pf: (PutField | FieldChainWrite)), _) if pf.obj == sa => typedFrameSlot(sa.kind).nonEmpty
+      case (Edge(sa: HasFrameSlot, _: InitStringRecord), _) => typedFrameSlot(sa.kind).nonEmpty
+      case (Edge(sa: HasFrameSlot, gf: (GetField | FieldChainRead)), _) if gf.obj == sa => typedFrameSlot(sa.kind).nonEmpty
+      case (Edge(sa: HasFrameSlot, pf: (PutField | FieldChainWrite)), _) if pf.obj == sa => typedFrameSlot(sa.kind).nonEmpty
       case (Edge(NumericalConstRawW64(c), pf: PutField), _) => canStoreImm(pf.field.getType.toAsm, c)
       case (Edge(NumericalConstRawW64(c), fw: FieldChainWrite), _) => canStoreImm(fieldType(fw.fields.last).toAsm, c)
       case (Edge(_: AnyNull, _: PutField | _: FieldChainWrite), _) => true
-      case (Edge(sa: StackAlloc, cs: CopyStructureCBC), _) if cs.src == sa || cs.dst == sa => typedFrameSlot(sa.kind).nonEmpty
+      case (Edge(sa: HasFrameSlot, cs: CopyStructureCBC), _) if cs.src == sa || cs.dst == sa => typedFrameSlot(sa.kind).nonEmpty
 
-      case (Edge(sa: StackAlloc, ohm: UniversalGeneric.OffHeapMemorySlotPointer), _) if ohm.ohms == sa => true
-      case (Edge(sa: StackAlloc, n: UniversalGeneric.GetFieldOHM), _) if n.ohms == sa => true
-      case (Edge(sa: StackAlloc, n: UniversalGeneric.CopyUniversalVariable), _) if n.dst == sa => !isStandalone
+      case (Edge(sa: HasFrameSlot, ohm: UniversalGeneric.OffHeapMemorySlotPointer), _) if ohm.ohms == sa => true
+      case (Edge(sa: HasFrameSlot, n: UniversalGeneric.GetFieldOHM), _) if n.ohms == sa => true
+      case (Edge(sa: HasFrameSlot, n: UniversalGeneric.CopyUniversalVariable), _) if n.dst == sa => !isStandalone
 
       case _ => super.mayBeUsedAsImmediate(use)
     })
@@ -240,7 +241,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case _ if noCodeShouldBeGenerated(node) => true
 
     case _: (BlockEnd | CheckedOp | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Transfer | FieldChainRead
-      | Add | Sub | IDivRemOp | Mul | Cmp | CondVal | FDiv | MathIntrinsic | LogicalBinaryOp | GetField | PutField
+      | Add | Sub | IDivRemOp | Mul | Pow | Cmp | CondVal | FDiv | MathIntrinsic | LogicalBinaryOp | GetField | PutField
       | BitcodeDeferred.FieldOp | Shift | GetStatic | PutStatic | ValueConvert | ReinterpretCast | LoadTailParam
       | New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | DivisorCheck | Evacuate | BitFieldExtract
       | Clinit | PackageInit | PackageInitCheck | GCPoint | AbstractNullCheck | SingletonObject
@@ -248,7 +249,11 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | CopyStructure | CopyStructureCBC | Throw | InterfaceCastCBC | CatchCBC | EndLocalUnmovable | DebugBreakpoint
       | LoadMemory | StoreMemory | InitStringRecord | ThisTypeInfoCBC | ThisTypeInfoByCBC
       | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq | GetFieldSeqRef | GetStaticFieldSeqRef
-      | DerivedPtr | LoadTypeInfo | Box | Unbox | SpawnFuture) => true
+      | LoadFieldSeqGeneric | StoreFieldSeqGeneric | GetFieldSeqRefGeneric
+      | DerivedPtr | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | SpawnFuture | SpawnClosure
+      | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
+      | AssignGeneric | InstanceOfGeneric
+      | AtomicOps.AtomicNode) => true
 
     case _: (TypeTest | CallTarget | MutFuncArgNode | RecordArrayGet) => true // always grouped with another node
 
@@ -292,7 +297,13 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case node: BitcodeDeferred.FieldOp if !node.hasInValue =>
       resRegs(node)
 
-    case _: (New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | UniversalGeneric.CopyResultVST | SpawnFuture) => ir1Set
+    case _: LoadTypeInfoGeneric =>
+      ir1Set
+
+    case _: SaveCallRefTypeInfo =>
+      tailRegSet // fixed register for call ref type info passing
+
+    case _: (New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | UniversalGeneric.CopyResultVST | SpawnFuture | SpawnClosure) => ir1Set
 
     case _ => super.resultResourcesSetImpl(node)
   }

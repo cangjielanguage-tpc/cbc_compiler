@@ -127,7 +127,7 @@ trait SimpleSteps extends SimplifyComponent with PhiWebsTranslation { self: Univ
 
   /** Insert special node for zeroing stack alloc regions if needed. */
   protected[preparation] def insertStackAllocZeroing(): Unit = {
-    if (all[StackAlloc] exists { _.zeroed }) {
+    if (all[HasFrameSlot] exists { _.kind.zeroed }) {
       insertCodeAfter(entryBlock) { StackZeroing.Massive() }
     }
   }

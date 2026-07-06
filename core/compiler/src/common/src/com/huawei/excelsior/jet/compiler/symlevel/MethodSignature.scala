@@ -10,6 +10,18 @@ package com.huawei.excelsior.jet.compiler.symlevel
 
 case class MethodSignature(returnType: SignatureType, parameterTypes: Seq[SignatureType]) extends Signature {
   def toJETSignature: String = s"(${parameterTypes.map(_.toJETSignature).mkString("_")})${returnType.toJETSignature}"
+
+  def instantiate(cparams: Seq[SignatureType], lparams: Seq[SignatureType]): MethodSignature = {
+    if (cparams.nonEmpty || lparams.nonEmpty) instantiateImpl(cparams, lparams) else this
+  }
+
+  private[symlevel] def instantiateImpl(cparams: Seq[SignatureType], lparams: Seq[SignatureType]): MethodSignature = {
+    def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
+      if (g.isTypeVariable && !i.isTypeVariable) SignatureType.Box(i) else i
+    }
+
+    MethodSignature(boxTypeVar(returnType, returnType.instantiateImpl(cparams, lparams)), parameterTypes.map(t => boxTypeVar(t, t.instantiateImpl(cparams, lparams))))
+  }
 }
 
 object MethodSignature {

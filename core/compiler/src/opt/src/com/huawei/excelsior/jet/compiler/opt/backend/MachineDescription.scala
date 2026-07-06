@@ -72,10 +72,10 @@ trait MachineDescription { self: Universe with BackEnd =>
       assert(targetArch.is64Bit)
       None
 
-    case (IRegResourceKind, ImmResourceKind, _: StackAlloc | _: AddrConst) =>
+    case (IRegResourceKind, ImmResourceKind, _: HasFrameSlot | _: AddrConst) =>
       None
 
-    case (FRegResourceKind, ImmResourceKind, _: StackAlloc | _: AddrConst) =>
+    case (FRegResourceKind, ImmResourceKind, _: HasFrameSlot | _: AddrConst) =>
       Some(allIRegsSet)
 
     case (_: RegResourceKind, ImmResourceKind, _) =>

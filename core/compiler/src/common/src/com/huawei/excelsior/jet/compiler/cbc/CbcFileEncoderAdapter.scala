@@ -11,8 +11,8 @@ package com.huawei.excelsior.jet.compiler.cbc
 import com.huawei.excelsior.common.CodeHelpers
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.Segment
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{FieldFlag, MethodFlag, TypeFlag}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, FieldFlag, MethodFlag, TypeEnumKind, TypeFlag}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.{Assembler, LivenessInfoCollector}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
 import com.huawei.excelsior.jet.assembler.cbc.{CbcFileEncoder, CbcFileFormat, ExceptionTable}
 import com.huawei.excelsior.jet.compiler.TypeProvider
@@ -24,12 +24,14 @@ import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.FINAL
 import com.huawei.excelsior.jet.compiler.layout.MethodTables
-import com.huawei.excelsior.jet.compiler.options.StrOption
+import com.huawei.excelsior.jet.compiler.options.{BoolOption, StrOption}
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{NonNullableWrapper, NullableWrapper}
 import com.huawei.excelsior.jet.compiler.symlevel.*
-import com.huawei.excelsior.jet.util.Worklist
+import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
+import com.huawei.excelsior.jet.util.{Closure, Worklist}
 import xscala.io.{DataOutput, Path}
 
+import scala.annotation.targetName
 import scala.collection.mutable
 import scala.util.Using
 
@@ -37,9 +39,13 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
 
   implicit val typeProvider: TypeProvider = env.getTypeProvider
   private val allClasses = typeProvider.getAllClasses.toArray
-  private val typeDefs = Worklist.from(allClasses.filterNot(x => x.isCangjiePackage || !x.isCHIRDef || x.isDeferred || x.isJavaAnnotatedCangjieClass || x.isJavaReference || x.isPrimitive || !x.isInCurrentCompilationSet))
+  private val typeDefs = Worklist.from(allClasses.filter(x => !x.isCangjiePackage && x.isInCurrentCompilationSet))
   private val pkgDefs = allClasses.filter(_.isCangjiePackage)
   private val methodsCode = mutable.LinkedHashMap.empty[Method, Code]
+
+  private def isFunctionalType(t: Type): Boolean = {
+    t.getName.startsWith("$Cg") || t.getName.startsWith("$Ci")
+  }
 
   def cbcPackageName(aotName: String): String = {
     "$P$" + aotName
@@ -82,12 +88,16 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
 
     val result = builder.build()
     Using.resource(DataOutput.from(output)) { out =>
-      CbcFileEncoder(result).generate(out)
+      val encoder = CbcFileEncoder(result)
+      encoder.generate(out)
+      if (env.enabled(BoolOption.LogCbcFileStats)) {
+        encoder.printStats(xscala.io.stdout)
+      }
     }
   }
 
   def sendCode(m: Method, seg: Segment, literalsOffset: Int,
-               xinfo: XTableGenerator.PackedXInfo, exTable: ExceptionTable, liveness: Seq[LiveState],
+               xinfo: XTableGenerator.PackedXInfo, exTable: ExceptionTable, liveness: LivenessInfoCollector.AllStates,
                tailParamCount: Int, untypedStackSlotsCount: Int,
                usedNonVolIRegsMask: Int, usedNonVolFRegsMask: Int, maxCalleeStackArgsCount: Int,
                mayHaveNativeCalls: Boolean,
@@ -107,25 +117,60 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
     def build(builder: CbcFileFormat.Type.Builder): Unit = {
       builder.setName(t.getName)
 
-      typeDefs ++= t.getDeclaredSuperTypes
+      typeDefs ++= t.getDeclaredSuperTypes.filterNot(isFunctionalType)
+
+      typeDefs ++= Closure(t.getDeclaredFields.map(_.getType)) {
+        case ft: SignatureType.InstantiatedType => ft +: ft.instantiatedTypeParameters
+        case ft: SignatureType.Tuple => ft.params
+        case ft: SignatureType.CangjieArray => Seq(ft.elemType)
+        case ft: SignatureType.VArray => Seq(ft.elemType)
+        case ft: SignatureType.Box => Seq(ft.base)
+        case ft: SignatureType.CangjieEnum => ft.params
+        case _ => Seq()
+      } collect {
+        case t: (SignatureType.InstantiatedType | SignatureType.Record | SignatureType.Reference) => asClassType(t)
+      }
 
       if (t.isClass) {
         Option(t.getSuperClassSig)
           .filter(_ => t.isClass)
-          .map(adaptSuper)
-          .foreach(builder.setSuperClass)
+          .map(_.toCbc)
+          .foreach(builder.setSuperOrEnumType)
       }
 
       builder.setInterfaces(t.getDeclaredSuperInterfacesSig
-        .map(adaptSuper)
+        .map(_.toCbc)
         .toSeq)
+
+      if (t.isUniversalGeneric) {
+        builder.setGenericConstraints(Seq.fill(t.getGenericInfo.constraints.size)(BuiltinSignature.Nil))
+      }
+
+      if (t.isCangjieEnum) {
+        // TODO: store kind in symlevel type
+        val ctors = t.getCangjieEnumInfo.constructors.map(_.params)
+        ctors match {
+          case Seq(Seq(t), Seq()) =>
+            builder.setEnumKind(TypeEnumKind.Option0)
+            builder.setSuperOrEnumType(t.toCbc)
+          case Seq(Seq(), Seq(t)) =>
+            builder.setEnumKind(TypeEnumKind.Option1)
+            builder.setSuperOrEnumType(t.toCbc)
+          case _ if ctors.forall(_.isEmpty) =>
+            builder.setEnumKind(TypeEnumKind.Primitive)
+            builder.setSuperOrEnumType(CbcFileFormat.BuiltinSignature.I32)
+          case _ =>
+            builder.setEnumKind(TypeEnumKind.Union)
+            builder.setUnionFields(ctors.map(ps => CbcFileFormat.Tuple(ps.map(_.toCbc))))
+        }
+      }
 
       buildFlags(builder)
 
       val (methods, fields) = if (!t.isCHIRDef) {
         builder.addFlag(TypeFlag.AOT)
-        (t.getDeclaredMethods.filter(m => MethodTables.canBeInMethodTable(m) && m.getCHIRDef.isEmpty),
-          t.getDeclaredFields.filter(f => !f.isStatic && f.getCHIRDef.isEmpty))
+        (t.getDeclaredMethods.filter(m => isVirtual(m)),
+          t.getDeclaredFields.filter(f => !f.isStatic))
       } else {
         (t.getDeclaredMethods, t.getDeclaredFields)
       }
@@ -140,8 +185,9 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       }
 
       val modifiers = t.getCJModifiers
-      if (t.isInterface) builder.addFlag(TypeFlag.INTERFACE)
-      if (t.isRecord) builder.addFlag(TypeFlag.RECORD)
+      if (t.isCangjieEnum) builder.addFlag(TypeFlag.ENUM)
+      else if (t.isInterface) builder.addFlag(TypeFlag.INTERFACE)
+      else if (t.isRecord) builder.addFlag(TypeFlag.RECORD)
       if (t.isCangjieType && !modifiers.contains(Modifier.CJ_SEALED)) builder.addFlag(TypeFlag.SEALED)
 
       if (modifiers.contains(Modifier.PUBLIC)) {
@@ -152,6 +198,9 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       }
       if (modifiers.contains(Modifier.FINAL)) {
         builder.addFlag(TypeFlag.FINAL)
+      }
+      if (t.getName.startsWith("$Cl")) {
+        builder.addFlag(TypeFlag.LAMBDA)
       }
     }
   }
@@ -222,10 +271,15 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       if (method.isStatic)         builder.addFlag(MethodFlag.STATIC)
       if (method.isAbstract)       builder.addFlag(MethodFlag.ABSTRACT)
 
-      // TODO: get this flag directly from CHIR
-      if (MethodTables.canBeInMethodTable(method)) builder.addFlag(MethodFlag.VIRTUAL)
+      if (method.hasRetByValParameter)      builder.addFlag(MethodFlag.SRET)
+      if (method.hasOuterTypeInfoParameter) builder.addFlag(MethodFlag.HAS_OUTER_TI)
+      if (method.hasThisTypeInfoParameter)  builder.addFlag(MethodFlag.HAS_THIS_TI)
+      if (method.hasReferenceReceiver)      builder.addFlag(MethodFlag.REF_RECEIVER)
+      if (method.hasRecordReceiver)         builder.addFlag(MethodFlag.REC_RECEIVER)
+      if (method.hasMutRecordParameter)     builder.addFlag(MethodFlag.MUT) // TODO: is it correct?
 
-      if (modifiers.contains(Modifier.CJ_MUT)) builder.addFlag(MethodFlag.MUT)
+      if (isVirtual(method)) builder.addFlag(MethodFlag.VIRTUAL)
+
     }
   }
 
@@ -236,7 +290,6 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       buildFlags(builder)
 
       if (field.getCHIRDef.isEmpty) {
-        assert(field.isStatic)
         builder.addFlag(FieldFlag.AOT)
       }
     }
@@ -254,16 +307,11 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
     }
   }
 
-  private def adaptSuper(s: SignatureType): CbcFileFormat.Signature = s match {
-    case ref: (NullableWrapper | NonNullableWrapper) => ref.baseType.toCbc
-    case _ => s.toCbc
-  }
-
   private case class Code(seg: Segment,
                           literalsOffset: Int,
                           xinfo: XTableGenerator.PackedXInfo,
                           exTable: ExceptionTable,
-                          liveness: Seq[LiveState],
+                          liveness: LivenessInfoCollector.AllStates,
                           untypedStackSlotsCount: Int,
                           usedNonVolIRegsMask: Int,
                           usedNonVolFRegsMask: Int,
@@ -281,6 +329,11 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       // Ignore non-std aot libraries if they are specified explicitly
       Option.unless(env.defined(StrOption.CbcAOTDeps))(packageName)
     }
+  }
+
+  private def isVirtual(method: Method): Boolean = {
+    val vtable = method.getDeclaringClass.getCHIRVTable
+    vtable != null && vtable.extDefs.exists(_.funcTable.exists(_.impl.contains(method)))
   }
 
 }

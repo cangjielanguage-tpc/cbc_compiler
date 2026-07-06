@@ -321,16 +321,33 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: MutFunc.Combine => MutFunc.Combine.Proto
 
         case _: GetFieldSeqRef => GetFieldSeqRef.Proto
+        case _: GetFieldSeqRefGeneric => GetFieldSeqRefGeneric.Proto
         case _: GetStaticFieldSeqRef => GetStaticFieldSeqRef.Proto
         case _: LoadFieldSeq => LoadFieldSeq.Proto
+        case _: LoadFieldSeqGeneric => LoadFieldSeqGeneric.Proto
         case _: LoadStaticFieldSeq => LoadStaticFieldSeq.Proto
         case _: StoreFieldSeq => StoreFieldSeq.Proto
+        case _: StoreFieldSeqGeneric => StoreFieldSeqGeneric.Proto
         case _: StoreStaticFieldSeq => StoreStaticFieldSeq.Proto
         case _: DerivedPtr => DerivedPtr.Proto
         case _: LoadTypeInfo => LoadTypeInfo.Proto
+        case _: LoadTypeInfoGeneric => LoadTypeInfoGeneric.Proto
+        case _: GenericTypeArg => GenericTypeArg.Proto
         case _: Box => Box.Proto
         case _: Unbox => Unbox.Proto
+        case _: UnboxRec => UnboxRec.Proto
         case _: SpawnFuture => SpawnFuture.Proto
+        case _: SpawnClosure => SpawnClosure.Proto
+        case _: OptionTagGeneric => OptionTagGeneric.Proto
+        case _: OptionPayloadGeneric => OptionPayloadGeneric.Proto
+        case _: NewNoneOptionGeneric => NewNoneOptionGeneric.Proto
+        case _: NewSomeOptionGeneric => NewSomeOptionGeneric.Proto
+        case _: AssignGeneric => AssignGeneric.Proto
+        case _: InstanceOfGeneric => InstanceOfGeneric.Proto
+        case _: AtomicOps.Load => AtomicOps.Load.Proto
+        case _: AtomicOps.Store => AtomicOps.Store.Proto
+        case _: AtomicOps.CAS => AtomicOps.CAS.Proto
+        case _: AtomicOps.Simple => AtomicOps.Simple.Proto
 
         case _ => n.proto
       }

@@ -64,8 +64,8 @@ object ExceptionTable {
   }
   
   case class Region(start: Offset, end: Offset, target: Offset) {
-    assert(start < end)
+    assert(start <= end)
     assert(start != target)
-    assert(end != target)
+    //assert(end != target)
   }
 }

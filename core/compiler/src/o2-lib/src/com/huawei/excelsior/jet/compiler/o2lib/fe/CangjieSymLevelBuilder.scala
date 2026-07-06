@@ -8,9 +8,10 @@
 
 package com.huawei.excelsior.jet.compiler.o2lib.fe
 
-import com.huawei.excelsior.common.Language
+import com.huawei.excelsior.common.{CodeHelpers, Language}
 import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.Env.languagePack
+import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker.ARRAY_SLICE_NAME
 import com.huawei.excelsior.jet.compiler.cangjie.{CangjieSymLevelMaker, SymLevelBuilder}
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
@@ -155,7 +156,7 @@ class CangjieSymLevelBuilder(srcFD: xiFilesModule.FileDescriptor) extends SymLev
                                    genericInfo: GenericInfo = GenericInfo.none, hasUGDesc: Boolean = false,
                                    hasThisTypeInfoParam: Boolean = false, isCFunc: Boolean = false) = {
     val m = SymLevelBuilderModule.addMethod(this.currPackage, XString(name), sig, Set32((modifiers + STATIC).value),
-                                            hasUGDesc, hasThisTypeInfoParam, isCFunc)
+      ABI.Description(None, hasUGDesc, hasThisTypeInfoParam, isCFunc))
     m.setLLVMIndex(llvmIdx)
 
     if (genericInfo != GenericInfo.none) {
@@ -460,7 +461,7 @@ class CangjieSymLevelBuilder(srcFD: xiFilesModule.FileDescriptor) extends SymLev
 
   private def addClassMethod(name: String, sig: MethodSignature, modifiers: Int, genericInfo: GenericInfo, hasUGDesc: Boolean, hasThisTypeInfoParam: Boolean) = {
     assert(this.curClass != null)
-    val m = SymLevelBuilderModule.addMethod(this.curClass, XString(name), sig, Set32(modifiers), hasUGDesc, hasThisTypeInfoParam, isCFunc = false)
+    val m = SymLevelBuilderModule.addMethod(this.curClass, XString(name), sig, Set32(modifiers), None)
 
     if (genericInfo != GenericInfo.none) {
       m.markAsUniversalGeneric()

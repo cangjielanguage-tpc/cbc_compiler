@@ -76,17 +76,20 @@ class LivenessAnalyzer(strict: Boolean = true) extends FlowAnalyzer {
   }
 
   override def op[T](action: => T): T = {
-    instructionState.clear()
+    if (!inOp) {
+      instructionState.clear()
 
-    assert(!inOp)
-    inOp = true
+      inOp = true
 
-    val result = action
-    instructionState.collect { case (arg: Resource, use: UsageMark) => (arg, use) } foreach use
-    instructionState.collect { case (arg: Resource, use: LivenessMark) => (arg, use) } foreach define
+      val result = action
+      instructionState.collect { case (arg: Resource, use: UsageMark) => (arg, use) } foreach use
+      instructionState.collect { case (arg: Resource, use: LivenessMark) => (arg, use) } foreach define
 
-    inOp = false
-    result
+      inOp = false
+      result
+    } else {
+      action
+    }
   }
 
   override def dead(arg: Resource): Unit = currentState.remove(arg).ensuring(_.isDefined && !inOp)

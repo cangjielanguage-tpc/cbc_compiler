@@ -84,6 +84,10 @@ class ParsedCHIRPackage(source: String) {
     }
   }
 
+  def getValueID(x: Table): Long = {
+    values.indexOf(x) + 1
+  }
+
   /** Returns cached Expr or null if id is zero or negative. */
   def getExpr[T >: Null <: Table : ClassTag](id: Long): T = {
     if (id <= 0) {
