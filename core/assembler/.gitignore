@@ -1,0 +1,6 @@
+bin
+build
+build-for-scalatest
+assembler.jar
+assembler-for-scalatest.jar
+assembler-tests.jar

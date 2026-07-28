@@ -1,0 +1,48 @@
+<component name="libraryTable">
+  <library name="ScalaTest" type="repository">
+    <properties maven-id="org.scalatest:scalatest_3:3.2.14">
+      <exclude>
+        <dependency maven-id="org.scala-lang:scala3-library_3" />
+      </exclude>
+    </properties>
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest_3/3.2.14/scalatest_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-core_3/3.2.14/scalatest-core_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalactic/scalactic_3/3.2.14/scalactic_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-compatible/3.2.14/scalatest-compatible-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scala-lang/modules/scala-xml_3/2.1.0/scala-xml_3-2.1.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-featurespec_3/3.2.14/scalatest-featurespec_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-flatspec_3/3.2.14/scalatest-flatspec_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-freespec_3/3.2.14/scalatest-freespec_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-funsuite_3/3.2.14/scalatest-funsuite_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-funspec_3/3.2.14/scalatest-funspec_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-propspec_3/3.2.14/scalatest-propspec_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-refspec_3/3.2.14/scalatest-refspec_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-wordspec_3/3.2.14/scalatest-wordspec_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-diagrams_3/3.2.14/scalatest-diagrams_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-matchers-core_3/3.2.14/scalatest-matchers-core_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-shouldmatchers_3/3.2.14/scalatest-shouldmatchers_3-3.2.14.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-mustmatchers_3/3.2.14/scalatest-mustmatchers_3-3.2.14.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest_3/3.2.14/scalatest_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-core_3/3.2.14/scalatest-core_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalactic/scalactic_3/3.2.14/scalactic_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-compatible/3.2.14/scalatest-compatible-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scala-lang/modules/scala-xml_3/2.1.0/scala-xml_3-2.1.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-featurespec_3/3.2.14/scalatest-featurespec_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-flatspec_3/3.2.14/scalatest-flatspec_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-freespec_3/3.2.14/scalatest-freespec_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-funsuite_3/3.2.14/scalatest-funsuite_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-funspec_3/3.2.14/scalatest-funspec_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-propspec_3/3.2.14/scalatest-propspec_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-refspec_3/3.2.14/scalatest-refspec_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-wordspec_3/3.2.14/scalatest-wordspec_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-diagrams_3/3.2.14/scalatest-diagrams_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-matchers-core_3/3.2.14/scalatest-matchers-core_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-shouldmatchers_3/3.2.14/scalatest-shouldmatchers_3-3.2.14-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/scalatest/scalatest-mustmatchers_3/3.2.14/scalatest-mustmatchers_3-3.2.14-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

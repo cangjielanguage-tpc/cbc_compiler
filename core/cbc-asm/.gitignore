@@ -1,0 +1,5 @@
+bin
+build
+cbc-asm.jar
+cbc-asm-tests.jar
+cbc-asm-for-scalatest.jar

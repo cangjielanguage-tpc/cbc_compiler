@@ -1,0 +1,54 @@
+<component name="ProjectCodeStyleConfiguration">
+  <code_scheme name="Project" version="173">
+    <JavaCodeStyleSettings>
+      <option name="CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND" value="999" />
+      <option name="NAMES_COUNT_TO_USE_IMPORT_ON_DEMAND" value="999" />
+      <option name="PACKAGES_TO_USE_IMPORT_ON_DEMAND">
+        <value>
+          <package name="java.awt" withSubpackages="false" static="false" />
+          <package name="javax.swing" withSubpackages="false" static="false" />
+          <package name="com.huawei.excelsior.aj.lang" withSubpackages="false" static="false" />
+          <package name="com.huawei.excelsior.aj.util" withSubpackages="false" static="false" />
+          <package name="com.huawei.excelsior.aj.lang.AJSyntax" withSubpackages="false" static="true" />
+          <package name="com.huawei.excelsior.aj.lang.AJMSyntax" withSubpackages="false" static="true" />
+        </value>
+      </option>
+      <option name="IMPORT_LAYOUT_TABLE">
+        <value>
+          <package name="com.huawei.excelsior.aj.lang.AJSyntax" withSubpackages="true" static="true" />
+          <package name="com.huawei.excelsior.aj.lang.AJMSyntax" withSubpackages="false" static="true" />
+          <package name="" withSubpackages="true" static="true" />
+          <emptyLine />
+          <package name="android" withSubpackages="true" static="false" />
+          <emptyLine />
+          <package name="com.huawei.excelsior.aj.lang" withSubpackages="true" static="false" />
+          <package name="com.huawei.excelsior.aj.util" withSubpackages="true" static="false" />
+          <package name="com.huawei.excelsior.aj.fs" withSubpackages="true" static="false" />
+          <package name="com.huawei.excelsior.aj.os" withSubpackages="true" static="false" />
+          <package name="com.huawei.excelsior.aj.jetrt" withSubpackages="true" static="false" />
+          <package name="com.huawei.excelsior.api" withSubpackages="true" static="false" />
+          <package name="com.huawei" withSubpackages="true" static="false" />
+          <emptyLine />
+          <package name="com" withSubpackages="true" static="false" />
+          <package name="" withSubpackages="true" static="false" />
+          <package name="net" withSubpackages="true" static="false" />
+          <package name="org" withSubpackages="true" static="false" />
+          <package name="javacard" withSubpackages="true" static="false" />
+          <emptyLine />
+          <package name="java" withSubpackages="true" static="false" />
+          <emptyLine />
+          <package name="javax" withSubpackages="true" static="false" />
+        </value>
+      </option>
+    </JavaCodeStyleSettings>
+    <ScalaCodeStyleSettings>
+      <option name="USE_SCALADOC2_FORMATTING" value="true" />
+      <option name="SPACES_AROUND_AT_IN_PATTERNS" value="true" />
+      <option name="TYPE_ANNOTATION_PUBLIC_MEMBER" value="false" />
+      <option name="TYPE_ANNOTATION_PROTECTED_MEMBER" value="false" />
+    </ScalaCodeStyleSettings>
+    <codeStyleSettings language="Scala">
+      <option name="IF_BRACE_FORCE" value="1" />
+    </codeStyleSettings>
+  </code_scheme>
+</component>

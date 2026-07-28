@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="EasyMock">
+    <CLASSES>
+      <root url="file://$JET_BUILD_TOOLS$/java-libs/easymock" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+    <jarDirectory url="file://$JET_BUILD_TOOLS$/java-libs/easymock" recursive="false" />
+  </library>
+</component>

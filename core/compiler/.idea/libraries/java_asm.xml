@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="java-asm">
+    <CLASSES>
+      <root url="jar://$JET_BUILD_TOOLS$/open-source/asm/asm-9.7/asm-9.7.jar!/" />
+      <root url="jar://$JET_BUILD_TOOLS$/open-source/asm/asm-9.7/asm-commons-9.7.jar!/" />
+      <root url="jar://$JET_BUILD_TOOLS$/open-source/asm/asm-9.7/asm-tree-9.7.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$JET_BUILD_TOOLS$/open-source/asm/asm-9.7/asm-9.7-javadoc.jar!/" />
+      <root url="jar://$JET_BUILD_TOOLS$/open-source/asm/asm-9.7/asm-commons-9.7-javadoc.jar!/" />
+      <root url="jar://$JET_BUILD_TOOLS$/open-source/asm/asm-9.7/asm-tree-9.7-javadoc.jar!/" />
+    </JAVADOC>
+  </library>
+</component>

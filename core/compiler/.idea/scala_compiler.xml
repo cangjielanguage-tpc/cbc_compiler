@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ScalaCompilerConfiguration">
+    <option name="deprecationWarnings" value="true" />
+    <option name="uncheckedWarnings" value="true" />
+    <option name="featureWarnings" value="true" />
+    <option name="explainTypeErrors" value="true" />
+    <parameters>
+      <parameter value="-Xfatal-warnings" />
+      <parameter value="-Wconf:origin=com\.huawei\.excelsior\.jet\.compiler\.symlevel\.Type\.asClassType:s" />
+      <parameter value="-source" />
+      <parameter value="3.0" />
+      <parameter value="-explain" />
+      <parameter value="-Xplugin:$PROJECT_DIR$/../../scala/plugins/java-friendly-enums/target/plugin.jar" />
+      <parameter value="-release" />
+      <parameter value="8" />
+    </parameters>
+    <option name="incrementalityType" value="IDEA" />
+  </component>
+</project>

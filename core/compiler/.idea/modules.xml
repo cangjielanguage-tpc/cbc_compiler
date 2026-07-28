@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../../core/assembler/assembler.iml" filepath="$PROJECT_DIR$/../../core/assembler/assembler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../core/cbc-asm/cbc-asm.iml" filepath="$PROJECT_DIR$/../../core/cbc-asm/cbc-asm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/common/common.iml" filepath="$PROJECT_DIR$/src/common/common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../core/common-java-lib/common-java-lib.iml" filepath="$PROJECT_DIR$/../../core/common-java-lib/common-java-lib.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../core/common-rt-compiler/common-rt-compiler.iml" filepath="$PROJECT_DIR$/../../core/common-rt-compiler/common-rt-compiler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../core/jit-bridge/jit-bridge.iml" filepath="$PROJECT_DIR$/../../core/jit-bridge/jit-bridge.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/lazy-jit-stubs-generator/lazy-jit-stubs-generator.iml" filepath="$PROJECT_DIR$/src/lazy-jit-stubs-generator/lazy-jit-stubs-generator.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/newbaseline/newbaseline.iml" filepath="$PROJECT_DIR$/src/newbaseline/newbaseline.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/newbaseline-code-generator/newbaseline-code-generator.iml" filepath="$PROJECT_DIR$/src/newbaseline-code-generator/newbaseline-code-generator.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/o2-lib/o2-lib.iml" filepath="$PROJECT_DIR$/src/o2-lib/o2-lib.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/opt/opt.iml" filepath="$PROJECT_DIR$/src/opt/opt.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/starter/starter.iml" filepath="$PROJECT_DIR$/src/starter/starter.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/wrapper-compiler/wrapper-compiler.iml" filepath="$PROJECT_DIR$/src/wrapper-compiler/wrapper-compiler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/xminizip/xminizip.iml" filepath="$PROJECT_DIR$/src/xminizip/xminizip.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/xpackii/xpackii.iml" filepath="$PROJECT_DIR$/src/xpackii/xpackii.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/cangjie-java-class-gen-impl/cangjie-java-class-gen-impl.iml" filepath="$PROJECT_DIR$/src/cangjie-java-class-gen-impl/cangjie-java-class-gen-impl.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/verifier/verifier.iml" filepath="$PROJECT_DIR$/src/verifier/verifier.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/verifier-impl/verifier-impl.iml" filepath="$PROJECT_DIR$/src/verifier-impl/verifier-impl.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/lambda-type-gen-impl/lambda-type-gen-impl.iml" filepath="$PROJECT_DIR$/src/lambda-type-gen-impl/lambda-type-gen-impl.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-share.iml" filepath="$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-share.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-jdk.iml" filepath="$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-jdk.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-stub.iml" filepath="$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-stub.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../core/chir-lib/chir-lib.iml" filepath="$PROJECT_DIR$/../../core/chir-lib/chir-lib.iml" />
+    </modules>
+  </component>
+</project>

@@ -1,0 +1,304 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * This source file is part of the Cangjie project, licensed under Apache-2.0
+ * with Runtime Library Exception.
+ *
+ * See https://cangjie-lang.cn/pages/LICENSE for license information.
+ */
+
+package com.huawei.excelsior.jet.assembler.cbc
+
+import org.scalatest.funsuite.AnyFunSuite
+import xscala.util.Random.PRNG
+
+import scala.util.Random
+
+class FormatExtensionSuite extends AnyFunSuite {
+
+  def transformBackAndForth(imm: Long): Long = {
+    val forth = FormatExtension.encodeImm(imm)
+    val back = FormatExtension.decodeImm.tupled(forth)
+    back
+  }
+
+  test("shifted F") {
+    for (i <- (0 to 60) map { i => 0xFL << i }) {
+      assertResult {
+        i
+      } {
+        transformBackAndForth(i)
+      }
+    }
+  }
+
+  test("negatives") {
+    for (i <- Seq(Int.MinValue, Long.MinValue) ++ ((0 to 63) map { i => -1L << i})) {
+      assertResult {
+        i
+      } {
+        transformBackAndForth(i)
+      }
+    }
+  }
+
+  test("positives") {
+    for (i <- Seq(Int.MaxValue, Long.MaxValue) ++ ((0 to 63) map { i =>  1L << i})) {
+      assertResult {
+        i
+      } {
+        transformBackAndForth(i)
+      }
+    }
+  }
+
+  test("internal random") {
+    for (i <- {
+      val prng = new PRNG()
+      (0 to 128) map { _ => prng.next }
+    }) {
+      assertResult {
+        i
+      } {
+        transformBackAndForth(i)
+      }
+    }
+  }
+
+  test("scala random") {
+    for (i <- {
+      val random = new Random()
+      (0 to 128) map (_ => random.nextLong())
+    }) {
+      assertResult {
+        i
+      } {
+        transformBackAndForth(i)
+      }
+    }
+  }
+
+  test("unusual tests") {
+    for (i <- Seq(
+      9192635551989025204L
+    )) {
+      assertResult {
+        i
+      } {
+        transformBackAndForth(i)
+      }
+    }
+  }
+
+  test("imported from TestFExt.ajl") {
+    for ((i, fextImm, imm4) <- Seq(
+      // decoded        fext.imm part         op format imm4
+      (0x42AEDCL,           0x43AFE0L,           0xC),
+      (0xCL,                0x10L,               0xC),
+      (0x32L,               0x30L,               0x2),
+      (-1L,                 0x0L,                0xF),
+      (-20L,                0xF0L,               0xC),
+      (-16L,                0xF0L,               0x0),
+      (0xFL,                0x10L,               0xF),
+      (0x1EL,               0x20L,               0xE),
+      (0x3CL,               0x40L,               0xC),
+      (0x78L,               0x180L,              0x8),
+      (0xF0L,               0x1F0L,              0x0),
+      (0x1E0L,              0x2E0L,              0x0),
+      (0x3C0L,              0x4C0L,              0x0),
+      (0x780L,              0x880L,              0x0),
+      (0xF00L,              0xF00L,              0x0),
+      (0x1E00L,             0x1E00L,             0x0),
+      (0x3C00L,             0x3C00L,             0x0),
+      (0x7800L,             0x7800L,             0x0),
+      (0xF000L,             0x1F000L,            0x0),
+      (0x1E000L,            0x2E000L,            0x0),
+      (0x3C000L,            0x4C000L,            0x0),
+      (0x78000L,            0x88000L,            0x0),
+      (0xF0000L,            0xF0000L,            0x0),
+      (0x1E0000L,           0x1E0000L,           0x0),
+      (0x3C0000L,           0x3C0000L,           0x0),
+      (0x780000L,           0x780000L,           0x0),
+      (0xF00000L,           0x1F00000L,          0x0),
+      (0x1E00000L,          0x2E00000L,          0x0),
+      (0x3C00000L,          0x4C00000L,          0x0),
+      (0x7800000L,          0x8800000L,          0x0),
+      (0xF000000L,          0xF000000L,          0x0),
+      (0x1E000000L,         0x1E000000L,         0x0),
+      (0x3C000000L,         0x3C000000L,         0x0),
+      (0x78000000L,         0x78000000L,         0x0),
+      (0xF0000000L,         0x1F0000000L,        0x0),
+      (0x1E0000000L,        0x2E0000000L,        0x0),
+      (0x3C0000000L,        0x4C0000000L,        0x0),
+      (0x780000000L,        0x880000000L,        0x0),
+      (0xF00000000L,        0xF00000000L,        0x0),
+      (0x1E00000000L,       0x1E00000000L,       0x0),
+      (0x3C00000000L,       0x3C00000000L,       0x0),
+      (0x7800000000L,       0x7800000000L,       0x0),
+      (0xF000000000L,       0x1F000000000L,      0x0),
+      (0x1E000000000L,      0x2E000000000L,      0x0),
+      (0x3C000000000L,      0x4C000000000L,      0x0),
+      (0x78000000000L,      0x88000000000L,      0x0),
+      (0xF0000000000L,      0xF0000000000L,      0x0),
+      (0x1E0000000000L,     0x1E0000000000L,     0x0),
+      (0x3C0000000000L,     0x3C0000000000L,     0x0),
+      (0x780000000000L,     0x780000000000L,     0x0),
+      (0xF00000000000L,     0x1F00000000000L,    0x0),
+      (0x1E00000000000L,    0x2E00000000000L,    0x0),
+      (0x3C00000000000L,    0x4C00000000000L,    0x0),
+      (0x7800000000000L,    0x8800000000000L,    0x0),
+      (0xF000000000000L,    0xF000000000000L,    0x0),
+      (0x1E000000000000L,   0x1E000000000000L,   0x0),
+      (0x3C000000000000L,   0x3C000000000000L,   0x0),
+      (0x78000000000000L,   0x78000000000000L,   0x0),
+      (0xF0000000000000L,   0x1F0000000000000L,  0x0),
+      (0x1E0000000000000L,  0x2E0000000000000L,  0x0),
+      (0x3C0000000000000L,  0x4C0000000000000L,  0x0),
+      (0x780000000000000L,  0x880000000000000L,  0x0),
+      (0xF00000000000000L,  0xF00000000000000L,  0x0),
+      (0x1E00000000000000L, 0x1E00000000000000L, 0x0),
+      (0x3C00000000000000L, 0x3C00000000000000L, 0x0),
+      (0x7800000000000000L, 0x7800000000000000L, 0x0),
+      (0xF000000000000000L, 0xF000000000000000L, 0x0),
+      (0x493DFA096C7DD137L, 0x493EFA096C7ED130L, 0x7),
+      (0x985D4575ADE070ECL, 0x985D4576AEE071F0L, 0xC),
+      (0x791ABD940BF13345L, 0x791BBE940CF13340L, 0x5),
+      (0xF8E1A264B5E43561L, 0xF9E2A265B6E43560L, 0x1),
+      (0x10C9118BEFE21EEEL, 0x11C9128CF0E21FF0L, 0xE),
+      (0xF5FF753865ABE666L, 0xF6FF753866ACE660L, 0x6),
+      (0x276A6736D5B9DB58L, 0x276A6737D6BADB60L, 0x8),
+      (0x1FD1B742E6101FFEL, 0x20D2B743E6102000L, 0xE),
+      (0xAF3003E13D206A42L, 0xAF3004E13D206A40L, 0x2),
+      (0x1606446647487C24L, 0x1606446647487C20L, 0x4),
+      (0xA02F59D53D214996L, 0xA02F5AD53D214A90L, 0x6),
+      (0x255B65B3AA8C524CL, 0x255B66B4AB8C5250L, 0xC),
+      (0x25F691107D2B6012L, 0x26F791107D2B6010L, 0x2),
+      (0x9A62EB426FC92EA6L, 0x9A63EB4270C92FA0L, 0x6),
+      (0xF01467369F109029L, 0xF01467379F119030L, 0x9),
+      (0xA37C8F4110B2F9A3L, 0xA37D8F4111B3FAA0L, 0x3),
+      (0xE1299AC95BB1152BL, 0xE12A9BC95CB11530L, 0xB),
+      (0x90AAF64ED23093B7L, 0x91ABF64FD23194B0L, 0x7),
+      (0xBEC95597C01D0EA3L, 0xBFC95698C01D0FA0L, 0x3),
+      (0x3647E108BC0FE960L, 0x3648E109BC10E960L, 0x0),
+      (0x5ED14A7520B8DDFFL, 0x5FD14A7521B9DE00L, 0xF),
+      (0xAAD162E42C18C367L, 0xABD163E42C19C360L, 0x7),
+      (0x24397A2A11973A76L, 0x24397A2A12973A70L, 0x6),
+      (0x153323CFD45D766L,  0x153323DFD46D760L,  0x6),
+      (0xA8E6D3ABB9061F26L, 0xA9E7D4ACB9061F20L, 0x6),
+      (0xCE8C65AC825FDC89L, 0xCF8C66AD8260DD90L, 0x9),
+      (0xE30B23914179F77CL, 0xE30B2491417AF880L, 0xC),
+      (0x982332A264AEA898L, 0x982333A265AFA9A0L, 0x8),
+      (0x4E5006BECCD4ADD8L, 0x4E5007BFCDD5AEE0L, 0x8),
+      (0xF83D812B00309934L, 0xF83E812B00319930L, 0x4),
+      (0xFAB1D464BABC806FL, 0xFBB2D465BBBD8070L, 0xF),
+      (0x8DEE6911C708CD60L, 0x8EEE6912C709CD60L, 0x0),
+      (0x67CAB32F2090C073L, 0x68CBB32F2191C070L, 0x3),
+      (0x6155EC2F01D8F343L, 0x6156EC2F02D9F340L, 0x3),
+      (0xC29D4DB529C8DF72L, 0xC39D4EB52AC9DF70L, 0x2),
+      (0x625181FB62C3AE2BL, 0x625282FB63C4AE30L, 0xB),
+      (0x28F1DA328D6C6EFBL, 0x29F2DA338D6C6F00L, 0xB),
+      (0x1F7148631120D8D5L, 0x1F7148631121D9D0L, 0x5),
+      (0xA74F697F0F18F686L, 0xA74F697F0F19F780L, 0x6),
+      (0xD9CEEDDE54BD27EBL, 0xDACFEEDE55BD28F0L, 0xB),
+      (0x98C6B136F9F4C395L, 0x99C7B137FAF5C490L, 0x5),
+      (0x1EA0A8C0DD12F0CDL, 0x1FA1A9C1DD13F1D0L, 0xD),
+      (0x3162C538E83C1816L, 0x3163C539E83C1810L, 0x6),
+      (0x1233CFD0D3821894L, 0x1234D0D1D4821990L, 0x4),
+      (0x50677457DD085B0BL, 0x50677458DD085B10L, 0xB),
+      (0x6E9FE818C3696F53L, 0x6FA0E819C3696F50L, 0x3),
+      (0x35CC3C4B7DC72F6CL, 0x36CC3C4B7EC72F70L, 0xC),
+      (0xCC3C3BFDB863FB9FL, 0xCC3C3CFEB864FCA0L, 0xF),
+      (0x89DE08E7FFD1954BL, 0x8ADE09E800D29550L, 0xB),
+      (0x57EF4F905610FA51L, 0x58EF50905611FA50L, 0x1),
+      (0xEDE1329272F17939L, 0xEEE1339273F17940L, 0x9),
+      (0x7510C621B5F59689L, 0x7511C622B6F69790L, 0x9),
+      (0x5C306FF065A655E8L, 0x5C3070F066A656F0L, 0x8),
+      (0x930B8D1C63739DF6L, 0x930C8D1C63749EF0L, 0x6),
+      (0x3CECAEDF49DFCC11L, 0x3DEDAFDF4AE0CC10L, 0x1),
+      (0x7377600F3BC0B555L, 0x7377600F3CC1B550L, 0x5),
+      (0xBD1D08A97AEF5497L, 0xBD1D09A97BEF5590L, 0x7),
+      (0x1DD1882A6F46F706L, 0x1ED2882A6F47F700L, 0x6),
+      (0xC42CA301EE78FDB4L, 0xC42DA302EE79FEB0L, 0x4),
+      (0x3BBF31771F8F8A49L, 0x3CBF317720908A50L, 0x9),
+      (0xDED5D28FFB198BA7L, 0xDFD6D390FB1A8CA0L, 0x7),
+      (0x8741C7ECD29FAA26L, 0x8742C8EDD3A0AA20L, 0x6),
+      (0xB604621DE2CFE2BBL, 0xB604621EE3D0E3C0L, 0xB),
+      (0x8B25F6D963CB6328L, 0x8B26F7D964CB6330L, 0x8),
+      (0xE9AB04D8A96C1381L, 0xEAAB05D9A96C1480L, 0x1),
+      (0x39282662944B943L,  0x49382662945B940L,  0x3),
+      (0x92216ED3778ABACEL, 0x92216FD3788BBBD0L, 0xE),
+      (0x1E5C6C76BC75CE14L, 0x1E5C6C77BC76CE10L, 0x4),
+      (0xCB97B7F2768D5B9EL, 0xCC98B8F2778D5CA0L, 0xE),
+      (0xDAB812B5EBE0A76CL, 0xDBB813B6ECE1A770L, 0xC),
+      (0x38687A2B04A3F336L, 0x38687A2B05A4F330L, 0x6),
+      (0x959599ED50565A0FL, 0x96969AED50565A10L, 0xF),
+      (0x7EB21EEFE9992B88L, 0x7FB21FF0EA992C90L, 0x8),
+      (0x26083A94242F9CB8L, 0x26083B9424309DC0L, 0x8),
+      (0xBF330FE5C444CFDAL, 0xBF3310E6C445D0E0L, 0xA),
+      (0xAFD42A9AD4D0760L,  0xBFD43AAAD4D0760L,  0x0),
+      (0x3AEBBEDB109E67A8L, 0x3BECBFDB119E68B0L, 0x8),
+      (0x3A80E0C7DA4582BFL, 0x3B81E1C8DA4683C0L, 0xF),
+      (0x3DC4B8F711A41BC9L, 0x3EC5B9F712A41CD0L, 0x9),
+      (0xA01C0C72748DAC12L, 0xA01C0C72758EAC10L, 0x2),
+      (0xCDA6393026E849D1L, 0xCEA6393027E84AD0L, 0x1),
+      (0x54B81FB054CB311FL, 0x55B820B055CB3120L, 0xF),
+      (0x2251EE02D5DA69B7L, 0x2252EE03D6DA6AB0L, 0x7),
+      (0xFC29F5DD78336876L, 0xFC2AF6DD78336870L, 0x6),
+      (0x1226E660290629B6L, 0x1227E66029062AB0L, 0x6),
+      (0x744FA3BE4E04A9F8L, 0x7450A4BE4E05AA00L, 0x8),
+      (0x2602D9E535CDE477L, 0x2603DAE536CEE470L, 0x7),
+      (0x6CC91CD5771E2B9CL, 0x6DC91DD5771E2CA0L, 0xC),
+      (0x19F3404F39D3D56FL, 0x1AF3404F3AD4D570L, 0xF),
+      (0x760559F6E7B26670L, 0x76055AF7E8B26670L, 0x0),
+      (0x149BEC2D1697AF86L, 0x159CEC2D1798B080L, 0x6),
+      (0x4FE2D51B904C47DEL, 0x50E3D51C904C48E0L, 0xE),
+      (0xAB601CD5220479F9L, 0xAB601DD522047A00L, 0x9),
+      (0x84BB6E74981FB331L, 0x85BB6E759820B330L, 0x1),
+      (0xE8B63B9B9804D780L, 0xE9B63C9C9805D880L, 0x0),
+      (0xCAA10EC3BB221756L, 0xCBA10FC4BB221750L, 0x6),
+      (0x7BDDB84021F21BB2L, 0x7CDEB84022F21CB0L, 0x2),
+      (0xEB119AE682F01CE6L, 0xEB129BE783F01DE0L, 0x6),
+      (0x30B1B8A93714D2A8L, 0x31B2B9A93715D3B0L, 0x8),
+      (0x96BE0CB40E51B063L, 0x97BE0DB40E52B060L, 0x3),
+      (0xF2CA8FD0C3B39EE1L, 0xF3CB90D1C4B49FE0L, 0x1),
+      (0x2869C50BB07DECC1L, 0x286AC50CB07EEDC0L, 0x1),
+      (0x4BCB2FFEE4979165L, 0x4CCB30FFE5989160L, 0x5),
+      (0xDCA46B2A6354AA28L, 0xDDA46B2A6355AA30L, 0x8),
+      (0x50D70C3A59BB602CL, 0x51D70C3A5ABB6030L, 0xC),
+      (0xED71ED3C5EDBB4F8L, 0xED72ED3C5FDCB500L, 0x8),
+      (0xD2001CFCFE4D1EBFL, 0xD2001DFDFE4D1FC0L, 0xF),
+      (0xA6197633F0A9F10DL, 0xA6197634F1AAF110L, 0xD),
+      (0xCF43FC265C805D1FL, 0xCF44FC265D805D20L, 0xF),
+      (0x4D8D6CDF37CAED43L, 0x4E8D6DDF38CBED40L, 0x3),
+      (0x64AA4C33C328D0E6L, 0x65AA4C34C329D1E0L, 0x6),
+      (0x726BD034C949AB3CL, 0x726CD035C94AAB40L, 0xC),
+      (0xA985DEB0E7F3ECACL, 0xAA86DFB1E8F4EDB0L, 0xC),
+      (0x3B784F28F399F60L,  0x4B885F38F3A9F60L,  0x0),
+      (0x38FD4DEC8D9A09ACL, 0x39FD4EED8E9A0AB0L, 0xC),
+      (0xDA606866CC012D25L, 0xDA606867CC012D20L, 0x5),
+      (0xB16FDEC2FC607A6L,  0xB17FEEC30C608A0L,  0x6),
+      (0x22B93C89EE192390L, 0x23B93D8AEE192490L, 0x0),
+      (0xE8CFB8A0D8FC8706L, 0xE9D0B9A1D9FD8700L, 0x6),
+      (0xFF57C15371A8FDFAL, 0xFF58C15372A9FE00L, 0xA),
+      (0x8A82595ADFBA2144L, 0x8B82595BE0BA2140L, 0x4),
+      (0xE9CC8F49159FED17L, 0xEACD8F4916A0ED10L, 0x7),
+      (0x795A3B7DD992438EL, 0x795A3B7EDA924490L, 0xE),
+      (0xB665875A1566EC34L, 0xB666875A1567EC30L, 0x4),
+      (0x31F16076038E8FA5L, 0x32F16076048F90A0L, 0x5),
+      (0xC006EBEB574866BFL, 0xC007ECEB574867C0L, 0xF),
+      (0x12D680E938A8E704L, 0x13D781E939A9E700L, 0x4),
+      (0xFD54772FC66E320CL, 0xFD547730C66E3210L, 0xC),
+      (0x14C67D2B40388446L, 0x15C67D2B40398440L, 0x6),
+    )) {
+      assertResult {
+        i
+      } {
+        FormatExtension.decodeImm(fextImm, imm4)
+      }
+      assertResult {
+        (fextImm, imm4)
+      } {
+        FormatExtension.encodeImm(i)
+      }
+    }
+  }
+}

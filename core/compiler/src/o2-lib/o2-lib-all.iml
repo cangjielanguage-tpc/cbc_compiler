@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$JET_REPO_ROOT$/core/common">
+      <sourceFolder url="file://$JET_REPO_ROOT$/core/common" isTestSource="false" />
+    </content>
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="common-java-lib" />
+    <orderEntry type="module" module-name="common-rt-compiler" />
+    <orderEntry type="module" module-name="aj-lib-core-all" />
+    <orderEntry type="module" module-name="aj-lib-util-all" />
+    <orderEntry type="module" module-name="aj-managed-all" />
+    <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
+    <orderEntry type="module" module-name="common" />
+    <orderEntry type="module" module-name="assembler" />
+    <orderEntry type="module" module-name="symlevel-light-all" />
+    <orderEntry type="module" module-name="xpackii" />
+    <orderEntry type="module" module-name="xminizip" />
+    <orderEntry type="module" module-name="xscala-vm-dependent-share" />
+    <orderEntry type="library" name="bcel" level="project" />
+  </component>
+</module>

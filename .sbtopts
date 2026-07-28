@@ -1,0 +1,2 @@
+-J-Xmx2G
+-Dsbt.override.build.repos=true

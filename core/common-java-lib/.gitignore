@@ -1,0 +1,8 @@
+common-java-lib.jar
+common-java-lib-tests.jar
+common-java-lib-for-scalatest.jar
+bin
+build
+build-for-scalatest
+resources
+generated

@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="flatbuffers-java">
+    <CLASSES>
+      <root url="jar://$JET_BUILD_TOOLS$/open-source/flatbuffers/flatbuffers-25.2.10-java-lib/flatbuffers-java-25.2.10.jar!/" />
+    </CLASSES>
+    <SOURCES>
+      <root url="jar://$JET_BUILD_TOOLS$/open-source/flatbuffers/flatbuffers-25.2.10-java-lib/flatbuffers-java-25.2.10-sources.jar!/" />
+    </SOURCES>
+    <JAVADOC>
+      <root url="jar://$JET_BUILD_TOOLS$/open-source/flatbuffers/flatbuffers-25.2.10-java-lib/flatbuffers-java-25.2.10-javadoc.jar!/" />
+    </JAVADOC>
+  </library>
+</component>

@@ -1,0 +1,20 @@
+out/
+target/
+.bsp/
+.bloop/
+.metals/
+project/metals.sbt
+
+*.iws
+**/.idea/workspace.xml
+**/.idea/tasks.xml
+**/.idea/dictionaries
+**/.idea/runConfigurations/
+**/.idea/shelf/
+**/.idea/uiDesigner.xml
+**/.idea/highlighting.xml
+
+# Temporary JUnit files existing during tests run
+junit*.properties
+
+/env.properties
