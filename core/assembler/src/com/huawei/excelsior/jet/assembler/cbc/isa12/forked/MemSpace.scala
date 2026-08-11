@@ -88,12 +88,8 @@ object MemSpace {
     case class LoadGeneric(dst: IR, ti: IR) extends TailOperation
     case class StoreGeneric(src: IR, ti: IR) extends TailOperation
 
-    case class CopyReg(reg: IR, recType: Signature) extends TailOperation
-    case class CopyInterior(reg: IR, refs: Seq[FieldReference]) extends TailOperation with BoundedRefs(refs, MAX_COPY_REC_FIELDS)
-    case class CopyInteriorArr(reg: IR, idx: IR, refs: Seq[FieldReference]) extends TailOperation with BoundedRefs(refs, MAX_COPY_REC_FIELDS)
-    case class CopyStatic(refs: Seq[FieldReference]) extends TailOperation with BoundedRefs(refs, MAX_COPY_REC_FIELDS)
-    case class CopyTyped(ts: StackSlot.Typed, refs: Seq[FieldReference]) extends TailOperation with BoundedRefs(refs, MAX_COPY_REC_FIELDS)
-    case class CopyHandle(base: IR, offs: IR) extends TailOperation
+    case class CopyRegTo(reg: IR, recType: Signature) extends TailOperation
+    case class CopyRegFrom(reg: IR, recType: Signature) extends TailOperation
 
     // synthetic! can be created as part of chain optimization.
     case class LoadFieldSeq(reg: Register, refs: Seq[FieldReference]) extends TailOperation with BoundedRefs(refs, MAX_FIELD_SEQ)
@@ -193,12 +189,8 @@ object MemSpace {
       tail(TailOperation.StoreImm(imm, lastType.isReference))
     }
 
-    def copyReg(reg: IR, recType: Signature): Chain                         = tail(CopyReg(reg, recType))
-    def copyInterior(reg: IR, refs: Seq[FieldReference]): Chain             = tail(CopyInterior(reg, refs))
-    def copyInteriorArr(reg: IR, idx: IR, refs: Seq[FieldReference]): Chain = tail(CopyInteriorArr(reg, idx, refs))
-    def copyStatic(refs: Seq[FieldReference]): Chain                        = tail(CopyStatic(refs))
-    def copyTyped(ts: StackSlot.Typed, refs: Seq[FieldReference]): Chain    = tail(CopyTyped(ts, refs))
-    def copyHandle(base: IR, offs: IR): Chain                               = tail(CopyHandle(base, offs))
+    def copyRegTo(reg: IR, recType: Signature): Chain = tail(CopyRegTo(reg, recType))
+    def copyRegFrom(reg: IR, recType: Signature): Chain = tail(CopyRegFrom(reg, recType))
 
     private def op(op: BodyOperation): Builder = {
       operations += op
@@ -417,49 +409,18 @@ object MemSpace {
     }
 
     private def genChainTail(op: TailOperation): Unit = op match {
-      case TailOperation.CopyReg(reg, recType) => {
+      case TailOperation.CopyRegTo(reg, recType) => {
         stream
-          .mem8(MemOpcode.CopyReg)
+          .mem8(MemOpcode.CopyRegTo)
           .bits(_.w4(asm.analyzer.useRec(reg)).w4(0))
           .sym16(recType)
       }
-      case TailOperation.CopyInterior(reg, refs) => {
-        if (refs.head.refType.isReference) asm.analyzer.useRef(reg) else asm.analyzer.useRec(reg)
-        val s = stream
-        s.mem8(MemOpcode.CopyInterior)
-          .bits(_.w4(reg).w4(refs.size))
-        for (ref <- refs) {
-          s.sym16(ref)
-        }
+      case TailOperation.CopyRegFrom(reg, recType) => {
+        stream
+          .mem8(MemOpcode.CopyRegFrom)
+          .bits(_.w4(asm.analyzer.useRec(reg)).w4(0))
+          .sym16(recType)
       }
-      case TailOperation.CopyInteriorArr(reg, idx, refs) => {
-        val s = stream
-        s.mem8(MemOpcode.CopyInteriorArr)
-          .bits(_.w4(asm.analyzer.useRef(reg)).w4(asm.analyzer.usePrim(idx)))
-          .bits(_.w4(refs.size).w4(0))
-        for (ref <- refs) {
-          s.sym16(ref)
-        }
-      }
-      case op: TailOperation.CopyStatic =>
-        val s = stream
-        s.mem8(MemOpcode.CopyStatic)
-          .write8(op.refs.size)
-        for (ref <- op.refs) {
-          s.sym16(ref)
-        }
-      case op: TailOperation.CopyTyped =>
-        val s = stream
-        s.mem8(MemOpcode.CopyTyped)
-          .write8(op.refs.size)
-          .write16(op.ts.idx)
-        for (ref <- op.refs) {
-          s.sym16(ref)
-        }
-      case op: TailOperation.CopyHandle =>
-        val s = stream
-        s.mem8(MemOpcode.CopyHandle)
-          .bits(_.w4(asm.analyzer.useRef(op.base)).w4(asm.analyzer.usePrim(op.offs)))
       case Load(reg, isRef) => {
         markLoadStoreValue(reg, isRef, load = true)
         stream

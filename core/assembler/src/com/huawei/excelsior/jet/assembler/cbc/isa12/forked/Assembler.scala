@@ -793,7 +793,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   }
 
   def recordCopy(dst: IR, src: IR, sigId: Signature): Unit = {
-    MemSpace.Builder().rec(src).copyReg(dst, sigId).gen(this)
+    shouldNotReachHere()
   }
 
   def bfx(dst: IR, src: IR, resW: AsmWidth, argW: AsmWidth, sx: Boolean, offset: Int, size: Int): Unit = instr {
@@ -1118,12 +1118,8 @@ object Assembler {
     case Load
     case Store
     case StoreImm
-    case CopyReg
-    case CopyInterior
-    case CopyInteriorArr
-    case CopyStatic
-    case CopyTyped
-    case CopyHandle
+    case CopyRegTo
+    case CopyRegFrom
     case ConstIndex
     case FieldGeneric
     case ConstIndexGeneric

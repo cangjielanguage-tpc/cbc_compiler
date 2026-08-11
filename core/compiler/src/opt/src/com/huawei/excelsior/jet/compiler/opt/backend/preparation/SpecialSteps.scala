@@ -74,6 +74,8 @@ trait SpecialSteps { self: Universe with BackEnd =>
 
   protected def prepareRecordArrayGet(): Unit = {}
 
+  protected def prepareCopyStructure(): Unit = {}
+
   protected def insertCallArgStores(): Unit = {
     for (call <- all[Call]; edge <- call.groupedInEdges) {
       val callArgEdge = edge.target match {
