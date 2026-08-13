@@ -43,7 +43,7 @@ trait FieldsTypeAnalysis extends FieldsAnalysis { self: Universe =>
         case tpe: CangjieArray => tpe.elemType
         case tpe => tpe
       }
-      !baseType.isInstanceOf[TypeVariable] && !baseType.isDeferred && !baseType.isPrimitive && !baseType.symType.isFinal
+      !baseType.isTypeVariable && !baseType.isDeferred && !baseType.isPrimitive && !baseType.symType.isFinal
     }
 
   private def fieldsToAnalyze(host: SymClassType) =

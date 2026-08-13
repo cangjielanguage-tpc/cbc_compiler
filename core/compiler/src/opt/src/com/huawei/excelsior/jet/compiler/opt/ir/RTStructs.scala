@@ -217,6 +217,8 @@ trait RTStructs { this: CompilerEnvironment =>
     def isUniversalGeneric = false
     def getGenericInfo = undefined
     def getCHIRVTable = undefined
+    def isCangjieEnum = undefined
+    def getCangjieEnumInfo = undefined
   }
 
   /** Runtime structure, reference to which is equal with reference to managed object. */

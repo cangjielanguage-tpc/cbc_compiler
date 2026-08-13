@@ -12,8 +12,10 @@ import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.jet.assembler.{AsmType, Width}
 import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.common.XString.xstr
+import com.huawei.excelsior.jet.compiler.Env.isStandalone
 import com.huawei.excelsior.jet.compiler.{Env, TypeProvider}
 import com.huawei.excelsior.jet.compiler.bytecode.BytecodeTypeKind
+import com.huawei.excelsior.jet.compiler.cangjie.CangjieEnumInfo.*
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker.{ARRAY_SLICE_NAME, ARRAY_SLICE_PREFIX, CANGJIE_ARRAY_PREFIX, CANGJIE_RECORD_ARRAY_PREFIX, CANGJIE_REF_ARRAY_NAME, VARRAY_PREFIX}
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.Primitive.primitives
@@ -28,6 +30,9 @@ sealed abstract class SignatureType extends Signature {
   protected def compileTimeAssertThatSignatureTypeExtendsProperOrWrapper: Unit
 
   def toJETSignature: String = {
+    def enumSig(prefix: String, extra: String, t: CangjieEnum): String = {
+      s"$prefix${t.name};$extra<${t.params.map(_.toJETSignature).mkString("_")}>"
+    }
     this match {
       case Void                     => "V"
       case Unit                     => "U"
@@ -57,6 +62,11 @@ sealed abstract class SignatureType extends Signature {
       case t: NonNullableWrapper    => s"!${t.baseType.toJETSignature}"
       case t: Tuple                 => s"TU<${t.params.map(_.toJETSignature).mkString("_")}>"
       case t: Box                   => s"BOX${t.base.toJETSignature}"
+      case t: ZeroSizedEnum         => enumSig("EZ", "", t)
+      case t: PrimitiveBasedEnum    => enumSig("EP", "", t)
+      case t: ClassBasedEnum        => enumSig("EC", "", t)
+      case t: UnionBasedEnum        => enumSig("EU", "", t)
+      case t: OptionLikeEnum        => enumSig("EO", t.someType.toJETSignature, t)
     }
   }
 
@@ -71,18 +81,25 @@ sealed abstract class SignatureType extends Signature {
 
   protected def calcSymType(implicit typeProvider: TypeProvider): Type
 
+  @tailrec
   final def symKindErased: TypeKind = Wrapper.skip(this) match {
     case Primitive(kind) => kind
     case _: JavaArray | _: Reference | _: CangjieArray | _: InstantiatedReference | _: Box => TypeKind.CLASS
     case _: Record | _: ArraySlice | _: VArray | _: InstantiatedRecord | _: Tuple => TypeKind.RECORD
-    case BString | _: CPointer | _: TypeVariable | ThisTypeInfo => TypeKind.address
+    case BString | _: CPointer | ThisTypeInfo => TypeKind.address
+    case _: TypeVariable => if (isStandalone) TypeKind.CLASS else TypeKind.address
+    case _: ZeroSizedEnum => TypeKind.VOID
+    case sig: PrimitiveBasedEnum => sig.baseType.symKindErased
+    case _: ClassBasedEnum => TypeKind.CLASS
+    case _: UnionBasedEnum => TypeKind.RECORD
+    case sig: OptionLikeEnum => if (sig.isNullableOption) TypeKind.CLASS else TypeKind.RECORD
   }
 
   final def jbcKind(implicit typeProvider: TypeProvider): BytecodeTypeKind = Wrapper.skip(this) match {
     case _: Primitive => jbcKindErased
     case _: JavaArray => BytecodeTypeKind.ARRAY
     case _: Reference => if (symType.isThinClass) BytecodeTypeKind.THIN else BytecodeTypeKind.CLASS
-    case _: Record | _: ArraySlice | BString | _: CPointer | _: VArray | _: Tuple | _: Box |
+    case _: Record | _: ArraySlice | BString | _: CPointer | _: VArray | _: Tuple | _: Box | _: CangjieEnum |
          _: InstantiatedReference | _: InstantiatedRecord | _: TypeVariable | _: CangjieArray | ThisTypeInfo =>
       shouldNotReachHere(s"no bytecode type kind for $this")
   }
@@ -90,11 +107,12 @@ sealed abstract class SignatureType extends Signature {
   final def jbcKindErased: BytecodeTypeKind = Wrapper.skip(this) match {
     case Primitive(kind) => primitiveJBCKind(kind)
     case _: JavaArray | _: Reference => BytecodeTypeKind.CLASS
-    case _: Record | _: ArraySlice | BString | _: CPointer | _: VArray | _: Tuple | _: Box |
+    case _: Record | _: ArraySlice | BString | _: CPointer | _: VArray | _: Tuple | _: Box | _: CangjieEnum |
          _: InstantiatedReference | _: InstantiatedRecord | _: TypeVariable | _: CangjieArray | ThisTypeInfo =>
       shouldNotReachHere(s"no bytecode type kind for $this")
   }
 
+  @tailrec
   final def toAsm: AsmType = (Wrapper.skip(this): @unchecked) match {
     case Boolean |
          Int8           => AsmType.I8
@@ -116,6 +134,10 @@ sealed abstract class SignatureType extends Signature {
     case _: JavaArray | _: Reference | _: Record | _: ArraySlice | _: CangjieArray | _: VArray |
          _: InstantiatedReference | _: InstantiatedRecord | _: Tuple | _: Box => AsmType.PTR
     case BString | _: CPointer | _: TypeVariable => AsmType.I64 // TODO: PTR ?
+
+    case _: ZeroSizedEnum => AsmType.I8
+    case sig: PrimitiveBasedEnum => sig.baseType.toAsm
+    case _: ClassBasedEnum | _: UnionBasedEnum | _: OptionLikeEnum => AsmType.PTR
   }
 
   final def width: Width = this.toAsm.width
@@ -131,18 +153,21 @@ sealed abstract class SignatureType extends Signature {
   final def isPrimitive     : Boolean = symKindErased.isPrimitive
   final def isJavaArray     : Boolean = this.isInstanceOf[JavaArray]
   final def isCangjieArray  : Boolean = this.isInstanceOf[CangjieArray]
+  final def isTypeVariable  : Boolean = this.isInstanceOf[TypeVariable]
 
   final def isAJManagedType (implicit typeProvider: TypeProvider): Boolean = symType.isAJManagedType
-  final def isAJArray       (implicit typeProvider: TypeProvider): Boolean = !Env.isStandalone && symType.isAJArray
+  final def isAJArray       (implicit typeProvider: TypeProvider): Boolean = !isStandalone && symType.isAJArray
   final def isXScalaArray   (implicit typeProvider: TypeProvider): Boolean = symType.isXScalaArray
   final def isXScalaType    (implicit typeProvider: TypeProvider): Boolean = symType.isXScalaType
-  final def isCangjieType   (implicit typeProvider: TypeProvider): Boolean = symType.isCangjieType
+  final def isCangjieType   (implicit typeProvider: TypeProvider): Boolean = this.isInstanceOf[Tuple] || symType.isCangjieType
   final def isJavaReference (implicit typeProvider: TypeProvider): Boolean = symType.isJavaReference
   final def isAbstractClass (implicit typeProvider: TypeProvider): Boolean = !this.isInstanceOf[Box] && symType.isAbstractClass
   final def hasDeferredSuper(implicit typeProvider: TypeProvider): Boolean = symType.hasDeferredSuper
   final def hasRefFields    (implicit typeProvider: TypeProvider): Boolean = (this: @unchecked) match {
     case x: Tuple => x.params.exists(p => p.isTraceableReference || (p.isRecord && p.hasRefFields))
     case x: Box => x.base.hasRefFields
+    case _: ZeroSizedEnum | _: PrimitiveBasedEnum | _: UnionBasedEnum => false
+    case x: OptionLikeEnum => x.someType.isTraceableReference || (x.someType.isRecord && x.someType.hasRefFields)
     case x => x.symType.hasRefFields
   }
 
@@ -162,6 +187,9 @@ sealed abstract class SignatureType extends Signature {
     case _: Primitive | _: Reference | _: JavaArray | _: CangjieArray |
          BString | _: CPointer | _: Box |
          _: InstantiatedReference | _: TypeVariable | ThisTypeInfo => false
+    case _: ZeroSizedEnum | _: PrimitiveBasedEnum | _: ClassBasedEnum => false
+    case _: UnionBasedEnum => true
+    case sig: OptionLikeEnum => !sig.isNullableOption
   }
 
   final def isVArray: Boolean = Wrapper.skip(this) match {
@@ -173,7 +201,7 @@ sealed abstract class SignatureType extends Signature {
     case _: JavaArray | _: CangjieArray => true
     case _: Reference => symType.isAJArray
     case _: Primitive | _: Reference | _: Record | _: ArraySlice |
-         BString | _: CPointer | _: VArray | _: Tuple | _: Box |
+         BString | _: CPointer | _: VArray | _: Tuple | _: Box | _: CangjieEnum |
          _: InstantiatedReference | _: InstantiatedRecord | _: TypeVariable | ThisTypeInfo => false
   }
 
@@ -182,17 +210,18 @@ sealed abstract class SignatureType extends Signature {
          _: InstantiatedRecord | _: TypeVariable | ThisTypeInfo | _: Tuple => false
     case _: Reference | _: InstantiatedReference => symType.isClass
     case _: Box => true
+    case _: CangjieEnum => true
   }
 
   final def isInterface(implicit typeProvider: TypeProvider): Boolean = Wrapper.skip(this) match {
     case _: Primitive | _: Record | _: ArraySlice | _: JavaArray | _: CangjieArray | BString | _: CPointer | _: VArray |
-         _: InstantiatedRecord | _: TypeVariable | ThisTypeInfo | _: Tuple | _: Box => false
+         _: InstantiatedRecord | _: TypeVariable | ThisTypeInfo | _: Tuple | _: Box | _: CangjieEnum => false
     case _: Reference | _: InstantiatedReference => symType.isInterface
   }
 
   final def isThinClass(implicit typeProvider: TypeProvider): Boolean = Wrapper.skip(this) match {
     case _: Primitive | _: Record | _: ArraySlice | _: JavaArray | _: CangjieArray | BString | _: CPointer | _: VArray |
-         _: InstantiatedReference | _: InstantiatedRecord | _: TypeVariable | ThisTypeInfo | _: Tuple | _: Box => false
+         _: InstantiatedReference | _: InstantiatedRecord | _: TypeVariable | ThisTypeInfo | _: Tuple | _: Box | _: CangjieEnum => false
     case _: Reference => symType.isThinClass
   }
 
@@ -200,6 +229,9 @@ sealed abstract class SignatureType extends Signature {
     case _: Primitive | _: Record | _: ArraySlice | BString | _: CPointer | _: VArray |
          _: InstantiatedRecord | _: TypeVariable | ThisTypeInfo | _: Tuple => false
     case _: Reference | _: JavaArray | _: CangjieArray | _: InstantiatedReference | _: Box => true
+    case _: ClassBasedEnum => true
+    case sig: OptionLikeEnum => sig.isNullableOption
+    case _: ZeroSizedEnum | _: PrimitiveBasedEnum | _: UnionBasedEnum => false
   }
 
   final def isShortIntegral: Boolean = Wrapper.skip(this) match {
@@ -212,6 +244,9 @@ sealed abstract class SignatureType extends Signature {
          _: InstantiatedRecord | _: TypeVariable | ThisTypeInfo | _: Tuple => false
     case _: JavaArray | _: CangjieArray | _: Box => true
     case _: Reference | _: InstantiatedReference => symType.isTraceableReference
+    case _: ClassBasedEnum => true
+    case sig: OptionLikeEnum => sig.isNullableOption
+    case _: ZeroSizedEnum | _: PrimitiveBasedEnum | _: UnionBasedEnum => false
   }
 
   final def isDeferred(implicit typeProvider: TypeProvider): Boolean = Wrapper.skip(this) match {
@@ -219,22 +254,24 @@ sealed abstract class SignatureType extends Signature {
     case _: TypeVariable => shouldNotReachHere(s"FIXME-UG: $this") // FIXME-UG: find out, where this might be needed
     case ThisTypeInfo => false
     case _: Record | _: InstantiatedRecord => symType.isDeferred
-    case _: CangjieArray | _: ArraySlice => assert(Env.isStandalone || !symType.isDeferred); false
+    case _: CangjieArray | _: ArraySlice => assert(isStandalone || !symType.isDeferred); false
     case JavaArray(baseType, _) => baseType.isDeferred
     case _: Reference | _: InstantiatedReference => symType.isDeferred
     case x: Tuple =>  x.params.exists(_.isDeferred)
     case x: Box => x.base.isDeferred
     case _: VArray => require(!symType.isDeferred, "deferred VArrays are not support yet"); false
+    case _: CangjieEnum => false
   }
 
   final def isZST: Boolean = this match {
-    case Void | Unit | Nothing => true
+    case Void | Unit | Nothing | _: ZeroSizedEnum => true
     case _ => false
   }
 
   @tailrec
   final def isUniversalGeneric: Boolean = Wrapper.skip(this) match {
     case _: (TypeVariable | InstantiatedType | Tuple | Box) => true
+    case x: CangjieEnum => x.params.nonEmpty
     case x: VArray => x.elemType.isUniversalGeneric
     case x: CangjieArray => x.elemType.isUniversalGeneric
 
@@ -249,9 +286,12 @@ sealed abstract class SignatureType extends Signature {
     case x: InstantiatedRecord => x.isVariableLayoutType
     case x: Tuple => x.params.exists(_.isVariableSizeType)
     case x: VArray => x.elemType.isVariableSizeType
+    case x: OptionLikeEnum => x.someType.isVariableSizeType
+    case x: UnionBasedEnum => false
 
     case _: Primitive | BString | _: CPointer | _: Record | _: ArraySlice | _: CangjieArray | _: JavaArray |
-         _: Reference | _: InstantiatedReference | ThisTypeInfo | _: Box => false
+         _: Reference | _: InstantiatedReference | ThisTypeInfo | _: Box |
+         _: ZeroSizedEnum | _: PrimitiveBasedEnum | _: ClassBasedEnum => false
   }
 
   /** Variable layout type is a type which layout can vary depending on type parameters meaning.
@@ -267,22 +307,31 @@ sealed abstract class SignatureType extends Signature {
     case x: Box => x.base.isVariableSizeType
     case x: VArray => x.elemType.isVariableSizeType
     case x: CangjieArray => x.elemType.isVariableSizeType
+    case x: ClassBasedEnum => x.params.exists(_.isVariableSizeType)
+    case x: OptionLikeEnum => x.someType.isVariableSizeType
+    case x: UnionBasedEnum => false
 
     case _: Primitive | BString | _: CPointer | _: Record | _: ArraySlice | _: JavaArray | _: Reference |
-         ThisTypeInfo => false
+         ThisTypeInfo | _: ZeroSizedEnum | _: PrimitiveBasedEnum => false
   }
 
   final def containsTypeVariables: Boolean = Wrapper.skip(this) match {
-    case _: TypeVariable => true
-    case sig: InstantiatedType => sig.instantiatedTypeParameters exists (_.containsTypeVariables)
-    case _ => false
+    case _: TypeVariable        => true
+    case sig: InstantiatedType  => sig.instantiatedTypeParameters exists (_.containsTypeVariables)
+    case sig: ArraySlice        => sig.elemType.containsTypeVariables
+    case sig: CangjieArray      => sig.elemType.containsTypeVariables
+    case sig: VArray            => sig.elemType.containsTypeVariables
+    case sig: Tuple             => sig.params exists (_.containsTypeVariables)
+    case sig: SignatureType.Box => sig.base.containsTypeVariables
+    case sig: CangjieEnum       => sig.params exists (_.containsTypeVariables)
+    case _: Primitive | ThisTypeInfo | BString | _: CPointer | _: JavaArray | _: JBCReference | _: CangjieReference | _: Record => false
   }
 
   def instantiate(cparams: Seq[SignatureType], lparams: Seq[SignatureType]): SignatureType = {
     if (cparams.nonEmpty || lparams.nonEmpty) instantiateImpl(cparams, lparams) else this
   }
 
-  private[SignatureType] def instantiateImpl(cparams: Seq[SignatureType], lparams: Seq[SignatureType]): SignatureType = this match {
+  private[symlevel] def instantiateImpl(cparams: Seq[SignatureType], lparams: Seq[SignatureType]): SignatureType = this match {
     case _: Primitive | BString | _: CPointer | _: Record | _: JBCReference | _: CangjieReference | _: JavaArray | ThisTypeInfo => this
     case t: InstantiatedRecord    => InstantiatedRecord(t.name, t.instantiatedTypeParameters.map(_.instantiateImpl(cparams, lparams)))
     case t: InstantiatedReference => InstantiatedReference(t.name, t.instantiatedTypeParameters.map(_.instantiateImpl(cparams, lparams)))
@@ -296,6 +345,36 @@ sealed abstract class SignatureType extends Signature {
     case t: ClassTypeVariable     => cparams.applyOrElse(t.idx, _ => this)
     case t: NullableWrapper       => NullableWrapper(t.baseType.instantiateImpl(cparams, lparams).asInstanceOf[NullableWrapper.Base])
     case t: NonNullableWrapper    => NonNullableWrapper(t.baseType.instantiateImpl(cparams, lparams).asInstanceOf[NonNullableWrapper.Base])
+    case t: ZeroSizedEnum         => ZeroSizedEnum(t.name, t.params.map(_.instantiateImpl(cparams, lparams)))
+    case t: PrimitiveBasedEnum    => PrimitiveBasedEnum(t.name, t.params.map(_.instantiateImpl(cparams, lparams)))
+    case t: ClassBasedEnum        => ClassBasedEnum(t.name, t.params.map(_.instantiateImpl(cparams, lparams)))
+    case t: UnionBasedEnum        => UnionBasedEnum(t.name, t.params.map(_.instantiateImpl(cparams, lparams)))
+    case t: OptionLikeEnum        => OptionLikeEnum(t.name, t.params.map(_.instantiateImpl(cparams, lparams)), t.someType.instantiateImpl(cparams, lparams))
+  }
+
+  def uninstantiated: SignatureType = this match {
+    case _: Primitive | BString | _: CPointer | _: Record | _: JBCReference | _: CangjieReference | _: JavaArray | ThisTypeInfo => this
+    case t: InstantiatedRecord    => InstantiatedRecord(t.name, eraseParams(t.instantiatedTypeParameters))
+    case t: InstantiatedReference => InstantiatedReference(t.name, eraseParams(t.instantiatedTypeParameters))
+    case t: Tuple                 => Tuple(eraseParams(t.params))
+    case t: Box                   => Box(ClassTypeVariable(0))
+    case t: ArraySlice            => ArraySlice(ClassTypeVariable(0))
+    case t: CangjieArray          => CangjieArray(ClassTypeVariable(0))
+    case t: CangjieEnumWrapper    => CangjieEnumWrapper(t.baseType.uninstantiated.asInstanceOf[CangjieEnumWrapper.Base], t.name)
+    case t: VArray                => VArray(ClassTypeVariable(0), t.length)
+    case t: LocalTypeVariable     => this
+    case t: ClassTypeVariable     => this
+    case t: NullableWrapper       => NullableWrapper(t.baseType.uninstantiated.asInstanceOf[NullableWrapper.Base])
+    case t: NonNullableWrapper    => NonNullableWrapper(t.baseType.uninstantiated.asInstanceOf[NonNullableWrapper.Base])
+    case t: ZeroSizedEnum         => ZeroSizedEnum(t.name, eraseParams(t.params))
+    case t: PrimitiveBasedEnum    => PrimitiveBasedEnum(t.name, eraseParams(t.params))
+    case t: ClassBasedEnum        => ClassBasedEnum(t.name, eraseParams(t.params))
+    case t: UnionBasedEnum        => UnionBasedEnum(t.name, eraseParams(t.params))
+    case t: OptionLikeEnum        => OptionLikeEnum(t.name, eraseParams(t.params), ClassTypeVariable(0))
+  }
+
+  private def eraseParams(xs: Seq[SignatureType]): Seq[SignatureType] = {
+    Seq.tabulate(xs.size)(ClassTypeVariable.apply)
   }
 }
 
@@ -434,7 +513,12 @@ object SignatureType {
   }
 
   object CangjieEnumWrapper {
-    type Base = Primitive | CangjieReference | NullableWrapper
+    type Base = Primitive | CangjieReference | NullableWrapper | InstantiatedType | Record
+
+    def skip(sig: SignatureType): SignatureType = sig match {
+      case sig: CangjieEnumWrapper => sig.baseType
+      case sig => sig
+    }
   }
 
   case class NullableWrapper(baseType: NullableWrapper.Base) extends SignatureType.Wrapper {
@@ -586,7 +670,7 @@ object SignatureType {
     def name = CangjieArray.name(elemType)
 
     override def calcSymType(implicit typeProvider: TypeProvider): Type = {
-      assert(!Env.isStandalone)
+      assert(!isStandalone)
       // TODO: implement properly
       val t = typeProvider.findClass(xstr(name))
       assert(t != null, s"could not find symlevel type '$name' for $this")
@@ -615,7 +699,7 @@ object SignatureType {
       case elemType: Record => CANGJIE_RECORD_ARRAY_PREFIX + elemType.name
       case elemType: ArraySlice => CANGJIE_RECORD_ARRAY_PREFIX + elemType.name
 
-      case elem: (TypeVariable | InstantiatedRecord | Tuple | Box) => // FIXME-UG
+      case elem: (TypeVariable | InstantiatedRecord | Tuple | Box | CangjieEnum) => // FIXME-UG
         shouldNotReachHere(s"RawArray<${elem}> is not supported yet")
 
       case ThisTypeInfo =>
@@ -631,7 +715,7 @@ object SignatureType {
       case _: JavaArray | _: Reference | _: CangjieArray | _: InstantiatedReference => fromSymType(typeProvider.getAJObjectType)
       case _: ArraySlice => fromSymType(elemType.symType)
 
-      case elem: (TypeVariable | InstantiatedRecord | Tuple | Box) => // FIXME-UG
+      case elem: (TypeVariable | InstantiatedRecord | Tuple | Box | CangjieEnum) => // FIXME-UG
         shouldNotReachHere(s"RawArray<${elem}> is not supported yet")
 
       case ThisTypeInfo =>
@@ -698,7 +782,7 @@ object SignatureType {
   sealed abstract class TypeVariable extends SignatureType.Proper {
     def idx: Int
 
-    override protected def calcSymType(implicit typeProvider: TypeProvider): Type = Address.symType
+    override protected def calcSymType(implicit typeProvider: TypeProvider): Type = shouldNotReachHere("symType for TypeVariable")
   }
 
   // TODO: rename to FuncTypeVariable
@@ -715,8 +799,35 @@ object SignatureType {
   }
 
   case class Box(base: SignatureType) extends SignatureType.Proper {
-    require(!base.isReference)
     override def calcSymType(implicit typeProvider: TypeProvider): Type = shouldNotReachHere("symType for Box")
+  }
+
+  sealed trait CangjieEnum extends SignatureType.Proper {
+    def name: String
+    def params: Seq[SignatureType]
+
+    override final def calcSymType(implicit typeProvider: TypeProvider): Type = {
+      val t = typeProvider.findClass(XString(name), loadPDB = true)
+      assert(t != null, s"could not find symlevel type '$name' for $this")
+      assert(t.isCangjieEnum, s"unexpected symlevel type $t for $this")
+      t
+    }
+
+    // TODO: cache
+    def info(implicit typeProvider: TypeProvider) = asClassType(symType).getCangjieEnumInfo
+  }
+
+  case class ZeroSizedEnum(name: String, params: Seq[SignatureType]) extends CangjieEnum
+  case class PrimitiveBasedEnum(name: String, params: Seq[SignatureType]) extends CangjieEnum {
+    def baseType = Int32
+  }
+  case class ClassBasedEnum(name: String, params: Seq[SignatureType]) extends CangjieEnum
+  case class UnionBasedEnum(name: String, params: Seq[SignatureType]) extends CangjieEnum
+  case class OptionLikeEnum(name: String, params: Seq[SignatureType], someType: SignatureType) extends CangjieEnum {
+    def isNullableOption: Boolean = someType match {
+      case _: OptionLikeEnum => false
+      case _ => someType.isReference
+    }
   }
 
   def javaLangObject(implicit typeProvider: TypeProvider): SignatureType =
@@ -748,8 +859,20 @@ object SignatureType {
       case _ if tpe.isCangjieArray => CangjieArray(tpe.getArrayElemType)
       case _ if tpe.isVArray => VArray(tpe.getVArrayElemType, tpe.getVArrayLength)
       case _ if tpe.isArraySlice && tpe.getName != ARRAY_SLICE_NAME => ArraySlice(tpe.getArraySliceElemType)
-      case TypeKind.RECORD => Record(asClassType(tpe))
-      case _ => Reference(asClassType(tpe))
+      case TypeKind.RECORD =>
+        val classType = asClassType(tpe)
+        if (classType.isUniversalGeneric) {
+          InstantiatedRecord(classType.getName, Seq.tabulate(classType.getGenericInfo.constraints.size)(ClassTypeVariable.apply))
+        } else {
+          Record(classType)
+        }
+      case _ =>
+        val classType = asClassType(tpe)
+        if (classType.isUniversalGeneric) {
+          InstantiatedReference(classType.getName, Seq.tabulate(classType.getGenericInfo.constraints.size)(ClassTypeVariable.apply))
+        } else {
+          Reference(asClassType(tpe))
+        }
     }
   }
 
@@ -825,6 +948,27 @@ object SignatureType {
       equalInstantiatedImpl(cparams, lparams)(x.baseType, y.baseType)
     case (x: NonNullableWrapper, y: NonNullableWrapper) =>
       equalInstantiatedImpl(cparams, lparams)(x.baseType, y.baseType)
+    case (x: ZeroSizedEnum, y: ZeroSizedEnum) =>
+      x.name == y.name &&
+        x.params.size == y.params.size &&
+        (x.params zip y.params forall equalInstantiatedImpl(cparams, lparams))
+    case (x: PrimitiveBasedEnum, y: PrimitiveBasedEnum) =>
+      x.name == y.name &&
+        x.params.size == y.params.size &&
+        (x.params zip y.params forall equalInstantiatedImpl(cparams, lparams))
+    case (x: ClassBasedEnum, y: ClassBasedEnum) =>
+      x.name == y.name &&
+        x.params.size == y.params.size &&
+        (x.params zip y.params forall equalInstantiatedImpl(cparams, lparams))
+    case (x: UnionBasedEnum, y: UnionBasedEnum) =>
+      x.name == y.name &&
+        x.params.size == y.params.size &&
+        (x.params zip y.params forall equalInstantiatedImpl(cparams, lparams))
+    case (x: OptionLikeEnum, y: OptionLikeEnum) =>
+      x.name == y.name &&
+        equalInstantiatedImpl(cparams, lparams)(x.someType, y.someType) &&
+        x.params.size == y.params.size &&
+        (x.params zip y.params forall equalInstantiatedImpl(cparams, lparams))
 
     // TODO: is this even correct?
     case (x: LocalTypeVariable, y: LocalTypeVariable) => lparams.lift(x.idx) == lparams.lift(y.idx)

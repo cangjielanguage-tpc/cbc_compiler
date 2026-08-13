@@ -26,16 +26,12 @@ class SpecialParamSetSuite extends CompilerSuite {
     addMut(emptySet())
   }
 
-  def onlyUGDesc(): SpecialParamSet = {
-    addUGDesc(emptySet())
-  }
-
   def onlyThisTypeInfo(): SpecialParamSet = {
     addThisTypeInfo(emptySet())
   }
 
   def allParams(): SpecialParamSet = {
-    SpecialParamSet(Seq(Receiver, MutObject, UGDesc, ThisTypeInfo, RetByVal, MutRecord))
+    SpecialParamSet(Seq(Receiver, MutObject, ThisTypeInfo, RetByVal, MutRecord))
   }
 
   def addReceiver(specialParamSet: SpecialParamSet): SpecialParamSet = {
@@ -44,10 +40,6 @@ class SpecialParamSetSuite extends CompilerSuite {
 
   def addMut(specialParamSet: SpecialParamSet): SpecialParamSet = {
     specialParamSet.addElement(MutObject)
-  }
-
-  def addUGDesc(specialParamSet: SpecialParamSet): SpecialParamSet = {
-    specialParamSet.addElement(UGDesc)
   }
 
   def addThisTypeInfo(specialParamSet: SpecialParamSet): SpecialParamSet = {
@@ -69,7 +61,6 @@ class SpecialParamSetSuite extends CompilerSuite {
   test("simple inserting elements") {
     checkSetContent(addReceiver(emptySet()), Seq(Receiver))
     checkSetContent(addMut(emptySet()), Seq(MutObject))
-    checkSetContent(addUGDesc(emptySet()), Seq(UGDesc))
     checkSetContent(addThisTypeInfo(emptySet()), Seq(ThisTypeInfo))
     checkSetContent(addRetByVal(emptySet()), Seq(RetByVal))
     checkSetContent(addMutRecord(emptySet()), Seq(MutRecord))
@@ -78,15 +69,13 @@ class SpecialParamSetSuite extends CompilerSuite {
   test("combined inserting elements") {
     checkSetContent(addMut(onlyReceiver()), Seq(Receiver, MutObject))
     checkSetContent(addReceiver(onlyMut()), Seq(MutObject, Receiver))
-    checkSetContent(addUGDesc(addMut(onlyReceiver())), Seq(Receiver, MutObject, UGDesc))
-    checkSetContent(addThisTypeInfo(addUGDesc(addMut(onlyReceiver()))), Seq(Receiver, MutObject, UGDesc, ThisTypeInfo))
+    checkSetContent(addThisTypeInfo(addMut(onlyReceiver())), Seq(Receiver, MutObject, ThisTypeInfo))
   }
 
   test("getting elements") {
     val specialParamSet = allParams()
     assert(specialParamSet.contains(Receiver))
     assert(specialParamSet.contains(MutObject))
-    assert(specialParamSet.contains(UGDesc))
     assert(specialParamSet.contains(ThisTypeInfo))
   }
 

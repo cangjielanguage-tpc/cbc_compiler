@@ -21,7 +21,7 @@ import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.{NewIsaParts, Assembler as ISA12Assembler}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.LoadAccessKind
+import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.{LoadAccessKind, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{MemSpace, SymbolAdapter, Assembler as ForkedISA12Assembler}
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Location, Segment, Symbol, Width}
 import com.huawei.excelsior.jet.compiler.Env.{isStandalone, tailRegister}
@@ -72,6 +72,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
     private lazy val livenessCollector = LivenessInfoCollector()
 
+    private lazy val fasm = asm.asInstanceOf[ForkedISA12Assembler]
     private lazy val isa12Asm = asm.asInstanceOf[NewIsaParts]
     private lazy val oldIsa = asm.asInstanceOf[OldIsaParts]
 
@@ -88,30 +89,33 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
-    private object TypedSlot {
-      def unapply(n: Node): Option[(StackSlot.Typed, LocX)] = NodeWithResource.unapply(n).flatMap {
-        case fs: TypedFrameSlotCBC if fs.typedSlot != null => Some(fs.typedSlot, fs.local)
-        case _ => None
-      }
-    }
-
     override protected def widthOf(tpe: Type): Width = tpe match {
       case ConditionType => Width.W32
       case _ => super.widthOf(tpe)
     }
 
+    def normalizeRes(node: Node): IREG | StackSlot.Untyped = node.resource match {
+      case ireg: IREG => ireg
+      case fs: FrameComponentCBC.FrameSlotCBC => fs.untypedSlot
+      case _ if node.isInstanceOf[StackAlloc] =>
+        node.asInstanceOf[StackAlloc].slot.asInstanceOf[FrameSlotCBC].untypedSlot
+    }
+
     /** Save gc maps state gathered using [[GCMapsGenerator]] */
-    def saveState(node: Node): Unit = if (needGCMap(node)) {
+    def saveGCState(node: Node): Unit = if (needGCMap(node)) {
       asm match {
         case assembler: ForkedISA12Assembler =>
-          val aliveRefNodes = gcMaps(node).toSeq.map(node =>
-            node.resource match {
-              case ireg: IREG => ireg
-              case fs: FrameComponentCBC.FrameSlotCBC => fs.untypedSlot
-            }
-          )
-          livenessCollector.saveResources(segment, aliveRefNodes)
+          val aliveResources = gcMaps(node).toSeq.map(normalizeRes)
+          val idxPairs = mutPairsData(node).toSeq.map((base, derived) => (normalizeRes(base), normalizeRes(derived)))
+          livenessCollector.saveResources(segment, aliveResources, idxPairs)
         case _ =>
+      }
+    }
+
+    def saveStateForStackChecks(node: Node): Unit = if (needStackPtrsInfo(node)) {
+      asm match {
+        case assembler: ForkedISA12Assembler =>
+          livenessCollector.saveStackPtrs(segment, stackPtrsData(node).toSeq.map(normalizeRes))
       }
     }
 
@@ -205,6 +209,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       case (w, false, IReg(d), IReg(l), IReg(r)) => op match {
         case _: Add => asm.add(w, d, l, r)
         case _: Mul => asm.mul(w, d, l, r)
+        case _: Pow => asm.pow(w, d, l, r)
         case _: MulH => asm.mulh(w, d, l, r)
         case _: UMulH => asm.umulh(w, d, l, r)
       }
@@ -212,6 +217,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       case (w, false, IReg(d), IReg(l), IntegralConst(c)) => op match {
         case _: Add => asm.addi(w, d, l, c)
         case _: Mul => asm.muli(w, d, l, c)
+        case _: Pow => asm.powi(w, d, l, c)
         case _: MulH => asm.mulhi(w, d, l, c)
         case _: UMulH => asm.umulhi(w, d, l, c)
       }
@@ -245,6 +251,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case CheckedOp.Kind.ADD => if (op.signed) asm.caddi(d, l, r, op.width) else asm.cuaddi(d, l, r, op.width)
             case CheckedOp.Kind.SUB => if (op.signed) asm.csubi(d, l, r, op.width) else asm.cusubi(d, l, r, op.width)
             case CheckedOp.Kind.MUL => if (op.signed) asm.cmuli(d, l, r, op.width) else asm.cumuli(d, l, r, op.width)
+            case CheckedOp.Kind.POW => assert(op.signed); asm.cpowi(d, l, r, op.width)
           }
 
         case (IReg(d), IReg(l), IReg(r)) =>
@@ -256,6 +263,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case CheckedOp.Kind.MUL => if (op.signed) asm.cmul(d, l, r, op.width) else asm.cumul(d, l, r, op.width)
             case CheckedOp.Kind.SUB => assert(d != r); if (op.signed) asm.csub(d, l, r, op.width) else asm.cusub(d, l, r, op.width)
             case CheckedOp.Kind.DIV => assert(d != r); assert(op.signed); asm.cdiv(d, l, r, op.width)
+            case CheckedOp.Kind.POW => assert(d != r); assert(op.signed); asm.cpow(d, l, r, op.width)
           }
       }
 
@@ -301,22 +309,34 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
     private def genNewImpl(n: Node, allocType: SignatureType): Unit = {
       assert(iReg(n) == IR1)
-      val t = allocType match {
-        case SignatureType.Box(t) => t
-        case t => t
-      }
-      val ftcSigIdx = CodeSigSymbol(t)
-      if (ftcSigIdx.containsTypeVariables) {
-        asm.newobjVST(ftcSigIdx)
+      if (isStandalone) {
+        val t = allocType match {
+          case SignatureType.Box(t) => t
+          case t => t
+        }
+        val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+        t match {
+          case t: SignatureType.CangjieReference if t.name.startsWith("$Cl") =>
+            fasm.newClosure(IR1, t.toCbc)
+          case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") =>
+            fasm.newClosure(IR1, t.toCbc)
+          case _ =>
+            fasm.newobj(t.toCbc)
+        }
       } else {
-        asm.newobj(ftcSigIdx)
+        val ftcSigIdx = CodeSigSymbol(allocType)
+        if (ftcSigIdx.containsTypeVariables) {
+          asm.newobjVST(ftcSigIdx)
+        } else {
+          asm.newobj(ftcSigIdx)
+        }
       }
       addXSite(n)
-      saveState(n)
+      saveGCState(n)
     }
 
     private def memExprHead(n: Node): MemExpr.Head = n match {
-      case sa: StackAlloc => sa.slot match {
+      case sa: HasFrameSlot => sa.slot match {
         case slot: TypedFrameSlotCBC => slot.typedSlot
         case slot: FrameSlotCBC => slot.untypedSlot
         case _ => shouldNotReachHere(sa)
@@ -395,7 +415,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val builder = MemSpace.Builder()
 
       def memExprHead(n: Node): Unit = n match {
-        case sa: StackAlloc => sa.slot match {
+        case sa: HasFrameSlot => sa.slot match {
           case slot: TypedFrameSlotCBC => builder.typed(slot.typedSlot)
           case _ => shouldNotReachHere(sa)
         }
@@ -415,10 +435,26 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           }
       }
 
-      def fields(fields: Seq[CangjieFieldReference]): Unit = {
-        for (f <- fields) f.field match {
-          case Some(field) => builder.field(adapter.field(f))
-          case None        => builder.constIndex(f.idx.toInt, f.refType.toCbc)
+      def fields(fields: Seq[CangjieFieldReference], typeInfos: Seq[Node] = Seq.empty): Unit = {
+        for ((f, i) <- fields.zipWithIndex) f.field match {
+          case Some(field) =>
+            if (f.refType.isVariableLayoutType) {
+              val IReg(ti) = typeInfos(i)
+              builder.fieldGeneric(adapter.field(f), ti)
+            } else {
+              builder.field(adapter.field(f))
+            }
+          case None =>
+            val refType = f.refType match {
+              case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
+              case t => t
+            }
+            if (refType.isVariableLayoutType) {
+              val IReg(ti) = typeInfos(i)
+              builder.constIndexGeneric(f.idx.toInt, refType.toCbc, ti)
+            } else {
+              builder.constIndex(f.idx.toInt, refType.toCbc)
+            }
         }
       }
 
@@ -436,8 +472,26 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           memExprHead(n.obj)
           fields(fieldRefs)
           builder.load(dst).gen(fasm)
+        case n: GetFieldSeqRefGeneric =>
+          val Reg(dst) = n
+          memExprHead(n.obj)
+          fields(fieldRefs, n.typeInfos)
+          builder.load(dst).gen(fasm)
+        case n: LoadFieldSeqGeneric =>
+          val Reg(dst) = n
+          memExprHead(n.obj)
+          fields(fieldRefs, n.typeInfos)
+          if (n.resType.isVariableSizeType) {
+            val IReg(ti) = n.typeInfos.last
+            builder.loadGeneric(dst.asInstanceOf[IR], ti).gen(fasm)
+          } else {
+            builder.load(dst).gen(fasm)
+          }
+          addXSite(n)
+          saveGCState(n)
         case n: (GetStaticFieldSeqRef | LoadStaticFieldSeq) =>
           val Reg(dst) = n
+          assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
           builder.static(adapter.field(fieldRefs.head))
           fields(fieldRefs.tail)
           builder.load(dst).gen(fasm)
@@ -446,8 +500,20 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           memExprHead(n.obj)
           fields(fieldRefs)
           store(n.inValue)
+        case n: StoreFieldSeqGeneric =>
+          addXSite(n)
+          memExprHead(n.obj)
+          fields(fieldRefs, n.typeInfos)
+          if (n.resType.isVariableSizeType) {
+            val IReg(ti) = n.typeInfos.last
+            val IReg(src) = n.inValue
+            builder.storeGeneric(src, ti).gen(fasm)
+          } else {
+            store(n.inValue)
+          }
         case n: StoreStaticFieldSeq =>
           addXSite(n)
+          assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
           builder.static(adapter.field(fieldRefs.head))
           fields(fieldRefs.tail)
           store(n.inValue)
@@ -468,7 +534,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genOHMSPtr(n: UniversalGeneric.OffHeapMemorySlotPointer): Unit = (n, n.ohms) match {
-      case (IReg(dst), sa: StackAlloc) =>
+      case (IReg(dst), sa: HasFrameSlot) =>
         asm.ohmsPtr(dst, sa.slot.asInstanceOf[OHMSlotCBC].ohmSlot)
     }
 
@@ -480,7 +546,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
     private def genCopyUniversalVariable(n: UniversalGeneric.CopyUniversalVariable): Unit = {
       (n, n.dst, n.src) match {
-        case (IReg(dst), sa: StackAlloc, IReg(src)) =>
+        case (IReg(dst), sa: HasFrameSlot, IReg(src)) =>
           val dstExpr = MemExpr(dst, Array[Symbol](sa.slot.asInstanceOf[OHMSlotCBC].ohmSlot), isGeneric = true)
           val srcExpr = MemExpr(src, Array(CodeSigSymbol(n.variableType)), isGeneric = true)
           oldIsa.mov(dstExpr, srcExpr)
@@ -712,7 +778,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       addXSite(newArr)
-      saveState(newArr)
+      saveGCState(newArr)
     }
 
     private def genNewArrFill(newArrFill: NewArrayFill): Unit = {
@@ -794,15 +860,16 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       asm.javaLdaStr(dst, value)
     }
 
-    private def genLoadStackAlloc(dst: IR, sa: StackAlloc): Unit = {
+    private def genLoadStackAlloc(dst: IR, sa: HasFrameSlot): Unit = {
       sa.slot match {
         case slot: TypedFrameSlotCBC =>
           slot.tpe match {
             case sig: SignatureType.TypeVariable =>
+              val fasm = asm.asInstanceOf[ForkedISA12Assembler]
               val builder = MemSpace.Builder()
               builder.typed(slot.typedSlot)
               builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
-              builder.load(dst)
+              builder.load(dst).gen(fasm)
             case sig =>
               if (sig.isRecord) {
                 asm.ldstackrec(dst, slot.typedSlot)
@@ -863,20 +930,29 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val IReg(dstReg) = iof
       val IReg(objReg) = obj
 
-      if (tpe.isClass) {
-        assert(iof.isInstanceOf[ControlledInstanceOf], s"all class InstanceOf must be lowered to ControlledInstanceOf: $iof")
-        asm.isInstanceOfClass(dstReg, objReg, CodeSigSymbol(tpe))
-        return
-      }
+      if (isStandalone) {
+        val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+        val realTpe = tpe match {
+          case SignatureType.Box(t) => t
+          case t => t
+        }
+        fasm.isInstanceOf(dstReg, objReg, realTpe.toCbc)
+      } else {
+        if (tpe.isClass) {
+          assert(iof.isInstanceOf[ControlledInstanceOf], s"all class InstanceOf must be lowered to ControlledInstanceOf: $iof")
+          asm.isInstanceOfClass(dstReg, objReg, CodeSigSymbol(tpe))
+          return
+        }
 
-      if (tpe.isArray) {
-        assert(tpe.isJavaArray)
-        asm.isInstanceOfArray(dstReg, objReg, CodeSigSymbol(tpe))
-        return
-      }
+        if (tpe.isArray) {
+          assert(tpe.isJavaArray)
+          asm.isInstanceOfArray(dstReg, objReg, CodeSigSymbol(tpe))
+          return
+        }
 
-      require(tpe.isInterface)
-      asm.isInstanceOfInterface(dstReg, objReg, CodeSigSymbol(tpe))
+        require(tpe.isInterface)
+        asm.isInstanceOfInterface(dstReg, objReg, CodeSigSymbol(tpe))
+      }
     }
 
     private def genCheckCast(checkCast: CheckCast): Unit = {
@@ -926,16 +1002,21 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       load.addr match {
         case IReg(src) =>
-          assert(!load.signature.isTraceableReference)
-          asm.mov(dst, MemExpr(src, CbcTypeKind(load.accessType)))
+          if (isStandalone) {
+            fasm.loadRawMemory(dst, src, LoadAccessKind.from(cbcTypeKind(load.tpe)), 0)
+          } else {
+            assert(!load.signature.isTraceableReference)
+            asm.mov(dst, MemExpr(src, CbcTypeKind(load.accessType)))
+          }
 
         case sa @ StackAlloc.Local(t) if isStandalone =>
           sa.slot match {
             case slot: TypedFrameSlotCBC =>
+              val fasm = asm.asInstanceOf[ForkedISA12Assembler]
               val builder = MemSpace.Builder()
               builder.typed(slot.typedSlot)
               builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
-              builder.load(dst)
+              builder.load(dst).gen(fasm)
             case slot: FrameSlotCBC =>
               val fasm = asm.asInstanceOf[ForkedISA12Assembler]
               assert(t.isTraceableReference || t.isPrimitive)
@@ -950,23 +1031,26 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     override protected def genLoadTailParam(ltp: LoadTailParam): Unit = (ltp, ltp.tpe) match {
-      case (LoadTailParam(IReg(tailReg), offset), HolderType(tv: TypeVariable)) =>
-        val Reg(dst) = ltp
-        asm.mov(dst, MemExpr(MemExpr.Head.RegImm(tailReg, offset), Array[Symbol](CodeSigSymbol(tv)), isGeneric = true))
       case (LoadTailParam(IReg(tailReg), offset), tpe) =>
         val Reg(dst) = ltp
-        asm.mov(dst, MemExpr(MemExpr.Head.RegImm(tailReg, offset), cbcTypeKind(tpe)))
+        val ldk = LoadAccessKind.from(cbcTypeKind(tpe))
+        fasm.loadRawMemory(dst, tailReg, ldk, offset)
     }
 
     private def genStoreMemory(store: StoreMemory): Unit = {
       (store.addr, store.inValue0) match {
         case (IReg(dst), Reg(src)) if isStandalone =>
-          assert(store.signature.isInstanceOf[TypeVariable])
-          assert(!src.isIReg || check(src.asIReg, localTypeOf(store.inValue0)))
-          val builder = MemSpace.Builder()
-          builder.rec(dst)
-          builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
-          builder.store(src)
+          val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+          (store.signature, src) match {
+            case (_: SignatureType.Box, _) =>
+              assert(!src.isIReg || check(src.asIReg, localTypeOf(store.inValue0)))
+              val builder = MemSpace.Builder()
+              builder.rec(dst)
+              builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
+              builder.store(src).gen(fasm)
+            case (_, src: (IR | FR)) =>
+              fasm.storeRawMemory(src, dst, StoreAccessKind.from(CbcTypeKind(store.accessType)), 0)
+          }
 
         case (IReg(dst), Reg(src)) =>
           assert(!store.signature.isTraceableReference)
@@ -1203,10 +1287,24 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       def virtualCall(): Unit = {
         assert(check(call.abi.paramLocations(0).asIReg, LocalType.REFERENCE))
         val permanent = targetRef.getPermanent
-        if (Isa12Mode) {
-          isa12Asm.callVirt(isa12ResultReg, permanent)
+        if (isStandalone) {
+          val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+          if (targetRef.refType.symType.getName.startsWith("$C")) {
+            fasm.callClosure(isa12ResultReg, targetRef.refType.sigType.toCbc)
+          } else {
+            val outerTI = call.invokeArgs(targetRef.methodType.getOuterTypeInfoArgIdx)
+            val loc = outerTI match {
+              case IReg(reg) => reg
+              case UntypedSlot(slot, _) => slot
+            }
+            fasm.callInterfGeneric(loc, fasm.adapter.method(permanent))
+          }
         } else {
-          oldIsa.callVirt(permanent)
+          if (Isa12Mode) {
+            isa12Asm.callVirt(isa12ResultReg, permanent)
+          } else {
+            oldIsa.callVirt(permanent)
+          }
         }
       }
 
@@ -1218,7 +1316,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           case VirtualStaticCall() => virtualStaticCall()
           case AnyDirectCall(_) => directCall()
           case DirectCall(method) if !targetRef.hasMethod => directCCall(method)
-          case AnyVirtualCall() if !targetRef.hasVirtualMethodSlot => directCall()
           case AnyVirtualCall() => virtualCall()
           case BitcodeDeferred.Invoke(targetRef) => if (targetRef.isDirectCall) directCall() else virtualCall()
           case _ =>
@@ -1232,7 +1329,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       if (!call.tpe.isFloatingPointType && call.tpe != VoidType && call.abi.resultLocation.isIReg) {
         mark(call.abi.resultLocation.asIReg, localTypeOf(call))
       }
-      saveState(call)
+      saveGCState(call)
+      saveStateForStackChecks(call)
     }
 
     override protected def genTransferImpl(node: Transfer): Unit = {
@@ -1240,6 +1338,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       (node, arg) match {
         case (dst, src) if dst.resource == src.resource => // nop
+
+        // TODO: remove this ugly workaround
+        //       this mov should be done right before call without extra transfer node!
+        case (_: SaveCallRefTypeInfo, IReg(src)) =>
+          fasm.movAcc(src)
+        case (_: SaveCallRefTypeInfo, sa @ StackAlloc.Local(t)) =>
+          fasm.loadUntypedAcc(LoadAccessKind.SPECIAL, sa.slot.asInstanceOf[FrameSlotCBC].untypedSlot)
 
         case (IReg(dst), IReg(src)) if arg.tpe.isHolderType => arg.tpe.asInstanceOf[HolderType].instantiatedSig match {
           case _: TypeVariable if isStandalone =>
@@ -1284,10 +1389,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case slot: TypedFrameSlotCBC =>
               slot.tpe match {
                 case sig: SignatureType.TypeVariable =>
+                  val fasm = asm.asInstanceOf[ForkedISA12Assembler]
                   val builder = MemSpace.Builder()
                   builder.typed(slot.typedSlot)
                   builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
-                  builder.load(dst)
+                  builder.load(dst).gen(fasm)
                 case sig =>
                   assert(sig.isRecord)
                   asm.ldstackrec(dst, slot.typedSlot)
@@ -1297,7 +1403,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               fasm.loadUntyped(dst, LoadAccessKind.SPECIAL, slot.untypedSlot)
           }
 
-        case (IReg(dst), sa: StackAlloc) =>
+        case (IReg(dst), sa: HasFrameSlot) =>
           genLoadStackAlloc(dst, sa)
 
         case (IReg(dst), x: DerivedPtr.Local) =>
@@ -1342,7 +1448,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     private def genGCPoint(gcPoint: GCPoint): Unit = {
       addXSite(gcPoint)
       asm.gcpoint()
-      saveState(gcPoint)
+      saveGCState(gcPoint)
     }
 
     private def genConvertHolder(convert: UniversalGeneric.ConvertHolder): Unit = {
@@ -1372,20 +1478,26 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val fasm = asm.asInstanceOf[ForkedISA12Assembler]
       val IReg(dst) = n
       n.value match {
-        case sa: StackAlloc => fasm.box(sa.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot, dst)
-        case Reg(src)       => fasm.box(src, dst, n.base.toCbc)
+        case sa: HasFrameSlot => fasm.box(sa.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot, dst)
+        case Reg(src)         => fasm.box(src, dst, n.base.toCbc)
+        case _: Void          => fasm.box(IR.IRZ, dst, n.base.toCbc)
       }
       addXSite(n)
-      saveState(n)
+      saveGCState(n)
     }
 
     private def genUnbox(n: Unbox): Unit = {
       val fasm = asm.asInstanceOf[ForkedISA12Assembler]
       val IReg(src) = n.value
       n match {
-        case TypedSlot(ts, _) => fasm.unbox(ts, src)
-        case Reg(dst)         => fasm.unbox(dst, src, n.base.toCbc)
+        case Reg(dst) => fasm.unbox(dst, src, n.base.toCbc)
       }
+    }
+
+    private def genUnboxRec(n: UnboxRec): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val IReg(src) = n.value
+      fasm.unbox(n.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot, src)
     }
 
     private def genSpawnFuture(n: SpawnFuture): Unit = {
@@ -1393,7 +1505,121 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val IReg(futureReg) = n.future
       fasm.spawnFuture(futureReg, n.retType.toCbc)
       addXSite(n)
-      saveState(n)
+      saveGCState(n)
+    }
+
+    private def genSpawnClosure(n: SpawnClosure): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val IReg(closureReg) = n.closure
+      fasm.spawn(closureReg, n.closureType.toCbc)
+      addXSite(n)
+      saveGCState(n)
+    }
+
+    private def genOptionTagGeneric(n: OptionTagGeneric): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val IReg(dst) = n
+      val IReg(src) = n.value
+      val IReg(bti) = n.baseTypeInfo
+      fasm.tagGeneric(dst, src, bti, n.optionType.toCbc)
+    }
+
+    private def genOptionPayloadGeneric(n: OptionPayloadGeneric): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val IReg(dst) = n
+      val IReg(src) = n.value
+      val IReg(bti) = n.baseTypeInfo
+      val IReg(oti) = n.optionTypeInfo
+      fasm.payloadGeneric(dst, src, bti, oti, n.optionType.toCbc)
+
+      addXSite(n)
+      saveGCState(n)
+    }
+
+    private def genNewNoneOptionGeneric(n: NewNoneOptionGeneric): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val IReg(dst) = n
+      val IReg(bti) = n.baseTypeInfo
+      val IReg(oti) = n.optionTypeInfo
+      fasm.newNoneGeneric(dst, bti, oti, n.optionType.toCbc)
+
+      addXSite(n)
+      saveGCState(n)
+    }
+
+    private def genNewSomeOptionGeneric(n: NewSomeOptionGeneric): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val IReg(dst) = n
+      val IReg(src) = n.value
+      val IReg(bti) = n.baseTypeInfo
+      val IReg(oti) = n.optionTypeInfo
+      fasm.newSomeGeneric(dst, src, bti, oti, n.optionType.toCbc)
+
+      addXSite(n)
+      saveGCState(n)
+    }
+
+    private def genAssignGeneric(n: AssignGeneric): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val IReg(dst) = n.dst
+      val IReg(src) = n.src
+      val IReg(bti) = n.baseTypeInfo
+      fasm.assignGeneric(dst, src, bti)
+
+      addXSite(n)
+      saveGCState(n)
+    }
+
+    private def genInstanceOfGeneric(n: InstanceOfGeneric): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val IReg(dst) = n
+      val IReg(obj) = n.obj
+      val IReg(bti) = n.targetTypeInfo
+      fasm.instanceOfGeneric(dst, obj, bti)
+    }
+
+    private def genAtomic(n: AtomicOps.AtomicNode): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val adapter = fasm.adapter
+      n match {
+        case x: AtomicOps.Load =>
+          val IReg(dst) = x
+          val IReg(obj) = x.obj
+          val field = adapter.field(x.field)
+          fasm.atomicLoad(dst, obj, field)
+
+        case x: AtomicOps.Store =>
+          val IReg(src) = x.value
+          val IReg(obj) = x.obj
+          val field = adapter.field(x.field)
+          fasm.atomicStore(src, obj, field)
+
+        case x: AtomicOps.CAS =>
+          val IReg(dst) = x
+          val IReg(obj) = x.obj
+          val IReg(src1) = x.compareValue
+          val IReg(src2) = x.swapValue
+          val field = adapter.field(x.field)
+          fasm.cas(dst, obj, src1, src2, field)
+
+        case x: AtomicOps.Simple =>
+          import AtomicOps.Simple.Kind as Kind
+          val gen = x.kind match {
+            case Kind.SWAP       => fasm.atomicSwap
+            case Kind.FETCH_ADD  => fasm.atomicFetchAdd
+            case Kind.FETCH_SUB  => fasm.atomicFetchSub
+            case Kind.FETCH_AND  => fasm.atomicFetchAnd
+            case Kind.FETCH_OR   => fasm.atomicFetchOr
+            case Kind.FETCH_XOR  => fasm.atomicFetchXor
+          }
+
+          val IReg(dst) = x
+          val IReg(src) = x.value
+          val IReg(obj) = x.obj
+          val field = adapter.field(x.field)
+
+          gen(dst, obj, src, field)
+      }
     }
 
     /** Generates assembler pattern for given `node`. */
@@ -1475,8 +1701,17 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
         case x: Box => genBox(x)
         case x: Unbox => genUnbox(x)
+        case x: UnboxRec => genUnboxRec(x)
 
         case x: SpawnFuture => genSpawnFuture(x)
+        case x: SpawnClosure => genSpawnClosure(x)
+
+        case x: OptionTagGeneric => genOptionTagGeneric(x)
+        case x: OptionPayloadGeneric => genOptionPayloadGeneric(x)
+        case x: NewNoneOptionGeneric => genNewNoneOptionGeneric(x)
+        case x: NewSomeOptionGeneric => genNewSomeOptionGeneric(x)
+        case x: AssignGeneric => genAssignGeneric(x)
+        case x: InstanceOfGeneric => genInstanceOfGeneric(x)
 
         case x: FieldSeqOperation => genFieldSeqOperation(x)
 
@@ -1501,29 +1736,43 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: ZeroRefs =>
           asm.zerorefs(x.sa.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot)
 
-        case t: ThisTypeInfoCBC =>
-          val IReg(dst) = t
-          val ftcSigIdx = CodeSigSymbol(t.target)
+        case x: ThisTypeInfoCBC =>
+          val IReg(dst) = x
+          val ftcSigIdx = CodeSigSymbol(x.target)
           if (ftcSigIdx.containsTypeVariables) {
             asm.loadTypeInfoFTC(dst, ftcSigIdx)
           } else {
             asm.loadTypeInfoSig(dst, ftcSigIdx)
           }
 
-        case t: LoadTypeInfo =>
-          val IReg(dst) = t
+        case x: LoadTypeInfo =>
+          val IReg(dst) = x
           val fasm = asm.asInstanceOf[ForkedISA12Assembler]
-          fasm.loadTypeInfoSig(dst, t.target.toCbc)
+          fasm.loadTypeInfoSig(dst, x.target.toCbc)
 
-        case t: ThisTypeInfoByCBC =>
-          val IReg(dst) = t
-          val IReg(obj) = t.obj
+        case x: LoadTypeInfoGeneric =>
+          val IReg(dst) = x
+          val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+          fasm.loadTypeInfoGeneric(dst, x.target.uninstantiated.toCbc)
+
+        case x: GenericTypeArg =>
+          val IReg(dst) = x
+          val IReg(ti) = x.typeInfo
+          val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+          fasm.typeArg(ti, x.idx, dst)
+
+        case x: ThisTypeInfoByCBC =>
+          val IReg(dst) = x
+          val IReg(obj) = x.obj
           asm.loadTypeInfoObj(dst, obj)
 
         case x: DerivedPtr =>
           val IReg(dst) = x
           val IReg(src) = x.derived
           asm.mov(dst, src, reference = false)
+
+        case x: AtomicOps.AtomicNode =>
+          genAtomic(x)
 
         case _ => super.genNodeImpl(node)
       }
@@ -1593,6 +1842,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       CodeCBC(segment, xInfo, exTable.build, livenessInfo)
     }
 
+    override def doFreeze(): Unit = {}
+
     private lazy val exTable = ExceptionTable.Builder()
 
     override def genXHandlerInfo(b: Block): Unit = {
@@ -1657,9 +1908,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         super.genBlockEnd(block, isNext)
     }
 
-    def livenessInfo: Seq[LiveState] = asm match {
+    def livenessInfo: LivenessInfoCollector.AllStates = asm match {
       case assembler: ForkedISA12Assembler => livenessCollector.collect
-      case _ => Seq.empty
+      case _ => LivenessInfoCollector.empty
     }
   }
 
@@ -1672,7 +1923,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     case FloatType                            => CbcTypeKind.F32
     case DoubleType                           => CbcTypeKind.F64
     case HolderType(sig)                      =>
-      assert(!sig.isInstanceOf[TypeVariable], "unexpected to have holder type instantiated by type variable")
+      assert(!sig.isTypeVariable, "unexpected to have holder type instantiated by type variable")
       cbcTypeKind(ValueType.fromSig(sig))
     case _                                    => CbcTypeKind.I32
   }

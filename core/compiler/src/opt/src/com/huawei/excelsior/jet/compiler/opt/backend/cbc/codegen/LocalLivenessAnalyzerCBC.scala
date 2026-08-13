@@ -114,7 +114,7 @@ trait LocalLivenessAnalyzerCBC { self: Universe with BackEndCBC =>
     def checkArg(arg: Node): Unit = {
       val tpe: LocalType = localTypeOf(arg)
       arg match {
-        case sa: StackAlloc =>
+        case sa: HasFrameSlot =>
           sa.slot match {
             case _: TypedFrameSlotCBC => // untracked
             case sl: FrameSlotCBC => assert(check(sl.local, tpe))

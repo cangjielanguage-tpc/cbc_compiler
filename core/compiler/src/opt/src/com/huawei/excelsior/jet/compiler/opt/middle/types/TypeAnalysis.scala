@@ -196,7 +196,9 @@ trait TypeAnalysis extends OptExtraInfo with CallTargetInfos { self: Universe =>
     case _: AnyNull => RefNull
 
     case n: Param =>
-      if (n.isReceiver) {
+      if (isStandalone) {
+        formalTypeApproximation(n.formalType)
+      } else if (n.isReceiver) {
         OpenCone(ReferenceType(rootReceiverType), mayBeNull = false)
       } else if (rootMethod.isThinConstructor && n.num == 0) {
         assert(n.formalType.isThinClass)
@@ -257,10 +259,7 @@ trait TypeAnalysis extends OptExtraInfo with CallTargetInfos { self: Universe =>
     case n: UniversalGeneric.GetField =>
       formalTypeApproximation(n.instantiatedFieldType)
 
-    case n: LoadFieldSeq =>
-      formalTypeApproximation(n.resType)
-
-    case n: LoadStaticFieldSeq =>
+    case n: FieldSeqOperation =>
       formalTypeApproximation(n.resType)
 
     case n: GetConstField =>
@@ -272,14 +271,18 @@ trait TypeAnalysis extends OptExtraInfo with CallTargetInfos { self: Universe =>
       getMethodReturnTypeApproximation(target, unionWithFormal = false)
 
     case call @ AnyVirtualCall() =>
-      val receiverAppr = getCachedType(call.receiver)
-      findTargetMethod(call, call.receiver, receiverAppr, GuardMode.AnyGuards) match {
-        case _: NoTarget => RefEmpty
-        case OneDirectTarget(t)                => getMethodReturnTypeApproximation(t, unionWithFormal = false)
-        case OneGuardedTarget(t, _, _, _)      => getMethodReturnTypeApproximation(t, unionWithFormal = true)
-        case MultipleGuardedTargets(gts, _, _) => getMethodReturnTypeApproximation(gts map (_._1), unionWithFormal = true)
-        case UnknownTarget | _: MultipleGuardedTargets => formalTypeApproximation(call.methodType.returnType)
-        case ProbableNoTarget => formalTypeApproximation(call.methodType.returnType) withProbableType RefEmpty
+      if (isStandalone) {
+        formalTypeApproximation(call.methodType.returnType)
+      } else {
+        val receiverAppr = getCachedType(call.receiver)
+        findTargetMethod(call, call.receiver, receiverAppr, GuardMode.AnyGuards) match {
+          case _: NoTarget => RefEmpty
+          case OneDirectTarget(t) => getMethodReturnTypeApproximation(t, unionWithFormal = false)
+          case OneGuardedTarget(t, _, _, _) => getMethodReturnTypeApproximation(t, unionWithFormal = true)
+          case MultipleGuardedTargets(gts, _, _) => getMethodReturnTypeApproximation(gts map (_._1), unionWithFormal = true)
+          case UnknownTarget | _: MultipleGuardedTargets => formalTypeApproximation(call.methodType.returnType)
+          case ProbableNoTarget => formalTypeApproximation(call.methodType.returnType) withProbableType RefEmpty
+        }
       }
 
     case n: AbstractCall => formalTypeApproximation(n.methodType.returnType)
@@ -327,8 +330,12 @@ trait TypeAnalysis extends OptExtraInfo with CallTargetInfos { self: Universe =>
 
     case _: MutFunc.Host => OpenCone(ReferenceType.ajLangAJObject, mayBeNull = true)
 
-    case _: DerivedPtr.Local | _: DerivedPtr.Global | _: Box | _: SpawnFuture =>
+    case _: DerivedPtr.Local | _: DerivedPtr.Global | _: Box | _: Unbox | _: SpawnFuture | _: SpawnClosure |
+         _: EnumCast | _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric =>
       OpenCone(ReferenceType.cangjieStdCoreObject, mayBeNull = true)
+
+    case n: AtomicOps.AtomicNode =>  
+      formalTypeApproximation(n.field.fieldType)
 
     case _ =>
       shouldNotReachHere(n)
@@ -386,7 +393,7 @@ trait TypeAnalysis extends OptExtraInfo with CallTargetInfos { self: Universe =>
 
     if (isStandalone) {
       // TODO: support proper root type in standalone mode
-      if (t.isCangjieArray || t.isInstanceOf[SignatureType.Box]) {
+      if (t.isCangjieArray || t.isInstanceOf[SignatureType.Box] || t.isTypeVariable || t.isInstanceOf[SignatureType.CangjieEnum]) {
         OpenCone(ReferenceType.cangjieStdCoreObject, mayBeNull)
       } else {
         OpenCone(ReferenceType(t), mayBeNull)

@@ -340,6 +340,15 @@ trait Types { this: CompilerEnvironment =>
             else EopType.Any
           } else if (sigType.isThinClass) ThinType
           else TRefType
+
+        case _: ZeroSizedEnum => VoidType
+        case _: PrimitiveBasedEnum => IntType
+        case _: ClassBasedEnum => TRefType
+        case _: UnionBasedEnum => RecordAddrType(sigType)
+        case sig: OptionLikeEnum =>
+          if (sig.someType.isTypeVariable) shouldNotReachHere(sig)
+          else if (sig.isNullableOption) TRefType
+          else RecordAddrType(sig)
       }
     }
 

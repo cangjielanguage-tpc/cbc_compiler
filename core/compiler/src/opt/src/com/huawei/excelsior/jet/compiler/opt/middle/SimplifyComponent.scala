@@ -581,19 +581,21 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
   }
 
   private def optimizeFieldSeq(n: InstanceFieldSeqOperation): Boolean = {
-    cond(n.obj) {
+    cond(ReinterpretCast.skip(n.obj)) {
       case g: GetFieldSeqRef =>
         n match {
-          case n: GetFieldSeqRef => replaceTransitively(n, GetFieldSeqRef(g.fields ++ n.fields)(g.obj))
+          case n: GetFieldSeqRef => replaceTransitively(n, GetFieldSeqRef.proto(g.fields ++ n.fields)(n.inCtrl, g.obj))
           case n: LoadFieldSeq => replaceTransitively(n, LoadFieldSeq.proto(g.fields ++ n.fields).exact(n.inCtrl, n.inMemory, g.obj))
           case n: StoreFieldSeq => replaceByCode(n) { StoreFieldSeq(g.fields ++ n.fields)(g.obj, n.inValue) }
+          case _ => notImplemented(n)
         }
         true
       case g: GetStaticFieldSeqRef =>
         n match {
-          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef(g.fields ++ n.fields))
+          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(g.fields ++ n.fields)(n.inCtrl))
           case n: LoadFieldSeq => replaceTransitively(n, LoadStaticFieldSeq(g.fields ++ n.fields))
           case n: StoreFieldSeq => replaceByCode(n) { StoreStaticFieldSeq(g.fields ++ n.fields)(n.inValue) }
+          case _ => notImplemented(n)
         }
         true
     }

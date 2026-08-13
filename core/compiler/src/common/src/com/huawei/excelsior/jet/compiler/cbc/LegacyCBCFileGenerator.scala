@@ -12,6 +12,7 @@ import com.huawei.excelsior.common.CodeHelpers.*
 import com.huawei.excelsior.common.{JetDirs, ProcessUtils, XProcess}
 import com.huawei.excelsior.jet.assembler.Fixup.seq
 import com.huawei.excelsior.jet.assembler.cbc.Fixups.BTTBySymbol
+import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
 import com.huawei.excelsior.jet.assembler.cbc.{ExceptionTable, FieldReference, RawData, StackSlot, isa12}
 import com.huawei.excelsior.jet.assembler.fixups.{CoverageLocs, Relocation, RelocationKind}
@@ -79,7 +80,7 @@ object LegacyCBCFileGenerator extends CBCFileGenerator {
   private val methodsCode = mutable.LinkedHashMap.empty[Method, MethodCode]
 
   def sendCode(m: Method, seg: Segment, literalsOffset: Int,
-               xinfo: XTableGenerator.PackedXInfo, exTable: ExceptionTable, liveness: Seq[LiveState],
+               xinfo: XTableGenerator.PackedXInfo, exTable: ExceptionTable, liveness: LivenessInfoCollector.AllStates,
                tailParamCount: Int, untypedStackSlotsCount: Int,
                usedNonVolIRegsMask: Int, usedNonVolFRegsMask: Int, maxCalleeStackArgsCount: Int,
                mayHaveNativeCalls: Boolean,
@@ -1219,7 +1220,7 @@ class LegacyCBCFileGenerator(env: Environment, outputName: String, segment: Segm
     import RTConst.CangjieSpecialMethodFlags.*
     var mask = 0
     if (mt.hasMutObjectParameter) mask |= MUT_PARAM_FLAG.intValue
-    if (mt.hasUGDescParameter) mask |= UG_DESC_PARAM_FLAG.intValue
+    if (shouldNotReachHere("ugdesc")) mask |= UG_DESC_PARAM_FLAG.intValue
     if (mt.hasThisTypeInfoParameter) mask |= THIS_TYPE_INFO_PARAM_FLAG.intValue
     if (mt.hasRetByValParameter) mask |= RET_BY_VAL_PARAM_FLAG.intValue
     if (mt.hasCFuncRetByValParameter) mask |= C_FUNC_RET_BY_VAL_PARAM_FLAG.intValue

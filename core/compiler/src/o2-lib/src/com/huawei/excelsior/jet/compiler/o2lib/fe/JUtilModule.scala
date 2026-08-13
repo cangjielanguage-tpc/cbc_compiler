@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.fe
 
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.o2lib.fe.{pc, pcNamesModule as pcNames, pcOModule as pcO}
 import com.huawei.excelsior.jet.compiler.o2lib.xjRTSModule as xjRTS
 import com.huawei.excelsior.jet.compiler.symlevel.{MethodSignature, SignatureType}
@@ -75,7 +76,7 @@ object JUtilModule {
         } else {
           mdfs = Set32.empty
         }
-        p = aclass.newMethod(name, sig, mdfs, addSignatureImport = false)
+        p = aclass.newMethod(name, sig, mdfs, addSignatureImport = false, ABI.Description(Option.unless(static)(SignatureType.fromSymType(aclass.symType))))
       }
       p
     }

@@ -13,10 +13,12 @@ import com.huawei.excelsior.jet.assembler.Segment
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.*
 import com.huawei.excelsior.jet.assembler.Symbol
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileEncoder.Index
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.TypeEnumKind.NotEnum
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.FlowAnalyzer
 
+import scala.annotation.targetName
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -61,6 +63,13 @@ object CbcFileFormat {
 
   case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean) extends Signature
   case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean) extends Signature
+  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean) extends Signature
+  case class PrimitiveEnum(name: String, args: Seq[Signature]) extends Signature {
+    override def isReference = false
+  }
+  case class UnionEnum(name: String, args: Seq[Signature]) extends Signature {
+    override def isReference = false
+  }
   case class CangjieArray(tpe: Signature) extends Signature {
     override def isReference = true
   }
@@ -70,7 +79,7 @@ object CbcFileFormat {
   case class Functional(args: Seq[Signature], result: Signature) extends Signature {
     override def isReference = true
   }
-  case class Nullable(sig: Signature) extends Signature { // TODO: rename Nullable -> Option
+  case class Nullable(sig: Signature) extends Signature { // FIXME: remove
     override def isReference = sig.isReference
   }
   case class NonNullable(sig: Signature) extends Signature {
@@ -80,6 +89,12 @@ object CbcFileFormat {
     override def isReference = false
   }
   case class CPointer(sig: Signature) extends Signature {
+    override def isReference = false
+  }
+  case class Box(sig: Signature) extends Signature {
+    override def isReference = true
+  }
+  case class Fst(sig: Signature) extends Signature {
     override def isReference = false
   }
 
@@ -159,6 +174,7 @@ object CbcFileFormat {
     case RECORD    extends TypeFlag(0x0040)
     case AOT       extends TypeFlag(0x0080)
     case PATCH     extends TypeFlag(0x0100)
+    case ENUM      extends TypeFlag(0x0200)
   }
 
   // TODO move access kinds out of flags
@@ -171,15 +187,28 @@ object CbcFileFormat {
     case FINAL    extends MethodFlag(0x0008)
     case FOREIGN  extends MethodFlag(0x0010)
     case ABSTRACT extends MethodFlag(0x0020)
-    case MUT      extends MethodFlag(0x0040)
+    case MUT      extends MethodFlag(0x0040) // has MUT <=> has extra parameter (not just source-level indicator)
     case VIRTUAL  extends MethodFlag(0x0080)
     case AOT      extends MethodFlag(0x0100)
     case PKG_INIT extends MethodFlag(0x0200)
     case LIT_INIT extends MethodFlag(0x0400)
+
+    case SRET         extends MethodFlag(0x0800)
+    case HAS_THIS_TI  extends MethodFlag(0x1000)
+    case HAS_OUTER_TI extends MethodFlag(0x2000)
+    case REC_RECEIVER extends MethodFlag(0x4000)
+    case REF_RECEIVER extends MethodFlag(0x8000)
   }
 
   enum MethodRefFlag(val mask: Int) extends Flag {
-    case SRET extends MethodRefFlag(0x01)
+    case SRET         extends MethodRefFlag(0x01)
+    case HAS_THIS_TI  extends MethodRefFlag(0x02)
+    case HAS_OUTER_TI extends MethodRefFlag(0x04)
+    case MUT          extends MethodRefFlag(0x08)
+    case HAS_FTVARS   extends MethodRefFlag(0x10)
+    case AOT          extends MethodRefFlag(0x20)
+    case REC_RECEIVER extends MethodRefFlag(0x40)
+    case REF_RECEIVER extends MethodRefFlag(0x80)
   }
 
   enum FieldFlag(val mask: Int) extends Flag {
@@ -204,13 +233,23 @@ object CbcFileFormat {
     def name: String
   }
 
+  enum TypeEnumKind {
+    case NotEnum
+    case Union
+    case Option0 // enum { Some(T); None }
+    case Option1 // enum { None; Some(T) }
+    case Primitive
+  }
+
   case class Type(name: String,
-                  superClass: Option[Signature],
+                  superOrEnumType: Option[Signature],
                   flags: TypeFlags,
                   methods: Seq[Method],
                   fields: Seq[Field],
                   interfaces: Seq[Signature],
-                  genericConstraints: Seq[Signature]) extends Named
+                  genericConstraints: Seq[Signature],
+                  enumKind: TypeEnumKind,
+                  unionFields: Seq[Signature] = Seq.empty) extends Named
 
   case class Method(name: String,
                     typeName: String,
@@ -219,7 +258,8 @@ object CbcFileFormat {
                     flags: MethodFlags,
                     sourceFullName: Option[String],
                     sourceFile: Option[String],
-                    linkageName: Option[String] = None) extends Named
+                    linkageName: Option[String] = None,
+                    genericParameters: Int = 0) extends Named
 
   case class Field(name: String,
                    fieldType: Signature,
@@ -228,7 +268,7 @@ object CbcFileFormat {
 
   case class MethodCode(segment: Segment,
                         exTable: ExceptionTable,
-                        liveness: Seq[LiveState],
+                        liveness: LivenessInfoCollector.AllStates,
                         untypedStackSlotsCount: Int,
                         usedNonVolIRegsMask: Int,
                         usedNonVolFRegsMask: Int,
@@ -241,7 +281,8 @@ object CbcFileFormat {
                              refType: Signature,
                              signature: Signature,
                              flags: MethodRefFlags,
-                             aotData: Option[AotData] = None) extends BytecodeReference
+                             aotData: Option[AotData] = None,
+                             typeVars: Seq[Signature] = Seq.empty) extends BytecodeReference
 
   // TODO: References to fields should be encoded without specifying `refType` part.
   //       Memory location can be specified by triple `(base, offset, type)`, where
@@ -295,8 +336,10 @@ object CbcFileFormat {
     trait Builder {
       def setName(name: String): Unit
       def getName: Option[String]
-      def setSuperClass(signature: Signature): Unit
+      def setSuperOrEnumType(signature: Signature): Unit
       def setInterfaces(interfaces: Seq[Signature]): Unit
+      def setUnionFields(fields: Seq[Signature]): Unit
+      def setEnumKind(enumKind: TypeEnumKind): Unit
       def setGenericConstraints(genericConstraints: Seq[Signature]): Unit
       def addFlag(flag: TypeFlag): Unit
 
@@ -324,7 +367,7 @@ object CbcFileFormat {
     trait Builder {
       def setSegment(segment: Segment): Unit
       def setExceptionTable(exTable: ExceptionTable): Unit
-      def setLiveness(liveness: Seq[LiveState]): Unit
+      def setLiveness(liveness: LivenessInfoCollector.AllStates): Unit
       def setUntypedStackSlotsCount(untypedStackSlotsCount: Int): Unit
       def setUsedNonVolIRegsMask(usedNonVolIRegsMask: Int): Unit
       def setUsedNonVolFRegsMask(usedNonVolFRegsMask: Int): Unit
@@ -381,16 +424,21 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     private val fieldBuilders = ArrayBuffer.empty[FieldBuilder]
 
     private var name: String = _
-    private var superClass: Signature = _
+    private var superOrEnumType: Signature = _
     private var flags: Int = 0
     private var interfaces: Seq[Signature] = Seq.empty
     private var genericConstraints: Seq[Signature] = Seq.empty
+    private var unionFields: Seq[Signature] = Seq.empty
+    private var enumKind: TypeEnumKind = NotEnum
 
     override def setName(name: String): Unit = this.name = name
     override def getName: Option[String] = Option(name)
-    override def setSuperClass(superClass: Signature): Unit = this.superClass = superClass
+    override def setSuperOrEnumType(tpe: Signature): Unit = this.superOrEnumType = tpe
     override def setInterfaces(interfaces: Seq[Signature]): Unit = this.interfaces = interfaces
     override def setGenericConstraints(genericConstraints: Seq[Signature]): Unit = this.genericConstraints = genericConstraints
+
+    override def setUnionFields(fields: Seq[Signature]): Unit = this.unionFields = fields
+    override def setEnumKind(enumKind: TypeEnumKind): Unit = this.enumKind = enumKind
 
     override def addFlag(flag: TypeFlag): Unit = {
       flags |= flag.mask
@@ -410,12 +458,14 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
 
     def build(): CbcFileFormat.Type = Type(
       name = name.nn,
-      superClass = Option(superClass),
+      superOrEnumType = Option(superOrEnumType),
       flags = TypeFlags(flags), // TODO: consistency check
       methods = methodBuilders.toSeq.map(_.build()),
       fields = fieldBuilders.toSeq.map(_.build()),
       interfaces = interfaces,
-      genericConstraints = genericConstraints
+      genericConstraints = genericConstraints,
+      enumKind = enumKind,
+      unionFields = unionFields
     )
   }
 
@@ -464,7 +514,7 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
   private class MethodCodeBuilder extends CbcFileFormat.MethodCode.Builder {
     private var segment: Segment = _
     private var exTable: ExceptionTable = ExceptionTable(Seq.empty)
-    private var liveness: Seq[LiveState] = _
+    private var liveness: LivenessInfoCollector.AllStates = _
     private var untypedStackSlotsCount: Int = 0
     private var usedNonVolIRegsMask: Int = 0
     private var usedNonVolFRegsMask: Int = 0
@@ -475,7 +525,7 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
 
     def setSegment(segment: Segment): Unit = { this.segment = segment }
     def setExceptionTable(exTable: ExceptionTable): Unit = { this.exTable = exTable }
-    def setLiveness(liveness: Seq[LiveState]): Unit = { this.liveness = liveness }
+    def setLiveness(liveness: LivenessInfoCollector.AllStates): Unit = { this.liveness = liveness }
     def setUntypedStackSlotsCount(untypedStackSlotsCount: Int): Unit = { this.untypedStackSlotsCount = untypedStackSlotsCount }
     def setUsedNonVolIRegsMask(usedNonVolIRegsMask: Int): Unit = { this.usedNonVolIRegsMask = usedNonVolIRegsMask }
     def setUsedNonVolFRegsMask(usedNonVolFRegsMask: Int): Unit = { this.usedNonVolFRegsMask = usedNonVolFRegsMask }

@@ -26,7 +26,7 @@ import com.huawei.excelsior.jet.compiler.opt.serialization.RTSProcValues.rtsProc
 import com.huawei.excelsior.jet.compiler.options.BoolOption.DetailedInlineLogs
 import com.huawei.excelsior.jet.compiler.serialization.SerializationError
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{InstantiatedType, TypeVariable}
-import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeMethodReference, ConstraintCallMethodReference, InstantiatedMethodReference}
+import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeMethodReference, ConstraintCallMethodReference, InstantiatedMethodReference, SignatureType}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.compiler.util.{Maps, Sets}
 import com.huawei.excelsior.jet.util.ScalaCollections
@@ -843,17 +843,26 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case GetFieldSeqRef.Proto =>
           GetFieldSeqRef.proto(read.seq(read.cangjieFieldReference))
 
+        case GetFieldSeqRefGeneric.Proto =>
+          GetFieldSeqRefGeneric.proto(read.seq(read.cangjieFieldReference))
+
         case GetStaticFieldSeqRef.Proto =>
           GetStaticFieldSeqRef.proto(read.seq(read.cangjieFieldReference))
 
         case LoadFieldSeq.Proto =>
           LoadFieldSeq.proto(read.seq(read.cangjieFieldReference))
 
+        case LoadFieldSeqGeneric.Proto =>
+          LoadFieldSeqGeneric.proto(read.seq(read.cangjieFieldReference))
+
         case LoadStaticFieldSeq.Proto =>
           LoadStaticFieldSeq.proto(read.seq(read.cangjieFieldReference))
 
         case StoreFieldSeq.Proto =>
           StoreFieldSeq.proto(read.seq(read.cangjieFieldReference))
+
+        case StoreFieldSeqGeneric.Proto =>
+          StoreFieldSeqGeneric.proto(read.seq(read.cangjieFieldReference))
 
         case StoreStaticFieldSeq.Proto =>
           StoreStaticFieldSeq.proto(read.seq(read.cangjieFieldReference))
@@ -864,14 +873,56 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case LoadTypeInfo.Proto =>
           LoadTypeInfo.proto(read.sigType())
 
+        case LoadTypeInfoGeneric.Proto =>
+          LoadTypeInfoGeneric.proto(read.sigType())
+
+        case GenericTypeArg.Proto =>
+          GenericTypeArg.proto(read.number())
+
         case Box.Proto =>
           Box.proto(read.sigType())
 
         case Unbox.Proto =>
           Unbox.proto(read.sigType())
 
+        case UnboxRec.Proto =>
+          UnboxRec.proto(read.sigType())
+
         case SpawnFuture.Proto =>
           SpawnFuture.proto(read.sigType())
+
+        case SpawnClosure.Proto =>
+          SpawnClosure.proto(read.sigType())
+
+        case OptionTagGeneric.Proto =>
+          OptionTagGeneric.proto(read.sigType().asInstanceOf[SignatureType.OptionLikeEnum])
+
+        case OptionPayloadGeneric.Proto =>
+          OptionPayloadGeneric.proto(read.sigType().asInstanceOf[SignatureType.OptionLikeEnum])
+
+        case NewNoneOptionGeneric.Proto =>
+          NewNoneOptionGeneric.proto(read.sigType().asInstanceOf[SignatureType.OptionLikeEnum])
+
+        case NewSomeOptionGeneric.Proto =>
+          NewSomeOptionGeneric.proto(read.sigType().asInstanceOf[SignatureType.OptionLikeEnum])
+
+        case AssignGeneric.Proto =>
+          AssignGeneric.proto(read.sigType())
+
+        case InstanceOfGeneric.Proto =>
+          InstanceOfGeneric.proto(read.sigType())
+
+        case AtomicOps.Load.Proto =>
+          AtomicOps.Load.proto(read.tpe(), read.cangjieFieldReference())
+
+        case AtomicOps.Store.Proto =>
+          AtomicOps.Store.proto(read.tpe(), read.cangjieFieldReference())
+
+        case AtomicOps.CAS.Proto =>
+          AtomicOps.CAS.proto(read.tpe(), read.cangjieFieldReference())
+
+        case AtomicOps.Simple.Proto =>
+          AtomicOps.Simple.proto(read.enumeration(AtomicOps.Simple.Kind.fromOrdinal), read.tpe(), read.cangjieFieldReference())
       }
     }
 

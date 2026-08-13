@@ -20,13 +20,27 @@ import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.*
 import com.huawei.excelsior.jet.compiler.symlevel.*
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
+import com.huawei.excelsior.jet.util.Closure
 
+import scala.annotation.tailrec
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
 trait CbcSymbolAdapter extends SymbolAdapter {
   implicit val typeProvider: TypeProvider = env.getTypeProvider
-  
+
+  private def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
+    val cparams = refType match {
+      case refType: SignatureType.InstantiatedType => refType.instantiatedTypeParameters
+      case _ => Seq.empty
+    }
+    val lparams = Seq.empty
+
+    val refClass = asClassType(refType)
+    Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
+      refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
+  }
+
   def adapt(symbol: Symbol): CbcFileFormat.BytecodeReference = symbol match {
     case symbol: CodeSigSymbol => symbol.sig.toCbc
     case symbol: MethodReference =>
@@ -38,18 +52,26 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         } else {
           CbcFileFormat.AotTypeSignature.ref(declaringClass.getName)
         }
+      } else if (symbol.accessKind == SPECIAL && asClassType(symbol.refType.sigType) != declaringClass) {
+        Closure(symbol.refType.sigType)(refineSuperTypes).find(asClassType(_) == declaringClass).get.toCbc
       } else {
         symbol.refType.sigType.toCbc
       }
-      val aotData = Option.when(symbol.method.getCHIRDef.isEmpty) {
-        symbol.accessKind match {
-          case STATIC | SPECIAL | MUT => DirectCallAotData(symbol.method.getExportedName.toString)
-          case VIRTUAL => InterfaceCallAotData(symbol.explicitVNum.get) // TODO: improve if needed
-          case _ => notImplemented(symbol.accessKind)
-        }
+      val aotData = symbol.accessKind match {
+        case STATIC | SPECIAL | MUT => Option.when(symbol.method.getCHIRDef.isEmpty)(DirectCallAotData(symbol.method.getExportedName.toString))
+        case VIRTUAL => Option.when(refType.isInstanceOf[CbcFileFormat.AotTypeSignature])(InterfaceCallAotData(symbol.explicitVNum.get)) // TODO: improve if needed
+        case _ => notImplemented(symbol.accessKind)
       }
       val signature = symbol.method.getSignature.toCbc
-      val flags = Option.when(symbol.methodType.hasRetByValParameter)(MethodRefFlag.SRET)
+
+      val mt = symbol.methodType
+      val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
+      if (mt.hasRetByValParameter)      flags += MethodRefFlag.SRET
+      if (mt.hasOuterTypeInfoParameter) flags += MethodRefFlag.HAS_OUTER_TI
+      if (mt.hasThisTypeInfoParameter)  flags += MethodRefFlag.HAS_THIS_TI
+      if (mt.hasReferenceReceiver)      flags += MethodRefFlag.REF_RECEIVER
+      if (mt.hasRecordReceiver)         flags += MethodRefFlag.REC_RECEIVER
+      if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT // TODO: is it correct?
       CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData)
     case symbol: CangjieFieldReference =>
       // Only symlevel field references supported here.
@@ -75,7 +97,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         symbol.refType.toCbc
       }
       CbcFileFormat.FieldReference(name = field.getName,
-        refType = refType, fieldType = field.getType.toCbc, aotData = aotData)
+        refType = refType, fieldType = symbol.fieldType.toCbc, aotData = aotData)
     case symbol: ConstStringSymbol => StringLiteral(symbol.value.toString)
     case symbol: RawData => CbcFileFormat.RawData(ArraySeq.from(symbol.data))
   }
@@ -109,6 +131,8 @@ object CbcSignatureAdapter {
     case SignatureType.Float32       => CbcFileFormat.BuiltinSignature.F32
     case SignatureType.Float64       => CbcFileFormat.BuiltinSignature.F64
 
+    case SignatureType.ThisTypeInfo => CbcFileFormat.BuiltinSignature.IAddr
+
     case mt: MethodSignature => CbcFileFormat.Functional(mt.parameterTypes.map(_.toCbc), mt.returnType.toCbc)
 
     case sig: SignatureType.Record =>
@@ -118,15 +142,17 @@ object CbcSignatureAdapter {
 
     case sig: SignatureType.CangjieReference =>
       assert(!asClassType(sig).isUniversalGeneric, s"erased signature type: ${sig.toJETSignature}")
-      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.ref(sig.name)
-      else CbcFileFormat.TypeSignature.ref(sig.name)
+      adaptFunctional(sig).getOrElse {
+        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.ref(sig.name)
+        else CbcFileFormat.TypeSignature.ref(sig.name)
+      }
 
     case sig: SignatureType.InstantiatedType   =>
-      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference)
-      else CbcFileFormat.TypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference)
+      adaptFunctional(sig).getOrElse {
+        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference)
+        else CbcFileFormat.TypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference)
+      }
 
-    case sig: SignatureType.NullableWrapper    => CbcFileFormat.Nullable(sig.baseType.toCbc)
-    case sig: SignatureType.NonNullableWrapper => CbcFileFormat.NonNullable(sig.baseType.toCbc)
     case sig: SignatureType.CangjieArray       => CbcFileFormat.CangjieArray(sig.elemType.toCbc)
     case sig: SignatureType.CPointer           => CbcFileFormat.CPointer(sig.pointee.toCbc)
     case sig: SignatureType.VArray             => CbcFileFormat.VArray(sig.elemType.toCbc, sig.length)
@@ -134,10 +160,31 @@ object CbcSignatureAdapter {
     case sig: SignatureType.ClassTypeVariable  => CbcFileFormat.ClassTypeVariable(sig.idx)
 
     case sig: SignatureType.Tuple => CbcFileFormat.Tuple(sig.params.map(_.toCbc))
-    case sig: SignatureType.Box => notImplemented(sig)
+    case sig: SignatureType.Box => CbcFileFormat.Box(sig.base.toCbc)
+
+    case sig: SignatureType.ZeroSizedEnum => CbcFileFormat.BuiltinSignature.Unit // TODO: ZST enum
+    case sig: SignatureType.PrimitiveBasedEnum => CbcFileFormat.PrimitiveEnum(sig.name, sig.params.map(_.toCbc))
+    case sig: SignatureType.UnionBasedEnum => CbcFileFormat.UnionEnum(sig.name, sig.params.map(_.toCbc))
+    case sig: SignatureType.ClassBasedEnum =>
+      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
+      else CbcFileFormat.TypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
+    case sig: SignatureType.OptionLikeEnum =>
+      CbcFileFormat.OptionSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
 
     case sig: SignatureType.ArraySlice => notImplemented(sig)
     case sig: SignatureType.JavaArray => notImplemented(sig)
-    case sig: SignatureType.CangjieEnumWrapper => notImplemented(sig)
+    case sig: SignatureType.CangjieEnumWrapper => shouldNotReachHere(sig)
+    case sig: SignatureType.NullableWrapper    => shouldNotReachHere(sig)
+    case sig: SignatureType.NonNullableWrapper => shouldNotReachHere(sig)
+  }
+
+  @tailrec
+  private def adaptFunctional(sig: SignatureType): Option[CbcFileFormat.Functional] = sig match {
+    case sig: SignatureType.CangjieReference if sig.name.startsWith("$Ci") =>
+      adaptFunctional(asClassType(sig).getSuperClassSig)
+    case sig: SignatureType.InstantiatedReference if sig.name.startsWith("$Cg") =>
+      Some(CbcFileFormat.Functional(sig.instantiatedTypeParameters.init.map(_.toCbc), sig.instantiatedTypeParameters.last.toCbc))
+    case _ =>
+      None
   }
 }

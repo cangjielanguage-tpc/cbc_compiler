@@ -101,6 +101,15 @@ object ABI {
     }
   }
 
+  case class Description(
+    receiver: Option[SignatureType] = None,
+    hasMutParam: Boolean = false,
+    hasThisTypeInfoParam: Boolean = false,
+    isCFunc: Boolean = false,
+    hasOuterTypeInfo: Boolean = false,
+    hasRetByVal: Boolean = false,
+    genericFuncParamsCount: Int = 0)
+
   def makeABISigType(sig: SignatureType)(implicit typeProvider: TypeProvider): SignatureType = {
     if (sig.isVariableSizeType) SignatureType.Box(sig) else sig
   }
@@ -108,12 +117,7 @@ object ABI {
   /** Creates ABI signature from source one. It may include hidden params and/or receiver.
     * Note: Has runtime implementation as [[com.huawei.excelsior.jet.runtime.jit.cbc.file.MethodRef.getABISignature]] method.
     */
-  def makeABISignature(sig: MethodSignature, receiver: Option[SignatureType] = None,
-                       hasUGDesc: Boolean = false, hasMutParameter: Boolean = false, hasThisTypeInfoParameter: Boolean = false,
-                       isCFunc: Boolean = false, hasOuterTypeInfo: Boolean = false, genericFuncParamsCount: Int = 0)
-                      (implicit typeProvider: TypeProvider): (MethodSignature, SpecialParamSet) = {
-
-    def convertToABI(t: SignatureType): SignatureType = makeABISigType(t)
+  def makeABISignature(sig: MethodSignature, desc: Description)(implicit typeProvider: TypeProvider): (MethodSignature, SpecialParamSet) = {
 
     def makeABISigWithSpecialParams(specialParamsMap: collection.Map[SpecialParameter, SignatureType]): MethodSignature = {
       def obtainSpecialParams(params: Iterable[SpecialParameter]) = params.flatMap(specialParamsMap.get)
@@ -122,8 +126,8 @@ object ABI {
       val endElements = obtainSpecialParams(SpecialParamSet.completeListOfEndSpecialParameters)
       // TODO: make it more systematic
       val genericFuncParams = specialParamsMap.get(GenericFuncParams) match {
-        case Some(t) => assert(genericFuncParamsCount > 0); Seq.fill(genericFuncParamsCount)(t)
-        case None => assert(genericFuncParamsCount == 0); Seq.empty
+        case Some(t) => assert(desc.genericFuncParamsCount > 0); Seq.fill(desc.genericFuncParamsCount)(t)
+        case None => assert(desc.genericFuncParamsCount == 0); Seq.empty
       }
       val abiParamTypes = startElements ++ sig.parameterTypes.map(makeABISigType) ++ genericFuncParams ++ endElements
       val abiReturnType = makeABISigType(sig.returnType)
@@ -132,48 +136,45 @@ object ABI {
 
     val specialParamMap = mutable.LinkedHashMap.empty[SpecialParameter, SignatureType]
 
-    for (rcv <- receiver) {
-      assert(!hasMutParameter)
+    for (rcv <- desc.receiver) {
+      assert(!desc.hasMutParam)
       specialParamMap(Receiver) = rcv
     }
 
-    if (hasMutParameter) {
+    if (desc.hasMutParam) {
       if (Env.isStandalone) {
         // Split mut record param into pair (AddrUInt, RefType)
-        assert(receiver.isEmpty)
+        assert(desc.receiver.isEmpty)
         specialParamMap(SMutRecord) = SignatureType.Address
         specialParamMap(SMutObject) = ReferenceType.cangjieStdCoreObject.sigType
 
       } else {
         // Split mut record param into pair (AddrUInt, RefType)
-        assert(receiver.isEmpty)
+        assert(desc.receiver.isEmpty)
         specialParamMap(MutRecord) = SignatureType.Address
         // TODO: in theory, it can be `std.core.Any` on cangjie lp
         specialParamMap(MutObject) = SignatureType.fromSymType(typeProvider.getAJObjectType) // AJObject to allow permanent local/global objects
       }
     }
 
-    if (hasUGDesc) {
-      specialParamMap(UGDesc) = SignatureType.Address
-    }
-
-    if (hasThisTypeInfoParameter) {
+    if (desc.hasThisTypeInfoParam) {
       specialParamMap(ThisTypeInfo) = if (Env.isStandalone) SignatureType.Address else SignatureType.ThisTypeInfo
     }
 
-    if (hasOuterTypeInfo) {
+    if (desc.hasOuterTypeInfo) {
       specialParamMap(OuterTypeInfo) = SignatureType.Address
     }
 
-    if (genericFuncParamsCount > 0) {
+    if (desc.genericFuncParamsCount > 0) {
       specialParamMap(GenericFuncParams) = SignatureType.Address
     }
 
     val sigReturnType = sig.returnType
     
-    if (!isCFunc) {
+    if (!desc.isCFunc) {
       sigReturnType match {
-        case rt: TypeVariable                                  => specialParamMap(RetByVal) = if (isStandalone) SignatureType.Address else rt
+        case rt if desc.hasRetByVal                            => specialParamMap(RetByVal) = if (isStandalone) SignatureType.Address else rt
+        case rt: (TypeVariable | SignatureType.Box)            => specialParamMap(RetByVal) = if (isStandalone) SignatureType.Address else rt
         case rt if rt.isVariableSizeType                       => specialParamMap(RetByVal) = if (isStandalone) SignatureType.Box(rt) else SignatureType.Address // TODO: allow `rt` here instead
         case rt @ (SignatureType.Unit | SignatureType.Nothing) => specialParamMap(RetByVal) = rt
         case rt if rt.isRecord                                 => specialParamMap(RetByVal) = rt

@@ -878,6 +878,10 @@ final class TypeImpl private[light](val o2type: pc.SymType) extends ClassType wi
 
   override def getGenericInfo = asClass.getGenericInfo
 
-  override def getCHIRVTable = asClass.getCHIRVTable.get
+  override def getCHIRVTable = asClass.getCHIRVTable.orNull
+
+  override def isCangjieEnum = asClass.isCangjieEnum
+
+  override def getCangjieEnumInfo = asClass.getCangjieEnumInfo.get
 
 }

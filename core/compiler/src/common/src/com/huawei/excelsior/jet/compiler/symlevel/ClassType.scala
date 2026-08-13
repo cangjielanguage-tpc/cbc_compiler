@@ -12,7 +12,7 @@ import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.{CodeUnit, TypeProvider}
 import com.huawei.excelsior.jet.compiler.bytecode.ConstantPool
-import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
+import com.huawei.excelsior.jet.compiler.cangjie.{CHIRVTable, CangjieEnumInfo}
 import com.huawei.excelsior.jet.compiler.layout.MethodTables
 import com.huawei.excelsior.jet.compiler.symlevel.FindMethodImplResult.*
 import com.huawei.excelsior.jet.compiler.symlevel.MethodSearchError.*
@@ -487,5 +487,9 @@ abstract class ClassType extends Type {
   def getGenericInfo: GenericInfo
   
   def getCHIRVTable: CHIRVTable
+
+  def isCangjieEnum: Boolean
+
+  def getCangjieEnumInfo: CangjieEnumInfo
 
 }

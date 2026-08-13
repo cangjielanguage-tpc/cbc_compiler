@@ -167,7 +167,7 @@ object Resources extends ImplicitSetsAndMaps {
 
       protected def zeroedImpl = traced
       def tracedByHeader = false
-      def traced = allocType.isTraceableReference || (allocType.isRecord && allocType.hasRefFields) || (isStandalone && allocType.isInstanceOf[SignatureType.TypeVariable])
+      def traced = allocType.isTraceableReference || (allocType.isRecord && allocType.hasRefFields) || (isStandalone && allocType.isTypeVariable)
     }
 
     object Typed {

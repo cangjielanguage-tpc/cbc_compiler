@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.fe
 
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.o2lib.fe.{pc, ExtraPassModule as ExtraPass, NumerateModule as Numerate, pcNamesModule as pcNames, pcOModule as pcO}
 import com.huawei.excelsior.jet.compiler.o2lib.u.ErrMsg.*
@@ -29,11 +30,13 @@ object SymLevelBuilderModule {
     clazz
   }
 
-  def addMethod(clazz: pcOModule.Class, name: XString, sig: MethodSignature, modifier: Set32, hasUGDesc: Boolean,
-                hasThisTypeInfoParam: Boolean, isCFunc: Boolean, hasOuterTypeInfo: Boolean = false, genericFuncParamsCount: Int = 0,
-                isMutWrapper: Boolean = false) = {
+  def addMethod(clazz: pcOModule.Class, name: XString, sig: MethodSignature, modifier: Set32, receiver: Option[SignatureType]): pcOModule.Method = {
+    addMethod(clazz, name, sig, modifier, ABI.Description(receiver))
+  }
+
+  def addMethod(clazz: pcOModule.Class, name: XString, sig: MethodSignature, modifier: Set32, abiDesc: ABI.Description): pcOModule.Method = {
     pc.withModule(clazz) {
-      val m = clazz.newMethod(name, sig, modifier, addSignatureImport = true, hasUGDesc, hasThisTypeInfoParam, isCFunc, hasOuterTypeInfo, genericFuncParamsCount, isMutWrapper)
+      val m = clazz.newMethod(name, sig, modifier, addSignatureImport = true, abiDesc)
       if (m.getSignature.parameterTypes.size > 255) {
         env.errors.fault(ErrMsg2501, m.name)
       }

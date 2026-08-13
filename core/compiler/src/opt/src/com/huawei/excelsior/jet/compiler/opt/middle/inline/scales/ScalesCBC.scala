@@ -75,7 +75,7 @@ trait ScalesCBC extends Scales { self: Universe =>
       case _: If => ifWeight
       case n: Switch => n.cases.size * (intCmpWeight + ifWeight)
 
-      case _: Neg | _: Add | _: Sub | _: Mul | _: And | _: Or | _: Xor => instrSize
+      case _: Neg | _: Add | _: Sub | _: Mul | _: Pow | _: And | _: Or | _: Xor => instrSize
       case _: Shift => instrSize
       case _: MulH | _: UMulH => 0 // TODO: update after real implementation
       case IRem() | URem() => instrSize

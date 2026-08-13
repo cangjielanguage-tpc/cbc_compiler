@@ -11,7 +11,7 @@ package com.huawei.excelsior.jet.assembler.cbc
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotCallThis, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.AsmType.*
 import com.huawei.excelsior.jet.assembler.Location.IReg
-import com.huawei.excelsior.jet.assembler.Width.{W32, W64, W8}
+import com.huawei.excelsior.jet.assembler.Width.{W32, W64}
 import com.huawei.excelsior.jet.assembler.cbc.Assembler.{canBeEncodedInBCC, normalizeImm}
 import com.huawei.excelsior.jet.assembler.cbc.Bits.*
 import com.huawei.excelsior.jet.assembler.cbc.FExtBCC
@@ -81,6 +81,7 @@ trait CbcAssembler {
   def add(w: Width, d: IR, l: IR, r: IR): Unit
   def sub(w: Width, d: IR, l: IR, r: IR): Unit
   def mul(w: Width, d: IR, l: IR, r: IR): Unit
+  def pow(w: Width, d: IR, l: IR, r: IR): Unit
   def and(w: Width, d: IR, l: IR, r: IR): Unit
   def or(w: Width, d: IR, l: IR, r: IR): Unit
   def xor(w: Width, d: IR, l: IR, r: IR): Unit
@@ -92,6 +93,7 @@ trait CbcAssembler {
   def addi(w: Width, d: IR, l: IR, imm: Long): Unit
   def subi(w: Width, d: IR, l: IR, imm: Long): Unit
   def muli(w: Width, d: IR, l: IR, imm: Long): Unit
+  def powi(w: Width, d: IR, l: IR, imm: Long): Unit
   def andi(w: Width, d: IR, l: IR, imm: Long): Unit
   def ori(w: Width, d: IR, l: IR, imm: Long): Unit
   def xori(w: Width, d: IR, l: IR, imm: Long): Unit
@@ -174,6 +176,8 @@ trait CbcAssembler {
   def cuaddi(d: IR, l: IR, r: Long, w: Width): Unit
   def cusubi(d: IR, l: IR, r: Long, w: Width): Unit
   def cumuli(d: IR, l: IR, r: Long, w: Width): Unit
+  def cpow (d: IR, l: IR, r: IR, w: Width): Unit
+  def cpowi (d: IR, l: IR, r: Long, w: Width): Unit
   def eopPlain(dst: IR, obj: IR): Unit
   def eopEnrichment(dst: IR, obj: IR): Unit
   def eopPack(dst: IR, obj: IR, enrichment: IR): Unit
@@ -419,6 +423,7 @@ class Assembler extends AsmEmitter.WithLiterals with FormatExtension with CbcAss
   def add(w: Width, d: IR, l: IR, r: IR): Unit = fextOp(w, 0x42, 0x43, d, l, r)
   def sub(w: Width, d: IR, l: IR, r: IR): Unit = fextOp(w, 0x44, 0x45, d, l, r)
   def mul(w: Width, d: IR, l: IR, r: IR): Unit = fextOp(w, 0x46, 0x47, d, l, r)
+  def pow(w: Width, d: IR, l: IR, r: IR): Unit = shouldNotReachHere("not implemented")
   def and(w: Width, d: IR, l: IR, r: IR): Unit = fextOp(w, 0x5C, 0x5D, d, l, r)
   def or(w: Width, d: IR, l: IR, r: IR): Unit = fextOp(w, 0x5E, 0x5F, d, l, r)
   def xor(w: Width, d: IR, l: IR, r: IR): Unit = fextOp(w, 0x60, 0x61, d, l, r)
@@ -433,6 +438,7 @@ class Assembler extends AsmEmitter.WithLiterals with FormatExtension with CbcAss
   def addi(w: Width, d: IR, l: IR, imm: Long): Unit = fextOp(w, 0x58, 0x59, d, l, imm)
   def subi(w: Width, d: IR, l: IR, imm: Long): Unit = addi(w, d, l, -imm)
   def muli(w: Width, d: IR, l: IR, imm: Long): Unit = fextOp(w, 0x5A, 0x5B, d, l, imm)
+  def powi(w: Width, d: IR, l: IR, imm: Long): Unit = shouldNotReachHere("not implemented")
   def andi(w: Width, d: IR, l: IR, imm: Long): Unit = fextOp(w, 0x62, 0x63, d, l, imm)
   def ori(w: Width, d: IR, l: IR, imm: Long): Unit = fextOp(w, 0x64, 0x65, d, l, imm)
   def xori(w: Width, d: IR, l: IR, imm: Long): Unit = fextOp(w, 0x66, 0x67, d, l, imm)
@@ -630,6 +636,7 @@ class Assembler extends AsmEmitter.WithLiterals with FormatExtension with CbcAss
   def cuadd(d: IR, l: IR, r: IR, w: Width): Unit = checkedOp(0x10, w, d, l, r)
   def cusub(d: IR, l: IR, r: IR, w: Width): Unit = checkedOp(0x14, w, d, l, r)
   def cumul(d: IR, l: IR, r: IR, w: Width): Unit = checkedOp(0x18, w, d, l, r)
+  def cpow (d: IR, l: IR, r: IR, w: Width): Unit = notImplemented("not implemented")
 
   def caddi (d: IR, l: IR, r: Long, w: Width): Unit = checkedOp(0x1C, w, d, l, r)
   def csubi (d: IR, l: IR, r: Long, w: Width): Unit = checkedOp(0x20, w, d, l, r)
@@ -637,6 +644,7 @@ class Assembler extends AsmEmitter.WithLiterals with FormatExtension with CbcAss
   def cuaddi(d: IR, l: IR, r: Long, w: Width): Unit = checkedOp(0x28, w, d, l, r)
   def cusubi(d: IR, l: IR, r: Long, w: Width): Unit = checkedOp(0x2c, w, d, l, r)
   def cumuli(d: IR, l: IR, r: Long, w: Width): Unit = checkedOp(0x30, w, d, l, r)
+  def cpowi (d: IR, l: IR, r: Long, w: Width): Unit = notImplemented("not implemented")
 
 
   def eopPlain(dst: IR, obj: IR): Unit = emit.op(0x30).r4_r4(dst, obj)

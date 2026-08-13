@@ -15,6 +15,7 @@ import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.common.XString.ascii
 import com.huawei.excelsior.jet.compiler.*
 import com.huawei.excelsior.jet.compiler.RTSProc
+import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.abi.ABI.makeABISignature
 import com.huawei.excelsior.jet.compiler.bytecode.{ArithOp, BytecodePosition}
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
@@ -1855,7 +1856,7 @@ trait CangjieLLVMIRParser
 
             if (refType.isDeferred || refType.hasDeferredSuper) {
               val sourceMT = MethodType(sig)
-              val (abiSig, specialParams) = makeABISignature(sig, Some(fromSymType(refType)))
+              val (abiSig, specialParams) = makeABISignature(sig, ABI.Description(Some(fromSymType(refType))))
               val mt = MethodType(abiSig, specialParams)
               val target = new BitcodeMethodReference(mt, sourceMT, mak, CompiledType(refType), xstr(name))
               callImpl(target, invokeArgs)
@@ -1930,7 +1931,7 @@ trait CangjieLLVMIRParser
 
             val sig = resolver.functionSignature(ref, vararg = false)
             val refType = asClassType(resolver.symType(ref.refType).get)
-            val (abiSig, specialParams) = makeABISignature(sig, Some(tv))
+            val (abiSig, specialParams) = makeABISignature(sig, ABI.Description(Some(tv)))
             val mt = MethodType(abiSig, specialParams)
 
             val name = resolver.symName(ref)
@@ -2474,7 +2475,7 @@ trait CangjieLLVMIRParser
           // TODO: consider making all record instance methods mut-functions and adapt parameters in runtime by resolved method reference
           val hasMutParameter = BitcodeMethodReference.isCangjieMut(CompiledType(refType), name)
           val receiver = Option.when(!isStatic && !hasMutParameter)(fromSymType(refType))
-          val (abiSig, specialParameters) = makeABISignature(cjSig, receiver, hasMutParameter = hasMutParameter, isCFunc = isCFunc)
+          val (abiSig, specialParameters) = makeABISignature(cjSig, ABI.Description(receiver, hasMutParam = hasMutParameter, isCFunc = isCFunc))
           val mt = MethodType(abiSig, specialParameters)
           val mak =
             if (hasMutParameter) MAK.MUT
@@ -2622,7 +2623,7 @@ trait CangjieLLVMIRParser
         (None, args)
       }
 
-      val ugDescParam = Option.when(target.method.hasUGDescParameter) {
+      val ugDescParam = Option.when(shouldNotReachHere("ugdesc")) {
         IntegralConst(AddrType)(0)
       }
 
@@ -2823,7 +2824,7 @@ trait CangjieLLVMIRParser
       assert(argTys forall (!_.isZST), s"$fnTy indirect call is not expected to have ZST arguments $argTys")
 
       val ms = MethodSignature(ty2sig(fnTy.retTy), fnTy.paramTys.map(ty2sig).toSeq)
-      val (abiSig, specialParams) = makeABISignature(ms, isCFunc = true)
+      val (abiSig, specialParams) = makeABISignature(ms, ABI.Description(isCFunc = true))
       val mt = MethodType(abiSig, CCALL, CallKind.CJ_FOREIGN, specialParams, fnTy.vararg)
       val mr = new MethodReference(mt, MAK.STATIC)
 

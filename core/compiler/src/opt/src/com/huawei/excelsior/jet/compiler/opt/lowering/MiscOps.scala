@@ -272,6 +272,7 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
       case SUB => lowerCheckedSub(n)
       case MUL => lowerCheckedMul(n)
       case DIV => lowerCheckedDiv(n)
+      case POW => notImplemented("not implemented")
     }
   }
 
@@ -421,6 +422,7 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
 
   protected def copyRecordByFields(t: SignatureType, dst: Node, src: Node): Unit = {
     assert(t.isRecord, t)
+    assert(!t.isVariableSizeType, t)
     if (isStandalone) {
       val (dstObj, dstFields) = dst match {
         case dst: GetFieldSeqRef => (Some(dst.obj), dst.fields)
@@ -460,12 +462,30 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
   }
 
   private def copyRecordByFieldSeq(refType: SignatureType,
-                                     dstObj: Option[Node], dstFields: Seq[CangjieFieldReference],
-                                     srcObj: Option[Node], srcFields: Seq[CangjieFieldReference]): Unit = {
+                                   dstObj: Option[Node], dstFields: Seq[CangjieFieldReference],
+                                   srcObj: Option[Node], srcFields: Seq[CangjieFieldReference]): Unit = {
     assert(refType.isRecord, refType)
     assert(isStandalone)
 
+    def adjustUnion(n: Node, fields: Seq[CangjieFieldReference]): Node = n.tpe match {
+      case RecordAddrType(_: SignatureType.UnionBasedEnum) => ReinterpretCast(n.tpe, ValueType(fields.head.refType))(n)
+      case _ => n
+    }
+
     val fields = (refType: @unchecked) match {
+      case refType: SignatureType.OptionLikeEnum =>
+        assert(!refType.isNullableOption && !refType.someType.isTypeVariable, refType)
+        for ((fieldType, idx) <- Iterator(SignatureType.Boolean, refType.someType).zipWithIndex)
+          yield CangjieFieldReference(idx, None, refType, fieldType)
+      case refType: SignatureType.UnionBasedEnum =>
+        // FIXME: support proper union-based enum copy instruction
+        for {
+          params <- refType.info.constructors.iterator.map(_.params)
+          (t, i) <- params.iterator.zipWithIndex if !t.isZST
+        } yield CangjieFieldReference(i, None, SignatureType.Tuple(params), t)
+        
+      case refType: SignatureType.CangjieEnum =>
+        shouldNotReachHere(refType)
       case refType: SignatureType.Tuple =>
         for ((t, i) <- refType.params.iterator.zipWithIndex if !t.isZST)
           yield CangjieFieldReference(i, None, refType, t)
@@ -477,16 +497,19 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
           yield CangjieFieldReference(f.getFieldIndex, Some(f), refType, f.getType)
     }
     for (fr <- fields) {
-      if (fr.fieldType.isRecord) {
+      if (fr.fieldType.isZST) {
+        // nothing to do
+
+      } else if (fr.fieldType.isRecord) {
         copyRecordByFieldSeq(fr.fieldType, dstObj, dstFields :+ fr, srcObj, srcFields :+ fr)
 
       } else {
         val srcValue = srcObj match {
-          case Some(src) => LoadFieldSeq(srcFields :+ fr)(src)
+          case Some(src) => LoadFieldSeq(srcFields :+ fr)(adjustUnion(src, srcFields :+ fr))
           case None => LoadStaticFieldSeq(srcFields :+ fr)
         }
         dstObj match {
-          case Some(dst) => StoreFieldSeq(dstFields :+ fr)(dst, srcValue)
+          case Some(dst) => StoreFieldSeq(dstFields :+ fr)(adjustUnion(dst, dstFields :+ fr), srcValue)
           case None => StoreStaticFieldSeq(dstFields :+ fr)(srcValue)
         }
       }

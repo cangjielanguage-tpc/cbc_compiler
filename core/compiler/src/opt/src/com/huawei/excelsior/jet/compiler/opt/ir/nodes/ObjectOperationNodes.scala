@@ -945,7 +945,7 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
   }
 
   object InstanceOf {
-    case class Proto private[InstanceOf] (targetType: SignatureType) extends FixedArgs[InstanceOf](ValueType(targetType.symType))(IntType) {
+    case class Proto private[InstanceOf] (targetType: SignatureType) extends FixedArgs[InstanceOf](ValueType.fromSig(targetType))(IntType) {
       def newInstance() = new InstanceOf(this)
     }
 
@@ -954,10 +954,10 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
   }
 
   object AnyInstanceOf {
-    def unapply(x: Node): Option[(SymClassType, Node)] = condOpt(x) {
-      case InstanceOf(tpe, obj) => (asClassType(tpe), obj)
-      case ControlledInstanceOf(tpe, obj) => (asClassType(tpe), obj)
-      case BitcodeDeferred.InstanceOf(tpe, obj) => (asClassType(tpe), obj)
+    def unapply(x: Node): Option[(SignatureType, Node)] = condOpt(x) {
+      case InstanceOf(tpe, obj) => (tpe, obj)
+      case ControlledInstanceOf(tpe, obj) => (tpe, obj)
+      case BitcodeDeferred.InstanceOf(tpe, obj) => (tpe, obj)
     }
   }
 

@@ -14,9 +14,9 @@ import com.huawei.excelsior.jet.assembler.cbc.CbcTypeKind.{F32, F64}
 import com.huawei.excelsior.jet.assembler.cbc.{CbcAssembler, CbcFileFormat, CbcTypeKind, MemExpr, StackSlot, Register as Rg}
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IRZ}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W32, W64}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Common, Sign, Width}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.LoadAccessKind.{LD_F32, LD_F64, LD_REF}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W16, W32, W64, W8}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Checked, Common, Sign, Width}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.LoadAccessKind.{LD_F32, LD_F64, LD_REC, LD_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.StoreAccessKind.{ST_F32, ST_F64, ST_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.{LoadAccessKind, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.RegGroup.{DivCheck, NullCheck}
@@ -43,13 +43,15 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   private val FILLER = 0
   private implicit def _asm: ForkedAssembler = this
 
+  private val IR_ACC_IDX = 14
+
   /** Save gc map state gathered using [[LivenessAnalyzer]] */
   def saveState(): Unit = analyzer match {
     case analyzer: LivenessAnalyzer => livenessCollector.saveStates(segment, analyzer.state.toSeq)
     case _ => 
   }
 
-  def collectLiveness: Seq[LivenessInfoCollector.LiveState] = livenessCollector.collect
+  def collectLiveness: LivenessInfoCollector.AllStates = livenessCollector.collect
 
   def stream = new SegmentByteStream(segment)
   def instr(action: => Unit): Unit = analyzer.op(action)
@@ -71,6 +73,12 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
     stream
       .opc8(if width == W32 then Opcode.Mov32 else Opcode.Mov64)
       .bits(_.w4(dst).w4(src))
+  }
+
+  def movAcc(src: IR): Unit = instr {
+    stream
+      .opc8(Opcode.Mov64)
+      .bits(_.w4(IR_ACC_IDX).w4(src))
   }
 
   def movRef(dst: IR, src: IR): Unit = instr {
@@ -121,6 +129,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   def add(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genBinary(Common.Add, w, d, l, r)
   def sub(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genBinary(Common.Sub, w, d, l, r)
   def mul(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genBinary(Common.Mul, w, d, l, r)
+  def pow(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genBinary(Common.Pow, w, d, l, r)
   def and(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genBinary(Common.And, w, d, l, r)
   def or(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genBinary(Common.Or, w, d, l, r)
   def xor(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genBinary(Common.Xor, w, d, l, r)
@@ -134,6 +143,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   def subi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = addi(w, d, l, -imm)
   def addi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genBinaryImm(Common.Add, w, d, l, imm)
   def muli(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genBinaryImm(Common.Mul, w, d, l, imm)
+  def powi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genBinaryImm(Common.Pow, w, d, l, imm)
   def andi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genBinaryImm(Common.And, w, d, l, imm)
   def ori(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genBinaryImm(Common.Or, w, d, l, imm)
   def xori(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genBinaryImm(Common.Xor, w, d, l, imm)
@@ -144,19 +154,87 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   def lsli(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genBinaryImm(Common.LSL, w, d, l, imm)
   def lsri(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genBinaryImm(Common.LSR, w, d, l, imm)
   def asri(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genBinaryImm(Common.ASR, w, d, l, imm)
-  def cadd(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = notImplemented("checked ops")
-  def csub(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = notImplemented("checked ops")
-  def cmul(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = notImplemented("checked ops")
-  def cdiv(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = notImplemented("checked ops")
-  def cuadd(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = notImplemented("checked ops")
-  def cusub(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = notImplemented("checked ops")
-  def cumul(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = notImplemented("checked ops")
-  def caddi(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = notImplemented("checked ops")
-  def csubi(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = notImplemented("checked ops")
-  def cmuli(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = notImplemented("checked ops")
-  def cuaddi(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = notImplemented("checked ops")
-  def cusubi(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = notImplemented("checked ops")
-  def cumuli(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = notImplemented("checked ops")
+  def cadd(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genCheckedBinary(Checked.Add, w, d, l, r)
+  def csub(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genCheckedBinary(Checked.Sub, w, d, l, r)
+  def cmul(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genCheckedBinary(Checked.Mul, w, d, l, r)
+  def cdiv(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genCheckedBinary(Checked.Div, w, d, l, r)
+  def cuadd(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genCheckedBinary(Checked.UAdd, w, d, l, r)
+  def cusub(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genCheckedBinary(Checked.USub, w, d, l, r)
+  def cumul(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genCheckedBinary(Checked.UMul, w, d, l, r)
+  def caddi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.Add, w, d, l, imm)
+  def csubi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.Sub, w, d, l, imm)
+  def cmuli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.Mul, w, d, l, imm)
+  def cuaddi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.UAdd, w, d, l, imm)
+  def cusubi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.USub, w, d, l, imm)
+  def cumuli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.UMul, w, d, l, imm)
+  def cpow(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genCheckedBinary(Checked.Pow, w, d, l, r)
+  def cpowi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.Pow, w, d, l, imm)
+
+  def atomicLoad(dst: IR, obj: IR, f: FieldReference): Unit = {
+    analyzer.useRef(obj)
+    if (f.fieldType.isReference) {
+      analyzer.ref(dst)
+    } else {
+      analyzer.prim(dst)
+    }
+    stream
+      .opc8(Opcode.AtomicLoad)
+      .bits(_.w4(dst).w4(obj))
+      .sym16(f)
+  }
+
+  def atomicStore(src: IR, obj: IR, f: FieldReference): Unit = {
+    analyzer.useRef(obj)
+    if (f.fieldType.isReference) {
+      analyzer.useRef(src)
+    } else {
+      analyzer.usePrim(src)
+    }
+    stream
+     .opc8(Opcode.AtomicStore)
+     .bits(_.w4(src).w4(obj))
+     .sym16(f)
+  }
+
+  def cas(dst: IR, obj: IR, src1: IR, src2: IR, f: FieldReference): Unit = {
+    analyzer.useRef(obj)
+    analyzer.prim(dst)
+    if (f.fieldType.isReference) {
+      analyzer.useRef(src1)
+      analyzer.useRef(src2)
+    } else {
+      analyzer.usePrim(src1)
+      analyzer.usePrim(src2)
+    }
+    stream
+      .opc8(Opcode.CAS)
+      .bits(_.w4(dst).w4(obj))
+      .bits(_.w4(src1).w4(src2))
+      .sym16(f)
+  }
+
+  def atomicSwap    (dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicSwap,     dst, obj, src, f)
+  def atomicFetchAdd(dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicFetchAdd, dst, obj, src, f)
+  def atomicFetchSub(dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicFetchSub, dst, obj, src, f)
+  def atomicFetchAnd(dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicFetchAnd, dst, obj, src, f)
+  def atomicFetchOr (dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicFetchOr,  dst, obj, src, f)
+  def atomicFetchXor(dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicFetchXor, dst, obj, src, f)
+
+  private def genAtomicOp(o: Opcode, dst: IR, obj: IR, src: IR, f: FieldReference): Unit = {
+    analyzer.useRef(obj)
+    if (f.fieldType.isReference) {
+      analyzer.ref(dst)
+      analyzer.useRef(src)
+    } else {
+      analyzer.prim(dst)
+      analyzer.usePrim(src)
+    }
+    stream
+      .opc8(o)
+      .bits(_.w4(dst).w4(obj))
+      .bits(_.w4(src).w4(0))
+      .sym16(f)
+  }
 
   private def floatOperation(w: Width, op: FloatOperations, r1: FR | IR, r2: FR | IR, r3: FR | IR) = {
     stream
@@ -188,6 +266,25 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
 
   def movf2i(d: IR, s: FR, w: Width): Unit = instr {
     floatOperation(w, FloatOperations.F2i, d, d, s); analyzer.prim(d)
+  }
+
+  private def genCheckedBinary(op: Checked, w: AsmWidth, d: IR, l: IR, r: IR): Unit = instr {
+    analyzer.prim(d)
+    analyzer.usePrim(l)
+    analyzer.usePrim(r)
+    stream
+      .opc8(Opcode.ThreeAddress.checkedBinary(Width(w)))
+      .bits(_.w4(op.ordinal).w4(d))
+      .bits(_.w4(l).w4(r))
+  }
+
+  private def genCheckedBinaryImm(op: Checked, w: AsmWidth, d: IR, l: IR, imm: Long): Unit = instr {
+    analyzer.trans(d, l)
+    stream
+      .opc8(Opcode.ThreeAddress.checkedBinaryImm(Width(w)))
+      .bits(_.w4(op.ordinal).w4(d))
+      .bits(_.w4(l).w4(low4(imm)))
+      .sleb(scut4(imm))
   }
 
   private def genBinary(op: Common, w: AsmWidth, d: IR, l: IR, r: IR): Unit = instr {
@@ -249,8 +346,8 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       .sym16(methodId)
   }
 
-  def spawn(closure: IR, retType: Signature): Unit = instr {
-    regSymGroup(RegSymGroup.Spawn, analyzer.useRef(closure), retType)
+  def spawn(closure: IR, closureType: Signature): Unit = instr {
+    regSymGroup(RegSymGroup.Spawn, analyzer.useRef(closure), closureType)
     saveState()
   }
 
@@ -349,23 +446,126 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       .sym16(fr)
   }
 
+  def tagGeneric(dst: IR, src: IR, underlyingTi: IR, optionType: Signature): Unit = instr {
+    analyzer.prim(dst)
+    analyzer.useAny(src)
+    analyzer.usePrim(underlyingTi)
+    stream
+      .opc8(Opcode.TagGeneric)
+      .bits(_.w4(dst).w4(src))
+      .bits(_.w4(underlyingTi).w4(underlyingTi))
+      .sym16(optionType)
+  }
+
+  def payloadGeneric(dst: IR, src: IR, underlyingTi: IR, optionTi: IR, optionType: Signature): Unit = instr {
+    analyzer.ref(dst)
+    analyzer.useAny(src)
+    analyzer.usePrim(underlyingTi)
+    analyzer.usePrim(optionTi)
+    stream
+      .opc8(Opcode.PayloadGeneric)
+      .bits(_.w4(dst).w4(src))
+      .bits(_.w4(underlyingTi).w4(optionTi))
+      .sym16(optionType)
+    saveState()
+  }
+
+  def newNoneGeneric(dst: IR, underlyingTi: IR, optionTi: IR, optionType: Signature): Unit = instr {
+    analyzer.ref(dst)
+    analyzer.usePrim(underlyingTi)
+    analyzer.usePrim(optionTi)
+    stream
+      .opc8(Opcode.NewNoneGeneric)
+      .bits(_.w4(dst).w4(underlyingTi))
+      .bits(_.w4(optionTi).w4(optionTi))
+      .sym16(optionType)
+    saveState()
+  }
+
+  def newSomeGeneric(dst: IR, src: IR, underlyingTi: IR, optionTi: IR, optionType: Signature): Unit = instr {
+    analyzer.ref(dst)
+    analyzer.useAny(src)
+    analyzer.usePrim(underlyingTi)
+    analyzer.usePrim(optionTi)
+    stream
+      .opc8(Opcode.NewSomeGeneric)
+      .bits(_.w4(dst).w4(src))
+      .bits(_.w4(underlyingTi).w4(optionTi))
+      .sym16(optionType)
+    saveState()
+  }
+
+  def assignGeneric(dst: IR, src: IR, baseTi: IR): Unit = instr {
+    analyzer.useRef(dst)
+    analyzer.useRef(src)
+    analyzer.usePrim(baseTi)
+    stream
+      .opc8(Opcode.AssignGeneric)
+      .bits(_.w4(dst).w4(src))
+      .bits(_.w4(baseTi).w4(0))
+    saveState()
+  }
+
+  def instanceOfGeneric(dst: IR, obj: IR, typeInfo: IR): Unit = instr {
+    analyzer.prim(dst)
+    analyzer.useRef(obj)
+    analyzer.usePrim(typeInfo)
+    stream
+      .opc8(Opcode.InstanceOfGeneric)
+      .bits(_.w4(dst).w4(obj))
+      .bits(_.w4(typeInfo).w4(0))
+  }
+
+  private def checkAotData(opc: (RegSymGroup | Opcode), ref: MethodReference): Unit = {
+    ((opc, ref.aotData): @unchecked) match {
+      case (_, None) =>
+      case (RegSymGroup.CallInterf, Some(_: CbcFileFormat.InterfaceCallAotData)) =>
+      case (Opcode.CallInterfGeneric, Some(_: CbcFileFormat.InterfaceCallAotData)) =>
+      case (RegSymGroup.CallDirect, Some(_: CbcFileFormat.DirectCallAotData)) =>
+      case (RegSymGroup.CallVirt, Some(_: CbcFileFormat.VirtualCallAotData)) =>
+    }
+  }
+
   def callInterf(rd: IR, ref: MethodReference): Unit = {
+    checkAotData(RegSymGroup.CallInterf, ref)
     regSymGroup(RegSymGroup.CallInterf, rd, ref)
     saveState()
   }
 
+  def callInterfGeneric(outerTiLoc: (IR | StackSlot.Untyped), ref: MethodReference): Unit = {
+    checkAotData(Opcode.CallInterfGeneric, ref)
+    val outerTiIdx = outerTiLoc match {
+      case x: IR => x.idx
+      case x: StackSlot.Untyped => x.slot + IR.count
+    }
+    stream
+      .opc8(Opcode.CallInterfGeneric)
+      .write16(outerTiIdx)
+      .sym16(ref)
+    saveState()
+  }
+
   def callDirect(rd: IR, ref: MethodReference): Unit = {
+    checkAotData(RegSymGroup.CallDirect, ref)
     regSymGroup(RegSymGroup.CallDirect, rd, ref)
     saveState()
   }
 
   def callVirt(rd: IR, ref: MethodReference): Unit = {
+    checkAotData(RegSymGroup.CallVirt, ref)
     regSymGroup(RegSymGroup.CallVirt, rd, ref)
     saveState()
   }
 
   def callClosure(rd: IR, tpe: Signature): Unit = {
+    assert(tpe.isInstanceOf[CbcFileFormat.Functional])
     regSymGroup(RegSymGroup.CallClosure, rd, tpe)
+    saveState()
+  }
+
+  def callClosureGeneric(rd: IR, tpe: Signature): Unit = {
+    assert(tpe.isInstanceOf[CbcFileFormat.Functional])
+    regSymGroup(RegSymGroup.CallClosureGeneric, rd, tpe)
     saveState()
   }
 
@@ -378,6 +578,40 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
     stream
       .opc8(Opcode.PrepareRecord)
       .ts16(ts)
+  }
+
+  def loadRawMemory(dst: Rg, base: IR, ldk: LoadAccessKind, offset: Long): Unit = {
+    lazy val idst = dst.asInstanceOf[IR]
+    lazy val fdst = dst.asInstanceOf[FR]
+
+    ldk match {
+      case LD_F32 =>
+      case LD_F64 =>
+      case LD_REC => analyzer.rec(idst)
+      case LD_REF => analyzer.ref(idst)
+      case _      => analyzer.prim(idst) // records?
+    }
+
+    // TODO: optimize VLE encoding, so next `sleb` will be present only if low4 `offset` is too big.
+    stream
+      .opc8(Opcode.LoadRawMemory)
+      .bits(_.w4(dst).w4(analyzer.useAny(base)))
+      .bits(_.w4(ldk).w4(low4(offset)))
+      .sleb(scut4(offset))
+  }
+
+  def storeRawMemory(src: IR | FR, base: IR, stk: StoreAccessKind, offset: Long): Unit = {
+    src match {
+      case x: IR => analyzer.useAny(x)
+      case _ =>
+    }
+
+    // TODO: optimize VLE encoding, so next `sleb` will be present only if low4 `offset` is too big.
+    stream
+      .opc8(Opcode.StoreRawMemory)
+      .bits(_.w4(src).w4(analyzer.useAny(base)))
+      .bits(_.w4(stk).w4(low4(offset)))
+      .sleb(scut4(offset))
   }
 
   def jmp(target: Label): Unit = doJmp(target)
@@ -509,9 +743,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   }
 
   def zerorefs(ts: StackSlot.Typed): Unit = {
-    stream
-      .opc8(Opcode.ZeroRefs)
-      .ts16(ts)
+    prepareRecord(ts)
   }
 
   def lenarr(dst: IR, ra: IR): Unit = instr {
@@ -524,6 +756,13 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
     stream
       .opc8(Opcode.ArrayIndexCheck)
       .bits(_.w4(analyzer.usePrim(rl)).w4(analyzer.usePrim(ri)))
+  }
+
+  def loadUntypedAcc(ldk: LoadAccessKind, src: StackSlot.Untyped): Unit = instr {
+    stream
+      .opc8(Opcode.LoadUntyped)
+      .bits(_.w4(IR_ACC_IDX).w4(ldk))
+      .write16(src.slot)
   }
 
   def loadUntyped(dst: Rg, ldk: LoadAccessKind, src: StackSlot.Untyped): Unit = instr {
@@ -802,7 +1041,7 @@ object Assembler {
     case NewArr
     case GcPoint
     case PrepareRecord
-    case ZeroRefs
+    case Unused
     case Scc32
     case Scc64
     case SccImm32
@@ -842,6 +1081,32 @@ object Assembler {
     case UnboxRec
     case Offset
     case AddOffset
+    case TagGeneric
+    case PayloadGeneric
+    case NewNoneGeneric
+    case NewSomeGeneric
+    case LoadRawMemory
+    case StoreRawMemory
+    case CallInterfGeneric
+    case AssignGeneric
+    case InstanceOfGeneric
+    case AtomicLoad
+    case AtomicStore
+    case CAS
+    case AtomicSwap
+    case AtomicFetchAdd
+    case AtomicFetchSub
+    case AtomicFetchAnd
+    case AtomicFetchOr
+    case AtomicFetchXor
+    case CBinary8
+    case CBinary16
+    case CBinary32
+    case CBinary64
+    case CBinaryImm8
+    case CBinaryImm16
+    case CBinaryImm32
+    case CBinaryImm64
   }
 
   enum MemOpcode extends Ordinal {
@@ -879,6 +1144,7 @@ object Assembler {
     case SpawnFuture
     case CallClosure
     case NewClosure
+    case CallClosureGeneric
   }
 
   enum RegGroup extends Ordinal {
@@ -964,6 +1230,20 @@ object Assembler {
       def binary(w: Width): Opcode = w match {
         case W32 => Opcode.Binary32
         case W64 => Opcode.Binary64
+      }
+
+      def checkedBinary(w: Width): Opcode = w match {
+        case W8  => Opcode.CBinary8
+        case W16 => Opcode.CBinary16
+        case W32 => Opcode.CBinary32
+        case W64 => Opcode.CBinary64
+      }
+
+      def checkedBinaryImm(w: Width): Opcode = w match {
+        case W8  => Opcode.CBinaryImm8
+        case W16 => Opcode.CBinaryImm16
+        case W32 => Opcode.CBinaryImm32
+        case W64 => Opcode.CBinaryImm64
       }
     }
   }

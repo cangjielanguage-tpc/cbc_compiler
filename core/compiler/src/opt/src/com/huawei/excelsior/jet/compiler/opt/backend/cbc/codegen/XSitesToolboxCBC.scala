@@ -29,7 +29,9 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
   final def needXSiteImpl(node: Node): Boolean = node match {
     case _: New | _: NewArray | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => true // can throw and not lowered to calls
     case _: InterfaceCastCBC => true
-    case _: Box | _: SpawnFuture => true
+    case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeqGeneric |
+         _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric |
+         _: AssignGeneric => true
     case _ => super.needXSite(node)
   }
 
@@ -39,7 +41,9 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
   override def xSiteKind(node: Node): XSiteKind = node match {
     case _: New | _: NewArray | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => XSiteKind.CALL
     case _: InterfaceCastCBC => XSiteKind.CALL
-    case _: Box | _: SpawnFuture => XSiteKind.CALL
+    case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeqGeneric |
+         _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric |
+         _: AssignGeneric => XSiteKind.CALL
     case WithImplicitCheck(_: DivisorCheck) => XSiteKind.DIV_WITH_CHECK
     case _ => super.xSiteKind(node)
   }
@@ -65,6 +69,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
     // Local liveness analysis of CodeGeneratorCBC requires reference constants on registers/locals
     // to be in precise GC maps along with other references
     case _: AJString | _: ConstString | _: AnyNull if n.resource != Resources.Immediate && env.enabled(LivenessHintsGeneration) => true
+    case StackAlloc.Local(t) => t.isTraceableReference
     case st: StackAlloc if st.tpe.isTraceableRefType && n.resource != Resources.Immediate => shouldNotReachHere("StackAlloc with non-immediate resource is unsupported")
 
     case _ => super.willBeCollectedInGCMap(n)

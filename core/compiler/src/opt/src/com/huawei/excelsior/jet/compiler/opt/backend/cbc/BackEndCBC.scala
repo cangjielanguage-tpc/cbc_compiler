@@ -64,7 +64,7 @@ trait BackEndCBC
   object Imm32  { def unapply(n: Node): Option[Int] = condOpt(n) { case IntegralConst(c) if isNBitsSigned(c, 32) => c.toInt } }
 
   object CmpAnyInstanceOf {
-    def unapply(cmp: Cmp): Option[(Node, ClassType, Node)] = condOpt(cmp) {
+    def unapply(cmp: Cmp): Option[(Node, SignatureType, Node)] = condOpt(cmp) {
       case ZeroComparison(n @ AnyInstanceOf(tpe, obj)) => (n, tpe, obj)
     }
   }
@@ -85,11 +85,11 @@ trait BackEndCBC
     val xgen = new XTableGenerator(codeUnit.method, rtOffset)(env)
     val packedXInfo = xgen.packXInfo(xinfo, markedRegions = Seq.empty)
 
-    val stackAllocatedTypeSigs = all[StackAlloc].map(_.slot).collect {
+    val stackAllocatedTypeSigs = all[HasFrameSlot].map(_.slot).collect {
       case x: TypedFrameSlotCBC => x
     }.toArray.sortBy(_.index).map(_.tpe).toSeq
 
-    val variablesSizeTypes = all[StackAlloc].map(_.slot).collect {
+    val variablesSizeTypes = all[HasFrameSlot].map(_.slot).collect {
       case x: OHMSlotCBC => x
     }.toArray.sortBy(_.index).map(_.kind.allocType).toSeq
 

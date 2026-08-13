@@ -11,14 +11,15 @@ package com.huawei.excelsior.jet.compiler.chir
 import com.google.flatbuffers.Table
 import com.huawei.excelsior.common.CodeHelpers.notImplemented
 import com.huawei.excelsior.jet.common.XString.xstr
+import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker.NO_LLVM_INDEX
 import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
-import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTable, UMLWriter}
+import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTable, CangjieEnumInfo, UMLWriter}
 import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.*
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier
-import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.{PUBLIC, STATIC}
+import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.{ABSTRACT, PUBLIC, STATIC}
 import com.huawei.excelsior.jet.compiler.options.BoolOption
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.compiler.symlevel.{GenericInfo, Method, SignatureType, ClassType as SymClassType, Type as SymType}
@@ -63,31 +64,45 @@ object CHIRBuilder {
 
             val name = resolver.symName(d)
 
-            if (!resolver.isGenericInstantiated(base)) {
-              val genericInfo = resolver.genericInfo(d)
-              val isInterface = d match {
-                case d: ClassDef => !d.isClass
-                case _ => false
-              }
-              asClassType(resolver.symType(d).getOrElse {
-                d match {
-                  case d: ClassDef =>
-                    val modifiers = resolver.symModifiers(d.base.base.attributes).value
-                    if (isInterface) {
-                      builder.addInterface(symPackage, name, modifiers, isCangjie = true, genericInfo)
-                    } else {
-                      builder.addClass(symPackage, name, modifiers, isCangjie = true, isCangjieLambda = false, genericInfo)
-                    }
-                  case d: (StructDef | EnumDef) => // TODO: support proper Enum
-                    builder.addRecord(symPackage, name, genericInfo)
-                  case d: ExtendDef =>
-                    builder.addClass(symPackage, name, Modifiers(Modifier.PUBLIC).value, isCangjie = true, isCangjieLambda = false, genericInfo)
-                }
-              })
-            } else {
-              // generic_instantiated
-              null
+            val genericInfo = resolver.genericInfo(d)
+            val isInterface = d match {
+              case d: ClassDef => !d.isClass
+              case _ => false
             }
+            asClassType(resolver.symType(d).getOrElse {
+              d match {
+                case d: ClassDef =>
+                  val modifiers = resolver.symModifiers(d.base.base.attributes).value
+                  if (isInterface) {
+                    builder.addInterface(symPackage, name, modifiers, isCangjie = true, genericInfo)
+                  } else {
+                    builder.addClass(symPackage, name, modifiers, isCangjie = true, isCangjieLambda = false, genericInfo)
+                  }
+
+                case d: StructDef =>
+                  builder.addRecord(symPackage, name, genericInfo)
+
+                case d: EnumDef =>
+                  val modifiers = resolver.symModifiers(d.base.base.attributes).value
+
+                  resolver.enumKind(d) match {
+                    case EnumKind.ClassBased =>
+                      // Create constructors
+                      for (i <- 0 until d.ctorsLength) {
+                        builder.addClass(symPackage, resolver.classBasedEnumConstructorName(name, i), modifiers, isCangjie = true, isCangjieLambda = false, genericInfo)
+                      }
+                    case _ =>
+                  }
+
+                  // Create main type
+                  val symType = builder.addClass(symPackage, name, modifiers, isCangjie = true, isCangjieLambda = false, genericInfo)
+                  builder.markAsEnum(symType)
+                  symType
+
+                case d: ExtendDef =>
+                  builder.addClass(symPackage, name, Modifiers(Modifier.PUBLIC).value, isCangjie = true, isCangjieLambda = false, genericInfo)
+              }
+            })
         }
 
         symTypeDefs(i) = t
@@ -98,55 +113,23 @@ object CHIRBuilder {
     for (id <- 1L to pkg.pkg.defsLength) makeSymType(id)
 
     // -----------------------------------------------
-    // Add global vars and funcs, create imported packages
-    // -----------------------------------------------
-
-    for (id <- 1L to pkg.pkg.valuesLength) pkg.getValue[Table](id) match {
-      case m: GlobalVar if m.base.declaredParent == 0 =>
-        // package global var
-        val symPkg = makePackage(m.base.packageName)
-        val name = resolver.symName(m)
-        val sig = resolver.typeSig(m.base.base.`type`, m)
-        val modifiers = (resolver.symModifiers(m.base.base.base.attributes) + Modifier.STATIC).value
-        val linkageName = resolver.linkageName(m)
-        val symField = builder.addField(symPkg, name, sig, linkageName, modifiers)
-        if (!resolver.isImported(m.base)) {
-          builder.markAsCHIRDef(symField, id.toInt)
-        }
-
-      case m: Function if m.base.declaredParent == 0 =>
-        // package global func
-        val symPkg = makePackage(m.base.packageName)
-        val name = resolver.symName(m)
-        val (sig, isCFunc, vararg) = resolver.functionSig(m, hasReceiver = false)
-        val modifiers = (resolver.symModifiers(m.base.base.base.attributes) + Modifier.STATIC).value
-        val genericInfo = resolver.genericInfo(m)
-        val genericFuncParamsCount = m.genericTypeParamsLength
-        val linkageName = resolver.linkageName(m)
-        val symMethod = builder.addMethod(symPkg, name, sig, linkageName, modifiers, genericInfo,
-          hasUGDesc = false, hasThisTypeInfoParam = false, isCFunc, hasOuterTypeInfo = false, genericFuncParamsCount,
-          isMutWrapper = false)
-        if (pkg.pkg.packageInitFunc == id) {
-          builder.markAsPackageInit(symMethod)
-        }
-        if (pkg.pkg.packageLiteralInitFunc == id) {
-          builder.markAsPackageLiteralInit(symMethod)
-        }
-        if (!resolver.isImported(m.base)) {
-          builder.markAsCHIRDef(symMethod, id.toInt)
-        }
-
-      case _ =>
-    }
-
-    // -----------------------------------------------
     // Fill symlevel type fields
     // -----------------------------------------------
 
     def fillFields(symType: SymClassType, d: PackageFormat.CustomTypeDef): Unit = {
+      // TODO: do better
+      if (symType.getName.startsWith("$Cl")) {
+        for (name <- Seq("$g", "$i")) {
+          val f = builder.addField(symType, name, SignatureType.Int64, null, Modifiers(PUBLIC).value)
+          if (symType.isCHIRDef) {
+            builder.markAsCHIRDef(f, NO_LLVM_INDEX)
+          }
+        }
+      }
+
       for (m <- d.instanceMemberVarsVector.iterator) {
         val name = m.name
-        val sig = resolver.typeSig(m.`type`, d)
+        val sig = resolver.typeSig(m.`type`)
         val modifiers = resolver.symModifiers(m.attributes)
         val linkageName = resolver.linkageName(m)
         val sym = builder.addField(symType, name, sig, linkageName, modifiers.value)
@@ -157,7 +140,7 @@ object CHIRBuilder {
 
       for (id <- d.staticMemberVarsVector.iterator; m = pkg.getValue[GlobalVar](id)) {
         val name = resolver.symName(m)
-        val sig = resolver.typeSig(m.base.base.`type`, d)
+        val sig = resolver.typeSig(m.base.base.`type`)
         val modifiers = resolver.symModifiers(m.base.base.base.attributes)
         assert(modifiers contains STATIC)
         val linkageName = resolver.linkageName(m)
@@ -168,11 +151,11 @@ object CHIRBuilder {
       }
     }
 
-    def referenceType[T <: ReferenceType](companion: CompiledType.Companion[T])(id: Long, enclosing: Table): T =
-      companion(resolver.typeSig(id, enclosing))
+    def referenceType[T <: ReferenceType](companion: CompiledType.Companion[T])(id: Long): T =
+      companion(resolver.typeSig(id))
 
     def resolveSuperinterface(id: Long, enclosing: Table): Option[RefInterfaceType] = {
-      val interf = referenceType(RefInterfaceType)(id, enclosing)
+      val interf = referenceType(RefInterfaceType)(id)
       // Skip std.core:Any from interface list
       Option.when(interf.symType.getName != "std.core:Any")(interf)
     }
@@ -181,43 +164,68 @@ object CHIRBuilder {
 
       pkg.getDef[Table](id) match {
         case d: StructDef =>
-          if (!resolver.isImported(d.base)) {
+          if (!resolver.isImported(d.base) && !resolver.isGenericInstantiated(d.base)) {
             builder.markAsCHIRDef(symType)
           }
           val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
-          builder.setSuperinterfaces(symType, superinterfaces)
+          if (!resolver.isGenericInstantiated(d.base)) {
+            builder.setSuperinterfaces(symType, superinterfaces)
+          }
           fillFields(symType, d.base)
 
         case d: ClassDef =>
-          if (!resolver.isImported(d.base)) {
+          val genericInstantiated = resolver.isGenericInstantiated(d.base)
+          if (!resolver.isImported(d.base) && !genericInstantiated) {
             builder.markAsCHIRDef(symType)
           }
-          val isInterface = symType.isInterface
-          val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
-          builder.setSuperinterfaces(symType, superinterfaces)
-          if (!isInterface) {
-            if (d.superClass != 0) {
-              val superclass = referenceType(RefClassType)(d.superClass, d)
-              builder.setSuperclass(symType, superclass)
+          if (!genericInstantiated) {
+            val isInterface = symType.isInterface
+            val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
+            
+            builder.setSuperinterfaces(symType, superinterfaces)
+            if (!isInterface) {
+              if (d.superClass != 0) {
+                val superclass = referenceType(RefClassType)(d.superClass)
+                builder.setSuperclass(symType, superclass)
+              }
             }
           }
           fillFields(symType, d.base)
 
         case d: EnumDef =>
+          val imported = resolver.isImported(d.base) || resolver.isGenericInstantiated(d.base)
+          if (!imported) {
+            builder.markAsCHIRDef(symType)
+          }
+
+          val ctorSigs = d.ctorsVector.toSeq.map(c => pkg.getType[FuncType](c.funcType))
+          val ctors = ctorSigs.map(_.base.argTysVector.toSeq.init).map(_.map(resolver.typeSig))
+
+          builder.setEnumInfo(symType, CangjieEnumInfo(ctors.map(CangjieEnumInfo.Constructor.apply)))
+
+          def addEnumField(clazz: SymClassType, name: String, sig: SignatureType): Unit = {
+            val field = builder.addField(clazz, name, sig, null, Modifiers(Modifier.PUBLIC).value)
+            if (!imported) {
+              builder.markAsCHIRDef(field, NO_LLVM_INDEX)
+            }
+          }
+
           resolver.enumKind(d) match {
-            case EnumKind.ZeroSized => // nothing to do
-            case EnumKind.PrimitiveBased => // nothing to do
-            case EnumKind.OptionLike(base) =>
-              resolver.typeSig(base, d) match {
-                case t: SignatureType.NullableWrapper.Base => // nothing to do - always nullable
-                case t =>
-                  builder.addField(symType, "tag", SignatureType.Boolean, null, Modifiers(Modifier.PUBLIC).value)
-                  builder.addField(symType, "payload", t, null, Modifiers(Modifier.PUBLIC).value)
+            case EnumKind.ClassBased =>
+              addEnumField(symType, "tag", SignatureType.UInt32)
+
+              for ((types, i) <- ctors.zipWithIndex) {
+                val ctorSymType = resolver.findClass(resolver.classBasedEnumConstructorName(symType.getName, i)).get
+                if (!imported) {
+                  builder.markAsCHIRDef(ctorSymType)
+                }
+                builder.setSuperclass(ctorSymType, RefClassType(symType))
+
+                for ((t, j) <- types.zipWithIndex) {
+                  addEnumField(ctorSymType, s"$$f$j", t)
+                }
               }
-            case EnumKind.UnionBased =>
-              builder.addField(symType, "tag", SignatureType.UInt32, null, Modifiers(Modifier.PUBLIC).value)
-            // TODO: add fields from largest constructor
-            case EnumKind.ClassBased => notImplemented(s"class-based enum ${d.base.identifier}")
+            case _ =>
           }
 
         case d: ExtendDef =>
@@ -239,7 +247,11 @@ object CHIRBuilder {
 
     val virtMethods = Array.fill[Method](pkg.pkg.valuesLength)(null)
 
-    def fillMethods(symType: SymClassType, d: PackageFormat.CustomTypeDef): Unit = {
+    def fillMethods(symType: SymClassType, d: PackageFormat.CustomTypeDef, typeSig: SignatureType): Unit = {
+      val rcvSig = typeSig match {
+        case typeSig: SignatureType.OptionLikeEnum if typeSig.someType.isTypeVariable => SignatureType.Box(typeSig)
+        case _ => typeSig
+      }
       for (id <- d.methodsVector.iterator; m = pkg.getValue[Function](id)) {
         val name = resolver.symName(m)
         val value = m.base.base
@@ -250,43 +262,55 @@ object CHIRBuilder {
         }
         val extendModifiers = if (resolver.isExtendedBaseFunc(m)) Modifiers(STATIC) else Modifiers.EMPTY
         val modifiers = resolver.symModifiers(value.base.attributes) | extendModifiers | mutModifiers
-        val (sig, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
+        val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
         val genericInfo = resolver.genericInfo(m)
         val genericFuncParamsCount = m.genericTypeParamsLength
         val hasOuterTypeInfo = true // All member functions have outer type info parameter
         val hasThisTypeInfoParam = modifiers.contains(STATIC)
         val linkageName = resolver.linkageName(m)
+        val hasMutParam = symType.isRecord && modifiers.contains(Modifier.CJ_MUT)
+        val rcvParam = if (hasMutParam) None else rcv map {
+          case t: SignatureType.OptionLikeEnum if t.someType.isTypeVariable => SignatureType.Box(t)
+          case t => t
+        }
 
         // TODO: explain
-        val symMethods = if (symType.isVariableSizeType && modifiers.contains(Modifier.CJ_MUT)) {
+        val symMethods = if (symType.isVariableSizeType) {
 
           val mutName = resolver.mutWithoutTI(name)
           val mutLinkageName = resolver.mutWithoutTI(linkageName)
           val mutMethod = builder.addMethod(symType, mutName, sig, mutLinkageName, modifiers.value, genericInfo,
-            hasUGDesc = false, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, genericFuncParamsCount,
-            isMutWrapper = false)
+            ABI.Description(rcvParam, hasMutParam, hasThisTypeInfoParam,
+            isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
 
           val mutWrapperName = name
           val mutWrapperLinkageName = linkageName
           val mutWrapperModifiers = modifiers - Modifier.CJ_MUT
+          val mutWrapperHasMutParam = false
+          val mutWrapperReceiver = Some(SignatureType.Box(rcvSig))
           val mutWrapper = builder.addMethod(symType, mutWrapperName, sig, mutWrapperLinkageName, mutWrapperModifiers.value, genericInfo,
-            hasUGDesc = false, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, genericFuncParamsCount,
-            isMutWrapper = true)
+            ABI.Description(mutWrapperReceiver, mutWrapperHasMutParam, hasThisTypeInfoParam,
+            isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
 
           virtMethods(id.toInt) = mutWrapper
 
           Seq(mutMethod, mutWrapper)
 
         } else {
+          val overrideSig = resolver.getOverrideSrcFuncType(m).map(s => resolver.functionSig(s.`type`, hasReceiver = !modifiers.contains(STATIC))._1)
+          val hasRetByVal = overrideSig.exists(_.returnType.isTypeVariable)
           val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
-            hasUGDesc = false, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, genericFuncParamsCount,
-            isMutWrapper = false)
+            ABI.Description(rcvParam,
+            hasMutParam, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, hasRetByVal = hasRetByVal, genericFuncParamsCount))
+          if (symType.getName.startsWith("$Cl") && name == "$GenericVirtualFunc") {
+            assert(symMethod.hasRetByValParameter)
+          }
           virtMethods(id.toInt) = symMethod
           Seq(symMethod)
         }
 
         for (symMethod <- symMethods) {
-          if (symType.isCHIRDef) {
+          if (symType.isCHIRDef && !resolver.isImported(m.base)) {
             builder.markAsCHIRDef(symMethod, id.toInt)
           }
           m.funcKind match {
@@ -301,11 +325,65 @@ object CHIRBuilder {
 
     for ((id, symType) <- (1L to pkg.pkg.defsLength) zip symTypeDefs if symType != null) {
       pkg.getDef[Table](id) match {
-        case d: StructDef => fillMethods(symType, d.base)
-        case d: ClassDef  => fillMethods(symType, d.base)
-        case d: EnumDef   => fillMethods(symType, d.base)
-        case d: ExtendDef => fillMethods(symType, d.base)
+        case d: StructDef => fillMethods(symType, d.base, resolver.typeSig(d.base.`type`))
+        case d: ClassDef  => fillMethods(symType, d.base, resolver.typeSig(d.base.`type`))
+        case d: EnumDef   => fillMethods(symType, d.base, resolver.typeSig(d.base.`type`))
+        case d: ExtendDef => fillMethods(symType, d.base, resolver.typeSig(d.extendedType))
       }
+    }
+
+    // Restore abstract methods that FE changed to global (still abstract) functions
+
+    object GlobalAbstractFunc {
+      def unapply(f: Function): Option[Long] = {
+        if (f.base.declaredParent == 0 && (Attribute.ABSTRACT in f.base.base.base.attributes)) {
+          val funcType = pkg.getType[FuncType](f.base.base.`type`)
+          Some(funcType.base.argTys(0))
+        } else {
+          None
+        }
+      }
+    }
+
+    /**
+     * Sorts out redundant functions marked by diff-tool.
+     * For example, the global functions are referenced from vtable.
+     */
+    def isDeadFunction(f: PackageFormat.Function): Boolean = {
+      Attribute.UNREACHABLE in f.base.base.base.attributes
+    }
+
+    for (id <- 1L to pkg.pkg.valuesLength) pkg.getValue[Table](id) match {
+      case m @ GlobalAbstractFunc(declId) if !isDeadFunction(m) =>
+        val symType = asClassType(resolver.symType(pkg.getType[Table](declId)).get)
+        val name = resolver.symName(m)
+        val value = m.base.base
+        val modifiers = resolver.symModifiers(value.base.attributes)
+        assert(!modifiers.contains(STATIC), name)
+        assert(modifiers.contains(ABSTRACT), name)
+        val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
+        val genericInfo = resolver.genericInfo(m)
+        val genericFuncParamsCount = m.genericTypeParamsLength
+        val hasOuterTypeInfo = true // All member functions have outer type info parameter
+        val hasThisTypeInfoParam = modifiers.contains(STATIC)
+        val linkageName = resolver.linkageName(m)
+
+        val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
+          ABI.Description(rcv, hasMutParam = false, hasThisTypeInfoParam,
+          isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
+        virtMethods(id.toInt) = symMethod
+
+        if (symType.isCHIRDef) {
+          builder.markAsCHIRDef(symMethod, id.toInt)
+        }
+        m.funcKind match {
+          case FuncKind.CLASS_CONSTRUCTOR | FuncKind.PRIMAL_CLASS_CONSTRUCTOR |
+               FuncKind.STRUCT_CONSTRUCTOR | FuncKind.PRIMAL_STRUCT_CONSTRUCTOR =>
+            builder.markAsConstructor(symMethod)
+          case _ =>
+        }
+
+      case _ =>
     }
 
     // -----------------------------------------------
@@ -326,21 +404,30 @@ object CHIRBuilder {
       CHIRVTable(
         objectExtDef.toSeq ++ customTypeDef.vtableVector.toSeq.map { e =>
           CHIRVTable.ExtDef(
-            resolver.typeSig(e.srcParentType, t),
-            e.virtualMethodsVector.toSeq map { m =>
-              val cparams = resolver.withGenericParams(pkg.getDef[Table](pkg.getValue[Function](m.instance).base.declaredParent))(identity)
-              val lparams = m.methodGenericTypeParamsVector
-              val isStatic = resolver.symModifiers(m.attributes).contains(STATIC)
-              CHIRVTable.Entry(
-                m.funcName,
-                resolver.functionSig(m.sigType, t, hasReceiver = false)._1, // This signature does not ever contain receiver (TODO: verify it)
-                lparams.toSeq.map(resolver.typeSig(_, t)),
-                Option(virtMethods(m.instance.toInt)),
-                resolver.symModifiers(m.attributes),
-                resolver.functionSig(m.originalType, cparams, lparams, hasReceiver = !isStatic)._1,
-                resolver.typeSig(m.parentType, t),
-                resolver.typeSig(m.returnType, t),
-              )
+            resolver.typeSig(e.srcParentType),
+            e.virtualMethodsVector.toSeq flatMap { m =>
+              val impl = pkg.getValue[Function](m.instance)
+              if (isDeadFunction(impl)) {
+                Seq.empty
+              } else {
+                val implParent = impl match {
+                  case GlobalAbstractFunc(t) => pkg.getType[Table](t)
+                  case impl => pkg.getDef[Table](impl.base.declaredParent)
+                }
+                assert(implParent != null, symType)
+                val lparams = m.methodGenericTypeParamsVector
+                val isStatic = resolver.symModifiers(m.attributes).contains(STATIC)
+                Seq(CHIRVTable.Entry(
+                  m.funcName,
+                  resolver.functionSig(m.sigType, hasReceiver = false)._1, // This signature does not ever contain receiver (TODO: verify it)
+                  lparams.toSeq.map(resolver.typeSig),
+                  Option(virtMethods(m.instance.toInt)),
+                  resolver.symModifiers(m.attributes),
+                  resolver.functionSig(m.originalType, hasReceiver = !isStatic)._1,
+                  resolver.typeSig(m.parentType),
+                  resolver.typeSig(m.returnType),
+                ))
+              }
             }
           )
         }
@@ -349,6 +436,48 @@ object CHIRBuilder {
 
     for ((id, symType) <- (1L to pkg.pkg.defsLength) zip symTypeDefs if symType != null) {
       builder.setVTable(symType, getVTable(symType, pkg.getDef[Table](id)))
+    }
+
+    // -----------------------------------------------
+    // Add global vars and funcs
+    // -----------------------------------------------
+
+    for (id <- 1L to pkg.pkg.valuesLength) pkg.getValue[Table](id) match {
+      case m: GlobalVar if m.base.declaredParent == 0 =>
+        // package global var
+        val symPkg = makePackage(m.base.packageName)
+        val name = resolver.symName(m)
+        val sig = resolver.typeSig(m.base.base.`type`)
+        val modifiers = (resolver.symModifiers(m.base.base.base.attributes) + Modifier.STATIC).value
+        val linkageName = resolver.linkageName(m)
+        val symField = builder.addField(symPkg, name, sig, linkageName, modifiers)
+        if (!resolver.isImported(m.base)) {
+          builder.markAsCHIRDef(symField, id.toInt)
+        }
+
+      case m: Function if m.base.declaredParent == 0 && !isDeadFunction(m) =>
+        // package global func
+        val symPkg = makePackage(m.base.packageName)
+        val name = resolver.symName(m)
+        val (sig, None, isCFunc, vararg) = resolver.functionSig(m, hasReceiver = false)
+        val modifiers = (resolver.symModifiers(m.base.base.base.attributes) + Modifier.STATIC).value
+        val genericInfo = resolver.genericInfo(m)
+        val genericFuncParamsCount = m.genericTypeParamsLength
+        val linkageName = resolver.linkageName(m)
+        val symMethod = builder.addMethod(symPkg, name, sig, linkageName, modifiers, genericInfo,
+          ABI.Description(None, hasMutParam = false, hasThisTypeInfoParam = false,
+          isCFunc, hasOuterTypeInfo = false, hasRetByVal = false, genericFuncParamsCount))
+        if (pkg.pkg.packageInitFunc == id) {
+          builder.markAsPackageInit(symMethod)
+        }
+        if (pkg.pkg.packageLiteralInitFunc == id) {
+          builder.markAsPackageLiteralInit(symMethod)
+        }
+        if (!resolver.isImported(m.base) || m.body != 0) {
+          builder.markAsCHIRDef(symMethod, id.toInt)
+        }
+
+      case _ =>
     }
 
     // -----------------------------------------------

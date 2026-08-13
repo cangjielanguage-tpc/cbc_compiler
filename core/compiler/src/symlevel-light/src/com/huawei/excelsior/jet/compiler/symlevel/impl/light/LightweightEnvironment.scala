@@ -100,6 +100,13 @@ object LightweightEnvironment {
         t.params foreach process
       case t: Box =>
         process(t.base)
+      case t: OptionLikeEnum =>
+        t.params foreach process
+        process(t.someType)
+        action(sigTypeToO2Type(t))
+      case t: CangjieEnum =>
+        t.params foreach process
+        action(sigTypeToO2Type(t))
     }
     process(sig)
   }

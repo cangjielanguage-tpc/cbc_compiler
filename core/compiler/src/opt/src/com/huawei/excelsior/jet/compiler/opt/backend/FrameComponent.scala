@@ -154,7 +154,7 @@ trait FrameComponent { self: Universe with BackEnd =>
 
       case _: FrameHeader => needFrameDescriptor = true
 
-      case sa: StackAlloc =>
+      case sa: HasFrameSlot =>
         val kind = sa.kind
         assert(!kind.traced || (kind.size >= addressSize && kind.alignment >= addressSize) || kind.isInstanceOf[NewOnStack] || targetArch == Arch.CBC)
 
@@ -218,7 +218,7 @@ trait FrameComponent { self: Universe with BackEnd =>
           if (node.mayHaveSpoiled) touched ++= node.spoiled
 
           node match {
-            case sa: StackAlloc =>
+            case sa: HasFrameSlot =>
               touched += sa.slot
 
             case node: SpinalNode if !node.hasXHandler =>

@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.cbc
 
 import com.huawei.excelsior.jet.assembler.Segment
 import com.huawei.excelsior.jet.assembler.cbc.ExceptionTable
+import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
 import com.huawei.excelsior.jet.compiler.Env.isStandalone
 import com.huawei.excelsior.jet.compiler.Environment
@@ -42,7 +43,7 @@ object CBCFileGenerator {
 trait CBCFileGenerator {
   def generate(output: Path, generationTarget: GenerationTarget = CBC): Unit
   def sendCode(m: Method, seg: Segment, literalsOffset: Int,
-               xinfo: XTableGenerator.PackedXInfo, exTable: ExceptionTable, liveness: Seq[LiveState],
+               xinfo: XTableGenerator.PackedXInfo, exTable: ExceptionTable, liveness: LivenessInfoCollector.AllStates,
                tailParamCount: Int, untypedStackSlotsCount: Int,
                usedNonVolIRegsMask: Int, usedNonVolFRegsMask: Int, maxCalleeStackArgsCount: Int,
                mayHaveNativeCalls: Boolean,

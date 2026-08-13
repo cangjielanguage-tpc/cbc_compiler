@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/aot/$JET_CPU$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/aot/share/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/$JET_LANGUAGE_PACK$/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/aot/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

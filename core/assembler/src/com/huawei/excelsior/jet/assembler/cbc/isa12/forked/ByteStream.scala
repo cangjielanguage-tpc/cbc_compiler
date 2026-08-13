@@ -41,18 +41,23 @@ trait ByteStream {
     this
   }
 
+  final def uleb(x: Long): ByteStream = {
+    LEB128Encoder.encodeULEB128(x, write8)
+    this
+  }
+
   final def ts16(ts: StackSlot.Typed): ByteStream = write16(ts.idx)
   final def us16(us: StackSlot.Untyped): ByteStream = write16(us.slot)
   final def opc8(x: Opcode): ByteStream = write8(x.ordinal)
   final def mem8(x: MemOpcode): ByteStream = write8(x.ordinal)
 
   def sym16(x: FieldReference | MethodReference | Signature)(implicit asm: ForkedAssembler): ByteStream = {
-    asm.fixup(new Relocation(CBC_ID16, BytecodeReferenceSymbol(x)))
+    asm.fixup(Fixups.Reference(BytecodeReferenceSymbol(x)))
     this
   }
 
   def sym32(x: StringLiteral | RawData)(implicit asm: ForkedAssembler): ByteStream = {
-    asm.fixup(new Relocation(CBC_ID32, BytecodeReferenceSymbol(x)))
+    asm.fixup(Fixups.Reference(BytecodeReferenceSymbol(x)))
     this
   }
 }

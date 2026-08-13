@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.assembler.cbc.isa12.forked
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.BytecodeReferenceSymbol
 import com.huawei.excelsior.jet.assembler.cbc.Register.{FR, IR}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W32, W64}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Width}
@@ -183,4 +184,29 @@ object Fixups {
         .ensuring(_.pos == (position + size))
     }
   }
+
+  object Reference {
+    def apply(target: BytecodeReferenceSymbol): Fixup = new Reference(target)
+  }
+
+  final class Reference(val target: BytecodeReferenceSymbol)
+    extends Fixup(true, 1) {
+    private var id: Int = -1
+
+    override def expectedSize: Int = LEB128Encoder.calcSizeULEB128(id)
+
+    private def stream = InteriorByteStream(segment, position)
+
+    override def resolve(converter: Relocation.Converter): Unit = {
+      assert(id != -1)
+      stream
+        .uleb(id)
+    }
+
+    def setId(id: Int): Unit = {
+      assert(this.id == -1)
+      this.id = id
+    }
+  }
+
 }

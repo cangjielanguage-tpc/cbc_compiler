@@ -87,6 +87,9 @@ trait TypesToolbox extends EnvProvider { self: CompilerSuite =>
   def makeSymClass(name: String, superClass: FakeType, implementedInterfaces: FakeType*) =
     makeSym(name, FakeType(name, TypeKind.CLASS, superClass, implementedInterfaces*).withClinit(true))
 
+  def makeSymRecord(name: String, implementedInterfaces: FakeType*) =
+    makeSym(name, FakeType(name, TypeKind.RECORD, null, implementedInterfaces*).withClinit(true))
+
   val symObj = makeSym("Obj", env.getObjectType)
   val symIter = makeSym("Iter", env.getIteratorType)
 
@@ -310,10 +313,13 @@ trait TypesToolbox extends EnvProvider { self: CompilerSuite =>
     }
   }
 
-  def makeSymField(name: String, `type`: FakeType, declaringClass: FakeType) =
-    new FakeField(name, sig(`type`)) tap declaringClass.addField
+  def makeSymField(name: String, `type`: SignatureType, declaringClass: FakeType): FakeField =
+    new FakeField(name, `type`) tap declaringClass.addField
 
-  def makeSymMethod(name: String, declaringClass: FakeType) =
+  def makeSymField(name: String, `type`: FakeType, declaringClass: FakeType): FakeField =
+    makeSymField(name, sig(`type`), declaringClass)
+
+  def makeSymMethod(name: String, declaringClass: FakeType): FakeMethod =
     new FakeMethod(name) tap declaringClass.addMethod
 
 }

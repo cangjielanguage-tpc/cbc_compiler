@@ -230,6 +230,10 @@ abstract class Method extends Symbol with Member with ConstantPoolObject with Fr
 
   def hasReceiverParameter: Boolean = getMethodType.hasReceiverParameter
 
+  def hasReferenceReceiver: Boolean = getMethodType.hasReferenceReceiver
+
+  def hasRecordReceiver: Boolean = getMethodType.hasRecordReceiver
+
   def getReceiverArgIdx: Int = getMethodType.getReceiverArgIdx
 
   def hasMutRecordParameter: Boolean = getMethodType.hasMutRecordParameter
@@ -240,15 +244,13 @@ abstract class Method extends Symbol with Member with ConstantPoolObject with Fr
 
   def getMutObjectArgIdx: Int = getMethodType.getMutObjectArgIdx
 
-  def hasUGDescParameter: Boolean = getMethodType.hasUGDescParameter
-
-  def getUGDescArgIdx: Int = getMethodType.getUGDescArgIdx
-
   def hasThisTypeInfoParameter: Boolean = getMethodType.hasThisTypeInfoParameter
 
   def getThisTypeInfoArgIdx: Int = getMethodType.getThisTypeInfoArgIdx
 
   def hasRetByValParameter: Boolean = getMethodType.hasRetByValParameter
+
+  def hasOuterTypeInfoParameter: Boolean = getMethodType.hasOuterTypeInfoParameter
 
   def getRetByValArgIdx: Int = getMethodType.getRetByValArgIdx
 
