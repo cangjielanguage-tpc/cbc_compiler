@@ -1,0 +1,12 @@
+__pycache__
+jetpdb
+*.actual
+*.actual.filtered
+*.cbc
+*.chir
+*.cjo
+*.so
+*.log
+*.gv
+*.out
+*.obj

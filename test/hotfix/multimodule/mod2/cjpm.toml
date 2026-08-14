@@ -1,0 +1,15 @@
+[package]
+  cjc-version = "0.0.1"
+  name = "mod2"
+  organization = ""
+  description = "nothing here"
+  version = "1.0.0"
+  target-dir = ""
+  script-dir = ""
+  output-type = "dynamic"
+  compile-option = "--plugin ${CANGJIE_HOME}/tools/lib/libhotfix-plugin.so --save-temps target/release/bin"
+  override-compile-option = ""
+  link-option = "--export-dynamic"
+  package-configuration = {}
+
+[dependencies]

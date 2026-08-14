@@ -1,0 +1,77 @@
+globalFunc
+t: 42
+s: 3.500000
+globalFunc
+t: 42
+s: foo
+globalFunc
+t: foo
+s: <unknown>
+globalFunc
+t: <unknown>
+s: 42
+staticFunc
+t: 42
+s: 3.500000
+staticFunc
+t: 42
+s: foo
+staticFunc
+t: foo
+s: <unknown>
+staticFunc
+t: <unknown>
+s: 42
+instanceFunc
+t: 42
+s: 3.500000
+instanceFunc
+t: 42
+s: foo
+instanceFunc
+t: foo
+s: <unknown>
+instanceFunc
+t: <unknown>
+s: 42
+staticFuncG
+t: 42
+s: 3.500000
+u: <unknown>
+w: foo
+staticFuncG
+t: 42
+s: foo
+u: foo
+w: 3.500000
+staticFuncG
+t: foo
+s: <unknown>
+u: 3.500000
+w: foo
+staticFuncG
+t: <unknown>
+s: 42
+u: <unknown>
+w: 3.500000
+instanceFunc
+t: 42
+s: 3.500000
+u: <unknown>
+w: foo
+instanceFunc
+t: 42
+s: foo
+u: foo
+w: 3.500000
+instanceFunc
+t: foo
+s: <unknown>
+u: 3.500000
+w: foo
+instanceFunc
+t: <unknown>
+s: 42
+u: <unknown>
+w: 3.500000
+0
