@@ -1,0 +1,57 @@
+add_test8 without overflow
+27
+sub_test8 without overflow
+-23
+mul_test8 without overflow
+6
+div_test8 without overflow
+20
+uadd_test8 without overflow
+32
+usub_test8 without overflow
+23
+umul_test8 without overflow
+240
+add_test8 with overflow
+pass
+sub_test8 with overflow
+pass
+mul_test8 with overflow
+pass
+div_test8 with overflow
+pass
+uadd_test8 with overflow
+pass
+usub_test8 with overflow
+pass
+umul_test8 with overflow
+pass
+add_test16 without overflow
+27
+sub_test16 without overflow
+-54
+mul_test16 without overflow
+156
+div_test16 without overflow
+10
+uadd_test16 without overflow
+54
+usub_test16 without overflow
+58
+umul_test16 without overflow
+1380
+add_test16 with overflow
+pass
+sub_test16 with overflow
+pass
+mul_test16 with overflow
+pass
+div_test16 with overflow
+pass
+uadd_test16 with overflow
+pass
+usub_test16 with overflow
+pass
+umul_test16 with overflow
+pass
+0

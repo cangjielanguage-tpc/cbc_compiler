@@ -1,0 +1,61 @@
+add_test64 without overflow
+27
+sub_test64 without overflow
+-476677
+mul_test64 without overflow
+35568
+div_test64 without overflow
+2449
+uadd_test64 without overflow
+922337203685477600
+usub_test64 without overflow
+58
+umul_test64 without overflow
+320
+pow_test64 without overflow
+243
+add_test64 with overflow
+pass
+sub_test64 with overflow
+pass
+mul_test64 with overflow
+pass
+div_test64 with overflow
+pass
+uadd_test64 with overflow
+pass
+usub_test64 with overflow
+pass
+umul_test64 with overflow
+pass
+pow_test64 with overflow
+pass
+add_test32 without overflow
+27
+sub_test32 without overflow
+-476677
+mul_test32 without overflow
+35568
+div_test32 without overflow
+2449
+uadd_test32 without overflow
+54
+usub_test32 without overflow
+58
+umul_test32 without overflow
+61155
+add_test32 with overflow
+pass
+sub_test32 with overflow
+pass
+mul_test32 with overflow
+pass
+div_test32 with overflow
+pass
+uadd_test32 with overflow
+pass
+usub_test32 with overflow
+pass
+umul_test32 with overflow
+pass
+0
