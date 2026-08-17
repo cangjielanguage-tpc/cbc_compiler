@@ -9,7 +9,7 @@
 package com.huawei.excelsior.jet.assembler.cbc.isa12.forked
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, BytecodeReferenceSymbol, FieldReference, MethodReference, Signature, StringLiteral}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, BytecodeReferenceSymbol, FieldReference, MethodReference, Signature, SingleFieldReference, StringLiteral}
 import com.huawei.excelsior.jet.assembler.cbc.CbcTypeKind.{F32, F64}
 import com.huawei.excelsior.jet.assembler.cbc.{CbcAssembler, CbcFileFormat, CbcTypeKind, MemExpr, StackSlot, Register as Rg}
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
@@ -172,7 +172,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
 
   def atomicLoad(dst: IR, obj: IR, f: FieldReference): Unit = {
     analyzer.useRef(obj)
-    if (f.fieldType.isReference) {
+    if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.ref(dst)
     } else {
       analyzer.prim(dst)
@@ -185,7 +185,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
 
   def atomicStore(src: IR, obj: IR, f: FieldReference): Unit = {
     analyzer.useRef(obj)
-    if (f.fieldType.isReference) {
+    if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.useRef(src)
     } else {
       analyzer.usePrim(src)
@@ -199,7 +199,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   def cas(dst: IR, obj: IR, src1: IR, src2: IR, f: FieldReference): Unit = {
     analyzer.useRef(obj)
     analyzer.prim(dst)
-    if (f.fieldType.isReference) {
+    if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.useRef(src1)
       analyzer.useRef(src2)
     } else {
@@ -222,7 +222,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
 
   private def genAtomicOp(o: Opcode, dst: IR, obj: IR, src: IR, f: FieldReference): Unit = {
     analyzer.useRef(obj)
-    if (f.fieldType.isReference) {
+    if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.ref(dst)
       analyzer.useRef(src)
     } else {

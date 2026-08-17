@@ -309,10 +309,17 @@ object CbcFileFormat {
   //         - remove type specifiers from field references and index operations;
   //       It will be sufficient to compute the final `type` of memory location,
   //       just by sequentially applying operations.
-  case class FieldReference(name: String,
-                            refType: Signature,
-                            fieldType: Signature,
-                            aotData: Option[AotData] = None) extends BytecodeReference
+  sealed trait FieldReference extends BytecodeReference
+  sealed trait FieldReferenceWithRefType extends FieldReference {
+    def refType: Signature
+    def aotData: Option[AotData]
+  }
+  case class SingleFieldReference(refType: Signature, name: String, fieldType: Signature,
+                                  aotData: Option[AotData] = None) extends FieldReferenceWithRefType
+  case class ConstIndexFieldReference(refType: Signature, idx: Int, fieldType: Signature,
+                                      aotData: Option[AotData] = None) extends FieldReferenceWithRefType
+  case class MultiFieldReference(length: Int, subRefs: Seq[FieldReference]) extends FieldReference
+  case class NoneFieldReference(sig: Signature) extends FieldReference // TODO specify more
 
   sealed trait AotData
   case class DirectCallAotData(linkageName: String) extends AotData

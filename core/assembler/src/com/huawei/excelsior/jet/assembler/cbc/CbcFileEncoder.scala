@@ -378,6 +378,13 @@ private enum FieldTag(val tag: Byte) {
   case PrebuiltOffset extends FieldTag(0x06)
 }
 
+private enum FieldRefTag(val tag: Byte) {
+  case Single extends FieldRefTag(0x00)
+  case ConstIndex extends FieldRefTag(0x00)
+  case Multi extends FieldRefTag(0x00)
+  case None extends FieldRefTag(0x00)
+}
+
 /**
   * Represents a continuous binary memory segment that could store [[Data]] objects.
   */
@@ -459,12 +466,15 @@ private class FieldRefTable(pool: Pool[FieldReference]) extends Table[FieldRefer
   @nowarn("msg=match may not be exhaustive")
   override def add(data: FieldReference): Index = {
     val idx = super.add(data)
-    data.refType match {
-      case _: AotTypeSignature => data.aotData.get match {
-        case x: StaticFieldAotData => staticFieldAotTable.add(idx, IndexedAotData(idx, x))
-        case x: InstanceFieldAotData => instanceFieldAotTable.add(idx, IndexedAotData(idx, x))
-      }
-      case _: TypeSignature => // TODO support. Intentionally empty for now
+    data match {
+      case fr: FieldReferenceWithRefType =>
+        fr.refType match {
+          case _: AotTypeSignature => fr.aotData.get match {
+          case x: StaticFieldAotData => staticFieldAotTable.add (idx, IndexedAotData (idx, x) )
+          case x: InstanceFieldAotData => instanceFieldAotTable.add (idx, IndexedAotData (idx, x) )
+        }
+        case _: TypeSignature => // TODO support. Intentionally empty for now
+        }
     }
     idx
   }
@@ -676,10 +686,25 @@ private class SignaturePool extends Pool[Signature] { self: RawPool with PoolPro
 }
 
 private class FieldReferencePool extends Pool[FieldReference] { self: RawPool with PoolProvider =>
-  override def add(data: FieldReference): Offset = put { output =>
-    output.putW32(strings.add(data.name))
-    output.putULEB(signatures.add(data.refType))
-    output.putULEB(signatures.add(data.fieldType))
+  override def add(data: FieldReference): Offset = put { output => data match {
+    case single: SingleFieldReference =>
+      output.putByte(FieldRefTag.Single.tag)
+      output.putW32(strings.add(single.name))
+      output.putULEB(signatures.add(single.refType))
+      output.putULEB(signatures.add(single.fieldType))
+    case constIdx: ConstIndexFieldReference =>
+      output.putByte(FieldRefTag.ConstIndex.tag)
+      output.putW32(constIdx.idx)
+      output.putULEB(signatures.add(constIdx.refType))
+      output.putULEB(signatures.add(constIdx.fieldType))
+    case multi: MultiFieldReference =>
+      output.putByte(FieldRefTag.Multi.tag)
+      output.putULEB(multi.length)
+      multi.subRefs.map(fieldRefs.add).foreach(output.putULEB)
+    case none: NoneFieldReference =>
+      output.putByte(FieldRefTag.None.tag)
+      output.putULEB(signatures.add(none.sig))
+    }
   }
 }
 

@@ -292,7 +292,7 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       val name = parseIdent()
       val fieldType = parseType()
       val aotData = parseAotData()
-      FieldReference(name, refType, fieldType, aotData)
+      SingleFieldReference(refType, name, fieldType, aotData = aotData)
     }
 
     def parseMethodReference(): MethodReference = {
@@ -301,7 +301,7 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       val signature = parseFunctional()
       val flags = parseMethodRefFlags()
       val aotData = parseAotData()
-      MethodReference(name, refType, signature, flags, aotData)
+      MethodReference(name, refType, signature, flags, aotData = aotData)
     }
 
     def parse[T](expected: => String, default: => T)(pf: PartialFunction[Token, T]): T = {
@@ -643,7 +643,7 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
     private lazy val fakeMethodRef =
       MethodReference("", Nothing, Functional(Seq.empty, Nothing), MethodRefFlags.empty)
     private lazy val fakeFieldRef =
-      FieldReference("", Nothing, Nothing)
+      SingleFieldReference(Nothing, "", Nothing)
 
     def comma[T](t: T): T = {
       stream.expectMiddle(Comma)
