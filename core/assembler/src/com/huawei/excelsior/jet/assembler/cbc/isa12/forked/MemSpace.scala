@@ -9,7 +9,7 @@
 package com.huawei.excelsior.jet.assembler.cbc.isa12.forked
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{CangjieArray, FieldReference, Signature}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{CangjieArray, FieldReference, Signature, SingleFieldReference}
 import com.huawei.excelsior.jet.assembler.cbc.Register.{FR, IR}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.MemOpcode.Field1
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.Opcode.{LoadStatic, LoadTyped}
@@ -115,19 +115,19 @@ object MemSpace {
     def typed(ts: StackSlot.Typed)   = head(Head.Typed(ts))
 
     def static(fr: FieldReference) = {
-      lastType = fr.fieldType
+      lastType = fr.asInstanceOf[SingleFieldReference].fieldType
       head(Head.Static(fr))
     }
 
     def field(fr: FieldReference): Builder = {
       op(BodyOperation.Field(fr))
-      lastType = fr.fieldType
+      lastType = fr.asInstanceOf[SingleFieldReference].fieldType
       this
     }
 
     def fieldGeneric(fr: FieldReference, ti: IR): Builder = {
       op(BodyOperation.FieldGeneric(fr, ti))
-      lastType = fr.fieldType
+      lastType = fr.asInstanceOf[SingleFieldReference].fieldType
       this
     }
 
@@ -290,7 +290,7 @@ object MemSpace {
         .bits(_.w4(r).w4(r))
         .sym16(field)
 
-      markLoadStoreValue(r, field.fieldType.isReference, opc == LoadStatic)
+      markLoadStoreValue(r, field.asInstanceOf[SingleFieldReference].fieldType.isReference, opc == LoadStatic)
     }
 
     private def loadStoreTyped(opc: Opcode, ts: StackSlot.Typed, r: Register, field: FieldReference): Unit = asm.instr {
@@ -300,7 +300,7 @@ object MemSpace {
         .write16(ts.idx)
         .sym16(field)
 
-      markLoadStoreValue(r, field.fieldType.isReference, opc == LoadTyped)
+      markLoadStoreValue(r, field.asInstanceOf[SingleFieldReference].fieldType.isReference, opc == LoadTyped)
     }
 
     private def storeImmTyped(opc: Opcode, ts: StackSlot.Typed, src: Long, field: FieldReference): Unit = asm.instr {
@@ -310,7 +310,7 @@ object MemSpace {
         .sym16(field)
         .sleb(src)
 
-      assert(!field.fieldType.isReference || src == 0)
+      assert(!field.asInstanceOf[SingleFieldReference].fieldType.isReference || src == 0)
     }
 
     private def store(opc: Opcode, base: IR, r: Register, field: FieldReference): Unit = asm.instr {
@@ -319,8 +319,8 @@ object MemSpace {
         .bits(_.w4(base).w4(r))
         .sym16(field)
 
-      if (field.refType.isReference) asm.analyzer.useRef(base) else asm.analyzer.useRec(base)
-      markLoadStoreValue(r, field.fieldType.isReference, load = false)
+      if (field.asInstanceOf[SingleFieldReference].refType.isReference) asm.analyzer.useRef(base) else asm.analyzer.useRec(base)
+      markLoadStoreValue(r, field.asInstanceOf[SingleFieldReference].fieldType.isReference, load = false)
     }
 
     private def load(opc: Opcode, base: IR, r: Register, field: FieldReference): Unit = asm.instr {
@@ -329,8 +329,8 @@ object MemSpace {
         .bits(_.w4(asm.analyzer.useRef(base)).w4(r))
         .sym16(field)
 
-      if (field.refType.isReference) asm.analyzer.useRef(base) else asm.analyzer.useRec(base)
-      markLoadStoreValue(r, field.fieldType.isReference, load = true)
+      if (field.asInstanceOf[SingleFieldReference].refType.isReference) asm.analyzer.useRef(base) else asm.analyzer.useRec(base)
+      markLoadStoreValue(r, field.asInstanceOf[SingleFieldReference].fieldType.isReference, load = true)
     }
 
     private def genChainHead(head: Head): Unit = head match {
@@ -341,11 +341,11 @@ object MemSpace {
           .opc8(Opcode.MemHeadReg)
           .bits(_.w4(h.base).write(0, 3).w1(h.isRef))
       case h: MemField =>
-        if (h.fr.refType.isReference) asm.analyzer.useRef(h.base) else asm.analyzer.useRec(h.base)
+        if (h.fr.asInstanceOf[SingleFieldReference].refType.isReference) asm.analyzer.useRef(h.base) else asm.analyzer.useRec(h.base)
         // TODO: isRef is computable in runtime
         stream
           .opc8(Opcode.MemHeadField)
-          .bits(_.w4(h.base).write(0, 3).w1(h.fr.refType.isReference))
+          .bits(_.w4(h.base).write(0, 3).w1(h.fr.asInstanceOf[SingleFieldReference].refType.isReference))
           .sym16(h.fr)
       case h: Static => stream
         .opc8(Opcode.MemHeadStatic)
@@ -439,7 +439,7 @@ object MemSpace {
           .write64(imm)
       }
       case LoadFieldSeq(reg, refs) => {
-        markLoadStoreValue(reg, refs.last.fieldType.isReference, load = true)
+        markLoadStoreValue(reg, refs.last.asInstanceOf[SingleFieldReference].fieldType.isReference, load = true)
         stream
           .mem8(MemOpcode.Load)
           .bits(_.w4(reg).w4(refs.size))
@@ -448,7 +448,7 @@ object MemSpace {
         }
       }
       case StoreFieldSeq(reg, refs) => {
-        markLoadStoreValue(reg, refs.last.fieldType.isReference, load = false)
+        markLoadStoreValue(reg, refs.last.asInstanceOf[SingleFieldReference].fieldType.isReference, load = false)
         stream
           .mem8(MemOpcode.Store)
           .bits(_.w4(reg).w4(refs.size))
