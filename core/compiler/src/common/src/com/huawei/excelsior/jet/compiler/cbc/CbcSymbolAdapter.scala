@@ -77,7 +77,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       // Only symlevel field references supported here.
       // Index-based references should be handled outside.
       val field = symbol.field.get
-      val aotData = Option.when(field.getCHIRDef.isEmpty) {
+      val aot = Option.when(field.getCHIRDef.isEmpty) {
         if (field.isStatic) {
           StaticFieldAotData(field.getExportedName.toString)
         } else {
@@ -96,8 +96,8 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       } else {
         symbol.refType.toCbc
       }
-      CbcFileFormat.FieldReference(name = field.getName,
-        refType = refType, fieldType = symbol.fieldType.toCbc, aotData = aotData)
+      CbcFileFormat.SingleFieldReference(name = field.getName,
+        refType = refType, fieldType = symbol.fieldType.toCbc, aotData = aot)
     case symbol: ConstStringSymbol => StringLiteral(symbol.value.toString)
     case symbol: RawData => CbcFileFormat.RawData(ArraySeq.from(symbol.data))
   }
