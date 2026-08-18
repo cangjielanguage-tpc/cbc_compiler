@@ -114,13 +114,10 @@ trait IOComponent extends BinaryIO { self: Universe =>
     InvokeVirtualStaticTarget.Proto,
     UniversalGeneric.GetElementPtr.Proto,
     GetFieldSeqRef.Proto,
-    GetFieldSeqRefGeneric.Proto,
     GetStaticFieldSeqRef.Proto,
     LoadFieldSeq.Proto,
-    LoadFieldSeqGeneric.Proto,
     LoadStaticFieldSeq.Proto,
     StoreFieldSeq.Proto,
-    StoreFieldSeqGeneric.Proto,
     StoreStaticFieldSeq.Proto,
     DerivedPtr.Local,
     DerivedPtr.Global,
@@ -144,6 +141,7 @@ trait IOComponent extends BinaryIO { self: Universe =>
     AtomicOps.Store.Proto,
     AtomicOps.CAS.Proto,
     AtomicOps.Simple.Proto,
+    FieldReferenceNode.Proto, ConstIndexFieldReference.Proto, IndexFieldReference.Proto, FieldReferenceNodeGeneric.Proto, ConstIndexGeneric.Proto, IndexFieldReferenceGeneric.Proto,
     // Add new prototypes above this line.
     "dummy last element for ease of rebase"
   )

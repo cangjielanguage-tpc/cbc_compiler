@@ -291,21 +291,20 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case Reg(r) => None
       }
 
-      def constrFieldRef(frs: Seq[CangjieFieldReference]): CbcFileFormat.FieldReference = {
-        val adaptedRefs = frs.map { fr => 
-          fr.field match {
-            case Some(name) => fr
-            case None =>
-              val refType = fr.refType match {
-                case t: SignatureType.OptionLikeEnum =>
-                  require(!t.isNullableOption)
-                  SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
-                case t => t
-              }
-              CangjieFieldReference(fr.idx, None, refType, fr.fieldType)
-          }
-        }.map(adapter.field) 
-        
+      def constrFieldRef(frs: Seq[Node]): CbcFileFormat.FieldReference = {
+        val adaptedRefs = frs.map {
+          case fr: FieldReferenceNode => fr.field
+          case fr: ConstIndexFieldReference =>
+            val refType = fr.refType match {
+              case t: SignatureType.OptionLikeEnum =>
+                require(!t.isNullableOption)
+                SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
+              case t => t
+            }
+            CangjieIndexReference(fr.idx, refType, fr.fieldType)
+          case _ => shouldNotReachHere("not const field")
+        }.map(adapter.field)
+
         adaptedRefs match {
           case Seq(field) => field
           case refs => MultiFieldReference(refs)
@@ -328,19 +327,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       n match {
+        // TODO: add generation ld instruction for sequence non-generic fields
+        // ld dst, [base | slot], [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
         case n: LoadFieldSeq =>
-          // ld dst, [base | slot], [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
-          val Reg(dst) = n
-          getBaseLocation(n.base) match {
-            case base: IR              => asm.ld(dst, base, constrFieldRef(fieldRefs))
-            case slot: StackSlot.Typed => asm.ld(dst, slot, constrFieldRef(fieldRefs))
-          }
-        case n: LoadStaticFieldSeq =>
-          // ld dst, [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
-          val Reg(dst) = n
-          assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
-          asm.ld(dst, constrFieldRef(fieldRefs))
-        case n: LoadFieldSeqGeneric =>
           // lea.g IR1, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
           // ...
           // lea.g IR1, IR1,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
@@ -361,20 +350,18 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           }
           addXSite(n)
           saveGCState(n)
+
+        // TODO: add generation ld instruction for sequence non-generic fields
+        case n: LoadStaticFieldSeq =>
+          // ld dst, [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
+          val Reg(dst) = n
+          assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
+          asm.ld(dst, constrFieldRef(fieldRefs))
+
+        // TODO: add generation ld instruction for sequence non-generic fields
+        // lea dst, base, [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
         case n: GetFieldSeqRef =>
-          // lea dst, base, [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
-          val IReg(dst) = n
-          getBaseLocation(n.base) match {
-            case slot: StackSlot.Typed => notImplemented("lea for typed slots")
-            case base: IR              => asm.lea(dst, base, constrFieldRef(fieldRefs))
-          }
-        case n: GetStaticFieldSeqRef =>
-          // lea dst, base, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
-          val IReg(dst) = n
-          val IReg(dstBaseRef) = n.baseRef
-          require(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
-          asm.leaStatic(dst, dstBaseRef, constrFieldRef(fieldRefs))
-        case n: GetFieldSeqRefGeneric =>
+
           // lea.g dst, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
           // ...
           // lea.g dst, dst,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
@@ -383,6 +370,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case _: StackSlot.Typed => notImplemented("lea for typed slots")
             case base: IR => genLeaChain(dst, base, fieldRefs, n.typeInfos)
           }
+        case n: GetStaticFieldSeqRef =>
+          // lea dst, base, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
+          val IReg(dst) = n
+          val IReg(dstBaseRef) = n.baseRef
+          require(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
+          asm.leaStatic(dst, dstBaseRef, constrFieldRef(fieldRefs))
         case n: StoreFieldSeq =>
           // st src, [base | slot], [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
           maybeImmValue(n.inValue) match {
@@ -404,7 +397,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               asm.st(src, constrFieldRef(fieldRefs))
           }
           addXSite(n)
-        case n: StoreFieldSeqGeneric =>
+
+        // TODO: add generation ld instruction for sequence non-generic fields
+        // st src, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
+        case n: StoreFieldSeq =>
           // lea.g IR1, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
           // ...
           // lea.g IR1, IR1,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)

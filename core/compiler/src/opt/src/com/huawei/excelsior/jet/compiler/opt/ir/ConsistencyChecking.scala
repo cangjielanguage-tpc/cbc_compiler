@@ -148,6 +148,12 @@ trait ConsistencyChecking extends SynchronizationOptimization with UCEComponent 
             case _ =>
           }
 
+          sn match {
+            case fieldSeqOp: FieldSeqOperation =>
+              checkFieldSeqOperation(fieldSeqOp)
+            case _ =>
+          }
+
         case be: BlockEnd =>
           assert(be.block.blockEnd == be)
           if (be.block.reachable) {
@@ -187,6 +193,12 @@ trait ConsistencyChecking extends SynchronizationOptimization with UCEComponent 
         case phi: Phi =>
           assert(phi.args.size == phi.block.arity)
 
+        case ref: CangjieReferenceNode =>
+          assert(ref.uses.forall(_.isInstanceOf[FieldSeqOperation]))
+
+        case fieldSeqOp: FieldSeqOperation =>
+          checkFieldSeqOperation(fieldSeqOp)
+
         case _ =>
       }
     }
@@ -206,5 +218,9 @@ trait ConsistencyChecking extends SynchronizationOptimization with UCEComponent 
         assert(graph.preds(succ).contains(n), s"$succ is succ of $n but $n is not pred of $succ")
       }
     }
+  }
+
+  private def checkFieldSeqOperation(node: FieldSeqOperation): Unit = {
+    assert(node.fields.init.forall(_.isInstanceOf[CangjieReferenceNode]))
   }
 }

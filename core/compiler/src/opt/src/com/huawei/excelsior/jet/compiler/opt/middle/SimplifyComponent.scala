@@ -584,20 +584,29 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
     cond(ReinterpretCast.skip(n.base)) {
       case g: GetFieldSeqRef =>
         assert(g.baseRef == n.baseRef)
+        val fields = (collect[CangjieReferenceNode](g.fields) ++ n.fields).toSeq
         n match {
-          case n: GetFieldSeqRef => replaceTransitively(n, GetFieldSeqRef.proto(g.fields ++ n.fields)(n.inCtrl, n.baseRef, g.base))
-          case n: LoadFieldSeq => replaceTransitively(n, LoadFieldSeq.proto(g.fields ++ n.fields).exact(n.inCtrl, n.inMemory, n.baseRef, g.base))
-          case n: StoreFieldSeq => replaceByCode(n) { StoreFieldSeq(g.fields ++ n.fields)(n.baseRef, g.base, n.inValue) }
-          case _ => notImplemented(n)
+          case n: GetFieldSeqRef => replaceTransitively(n,
+            GetFieldSeqRef.proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(n.inCtrl +: n.baseRef +: g.base +: fields*))
+          case n: LoadFieldSeq => replaceByCode(n) {
+            LoadFieldSeq(n.baseRef, g.base, fields*)
+          }
+          case n: StoreFieldSeq => replaceByCode(n) {
+            StoreFieldSeq(n.baseRef, g.base, n.inValue, fields*)
+          }
         }
         true
       case g: GetStaticFieldSeqRef =>
         assert(g.baseRef == n.baseRef)
+        val fields = (collect[CangjieReferenceNode](g.fields) ++ n.fields).toSeq
         n match {
-          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(g.fields ++ n.fields)(n.inCtrl, n.baseRef))
-          case n: LoadFieldSeq => replaceTransitively(n, LoadStaticFieldSeq(g.fields ++ n.fields)(n.baseRef))
-          case n: StoreFieldSeq => replaceByCode(n) { StoreStaticFieldSeq(g.fields ++ n.fields)(n.baseRef, n.inValue) }
-          case _ => notImplemented(n)
+          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(FieldSeqOperation.resTpe(fields))(n.inCtrl +: n.baseRef +: fields*))
+          case n: LoadFieldSeq => replaceByCode(n) {
+            LoadStaticFieldSeq(n.baseRef, fields*)
+          }
+          case n: StoreFieldSeq => replaceByCode(n) {
+            StoreStaticFieldSeq(n.baseRef, n.inValue, fields*)
+          }
         }
         true
     }
