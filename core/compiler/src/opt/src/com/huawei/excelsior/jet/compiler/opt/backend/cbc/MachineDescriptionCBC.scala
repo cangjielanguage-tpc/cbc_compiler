@@ -249,11 +249,11 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | CopyStructure | CopyStructureCBC | Throw | InterfaceCastCBC | CatchCBC | EndLocalUnmovable | DebugBreakpoint
       | LoadMemory | StoreMemory | InitStringRecord | ThisTypeInfoCBC | ThisTypeInfoByCBC
       | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq | GetFieldSeqRef | GetStaticFieldSeqRef
-      | LoadFieldSeqGeneric | StoreFieldSeqGeneric | GetFieldSeqRefGeneric
       | DerivedPtr | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | SpawnFuture | SpawnClosure
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
       | AssignGeneric | InstanceOfGeneric
-      | AtomicOps.AtomicNode) => true
+      | AtomicOps.AtomicNode
+      | FieldReferenceNode | ConstIndex | Index| FieldReferenceNodeGeneric | ConstIndexGeneric | IndexGeneric) => true
 
     case _: (TypeTest | CallTarget | MutFuncArgNode | RecordArrayGet) => true // always grouped with another node
 

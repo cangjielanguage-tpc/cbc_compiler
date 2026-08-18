@@ -65,7 +65,7 @@ trait MachineDescription { self: Universe with BackEnd =>
   def mayImmediateBeMovedToMemoryDirectly(source: Node, isStack: Boolean): Boolean
 
   def temporaryResourcesForTransfer(to: ResourceKind, from: ResourceKind, source: Node): Option[ResourceSet] = (to, from, source) match {
-    case (_: RegResourceKind, ImmResourceKind, _: IConst | _: FConst | _: AnyNull | _: DerivedPtr.Local | _: DerivedPtr.Global) =>
+    case (_: RegResourceKind, ImmResourceKind, _: IConst | _: FConst | _: AnyNull | _: FieldReferenceNode | _: DerivedPtr.Local | _: DerivedPtr.Global) =>
       None
 
     case (_: RegResourceKind, ImmResourceKind, _: LConst | _: DConst) =>
@@ -410,7 +410,7 @@ trait MachineDescription { self: Universe with BackEnd =>
   def noCodeShouldBeGenerated(node: Node): Boolean = node match {
     case _: Marker | _: Param | _: Proxy | _: Block | _: Constant | _: BulldozerHint | _: TailPointer |
          _: Constraints | _: EndLocalUnmovable | _: LocalReachabilityShield | _: Phi |
-         _: ExecEnvInvalidationPoint | _: PreCall | _: Projection | _: ExecEnv =>
+         _: ExecEnvInvalidationPoint | _: PreCall | _: Projection | _: ExecEnv | _: CangjieReferenceNode =>
       true
 
     case memBarrier: MemBarrier => memBarrier.kinds.forall(_ == STRICT_MEM)

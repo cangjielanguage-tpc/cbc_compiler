@@ -76,7 +76,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
     case symbol: CangjieFieldReference =>
       // Only symlevel field references supported here.
       // Index-based references should be handled outside.
-      val field = symbol.field.get
+      val field = symbol.field
       val aotData = Option.when(field.getCHIRDef.isEmpty) {
         if (field.isStatic) {
           StaticFieldAotData(field.getExportedName.toString)
