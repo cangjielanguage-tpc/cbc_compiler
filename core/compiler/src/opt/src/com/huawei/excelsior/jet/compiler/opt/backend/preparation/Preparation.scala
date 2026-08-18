@@ -68,11 +68,12 @@ trait Preparation extends SimpleSteps with SpecialSteps with RMACombining
 
     disableTypeChecks()
 
-    step         ("redundant casts removed",         removeRedundantCasts())
-    step         ("MutFunc nodes preparation",       prepareMutFuncNodes())
-    step         ("Lea created",                     createLeaForRMA())
-    step         ("value range filters removed",     removeValueRangeFilters())
-    step         ("TDBarriers inserted",             protectNodesWithTDBarriers())
+    step         ("redundant casts removed",          removeRedundantCasts())
+    step         ("MutFunc nodes preparation",        prepareMutFuncNodes())
+    step         ("CangjieReferenceNode preparation", prepareCangjieReferenceNode())
+    step         ("Lea created",                      createLeaForRMA())
+    step         ("value range filters removed",      removeValueRangeFilters())
+    step         ("TDBarriers inserted",              protectNodesWithTDBarriers())
 
     disableIdentity()
 

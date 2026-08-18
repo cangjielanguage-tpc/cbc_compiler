@@ -173,9 +173,11 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   /////////////////////////////////////////////////////////////////////////////
 
   override protected def volatileRegistersOnAnyExit(node: Node, file: RegFile): ResourceSet = (node match {
-    case lfsg: LoadFieldSeqGeneric  if file == IREG && lfsg.fields.size > 1 => ir1Set
-    case sfsg: StoreFieldSeqGeneric if file == IREG && sfsg.fields.size > 1 => ir1Set
-      
+    case lfsg: LoadFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(lfsg.fields) => ir1Set
+    case sfsg: StoreFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(sfsg.fields) => ir1Set
+    case lfsg: LoadStaticFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(lfsg.fields) => ir1Set
+    case sfsg: StoreStaticFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(sfsg.fields) => ir1Set
+
     case cp: CopyStructureCBC if file == IREG => {
       if      (cp.hasComplexDst && cp.hasComplexSrc) stdTmp1StdTmp2Set
       else if (cp.hasComplexDst || cp.hasComplexSrc) ir1Set else emptySet
@@ -244,12 +246,13 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | DepriveOperation | EnrichOperation | EnrichCBC | ExtractEnrichment | FieldChainWrite | Neg | MutFunc.Combine
       | CopyStructure | CopyStructureCBC | Throw | InterfaceCastCBC | CatchCBC | EndLocalUnmovable | DebugBreakpoint
       | LoadMemory | StoreMemory | InitStringRecord | ThisTypeInfoCBC | ThisTypeInfoByCBC
-      | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq | GetFieldSeqRef | GetStaticFieldSeqRef | GetFieldSeqRefGeneric
+      | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq | GetFieldSeqRef | GetStaticFieldSeqRef
       | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | UnboxLea
       | SpawnFuture | SpawnClosure
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
       | AssignGeneric | InstanceOfGeneric | NewGeneric
       | AtomicOps.AtomicNode | DerivedPtr.Local | DerivedPtr.Global | ZeroValueGeneric) => true
+      | FieldReferenceNode | ConstIndexFieldReference | IndexFieldReference| FieldReferenceNodeGeneric | ConstIndexGeneric | IndexFieldReferenceGeneric) => true
 
     case _: (TypeTest | CallTarget | MutFuncArgNode) => true // always grouped with another node
 
