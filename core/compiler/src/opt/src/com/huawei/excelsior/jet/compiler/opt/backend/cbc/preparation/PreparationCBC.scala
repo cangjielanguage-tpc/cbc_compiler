@@ -155,6 +155,20 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
     }
   }
 
+  override def prepareCangjieReferenceNode(): Unit = {
+    if (isStandalone) {
+      for {
+        n <- all[CangjieReferenceNode].toList
+        m <- Node.rematerializeCompletely(n)
+      } {
+        m.singleUse match {
+          case use: FieldSeqOperation => m.attachToGroup(use, Group.AttachReason.CANGJIE_REFERENCE)
+          case use => shouldNotReachHere(use)
+        }
+      }
+    }
+  }
+
   override def prepareRecordArrayGet(): Unit = {
     if (isStandalone) {
       for {

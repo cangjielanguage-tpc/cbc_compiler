@@ -10,4 +10,4 @@ package com.huawei.excelsior.jet.compiler.symlevel
 
 import com.huawei.excelsior.jet.assembler.Symbol
 
-case class CangjieFieldReference(idx: Long, field: Option[Field], refType: SignatureType, fieldType: SignatureType) extends Symbol
+case class CangjieFieldReference(field: Field, refType: SignatureType, fieldType: SignatureType) extends Symbol

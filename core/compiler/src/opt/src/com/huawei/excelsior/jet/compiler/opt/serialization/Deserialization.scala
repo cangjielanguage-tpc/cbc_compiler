@@ -771,6 +771,24 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case Halt.Proto =>
           Halt.proto(read.reason())
 
+        case FieldReferenceNode.Proto =>
+          FieldReferenceNode.proto(read.cangjieFieldReference())
+
+        case ConstIndex.Proto =>
+          ConstIndex.proto(read.number(), read.sigType(), read.sigType())
+          
+        case Index.Proto =>
+          Index.proto(read.sigType(), read.sigType())
+
+        case FieldReferenceNodeGeneric.Proto =>
+          FieldReferenceNodeGeneric.proto(read.cangjieFieldReference())
+
+        case ConstIndexGeneric.Proto =>
+          ConstIndexGeneric.proto(read.number(), read.sigType(), read.sigType())
+
+        case IndexGeneric.Proto =>
+          IndexGeneric.proto(read.sigType(), read.sigType())
+
         case TDBarrier.Proto =>
           TDBarrier(read.bool(), read.bool())
 
@@ -841,31 +859,22 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
           MutFunc.Combine.proto(read.tpe())
 
         case GetFieldSeqRef.Proto =>
-          GetFieldSeqRef.proto(read.seq(read.cangjieFieldReference))
-
-        case GetFieldSeqRefGeneric.Proto =>
-          GetFieldSeqRefGeneric.proto(read.seq(read.cangjieFieldReference))
+          GetFieldSeqRef.proto(read.tpe(), read.seq(read.tpe), read.tpe())
 
         case GetStaticFieldSeqRef.Proto =>
-          GetStaticFieldSeqRef.proto(read.seq(read.cangjieFieldReference))
+          GetStaticFieldSeqRef.proto(read.seq(read.tpe), read.tpe())
 
         case LoadFieldSeq.Proto =>
-          LoadFieldSeq.proto(read.seq(read.cangjieFieldReference))
-
-        case LoadFieldSeqGeneric.Proto =>
-          LoadFieldSeqGeneric.proto(read.seq(read.cangjieFieldReference))
+          LoadFieldSeq.proto(read.tpe(), read.seq(read.tpe), read.tpe())
 
         case LoadStaticFieldSeq.Proto =>
-          LoadStaticFieldSeq.proto(read.seq(read.cangjieFieldReference))
+          LoadStaticFieldSeq.proto(read.seq(read.tpe), read.tpe())
 
         case StoreFieldSeq.Proto =>
-          StoreFieldSeq.proto(read.seq(read.cangjieFieldReference))
-
-        case StoreFieldSeqGeneric.Proto =>
-          StoreFieldSeqGeneric.proto(read.seq(read.cangjieFieldReference))
+          StoreFieldSeq.proto(read.tpe(), read.seq(read.tpe), read.tpe())
 
         case StoreStaticFieldSeq.Proto =>
-          StoreStaticFieldSeq.proto(read.seq(read.cangjieFieldReference))
+          StoreStaticFieldSeq.proto(read.seq(read.tpe), read.tpe())
 
         case LoadTypeInfo.Proto =>
           LoadTypeInfo.proto(read.sigType())

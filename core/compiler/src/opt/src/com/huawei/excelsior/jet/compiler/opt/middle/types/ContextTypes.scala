@@ -745,7 +745,6 @@ trait ContextTypes { self: Universe =>
     case x: ArrayLength                  => x.inCtrl
     case x: UniversalGeneric.GetField    => x.inCtrl
     case x: UniversalGeneric.GetFieldOHM => x.inCtrl
-    case x: LoadFieldSeq                 => x.inCtrl
     case x: LoadStaticFieldSeq           => x.inCtrl
 
     case x: ControlledNode => shouldNotReachHere("unknown context node source: " + x)
