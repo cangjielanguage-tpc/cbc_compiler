@@ -198,6 +198,9 @@ object CHIRBuilder {
             builder.markAsCHIRDef(symType)
           }
 
+          val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
+          builder.setSuperinterfaces(symType, superinterfaces)
+
           val ctorSigs = d.ctorsVector.toSeq.map(c => pkg.getType[FuncType](c.funcType))
           val ctors = ctorSigs.map(_.base.argTysVector.toSeq.init).map(_.map(resolver.typeSig))
 
