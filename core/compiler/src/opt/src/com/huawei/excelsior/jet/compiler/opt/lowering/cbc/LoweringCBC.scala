@@ -61,7 +61,7 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
 
     case _: Switch => COMPLEX
 
-    case _: CopyStructure if isStandalone => COMPLEX
+    case cs: CopyStructure if isStandalone && !cs.isPrimitive => COMPLEX
 
     case node @ IDivRemByConstOp(_) if !node.isDiv => FLOATING
 

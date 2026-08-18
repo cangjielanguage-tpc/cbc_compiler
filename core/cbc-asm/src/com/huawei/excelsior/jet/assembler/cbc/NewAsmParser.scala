@@ -1203,6 +1203,4 @@ private object InstructionParser {
   tailInstr("ms.st.f")   { (b, s) => b.store(s.freg) }
   tailInstr("ms.st.imm") { (b, s) => b.storeImm(s.int) }
   tailInstr("ms.st.g")   { (b, s) => b.storeGeneric(s.ireg, s.ireg) }
-
-  tailInstr("ms.copy.typed") { (b, s) => b.copyTyped(s.ts, Seq.empty) }
 }
