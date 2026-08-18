@@ -16,35 +16,31 @@ import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field,
 trait CangjieNodes { self: Universe =>
 
   sealed trait FieldSeqOperation extends Node {
-    require(!resType.isZST)
-    def fields: Seq[CangjieFieldReference]
+    def fields: Seq[Node]
     def refType: SignatureType = FieldSeqOperation.refType(fields)
     def resType: SignatureType = FieldSeqOperation.resType(fields)
   }
 
   object FieldSeqOperation {
-    def refType(fields: Seq[CangjieFieldReference]): SignatureType = fields.head.refType
-    def resType(fields: Seq[CangjieFieldReference]): SignatureType = fields.last.fieldType
+    def refType(fields: Seq[Node]): SignatureType = fields.head.asInstanceOf[CangjieReferenceNode].refType
+    def resType(fields: Seq[Node]): SignatureType = collect[CangjieReferenceNode](fields).toSeq.last.fieldType
+    
+    def addressTypes(fields: Seq[Node]): Seq[Type] = fields.collect{ case _ => ValueType }
 
-    def refTpe(fields: Seq[CangjieFieldReference]): Type = ValueType.fromSig(refType(fields))
-    def resTpe(fields: Seq[CangjieFieldReference]): Type = {
+    def refTpe(fields: Seq[Node]): Type = ValueType.fromSig(refType(fields))
+    def resTpe(fields: Seq[Node]): Type = {
       val res = resType(fields)
       res match {
         case res: SignatureType.OptionLikeEnum if res.someType.isTypeVariable => TRefType
         case _ => if (res.isTypeVariable) TRefType else ValueType.fromSig(res)
       }
     }
-    def resAddrTpe(fields: Seq[CangjieFieldReference]): Type = {
+    def resAddrTpe(fields: Seq[Node]): Type = {
       val res = resType(fields)
       res match {
         case res: SignatureType.OptionLikeEnum if res.someType.isTypeVariable => TRefType
         case _ => if (res.isRecord) ValueType.fromSig(res) else AddrType
       }
-    }
-
-    def typeInfos(fields: Seq[CangjieFieldReference]): Seq[Type] = {
-      // Ref types + res type
-      Seq.fill(fields.size + 1)(AddrType)
     }
   }
 
@@ -52,171 +48,116 @@ trait CangjieNodes { self: Universe =>
     def obj: Node
   }
 
-  sealed trait GenericFieldSeqOperation extends FieldSeqOperation {
-    def typeInfos: Seq[Node]
-  }
-
   class GetFieldSeqRef private(proto: GetFieldSeqRef.Proto)
     extends FloatingNodeWithFixedArgs(proto) with InstanceFieldSeqOperation with ControlledNode {
 
-    override def fields: Seq[CangjieFieldReference] = proto.fields
+    override def fields: Seq[Node] = argsTail(2)
 
     def obj = arg(1)
   }
 
   object GetFieldSeqRef {
-    case class Proto private[GetFieldSeqRef](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[GetFieldSeqRef](ControlType, FieldSeqOperation.refTpe(fields))(FieldSeqOperation.resAddrTpe(fields)) {
-      require(fields.head.field.forall(!_.isStatic))
+    // TODO vaargs
+    case class Proto private[GetFieldSeqRef](refType: Type, addressTypes: Seq[Type], resType: Type)
+      extends FixedArgs[GetFieldSeqRef](ControlType +: refType +: addressTypes: _*)(resType) {
 
       def newInstance() = new GetFieldSeqRef(this)
     }
 
-    def proto(fields: Seq[CangjieFieldReference]) = {
-      Prototype.intern(Proto(fields))
+    def proto(refType: Type, addressTypes: Seq[Type], resType: Type) = {
+      Prototype.intern(Proto(refType, addressTypes, resType))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(obj: Node): Node =
-      proto(fields)(obj)
+    def apply(obj: Node, fields: Node*): Node = {
+      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.forall(!_.isStatic))
+      proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.addressTypes(fields), FieldSeqOperation.resTpe(fields))(obj +: fields: _*)
+    }
 
     def unapply(x: GetFieldSeqRef) = Some(x.fields, x.obj)
-  }
-
-  class GetFieldSeqRefGeneric private(proto: GetFieldSeqRefGeneric.Proto)
-    extends FloatingNodeWithFixedArgs(proto) with InstanceFieldSeqOperation with GenericFieldSeqOperation with ControlledNode {
-
-    override def fields: Seq[CangjieFieldReference] = proto.fields
-
-    def obj = arg(1)
-    def typeInfos = argsTail(2)
-  }
-
-  object GetFieldSeqRefGeneric {
-    case class Proto private[GetFieldSeqRefGeneric](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[GetFieldSeqRefGeneric]
-        (ControlType +: FieldSeqOperation.refTpe(fields) +: FieldSeqOperation.typeInfos(fields): _*)
-        (FieldSeqOperation.resAddrTpe(fields)) {
-      require(fields.head.field.forall(!_.isStatic))
-
-      def newInstance() = new GetFieldSeqRefGeneric(this)
-    }
-
-    def proto(fields: Seq[CangjieFieldReference]) = {
-      Prototype.intern(Proto(fields))
-    }
-
-    def apply(fields: Seq[CangjieFieldReference])(obj: Node, typeInfos: Seq[Node]): Node =
-      proto(fields)(obj +: typeInfos: _*)
-
-    def unapply(x: GetFieldSeqRefGeneric) = Some(x.fields, x.obj, x.typeInfos)
   }
 
   class GetStaticFieldSeqRef private(proto: GetStaticFieldSeqRef.Proto)
     extends FloatingNodeWithFixedArgs(proto) with FieldSeqOperation with ControlledNode {
 
-    override def fields: Seq[CangjieFieldReference] = proto.fields
+    override def fields: Seq[Node] = argsTail(1)
   }
 
   object GetStaticFieldSeqRef {
-    case class Proto private[GetStaticFieldSeqRef](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[GetStaticFieldSeqRef](ControlType)(FieldSeqOperation.resAddrTpe(fields)) {
-      require(fields.head.field.exists(_.isStatic))
-      require(fields.size == 1 || !fields.head.fieldType.isTraceableReference, fields)
+    case class Proto private[GetStaticFieldSeqRef](addressTypes: Seq[Type], resType: Type)
+      extends FixedArgs[GetStaticFieldSeqRef](ControlType +: addressTypes: _*)(resType) {
 
       def newInstance() = new GetStaticFieldSeqRef(this)
     }
 
-    def proto(fields: Seq[CangjieFieldReference]) = {
-      Prototype.intern(Proto(fields))
+    def proto(addressTypes: Seq[Type], resType: Type) = {
+      Prototype.intern(Proto(addressTypes, resType))
     }
 
-    def apply(fields: Seq[CangjieFieldReference]): Node =
-      proto(fields)()
+    def apply(fields: Node*): Node = {
+      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.exists(_.isStatic))
+      require(fields.size == 1 || !fields.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fields)
+      proto(FieldSeqOperation.addressTypes(fields), FieldSeqOperation.resTpe(fields))(fields: _*)
+    }
 
     def unapply(x: GetStaticFieldSeqRef) = Some(x.fields)
   }
 
   class LoadFieldSeq private(proto: LoadFieldSeq.Proto)
-    extends FloatingNodeWithFixedArgs(proto) with InstanceFieldSeqOperation with ControlledNode with HasInMemory {
+    extends NodeWithFixedArgs(proto) with InstanceFieldSeqOperation with SpinalMemoryNode with ProducesValue with CanThrow {
 
-    override def fields: Seq[CangjieFieldReference] = proto.fields
+    override def fields: Seq[Node] = argsTail(3)
 
     def obj = arg(2)
+
+    override def canThrow = resType.isVariableSizeType
   }
 
   object LoadFieldSeq {
-    case class Proto private[LoadFieldSeq](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[LoadFieldSeq](ControlType, MemoryType, FieldSeqOperation.refTpe(fields))(FieldSeqOperation.resTpe(fields)) {
-      require(fields.head.field.forall(!_.isStatic))
-      require(!FieldSeqOperation.resType(fields).isRecord)
-      require(!FieldSeqOperation.resType(fields).isZST)
+    case class Proto private[LoadFieldSeq](refType: Type, addressTypes: Seq[Type], resType: Type)
+      extends FixedArgs[LoadFieldSeq](ControlType +: MemoryType +: refType +: addressTypes: _*)(resType)
+      with ControlMemoryValueTagged[LoadFieldSeq] {
 
       def newInstance() = new LoadFieldSeq(this)
     }
 
-    def proto(fields: Seq[CangjieFieldReference]) = {
-      Prototype.intern(Proto(fields))
+    def proto(refType: Type, addressTypes: Seq[Type], resType: Type) = {
+      Prototype.intern(Proto(refType, addressTypes, resType))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(obj: Node): Node =
-      proto(fields)(obj)
+    def apply(obj: Node, fields: Node*): Node = {
+      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.forall(!_.isStatic))
+      require(!FieldSeqOperation.resType(fields).isRecord)
+      require(!FieldSeqOperation.resType(fields).isZST)
+      proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.addressTypes(fields), FieldSeqOperation.resTpe(fields))(obj +: fields: _*)
+    }
 
     def unapply(x: LoadFieldSeq) = Some(x.fields, x.obj)
-  }
-
-  class LoadFieldSeqGeneric private(proto: LoadFieldSeqGeneric.Proto)
-    extends NodeWithFixedArgs(proto) with InstanceFieldSeqOperation with GenericFieldSeqOperation
-      with SpinalMemoryNode with ProducesValue with CanThrow {
-
-    override def fields: Seq[CangjieFieldReference] = proto.fields
-
-    def obj = arg(2)
-    def typeInfos = argsTail(3)
-  }
-
-  object LoadFieldSeqGeneric {
-    case class Proto private[LoadFieldSeqGeneric](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[LoadFieldSeqGeneric]
-        (Seq(ControlType, MemoryType, FieldSeqOperation.refTpe(fields)) ++ FieldSeqOperation.typeInfos(fields): _*)
-        (FieldSeqOperation.resTpe(fields)) with ControlMemoryValueTagged[LoadFieldSeqGeneric] {
-      require(fields.head.field.forall(!_.isStatic))
-
-      def newInstance() = new LoadFieldSeqGeneric(this)
-    }
-
-    def proto(fields: Seq[CangjieFieldReference]) = {
-      Prototype.intern(Proto(fields))
-    }
-
-    def apply(fields: Seq[CangjieFieldReference])(obj: Node, typeInfos: Seq[Node]): Node =
-      proto(fields)(obj +: typeInfos: _*)
-
-    def unapply(x: LoadFieldSeqGeneric) = Some(x.fields, x.obj, x.typeInfos)
   }
 
   class LoadStaticFieldSeq private(proto: LoadStaticFieldSeq.Proto)
     extends FloatingNodeWithFixedArgs(proto) with FieldSeqOperation with ControlledNode with HasInMemory {
 
-    override def fields: Seq[CangjieFieldReference] = proto.fields
+    override def fields: Seq[Node] = argsTail(2)
   }
 
   object LoadStaticFieldSeq {
-    case class Proto private[LoadStaticFieldSeq](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[LoadStaticFieldSeq](ControlType, MemoryType)(FieldSeqOperation.resTpe(fields)) {
-      require(fields.head.field.exists(_.isStatic))
-      require(!FieldSeqOperation.resType(fields).isRecord)
-      require(!FieldSeqOperation.resType(fields).isZST)
-      require(fields.size == 1 || !fields.head.fieldType.isTraceableReference, fields)
+    case class Proto private[LoadStaticFieldSeq](addressTypes: Seq[Type], resType: Type)
+      extends FixedArgs[LoadStaticFieldSeq](ControlType +: MemoryType +: addressTypes: _*)(resType) {
 
       def newInstance() = new LoadStaticFieldSeq(this)
     }
 
-    def proto(fields: Seq[CangjieFieldReference]) = {
-      Prototype.intern(Proto(fields))
+    def proto(addressTypes: Seq[Type], resType: Type) = {
+      Prototype.intern(Proto(addressTypes, resType))
     }
 
-    def apply(fields: Seq[CangjieFieldReference]): Node =
-      proto(fields)()
+    def apply(fields: Node*): Node = {
+      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.exists(_.isStatic))
+      require(!FieldSeqOperation.resType(fields).isRecord)
+      require(!FieldSeqOperation.resType(fields).isZST)
+      require(fields.size == 1 || !fields.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fields)
+      proto(FieldSeqOperation.addressTypes(fields), FieldSeqOperation.resTpe(fields))(fields: _*)
+    }
 
     def unapply(x: LoadStaticFieldSeq) = Some(x.fields)
   }
@@ -224,90 +165,61 @@ trait CangjieNodes { self: Universe =>
   class StoreFieldSeq private(proto: StoreFieldSeq.Proto)
     extends NodeWithFixedArgs(proto) with InstanceFieldSeqOperation with SpinalMemoryNode with NotProducesValue {
 
-    override def fields: Seq[CangjieFieldReference] = proto.fields
+    override def fields: Seq[Node] = argsTail(4)
 
     def obj = arg(2)
     def inValue = arg(3)
   }
 
   object StoreFieldSeq {
-    case class Proto private[StoreFieldSeq](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[StoreFieldSeq](ControlType, MemoryType, FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(VoidType)
+    case class Proto private[StoreFieldSeq](refType: Type, addressTypes: Seq[Type], resType: Type)
+      extends FixedArgs[StoreFieldSeq](ControlType +: MemoryType +: refType +: resType +: addressTypes: _*)(VoidType)
       with ControlMemoryTagged[StoreFieldSeq] {
-      require(fields.head.field.forall(!_.isStatic))
-      require(!FieldSeqOperation.resType(fields).isRecord)
-      require(!FieldSeqOperation.resType(fields).isZST)
 
       def newInstance() = new StoreFieldSeq(this)
     }
 
-    def proto(fields: Seq[CangjieFieldReference]) = {
-      Prototype.intern(Proto(fields))
+    def proto(refType: Type, addressTypes: Seq[Type], resType: Type) = {
+      Prototype.intern(Proto(refType, addressTypes, resType))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(obj: Node, value: Node): Node =
-      proto(fields)(obj, value)
+    def apply(obj: Node, value: Node, fields: Node*): Node = {
+      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.forall(!_.isStatic))
+      require(!FieldSeqOperation.resType(fields).isRecord)
+      require(!FieldSeqOperation.resType(fields).isZST)
+      proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.addressTypes(fields), FieldSeqOperation.resTpe(fields))(obj +: value +: fields: _*)
+    }
 
     def unapply(x: StoreFieldSeq) = Some(x.fields, x.obj, x.inValue)
-  }
-
-  class StoreFieldSeqGeneric private(proto: StoreFieldSeqGeneric.Proto)
-    extends NodeWithFixedArgs(proto) with InstanceFieldSeqOperation with GenericFieldSeqOperation
-      with SpinalMemoryNode with NotProducesValue {
-
-    override def fields: Seq[CangjieFieldReference] = proto.fields
-
-    def obj = arg(2)
-    def inValue = arg(3)
-    def typeInfos = argsTail(4)
-  }
-
-  object StoreFieldSeqGeneric {
-    case class Proto private[StoreFieldSeqGeneric](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[StoreFieldSeqGeneric]
-        (Seq(ControlType, MemoryType, FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields)) ++ FieldSeqOperation.typeInfos(fields): _*)
-        (VoidType) with ControlMemoryTagged[StoreFieldSeqGeneric] {
-      require(fields.head.field.forall(!_.isStatic))
-
-      def newInstance() = new StoreFieldSeqGeneric(this)
-    }
-
-    def proto(fields: Seq[CangjieFieldReference]) = {
-      Prototype.intern(Proto(fields))
-    }
-
-    def apply(fields: Seq[CangjieFieldReference])(obj: Node, value: Node, typeInfos: Seq[Node]): Node =
-      proto(fields)(obj +: value +: typeInfos: _*)
-
-    def unapply(x: StoreFieldSeqGeneric) = Some(x.fields, x.obj, x.inValue, x.typeInfos)
   }
 
   class StoreStaticFieldSeq private(proto: StoreStaticFieldSeq.Proto)
     extends NodeWithFixedArgs(proto) with FieldSeqOperation with SpinalMemoryNode with NotProducesValue {
 
-    override def fields: Seq[CangjieFieldReference] = proto.fields
+    override def fields: Seq[Node] = argsTail(3)
 
     def inValue = arg(2)
   }
 
   object StoreStaticFieldSeq {
-    case class Proto private[StoreStaticFieldSeq](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[StoreStaticFieldSeq](ControlType, MemoryType, FieldSeqOperation.resTpe(fields))(VoidType)
+    case class Proto private[StoreStaticFieldSeq](addressTypes: Seq[Type], resType: Type)
+      extends FixedArgs[StoreStaticFieldSeq](ControlType +: MemoryType +: resType +: addressTypes: _*)(VoidType)
       with ControlMemoryTagged[StoreStaticFieldSeq] {
-      require(fields.head.field.exists(_.isStatic))
-      require(!FieldSeqOperation.resType(fields).isRecord)
-      require(!FieldSeqOperation.resType(fields).isZST)
-      require(fields.size == 1 || !fields.head.fieldType.isTraceableReference, fields)
 
       def newInstance() = new StoreStaticFieldSeq(this)
     }
 
-    def proto(fields: Seq[CangjieFieldReference]) = {
-      Prototype.intern(Proto(fields))
+    def proto(addressTypes: Seq[Type], resType: Type) = {
+      Prototype.intern(Proto(addressTypes, resType))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(value: Node): Node =
-      proto(fields)(value)
+    def apply(value: Node, fields: Node*): Node = {
+      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.exists(_.isStatic))
+      require(!FieldSeqOperation.resType(fields).isRecord)
+      require(!FieldSeqOperation.resType(fields).isZST)
+      require(fields.size == 1 || !fields.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fields)
+      proto(FieldSeqOperation.addressTypes(fields), FieldSeqOperation.resTpe(fields))(value +: fields: _*)
+    }
 
     def unapply(x: StoreStaticFieldSeq) = Some(x.fields, x.inValue)
   }
@@ -822,5 +734,197 @@ trait CangjieNodes { self: Universe =>
       def fetchOr (objType: Type, field: CangjieFieldReference)(obj: Node, value: Node) = proto(Kind.FETCH_OR,  objType, field)(obj, value)
       def fetchXor(objType: Type, field: CangjieFieldReference)(obj: Node, value: Node) = proto(Kind.FETCH_XOR, objType, field)(obj, value)
     }
+  }
+
+  sealed trait CangjieReferenceNode extends FloatingNode {
+    def refType: SignatureType
+
+    def fieldType: SignatureType
+
+    def maybeField: Option[Field]
+  }
+
+  sealed trait CangjieReferenceNodeGeneric extends CangjieReferenceNode {
+    def typeInfo: Node // typeinfo of refType
+  }
+
+  class FieldReferenceNode private(proto: FieldReferenceNode.Proto)
+    extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode {
+    def field = proto.field
+
+    override def refType = field.refType
+
+    override def fieldType = field.fieldType
+
+    override def maybeField = Some(field.field)
+  }
+
+  object FieldReferenceNode {
+    case class Proto private[FieldReferenceNode](field: CangjieFieldReference)
+      extends FixedArgs[FieldReferenceNode]()(AddrIntType)
+        with PrototypeStrictNodeClass[FieldReferenceNode, FieldReferenceNode] {
+
+      def newInstance() = new FieldReferenceNode(this)
+    }
+
+    def proto(field: CangjieFieldReference) = {
+      Prototype.intern(Proto(field))
+    }
+
+    def apply(field: CangjieFieldReference): FieldReferenceNode =
+      proto(field)()
+
+    def unapply(x: FieldReferenceNode) = Some(x.field)
+  }
+
+  class ConstIndex private(proto: ConstIndex.Proto)
+    extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode {
+    def idx: Int = proto.idx
+
+    override def refType = proto.refType
+
+    override def fieldType = proto.fieldType
+
+    override def maybeField = None
+  }
+
+  object ConstIndex {
+    case class Proto private[ConstIndex](idx: Int, refType: SignatureType, fieldType: SignatureType)
+      extends FixedArgs[ConstIndex]()(AddrIntType)
+        with PrototypeStrictNodeClass[ConstIndex, ConstIndex] {
+
+      def newInstance() = new ConstIndex(this)
+    }
+
+    def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = {
+      Prototype.intern(Proto(idx, refType, fieldType))
+    }
+
+    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType): ConstIndex =
+      proto(idx, refType, fieldType)()
+
+    def unapply(x: ConstIndex) = Some(x.idx, x.refType, x.fieldType)
+  }
+
+  class Index private(proto: Index.Proto)
+    extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode {
+    def idx: Node = arg(0)
+
+    override def refType = proto.refType
+
+    override def fieldType = proto.fieldType
+
+    override def maybeField = None
+  }
+
+  object Index {
+    case class Proto private[Index](refType: SignatureType, fieldType: SignatureType)
+      extends FixedArgs[Index](AddrIntType)(AddrIntType)
+        with PrototypeStrictNodeClass[Index, Index] {
+
+      def newInstance() = new Index(this)
+    }
+
+    def proto(refType: SignatureType, fieldType: SignatureType) = {
+      Prototype.intern(Proto(refType, fieldType))
+    }
+
+    def apply(refType: SignatureType, fieldType: SignatureType)(idx: Node): Index =
+      proto(refType, fieldType)(idx)
+
+    def unapply(x: Index) = Some(x.idx, x.refType, x.fieldType)
+  }
+
+  class FieldReferenceNodeGeneric private(proto: FieldReferenceNodeGeneric.Proto)
+    extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNodeGeneric {
+    def field = proto.field
+
+    override def typeInfo: Node = arg(0)
+
+    override def refType = field.refType
+
+    override def fieldType = field.fieldType
+
+    override def maybeField = Some(field.field)
+  }
+
+  object FieldReferenceNodeGeneric {
+    case class Proto private[FieldReferenceNodeGeneric](field: CangjieFieldReference)
+      extends FixedArgs[FieldReferenceNodeGeneric](AddrIntType)(AddrIntType)
+        with PrototypeStrictNodeClass[FieldReferenceNodeGeneric, FieldReferenceNodeGeneric] {
+
+      def newInstance() = new FieldReferenceNodeGeneric(this)
+    }
+
+    def proto(field: CangjieFieldReference) = {
+      Prototype.intern(Proto(field))
+    }
+
+    def apply(field: CangjieFieldReference)(typeInfo: Node): FieldReferenceNodeGeneric =
+      proto(field)(typeInfo)
+
+    def unapply(x: FieldReferenceNodeGeneric) = Some(x.field, x.typeInfo)
+  }
+
+  class ConstIndexGeneric private(proto: ConstIndexGeneric.Proto)
+    extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNodeGeneric {
+    def idx: Int = proto.idx
+
+    override def typeInfo: Node = arg(0)
+
+    override def refType = proto.refType
+
+    override def fieldType = proto.fieldType
+
+    override def maybeField = None
+  }
+
+  object ConstIndexGeneric {
+    case class Proto private[ConstIndexGeneric](idx: Int, refType: SignatureType, fieldType: SignatureType)
+      extends FixedArgs[ConstIndexGeneric](AddrIntType)(AddrIntType)
+        with PrototypeStrictNodeClass[ConstIndexGeneric, ConstIndexGeneric] {
+
+      def newInstance() = new ConstIndexGeneric(this)
+    }
+
+    def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = {
+      Prototype.intern(Proto(idx, refType, fieldType))
+    }
+
+    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType)(typeInfo: Node): ConstIndexGeneric =
+      proto(idx, refType, fieldType)(typeInfo)
+
+    def unapply(x: ConstIndexGeneric) = Some(x.idx, x.refType, x.fieldType, x.typeInfo)
+  }
+
+  class IndexGeneric private(proto: IndexGeneric.Proto)
+    extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNodeGeneric {
+    def idx: Node = arg(0)
+
+    override def typeInfo: Node = arg(1)
+
+    override def refType = proto.refType
+
+    override def fieldType = proto.fieldType
+
+    override def maybeField = None
+  }
+
+  object IndexGeneric {
+    case class Proto private[IndexGeneric](refType: SignatureType, fieldType: SignatureType)
+      extends FixedArgs[IndexGeneric](AddrIntType, AddrIntType)(AddrIntType)
+        with PrototypeStrictNodeClass[IndexGeneric, IndexGeneric] {
+
+      def newInstance() = new IndexGeneric(this)
+    }
+
+    def proto(refType: SignatureType, fieldType: SignatureType) = {
+      Prototype.intern(Proto(refType, fieldType))
+    }
+
+    def apply(refType: SignatureType, fieldType: SignatureType)(idx: Node, typeInfo: Node): IndexGeneric =
+      proto(refType, fieldType)(idx, typeInfo)
+
+    def unapply(x: IndexGeneric) = Some(x.idx, x.refType, x.fieldType, x.typeInfo)
   }
 }

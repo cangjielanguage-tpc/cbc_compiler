@@ -168,13 +168,27 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
         }
       }
       for {
-        n <- (all[GetFieldSeqRef] ++ all[GetFieldSeqRefGeneric]).toList
+        n <- all[GetFieldSeqRef].toList
         m <- Node.rematerializeCompletely(n)
       } {
         m.singleUse match {
           case use: Call =>
           case use: Box =>
           case use: CopyStructure =>
+          case use => shouldNotReachHere(use)
+        }
+      }
+    }
+  }
+
+  override def prepareCangjieReferenceNode(): Unit = {
+    if (isStandalone) {
+      for {
+        n <- all[CangjieReferenceNode].toList
+        m <- Node.rematerializeCompletely(n)
+      } {
+        m.singleUse match {
+          case use: FieldSeqOperation => m.attachToGroup(use, Group.AttachReason.CANGJIE_REFERENCE)
           case use => shouldNotReachHere(use)
         }
       }
