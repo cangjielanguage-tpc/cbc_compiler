@@ -1255,6 +1255,22 @@ trait CHIRParser
         }
 
         val n = (from, to) match {
+          case (from: (Reference | InstantiatedReference | TypeVariable), to: (Reference | InstantiatedReference)) =>
+            // TODO: remove this case when numeric cast will handle only *numeric* types
+            CheckCast(to, trusted = true)(value)
+            value
+
+          case (from: (Record | InstantiatedRecord), to: (Record | InstantiatedRecord)) =>
+            // TODO: check something
+            ReinterpretCast(fromTpe, toTpe)(value)
+
+          case (from: (Record | InstantiatedRecord), to: Tuple) =>
+            // TODO: assert from is enum!
+            ReinterpretCast(fromTpe, toTpe)(value)
+
+          case (from: TypeVariable, to: TypeVariable) =>
+            value
+
           case (from: Integral, to: Integral) =>
             BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, value)
 
@@ -1322,6 +1338,30 @@ trait CHIRParser
 
           case (Int32 | UInt32 | _: PrimitiveBasedEnum, Int32 | UInt32 | _: PrimitiveBasedEnum) =>
             value
+
+          case (from @ OptionLikeEnum(_, _, x), to @ Tuple(Seq(Boolean, y))) =>
+            assert(x == y, s"cast from $from to $to")
+            if (from.isNullableOption || x.isTypeVariable) {
+              EnumCast(from)(value)
+            } else {
+              ReinterpretCast(fromTpe, toTpe)(value)
+            }
+
+          case (from: ClassBasedEnum, to: Tuple) =>
+            val ctors = from.info.constructors
+            val targetCtor = to.params.tail // first element is tag
+            val idx = ctors.indexWhere(_.params == targetCtor) // TODO: instantiate
+            assert(idx >= 0)
+            val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
+            val enumType = if (from.params.isEmpty) {
+              CangjieReference(enumName)
+            } else {
+              InstantiatedReference(enumName, from.params)
+            }
+            EnumCast(enumType)(value)
+
+          case (from: UnionBasedEnum, to: Tuple) =>
+            ReinterpretCast(fromTpe, toTpe)(value)
 
           case (from: ZeroSizedEnum, UInt32) =>
             IConst(0)
@@ -1978,6 +2018,74 @@ trait CHIRParser
             case (from: TypeVariable, to: TypeVariable) =>
               value
 
+            case (from: Integral, to: Integral) =>
+              BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, value)
+
+            case (from: Integral, UnicodeChar32) =>
+              BFX(toTpe, 0, (from.bits min 32), signExtension = from.signed, value)
+
+            case (UnicodeChar32, to: Integral) =>
+              BFX(toTpe, 0, (32 min to.bits), signExtension = true, value)
+
+            case (from: Integral, to: FloatingPoint) =>
+              val fpToAsm = if (toAsm == F16) F32 else toAsm
+              val res = fromAsm match {
+                case U64 =>
+                  val proc = fpToAsm match {
+                    case F32 => RTSProc.JR_ul2f
+                    case F64 => RTSProc.JR_ul2d
+                    case _ => shouldNotReachHere(toAsm)
+                  }
+                  RTSCall(proc)(value)
+
+                case U32 =>
+                  // Non-long values could be zero-extended to bigger signed type and then converted to float.
+                  val i64 = BFX(LongType, 0, from.bits, signExtension = false, value)
+                  ValueConvert(I64, fpToAsm)(i64)
+
+                case _ =>
+                  val (adjFromAsm, adjValue) = if (fromAsm.isShortIntegral) {
+                    (I32, BFX(IntType, 0, fromAsm.sizeInBits, signExtension = fromAsm.signed, value))
+                  } else {
+                    (fromAsm, value)
+                  }
+                  ValueConvert(adjFromAsm, fpToAsm)(adjValue)
+              }
+
+              if (toAsm == F16) ValueConvert(F32, F16)(res) else res
+
+            case (from: FloatingPoint, to: Integral) =>
+              val (fpFromAsm, fpValue) = if (fromAsm == F16) {
+                (F32, ValueConvert(F16, F32)(value))
+              } else {
+                (fromAsm, value)
+              }
+
+              toAsm match {
+                case U64 =>
+                  val proc = fpFromAsm match {
+                    case F32 => RTSProc.JR_f2ul
+                    case F64 => RTSProc.JR_d2ul
+                    case _ => shouldNotReachHere(fromAsm)
+                  }
+                  RTSCall(proc)(fpValue)
+
+                case U32 =>
+                  // Value could be converted to bigger signed type and then zero-extended to target type.
+                  val i64 = ValueConvert(fpFromAsm, I64)(fpValue)
+                  BitFieldExtract.Truncate(i64)
+
+                case _ =>
+                  val adjToAsm = if (toAsm.isShortIntegral) I32 else toAsm
+                  ValueConvert(fpFromAsm, adjToAsm)(fpValue)
+              }
+
+            case (from: FloatingPoint, to: FloatingPoint) =>
+              ValueConvert(fromAsm, toAsm)(value)
+
+            case (Int32 | UInt32 | _: PrimitiveBasedEnum, Int32 | UInt32 | _: PrimitiveBasedEnum) =>
+              value
+
             case (from @ OptionLikeEnum(_, _, x), to @ Tuple(Seq(Boolean, y))) =>
               assert(x == y, s"cast from $from to $to")
               if (from.isNullableOption || x.isTypeVariable) {
@@ -2002,7 +2110,13 @@ trait CHIRParser
             case (from: UnionBasedEnum, to: Tuple) =>
               ReinterpretCast(fromTpe, toTpe)(value)
 
-            case _ => notImplemented(s"cast from ${from.toJETSignature} to ${to.toJETSignature}")
+            case (from: ZeroSizedEnum, UInt32) =>
+              IConst(0)
+
+            case (UInt32, to: ZeroSizedEnum) =>
+              self.Void()
+
+            case _ => notImplemented(s"class cast from ${from.toJETSignature} to ${to.toJETSignature}")
           }
           state(e) = n
 
