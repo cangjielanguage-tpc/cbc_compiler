@@ -65,6 +65,8 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
       val wrappedMethod = annotations(_v.base.base).collectFirst { case m: WrappedRawMethod => pkg.getValue[Function](m.rawMethod).base }
       val v = wrappedMethod.getOrElse(_v)
       val srcName = v.srcCodeIdentifier
+      val isPrivate = Attribute.PRIVATE in v.base.base.attributes
+      val isPackageGlobal = v.declaredParent == 0
       val suffix = if (isGenericInstantiated(v)) {
         val id = pkg.getValueID(t)
         assert(id > 0)
@@ -72,7 +74,7 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
       } else {
         ""
       }
-      if (srcName.isEmpty || srcName == "$lambda") v.base.identifier.tail else srcName + suffix
+      if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) v.base.identifier.tail else srcName + suffix
     }
 
     ((v: @unchecked) match {
