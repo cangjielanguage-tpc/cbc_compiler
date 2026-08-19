@@ -1570,15 +1570,16 @@ trait CHIRParser
             }
 
           case PackageFormat.IntrinsicKind.ARRAY_ACQUIRE_RAW_DATA =>
-            val (sig, base) = operands(e.base.base) match {
-              case Seq(base: PackageFormat.LocalVar) =>
-                (resolver.typeSig(base.base.`type`), state(base))
-              case Seq(base: PackageFormat.Parameter) =>
-                (resolver.typeSig(base.base.`type`), state(base))
+            val (sig, from) = operands(e.base.base) match {
+              case Seq(n: PackageFormat.LocalVar) =>
+                (resolver.typeSig(n.base.`type`), state(n))
+              case Seq(n: PackageFormat.Parameter) =>
+                (resolver.typeSig(n.base.`type`), state(n))
             }
 
-            println(s"Acquire raw data $sig, $base")
-            state(e) = base
+            def fromTpe = ValueType.fromSig(sig)
+            println(s"Acquire raw data sig: $sig, fromTpe: $fromTpe, from: $from")
+            state(e) = ReinterpretCast(fromTpe, AddrType)(from)
         }
 
       case e: PackageFormat.SpawnBase =>
