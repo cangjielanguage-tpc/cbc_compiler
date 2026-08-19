@@ -1568,6 +1568,17 @@ trait CHIRParser
                 // TODO pointer to a method?
                 shouldNotReachHere(cpointerType)
             }
+
+          case PackageFormat.IntrinsicKind.ARRAY_ACQUIRE_RAW_DATA =>
+            val (sig, base) = operands(e.base.base) match {
+              case Seq(base: PackageFormat.LocalVar) =>
+                (resolver.typeSig(base.base.`type`), state(base))
+              case Seq(base: PackageFormat.Parameter) =>
+                (resolver.typeSig(base.base.`type`), state(base))
+            }
+
+            println(s"Acquire raw data $sig, $base")
+            state(e) = base
         }
 
       case e: PackageFormat.SpawnBase =>
