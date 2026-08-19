@@ -1122,10 +1122,10 @@ trait CHIRParser
           case _ => false
         }
 
-        val (thisTypeArgVal, sourceArgVals) = if (isStatic) {
-          (nonBlockArgVals.headOption, nonBlockArgVals.tail)
+        val (methodArgVal: PackageFormat.Function, thisTypeArgVal, sourceArgVals) = if (isStatic) {
+          (nonBlockArgVals.head, nonBlockArgVals.lift(1), nonBlockArgVals.drop(1))
         } else {
-          (None, nonBlockArgVals)
+          (nonBlockArgVals.head, None, nonBlockArgVals.drop(1))
         }
         val thisTypeInfo = thisTypeArgVal.map(state.apply)
 
@@ -1142,16 +1142,34 @@ trait CHIRParser
             resolver.typeSig(tid)
           case t => t
         }
-        val func = e.virMethodCtx
-        val name = resolver.symName(func)
-        val (gsig, _, _, _) = resolver.functionSig(func.funcType, hasReceiver = !isStatic)
 
         val retType = resolver.typeSig(e.base.base.resultTy)
+
+        //println(s"InvokeBase args size: ${argVals.size}, ret type = $retType, this type = $thisType, this type node = $thisTypeInfo")
+
         val isigParams = sourceArgVals map {
           case v: PackageFormat.LocalVar => v.base.`type`
           case v: PackageFormat.Parameter => v.base.`type`
           case v: PackageFormat.GlobalVar => v.base.base.`type`
         } map (resolver.typeSig)
+
+        {
+          val declClass = Option(pkg.getDef[Table](methodArgVal.base.declaredParent))
+            .flatMap(resolver.symType)
+            .map(asClassType)
+            .getOrElse(resolver.findClass(methodArgVal.base.packageName).get)
+
+          val name = resolver.symName(methodArgVal)
+//          println(s"name $name")
+          val target = calcMethodRef(declClass, SignatureType.fromSymType(declClass), name, methodArgVal, methodArgVal.funcKind, methodArgVal.base.base.base.attributes)
+//          println(s"target $target")
+
+//          println(s"InvokeBase args size: ${argVals.size}, ret type = $retType, this type = $thisType, this type node = $thisTypeInfo, params = $isigParams")
+        }
+
+        val func = methodArgVal
+        val name = resolver.symName(func)
+        val (gsig, _, _, _) = resolver.functionSig(func.base.base.`type`, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
           if (g.isTypeVariable && !i.isTypeVariable) SignatureType.Box(i) else i
@@ -1198,7 +1216,6 @@ trait CHIRParser
         val call = callMethod(target, Some(refType), Some(thisType), retType, paramTypes, args, thisTypeInfo)
         state(e) = call
 
-      //case e: PackageFormat.InvokeBase =>
       case e: PackageFormat.InstanceOf =>
         val tpe = resolver.typeSig(e.targetType)
         state(e) = operands(e.base).map(state.apply) match {
@@ -1234,26 +1251,10 @@ trait CHIRParser
           case PackageFormat.OverflowStrategy.WRAPPING | PackageFormat.OverflowStrategy.NA => // ok
           case PackageFormat.OverflowStrategy.THROWING => // TODO: do we need to support it?
           case PackageFormat.OverflowStrategy.SATURATING => notImplemented("saturating type cast")
-          case PackageFormat.OverflowStrategy.CHECKED => shouldNotReachHere("checked type cast")
+//          case PackageFormat.OverflowStrategy.CHECKED => shouldNotReachHere("checked type cast")
         }
 
         val n = (from, to) match {
-          case (from: (Reference | InstantiatedReference | TypeVariable), to: (Reference | InstantiatedReference)) =>
-            // TODO: remove this case when numeric cast will handle only *numeric* types
-            CheckCast(to, trusted = true)(value)
-            value
-
-          case (from: (Record | InstantiatedRecord), to: (Record | InstantiatedRecord)) =>
-            // TODO: check something
-            ReinterpretCast(fromTpe, toTpe)(value)
-
-          case (from: (Record | InstantiatedRecord), to: Tuple) =>
-            // TODO: assert from is enum!
-            ReinterpretCast(fromTpe, toTpe)(value)
-
-          case (from: TypeVariable, to: TypeVariable) =>
-            value
-
           case (from: Integral, to: Integral) =>
             BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, value)
 
@@ -1322,37 +1323,13 @@ trait CHIRParser
           case (Int32 | UInt32 | _: PrimitiveBasedEnum, Int32 | UInt32 | _: PrimitiveBasedEnum) =>
             value
 
-          case (from @ OptionLikeEnum(_, _, x), to @ Tuple(Seq(Boolean, y))) =>
-            assert(x == y, s"cast from $from to $to")
-            if (from.isNullableOption || x.isTypeVariable) {
-              EnumCast(from)(value)
-            } else {
-              ReinterpretCast(fromTpe, toTpe)(value)
-            }
-
-          case (from: ClassBasedEnum, to: Tuple) =>
-            val ctors = from.info.constructors
-            val targetCtor = to.params.tail // first element is tag
-            val idx = ctors.indexWhere(_.params == targetCtor) // TODO: instantiate
-            assert(idx >= 0)
-            val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
-            val enumType = if (from.params.isEmpty) {
-              CangjieReference(enumName)
-            } else {
-              InstantiatedReference(enumName, from.params)
-            }
-            EnumCast(enumType)(value)
-
-          case (from: UnionBasedEnum, to: Tuple) =>
-            ReinterpretCast(fromTpe, toTpe)(value)
-
           case (from: ZeroSizedEnum, UInt32) =>
             IConst(0)
 
           case (UInt32, to: ZeroSizedEnum) =>
             self.Void()
 
-          case _ => notImplemented(s"cast from ${from.toJETSignature} to ${to.toJETSignature}")
+          case _ => notImplemented(s"numeric cast from ${from.toJETSignature} to ${to.toJETSignature}")
         }
         state(e) = n
 
@@ -1566,9 +1543,12 @@ trait CHIRParser
             SpawnClosure(objSig)(obj)
         }
 
-
       case e: PackageFormat.Debug =>
         // TODO: support debug
+
+      case e: PackageFormat.GetRTTIStatic =>
+        assert(rootMethod.hasThisTypeInfoParameter)
+        state(e) = rootMethodParam(rootMethod.getThisTypeInfoArgIdx)
 
       case e: PackageFormat.Expression => e.kind match {
 
@@ -1962,12 +1942,72 @@ trait CHIRParser
         case CHIRExprKind.GetRtti =>
           state(e) = ThisTypeInfoBy(ReceiverParam())
 
+        case CHIRExprKind.StaticCast =>
+          import BitFieldExtract.*
+          import SignatureType.*
+          import AsmType.*
+
+          val (from, value) = operands(e) match {
+            case Seq(fromVar: PackageFormat.LocalVar, /*Exception targets*/ _*) =>
+              (resolver.typeSig(fromVar.base.`type`), state(fromVar))
+            case Seq(fromVar: PackageFormat.Parameter, /*Exception targets*/ _*) =>
+              (resolver.typeSig(fromVar.base.`type`), state(fromVar))
+          }
+          val to = resolver.typeSig(e.resultTy)
+
+          val fromAsm = from.toAsm
+          val toAsm = to.toAsm
+
+          def fromTpe = ValueType.fromSig(from)
+          def toTpe = ValueType.fromSig(to)
+
+          val n = (from, to) match {
+            case (from: (Reference | InstantiatedReference | TypeVariable), to: (Reference | InstantiatedReference)) =>
+              // TODO: remove this case when numeric cast will handle only *numeric* types
+              CheckCast(to, trusted = true)(value)
+              value
+
+            case (from: (Record | InstantiatedRecord), to: (Record | InstantiatedRecord)) =>
+              // TODO: check something
+              ReinterpretCast(fromTpe, toTpe)(value)
+
+            case (from: (Record | InstantiatedRecord), to: Tuple) =>
+              // TODO: assert from is enum!
+              ReinterpretCast(fromTpe, toTpe)(value)
+
+            case (from: TypeVariable, to: TypeVariable) =>
+              value
+
+            case (from @ OptionLikeEnum(_, _, x), to @ Tuple(Seq(Boolean, y))) =>
+              assert(x == y, s"cast from $from to $to")
+              if (from.isNullableOption || x.isTypeVariable) {
+                EnumCast(from)(value)
+              } else {
+                ReinterpretCast(fromTpe, toTpe)(value)
+              }
+
+            case (from: ClassBasedEnum, to: Tuple) =>
+              val ctors = from.info.constructors
+              val targetCtor = to.params.tail // first element is tag
+              val idx = ctors.indexWhere(_.params == targetCtor) // TODO: instantiate
+              assert(idx >= 0)
+              val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
+              val enumType = if (from.params.isEmpty) {
+                CangjieReference(enumName)
+              } else {
+                InstantiatedReference(enumName, from.params)
+              }
+              EnumCast(enumType)(value)
+
+            case (from: UnionBasedEnum, to: Tuple) =>
+              ReinterpretCast(fromTpe, toTpe)(value)
+
+            case _ => notImplemented(s"cast from ${from.toJETSignature} to ${to.toJETSignature}")
+          }
+          state(e) = n
+
         case k => notImplemented(CHIRExprKind.name(k))
       }
-
-      case e: PackageFormat.GetRTTIStatic =>
-        assert(rootMethod.hasThisTypeInfoParameter)
-        state(e) = rootMethodParam(rootMethod.getThisTypeInfoArgIdx)
     }
 
     private def staticFieldRef(globalVar: PackageFormat.GlobalVar): CangjieFieldReference = {
