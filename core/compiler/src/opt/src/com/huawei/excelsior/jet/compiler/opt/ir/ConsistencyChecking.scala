@@ -133,10 +133,11 @@ trait ConsistencyChecking extends SynchronizationOptimization with UCEComponent 
             assert(sn.isInstanceOf[SpinalMemoryNode])
           }
 
-          sn match
+          sn match {
             case fieldSeqOp: FieldSeqOperation =>
               checkFieldSeqOperation(fieldSeqOp)
             case _ =>
+          }
 
         case be: BlockEnd =>
           assert(be.block.blockEnd == be)
@@ -205,6 +206,6 @@ trait ConsistencyChecking extends SynchronizationOptimization with UCEComponent 
   }
 
   private def checkFieldSeqOperation(node: FieldSeqOperation): Unit = {
-    assert(node.fields.dropRight(1).forall(_.isInstanceOf[CangjieReferenceNode]))
+    assert(node.fields.init.forall(_.isInstanceOf[CangjieReferenceNode]))
   }
 }

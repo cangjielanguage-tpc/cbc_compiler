@@ -459,11 +459,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             assert(refType.isVariableLayoutType)
             val IReg(ti) = f.typeInfo
             builder.constIndexGeneric(f.idx, refType.toCbc, ti)
-          case f: Index =>
+          case f: IndexFieldReference =>
             assert(!f.refType.isVariableLayoutType)
             val IReg(idx) = f.idx
             builder.index(idx, f.fieldType.toCbc)
-          case f: IndexGeneric =>
+          case f: IndexFieldReferenceGeneric =>
             assert(f.refType.isVariableLayoutType)
             val IReg(ti) = f.typeInfo
             val IReg(idx) = f.idx

@@ -1826,7 +1826,7 @@ trait CHIRParser
                           case Seq(IConst(c)) =>
                             assert(c == 0 || c == 1, c)
                             StoreFieldSeq(mem, IConst(c), tagChain: _*)
-                              
+
                           case Seq(IConst(c), x) =>
                             assert(c == 0 || c == 1, c)
                             StoreFieldSeq(mem, IConst(c), tagChain: _*)
@@ -2345,9 +2345,9 @@ trait CHIRParser
 
     private def createIndexNode(idx: Node, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
       if (refType.isVariableLayoutType) {
-        IndexGeneric(refType, fieldType)(idx, loadTypeInfo(refType))
+        IndexFieldReferenceGeneric(refType, fieldType)(idx, loadTypeInfo(refType))
       } else {
-        Index(refType, fieldType)(idx)
+        IndexFieldReference(refType, fieldType)(idx)
       }
     }
   }
