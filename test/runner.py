@@ -261,7 +261,8 @@ class StandaloneTestSuite(TestSuite):
                     test_output.write(f"{res}\n")
 
                 if await self.check_result(test_name, custom_actual=actual_file) != 0:
-                    return test_failed(test_name, in_mode, msg=f"diff (mode: standalone cj - {mode})")
+                    test_failed(test_name, in_mode, msg=f"diff (mode: standalone cj - {mode})")
+                    continue
 
         else:
             raise ValueError(f"Unknown standalone test mode: {in_mode}")
