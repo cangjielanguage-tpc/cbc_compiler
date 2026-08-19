@@ -687,7 +687,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val adapter = asm.adapter
       val builder = MemSpace.Builder()
 
-      def head(base: Option[Node], n: Node, fields: Seq[CangjieFieldReference]): Unit = n match {
+      def head(base: Option[Node], n: Node, fields: Seq[Node]): Unit = n match {
         case stack: HasFrameSlot => stack.slot match {
           case slot: TypedFrameSlotCBC => builder.typed(slot.typedSlot)
           case _ => shouldNotReachHere(stack)
@@ -697,7 +697,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           builder.obj(obj)
             .index(idx, n.arrayType.getArrayElemType.toCbc, checked = false)
         case IReg(r) =>
-          if (fields.head.refType.isTraceableReference) {
+          if (fields.head.asInstanceOf[CangjieReferenceNode].refType.isTraceableReference) {
             builder.obj(r)
           } else {
             base match {
@@ -715,21 +715,27 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           }
       }
 
-      def fields(fields: Seq[CangjieFieldReference], typeInfos: Seq[Node] = Seq.empty): Unit = {
-        for ((f, i) <- fields.zipWithIndex) f.field match {
-          case Some(field) =>
-            builder.field(adapter.field(f))
-          case None =>
+      def fields(fields: Seq[Node]): Unit = {
+        for ((f, i) <- fields.zipWithIndex) f match {
+          case f: FieldReferenceNode =>
+            assert(!f.field.refType.isVariableLayoutType)
+            builder.field(adapter.field(f.field))
+          case f: ConstIndex =>
             val refType = f.refType match {
               case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
               case t => t
             }
-            builder.constIndex(f.idx.toInt, refType.toCbc)
+            assert(!refType.isVariableLayoutType)
+            builder.constIndex(f.idx, refType.toCbc)
+          case f: IndexFieldReference =>
+            assert(!f.refType.isVariableLayoutType)
+            val IReg(idx) = f.idx
+            builder.index(idx, f.fieldType.toCbc)
+          case _ => shouldNotReachHere("generic field type")
         }
       }
 
       (c.dst, c.src) match {
-
         case (IReg(dst), IReg(src)) =>
           assert(check(src, LocalType.CLEARED))
           builder.rec(src).copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
@@ -740,7 +746,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               head(Some(g.baseRef), g.base, g.fields)
               fields(g.fields)
             case g: GetStaticFieldSeqRef =>
-              builder.static(adapter.field(g.fields.head))
+              builder.static(adapter.field(g.fields.head.asInstanceOf[FieldReferenceNode].field))
               fields(g.fields.tail)
             case n: FieldSeqOperation => head(Some(n.baseRef), n, Seq.empty)
             case n => head(None, n, Seq.empty)
@@ -755,7 +761,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               head(Some(g.baseRef), g.base, g.fields)
               fields(g.fields)
             case g: GetStaticFieldSeqRef =>
-              builder.static(adapter.field(g.fields.head))
+              builder.static(adapter.field(g.fields.head.asInstanceOf[FieldReferenceNode].field))
               fields(g.fields.tail)
             case n: FieldSeqOperation => head(Some(n.baseRef), n, Seq.empty)
             case n => head(None, n, Seq.empty)

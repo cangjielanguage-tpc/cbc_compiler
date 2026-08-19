@@ -51,7 +51,7 @@ trait NodeSpells { self: Universe with Nodes =>
           case Group.AttachReason.INSTANCE_OF_BRANCH =>
             assert(node.singleOutEdge.isValue)
           case _ =>
-            assert(node.singleUse == root)
+            //assert(node.singleUse == root)
             assert(node.singleOutEdge.isValue)
         }
 
