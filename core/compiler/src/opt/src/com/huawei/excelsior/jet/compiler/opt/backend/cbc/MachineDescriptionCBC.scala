@@ -253,7 +253,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
       | AssignGeneric | InstanceOfGeneric
       | AtomicOps.AtomicNode
-      | FieldReferenceNode | ConstIndex | Index| FieldReferenceNodeGeneric | ConstIndexGeneric | IndexGeneric) => true
+      | FieldReferenceNode | ConstIndex | IndexFieldReference| FieldReferenceNodeGeneric | ConstIndexGeneric | IndexFieldReferenceGeneric) => true
 
     case _: (TypeTest | CallTarget | MutFuncArgNode | RecordArrayGet) => true // always grouped with another node
 

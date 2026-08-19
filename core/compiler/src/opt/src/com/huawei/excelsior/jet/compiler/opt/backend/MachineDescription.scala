@@ -65,7 +65,7 @@ trait MachineDescription { self: Universe with BackEnd =>
   def mayImmediateBeMovedToMemoryDirectly(source: Node, isStack: Boolean): Boolean
 
   def temporaryResourcesForTransfer(to: ResourceKind, from: ResourceKind, source: Node): Option[ResourceSet] = (to, from, source) match {
-    case (_: RegResourceKind, ImmResourceKind, _: IConst | _: FConst | _: AnyNull | _: FieldReferenceNode | _: DerivedPtr.Local | _: DerivedPtr.Global) =>
+    case (_: RegResourceKind, ImmResourceKind, _: IConst | _: FConst | _: AnyNull | _: CangjieReferenceNode | _: DerivedPtr.Local | _: DerivedPtr.Global) =>
       None
 
     case (_: RegResourceKind, ImmResourceKind, _: LConst | _: DConst) =>
