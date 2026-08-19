@@ -522,6 +522,18 @@ object pcOModule {
       fextOption[CangjieEnumInfoFEXT](cangjieEnumInfo).map(_.info)
     }
 
+    def setCangjieExtendInfo(info: SignatureType): Unit = {
+      if (!hasFEXT(cangjieExtendInfo)) {
+        // TODO: stop serializing everything
+        addImport(info)
+        addFEXT(newSignatureTypeFEXT(info), cangjieExtendInfo)
+      }
+    }
+
+    def getCangjieExtendInfo: Option[SignatureType] = {
+      fextOption[SignatureTypeFEXT](cangjieExtendInfo).map(_.sig)
+    }
+
     def addLambdaInfo(info: LambdaInfo): Unit = {
       assert(isLambdaClass)
 
@@ -4838,7 +4850,8 @@ object pcOModule {
   private val ajDelayedIntrinsic: Byte = 48
   private val cangjieBoxValueType: Byte = 49
   private val cangjieEnumInfo: Byte = 50
-  val lastpersistenttype: Byte = 50
+  private val cangjieExtendInfo: Byte = 51
+  val lastpersistenttype: Byte = 51
 
   /*----------------------------------------------------------------*/
   private var classLookupTable: Hashtable = _
@@ -5231,6 +5244,8 @@ object pcOModule {
       new CHIRVTableFEXT
     case `cangjieEnumInfo` =>
       new CangjieEnumInfoFEXT
+    case `cangjieExtendInfo` =>
+      new SignatureTypeFEXT
     case _ =>
       throw new AssertionError(type0)
   }

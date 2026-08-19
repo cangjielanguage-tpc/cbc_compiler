@@ -235,6 +235,7 @@ object CHIRBuilder {
           if (!resolver.isImported(d.base)) {
             builder.markAsCHIRDef(symType)
           }
+          builder.setExtendInfo(symType, resolver.typeSig(d.extendedType))
           val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
           builder.setSuperinterfaces(symType, superinterfaces)
           fillFields(symType, d.base)
@@ -255,6 +256,7 @@ object CHIRBuilder {
         case typeSig: SignatureType.OptionLikeEnum if typeSig.someType.isTypeVariable => SignatureType.Box(typeSig)
         case _ => typeSig
       }
+      val vtableFuncs = d.vtableVector.toSeq.flatMap(_.virtualMethodsVector.toSeq).map(_.instance)
       for (id <- d.methodsVector.iterator; m = pkg.getValue[Function](id)) {
         val name = resolver.symName(m)
         val value = m.base.base
@@ -263,7 +265,8 @@ object CHIRBuilder {
             Modifiers(Modifier.CJ_MUT)
           case _ => Modifiers.EMPTY
         }
-        val extendModifiers = if (resolver.isExtendedBaseFunc(m)) Modifiers(STATIC) else Modifiers.EMPTY
+        def isInVTable = vtableFuncs.exists(id)
+        val extendModifiers = if (symType.isCangjieExtend && !isInVTable) Modifiers(STATIC) else Modifiers.EMPTY
         val modifiers = resolver.symModifiers(value.base.attributes) | extendModifiers | mutModifiers
         val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
         val genericInfo = resolver.genericInfo(m)

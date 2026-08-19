@@ -492,4 +492,8 @@ abstract class ClassType extends Type {
 
   def getCangjieEnumInfo: CangjieEnumInfo
 
+  def isCangjieExtend: Boolean
+
+  def getCangjieExtendInfo: SignatureType
+
 }

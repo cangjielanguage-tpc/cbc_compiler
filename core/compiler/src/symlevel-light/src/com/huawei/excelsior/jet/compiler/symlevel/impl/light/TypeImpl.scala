@@ -884,4 +884,8 @@ final class TypeImpl private[light](val o2type: pc.SymType) extends ClassType wi
 
   override def getCangjieEnumInfo = asClass.getCangjieEnumInfo.get
 
+  override def isCangjieExtend = asClass.getCangjieExtendInfo.isDefined
+
+  override def getCangjieExtendInfo = asClass.getCangjieExtendInfo.get
+
 }
