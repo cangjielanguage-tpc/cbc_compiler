@@ -587,7 +587,7 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
         val fields = (collect[CangjieReferenceNode](g.fields) ++ n.fields).toSeq
         n match {
           case n: GetFieldSeqRef => replaceTransitively(n,
-            GetFieldSeqRef.proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.addressTypes(fields), FieldSeqOperation.resTpe(fields))(n.inCtrl +: n.baseRef +: g.base +: fields: _*))
+            GetFieldSeqRef.proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(n.inCtrl +: n.baseRef +: g.base +: fields: _*))
           case n: LoadFieldSeq => replaceByCode(n) {
             LoadFieldSeq(n.baseRef, g.base, fields: _*)
           }
@@ -601,7 +601,7 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
         assert(g.baseRef == n.baseRef)
         val fields = (collect[CangjieReferenceNode](g.fields) ++ n.fields).toSeq
         n match {
-          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(FieldSeqOperation.addressTypes(fields), FieldSeqOperation.resTpe(fields))(n.inCtrl +: n.baseRef +: fields: _*))
+          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(FieldSeqOperation.resTpe(fields))(n.inCtrl +: n.baseRef +: fields: _*))
           case n: LoadFieldSeq => replaceByCode(n) {
             LoadStaticFieldSeq(n.baseRef, fields: _*)
           }

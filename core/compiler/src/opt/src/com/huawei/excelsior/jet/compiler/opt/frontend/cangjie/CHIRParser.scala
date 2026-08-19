@@ -2443,9 +2443,9 @@ trait CHIRParser
 
     private def createIndexNode(idx: Node, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
       if (refType.isVariableLayoutType) {
-        IndexGeneric(refType, fieldType)(idx, loadTypeInfo(refType))
+        IndexFieldReferenceGeneric(refType, fieldType)(idx, loadTypeInfo(refType))
       } else {
-        Index(refType, fieldType)(idx)
+        IndexFieldReference(refType, fieldType)(idx)
       }
     }
   }

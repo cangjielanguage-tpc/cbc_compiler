@@ -280,10 +280,10 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: Halt => Halt.Proto
         case _: FieldReferenceNode => FieldReferenceNode.Proto
         case _: ConstIndex => ConstIndex.Proto
-        case _: Index => Index.Proto
+        case _: IndexFieldReference => IndexFieldReference.Proto
         case _: FieldReferenceNodeGeneric => FieldReferenceNodeGeneric.Proto
         case _: ConstIndexGeneric => ConstIndexGeneric.Proto
-        case _: IndexGeneric => IndexGeneric.Proto
+        case _: IndexFieldReferenceGeneric => IndexFieldReferenceGeneric.Proto
 
         case n: Deferred => n.proto match {
           case _: Deferred.New.Proto => Deferred.New.Proto
