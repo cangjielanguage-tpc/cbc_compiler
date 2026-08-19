@@ -1104,9 +1104,9 @@ trait CHIRParser
 
       case e: PackageFormat.InvokeBase =>
         val argVals = operands(e.base.base)
-        val nonBlockArgVals = e.base.base.kind match {
-          case CHIRExprKind.TryInvoke => argVals.dropRight(2)
-          case CHIRExprKind.Invoke => argVals
+        val (methodArgVal, nonBlockArgVals) = (argVals.head, e.base.base.kind) match {
+          case (h: PackageFormat.Function, CHIRExprKind.TryInvoke) => (h, argVals.drop(1).dropRight(2))
+          case (h: PackageFormat.Function, CHIRExprKind.Invoke)    => (h, argVals.drop(1))
         }
 
         val isStatic = nonBlockArgVals match {
@@ -1122,10 +1122,10 @@ trait CHIRParser
           case _ => false
         }
 
-        val (methodArgVal: PackageFormat.Function, thisTypeArgVal, sourceArgVals) = if (isStatic) {
-          (nonBlockArgVals.head, nonBlockArgVals.lift(1), nonBlockArgVals.drop(1))
+        val (thisTypeArgVal, sourceArgVals) = if (isStatic) {
+          (nonBlockArgVals.headOption, nonBlockArgVals.tail)
         } else {
-          (nonBlockArgVals.head, None, nonBlockArgVals.drop(1))
+          (None, nonBlockArgVals)
         }
         val thisTypeInfo = thisTypeArgVal.map(state.apply)
 
