@@ -1228,7 +1228,7 @@ trait CHIRParser
               case CHIRExprKind.TryApply => argVals.dropRight(2)
               case CHIRExprKind.Apply => argVals
             }
-            val outerType = if (resolver.isExtendedBaseFunc(func)) thisType else Some(declType)
+            val outerType = if (asClassType(declType).isCangjieExtend) thisType else Some(declType)
             (targetWithUGContext, nonBlockArgVals, outerType, thisType)
         }
 
@@ -2003,7 +2003,7 @@ trait CHIRParser
 
     private def calcMethodRef(declType: SymClassType, refType: SignatureType, _name: String,
                               func: Function, funcKind: Int, attributes: Long): MethodReference = {
-      val isStatic = declType.isCangjiePackage || (Attribute.STATIC in attributes) || resolver.isExtendedBaseFunc(func)
+      val isStatic = declType.isCangjiePackage || (Attribute.STATIC in attributes) || resolver.isStaticExtendFunc(func)
       val (sig, _, isCFunc, vararg) = resolver.functionSig(func, hasReceiver = !isStatic)
 
       // TODO: explain
@@ -2014,7 +2014,7 @@ trait CHIRParser
       }
 
       val method = refType match {
-        case refType: (SignatureType.InstantiatedType | SignatureType.CangjieEnum) if !resolver.isExtendedBaseFunc(func) =>
+        case refType: (SignatureType.InstantiatedType | SignatureType.CangjieEnum) if !resolver.isStaticExtendFunc(func) =>
           val cparams = genericParams(refType)
           val lparams = Seq.empty[SignatureType] //FIXME
           declType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig, MethodSignature.equalInstantiated(cparams, lparams))

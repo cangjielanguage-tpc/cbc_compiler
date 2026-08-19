@@ -219,6 +219,8 @@ trait RTStructs { this: CompilerEnvironment =>
     def getCHIRVTable = undefined
     def isCangjieEnum = undefined
     def getCangjieEnumInfo = undefined
+    def isCangjieExtend = undefined
+    def getCangjieExtendInfo = undefined
   }
 
   /** Runtime structure, reference to which is equal with reference to managed object. */

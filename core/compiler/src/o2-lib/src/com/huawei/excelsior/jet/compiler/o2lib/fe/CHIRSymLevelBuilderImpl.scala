@@ -146,6 +146,10 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
     typeToO2Class(clazz).setCangjieEnumInfo(enumInfo)
   }
 
+  override def setExtendInfo(clazz: ClassType, base: SignatureType): Unit = {
+    typeToO2Class(clazz).setCangjieExtendInfo(base)
+  }
+
   override def addField(clazz: ClassType, name: String, sig: SignatureType, exportedName: String, modifiers: Int): Field = {
     val dup = clazz.findDeclaredFieldOrNull(XString(name), null)
     if (dup != null) {

@@ -34,6 +34,8 @@ trait CHIRSymLevelBuilder {
   def markAsEnum(clazz: ClassType): Unit
   def setEnumInfo(clazz: ClassType, enumInfo: CangjieEnumInfo): Unit
 
+  def setExtendInfo(clazz: ClassType, base: SignatureType): Unit
+
   def addField(clazz: ClassType, name: String, sig: SignatureType, exportedName: String, modifiers: Int): Field
   def addMethod(clazz: ClassType, name: String, sig: MethodSignature, exportedName: String, modifiers: Int, genericInfo: GenericInfo,
                 abiDesc: ABI.Description): Method

@@ -443,9 +443,11 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
     assert(idx >= 0, s"$name:$idx")
     s"$name:$idx"
   }
-
-  def isExtendedBaseFunc(f: Function): Boolean = pkg.getDef[Table](f.base.declaredParent) match {
-    case d: ExtendDef => f.base.srcCodeIdentifier.nonEmpty
+  
+  def isStaticExtendFunc(f: Function): Boolean = pkg.getDef[Table](f.base.declaredParent) match {
+    case d: ExtendDef =>
+      val vtableFuncs = d.base.vtableVector.toSeq.flatMap(_.virtualMethodsVector.toSeq).map(m => pkg.getValue[Function](m.instance))
+      vtableFuncs.contains(f)
     case _ => false
   }
 
