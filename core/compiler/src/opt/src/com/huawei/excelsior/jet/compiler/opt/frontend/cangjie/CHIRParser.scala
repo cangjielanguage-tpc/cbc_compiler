@@ -986,7 +986,7 @@ trait CHIRParser
                 val tupleType = SignatureType.Tuple(Seq(SignatureType.UInt32))
                 LoadFieldSeq(
                   ReinterpretCast(ValueType(host), ValueType(tupleType))(mem),
-                  ConstIndex(0, tupleType, SignatureType.UInt32)
+                  ConstIndexFieldReference(0, tupleType, SignatureType.UInt32)
                 )
             }
             state(e) = res
@@ -2253,7 +2253,7 @@ trait CHIRParser
     private def allocTuple(tupleType: SignatureType.Tuple, args: Seq[Node]): Node = {
       val mem = StackAlloc.Local(tupleType)
       for (((arg, i), sig) <- args.zipWithIndex zip tupleType.params) {
-        val fieldRef = ConstIndex(i, tupleType, sig)
+        val fieldRef = ConstIndexFieldReference(i, tupleType, sig)
         if (sig.isZST) {
           // Nothing to do
 
@@ -2339,7 +2339,7 @@ trait CHIRParser
       if (refType.isVariableLayoutType) {
         ConstIndexGeneric(idx, refType, fieldType)(loadTypeInfo(refType))
       } else {
-        ConstIndex(idx, refType, fieldType)
+        ConstIndexFieldReference(idx, refType, fieldType)
       }
     }
 
