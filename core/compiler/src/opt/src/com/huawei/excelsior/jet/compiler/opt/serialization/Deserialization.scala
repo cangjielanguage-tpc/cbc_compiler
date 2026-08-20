@@ -774,8 +774,8 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case FieldReferenceNode.Proto =>
           FieldReferenceNode.proto(read.cangjieFieldReference())
 
-        case ConstIndex.Proto =>
-          ConstIndex.proto(read.number(), read.sigType(), read.sigType())
+        case ConstIndexFieldReference.Proto =>
+          ConstIndexFieldReference.proto(read.number(), read.sigType(), read.sigType())
           
         case IndexFieldReference.Proto =>
           IndexFieldReference.proto(read.sigType(), read.sigType())

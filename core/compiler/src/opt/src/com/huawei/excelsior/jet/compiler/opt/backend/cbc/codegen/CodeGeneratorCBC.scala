@@ -316,7 +316,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             assert(f.field.refType.isVariableLayoutType)
             val IReg(ti) = f.typeInfo
             builder.fieldGeneric(adapter.field(f.field), ti)
-          case f: ConstIndex =>
+          case f: ConstIndexFieldReference =>
             val refType = f.refType match {
               case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
               case t => t
@@ -720,7 +720,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           case f: FieldReferenceNode =>
             assert(!f.field.refType.isVariableLayoutType)
             builder.field(adapter.field(f.field))
-          case f: ConstIndex =>
+          case f: ConstIndexFieldReference =>
             val refType = f.refType match {
               case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
               case t => t

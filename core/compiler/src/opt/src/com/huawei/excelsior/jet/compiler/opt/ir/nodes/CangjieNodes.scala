@@ -802,7 +802,7 @@ trait CangjieNodes { self: Universe =>
     def unapply(x: FieldReferenceNode) = Some(x.field)
   }
 
-  class ConstIndex private(proto: ConstIndex.Proto)
+  class ConstIndexFieldReference private(proto: ConstIndexFieldReference.Proto)
     extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode {
     def idx: Int = proto.idx
 
@@ -813,22 +813,22 @@ trait CangjieNodes { self: Universe =>
     override def maybeField = None
   }
 
-  object ConstIndex {
-    case class Proto private[ConstIndex](idx: Int, refType: SignatureType, fieldType: SignatureType)
-      extends FixedArgs[ConstIndex]()(AddrIntType)
-        with PrototypeStrictNodeClass[ConstIndex, ConstIndex] {
+  object ConstIndexFieldReference {
+    case class Proto private[ConstIndexFieldReference](idx: Int, refType: SignatureType, fieldType: SignatureType)
+      extends FixedArgs[ConstIndexFieldReference]()(AddrIntType)
+        with PrototypeStrictNodeClass[ConstIndexFieldReference, ConstIndexFieldReference] {
 
-      def newInstance() = new ConstIndex(this)
+      def newInstance() = new ConstIndexFieldReference(this)
     }
 
     def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = {
       Prototype.intern(Proto(idx, refType, fieldType))
     }
 
-    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType): ConstIndex =
+    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType): ConstIndexFieldReference =
       proto(idx, refType, fieldType)()
 
-    def unapply(x: ConstIndex) = Some(x.idx, x.refType, x.fieldType)
+    def unapply(x: ConstIndexFieldReference) = Some(x.idx, x.refType, x.fieldType)
   }
 
   class IndexFieldReference private(proto: IndexFieldReference.Proto)
