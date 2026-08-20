@@ -60,6 +60,10 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
       // Exclusion from constants folding // TODO: investigate
       false
 
+    case _: EnumCast =>
+      // Exclusion from constants folding // TODO: investigate
+      false
+
     case Lea.AnyWithBase(_: AnyNull, _) =>
       // Such lea are absolutely normal (e.g., produced by crossroads optimization). We would not optimize them, because:
       // 1) It is hard to create [[IntraReferenceType]]-d constant
