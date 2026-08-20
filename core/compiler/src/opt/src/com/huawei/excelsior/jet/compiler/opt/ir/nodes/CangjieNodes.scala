@@ -75,7 +75,7 @@ trait CangjieNodes { self: Universe =>
 
     def apply(baseRef: Node, base: Node, fields: Node*): Node = {
       require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.forall(!_.isStatic))
-      proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(baseRef +: base +: fields: _*)
+      proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(baseRef +: base +: fields*)
     }
 
     def unapply(x: GetFieldSeqRef) = Some(x.fields, x.baseRef, x.base)
@@ -103,7 +103,7 @@ trait CangjieNodes { self: Universe =>
     def apply(base: Node, fields: Node*): Node = {
       require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.exists(_.isStatic))
       require(fields.size == 1 || !fields.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fields)
-      proto(FieldSeqOperation.resTpe(fields))(base +: fields: _*)
+      proto(FieldSeqOperation.resTpe(fields))(base +: fields*)
     }
 
     def unapply(x: GetStaticFieldSeqRef) = Some(x.fields)
@@ -136,7 +136,7 @@ trait CangjieNodes { self: Universe =>
       require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.forall(!_.isStatic))
       require(!FieldSeqOperation.resType(fields).isRecord)
       require(!FieldSeqOperation.resType(fields).isZST)
-      proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(baseRef +: base +: fields: _*)
+      proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(baseRef +: base +: fields*)
     }
 
     def unapply(x: LoadFieldSeq) = Some(x.fields, x.baseRef, x.base)
@@ -166,7 +166,7 @@ trait CangjieNodes { self: Universe =>
       require(!FieldSeqOperation.resType(fields).isRecord)
       require(!FieldSeqOperation.resType(fields).isZST)
       require(fields.size == 1 || !fields.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fields)
-      proto(FieldSeqOperation.resTpe(fields))(base +: fields: _*)
+      proto(FieldSeqOperation.resTpe(fields))(base +: fields*)
     }
 
     def unapply(x: LoadStaticFieldSeq) = Some(x.fields, x.baseRef)
@@ -198,7 +198,7 @@ trait CangjieNodes { self: Universe =>
       require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.forall(!_.isStatic))
       require(!FieldSeqOperation.resType(fields).isRecord)
       require(!FieldSeqOperation.resType(fields).isZST)
-      proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(baseRef +: base +: value +: fields: _*)
+      proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(baseRef +: base +: value +: fields*)
     }
 
     def unapply(x: StoreFieldSeq) = Some(x.fields, x.baseRef, x.base, x.inValue)
@@ -230,7 +230,7 @@ trait CangjieNodes { self: Universe =>
       require(!FieldSeqOperation.resType(fields).isRecord)
       require(!FieldSeqOperation.resType(fields).isZST)
       require(fields.size == 1 || !fields.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fields)
-      proto(FieldSeqOperation.resTpe(fields))(base +: value +: fields: _*)
+      proto(FieldSeqOperation.resTpe(fields))(base +: value +: fields*)
     }
 
     def unapply(x: StoreStaticFieldSeq) = Some(x.fields, x.baseRef, x.inValue)

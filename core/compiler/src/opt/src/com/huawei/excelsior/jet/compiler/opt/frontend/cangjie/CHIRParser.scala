@@ -1103,8 +1103,8 @@ trait CHIRParser
 
         } else {
           staticField match {
-            case None => GetFieldSeqRef(maybeDerivedPtrBase(mem),mem, fields: _*)
-            case Some(sf) => GetStaticFieldSeqRef(DerivedPtr.Global(), sf +: fields: _*)
+            case None => GetFieldSeqRef(maybeDerivedPtrBase(mem),mem, fields*)
+            case Some(sf) => GetStaticFieldSeqRef(DerivedPtr.Global(), sf +: fields*)
           }
         }
         state(e) = n
@@ -1145,17 +1145,17 @@ trait CHIRParser
             staticField match {
               case None =>
                 if (needsCopy(lastField.fieldType)) {
-                  val addr = GetFieldSeqRef(maybeDerivedPtr(mem), mem, fields: _*)
+                  val addr = GetFieldSeqRef(maybeDerivedPtr(mem), mem, fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
-                  StoreFieldSeq(maybeDerivedPtr(mem), mem, arg, fields: _*)
+                  StoreFieldSeq(maybeDerivedPtr(mem), mem, arg, fields*)
                 }
               case Some(sf) =>
                 if (needsCopy(lastField.fieldType)) {
-                  val addr = GetStaticFieldSeqRef(DerivedPtr.Global(), fields: _*)
+                  val addr = GetStaticFieldSeqRef(DerivedPtr.Global(), fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
-                  StoreStaticFieldSeq(DerivedPtr.Global(), arg, sf +: fields: _*)
+                  StoreStaticFieldSeq(DerivedPtr.Global(), arg, sf +: fields*)
                 }
             }
           }
@@ -1229,15 +1229,15 @@ trait CHIRParser
               val valueOrMem = staticField match {
                 case None =>
                   if (shouldCopy) {
-                    GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields: _*)
+                    GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields*)
                   } else {
-                    LoadFieldSeq(maybeDerivedPtrBase(mem), mem, fields: _*)
+                    LoadFieldSeq(maybeDerivedPtrBase(mem), mem, fields*)
                   }
                 case Some(sf) =>
                   if (shouldCopy) {
-                    GetStaticFieldSeqRef(DerivedPtr.Global(), sf +: fields: _*)
+                    GetStaticFieldSeqRef(DerivedPtr.Global(), sf +: fields*)
                   } else {
-                    LoadStaticFieldSeq(DerivedPtr.Global(), sf +: fields: _*)
+                    LoadStaticFieldSeq(DerivedPtr.Global(), sf +: fields*)
                   }
               }
               if (shouldCopy) {
@@ -1720,7 +1720,7 @@ trait CHIRParser
                       copy(mem.resType, res, mem)
                       res
                     } else {
-                      LoadFieldSeq(maybeDerivedPtrBase(mem), base, fields: _*)
+                      LoadFieldSeq(maybeDerivedPtrBase(mem), base, fields*)
                     }
                   case mem @ GetStaticFieldSeqRef(fields) =>
                     if (needsCopy(mem.resType)) {
@@ -1728,7 +1728,7 @@ trait CHIRParser
                       copy(mem.resType, res, mem)
                       res
                     } else {
-                      LoadStaticFieldSeq(DerivedPtr.Global(), fields: _*)
+                      LoadStaticFieldSeq(DerivedPtr.Global(), fields*)
                     }
                   case mem =>
                     if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive) {
@@ -1776,9 +1776,9 @@ trait CHIRParser
                 } else {
                   mem match {
                     case GetFieldSeqRef(fields, base) =>
-                      StoreFieldSeq(maybeDerivedPtrBase(mem), base, value, fields: _*)
+                      StoreFieldSeq(maybeDerivedPtrBase(mem), base, value, fields*)
                     case GetStaticFieldSeqRef(fields) =>
-                      StoreStaticFieldSeq(DerivedPtr.Global(), value, fields: _*)
+                      StoreStaticFieldSeq(DerivedPtr.Global(), value, fields*)
                     case mem =>
                       if (sig.isTraceableReference || sig.isPrimitive || sig.isVariableSizeType) {
                         state(localVar) = value
