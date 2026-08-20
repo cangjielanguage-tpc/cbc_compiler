@@ -641,8 +641,8 @@ private class SignaturePool extends Pool[Signature] { self: RawPool with PoolPro
         output.putULEB(signatures.add(tpe))
       case VArray(tpe, length) =>
         output.putW8(SignatureTag.VArray.tag)
-        output.putULEB(signatures.add(tpe))
         output.putULEB(length)
+        output.putULEB(signatures.add(tpe))
       case ClassTypeVariable(id) =>
         output.putW8(SignatureTag.ClassTypeVar.tag)
         output.putW8(id)
