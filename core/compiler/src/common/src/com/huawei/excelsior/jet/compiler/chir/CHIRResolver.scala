@@ -304,7 +304,7 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
   }
 
   def isLambda(t: Table): Boolean = {
-    symName(t).startsWith("$Cl")
+    symName(t).startsWith("$Cl") || symName(t).startsWith("$Cw")
   }
 
   def isAutoEnv(x: Table): Boolean = cond(x) {
