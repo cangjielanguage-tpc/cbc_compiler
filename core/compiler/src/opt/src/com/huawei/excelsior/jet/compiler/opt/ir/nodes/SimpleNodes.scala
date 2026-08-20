@@ -20,7 +20,8 @@ import com.huawei.excelsior.jet.compiler.opt.CompilerPhases.CompilerPhase
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.{Nodes, Universe}
 import com.huawei.excelsior.jet.compiler.options.BoolOption.UseIsa12
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType
+import com.huawei.excelsior.jet.compiler.symlevel.{ClassType, Field, SignatureType}
+import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.ScalaCollections.singleElement
 import com.huawei.excelsior.jet.compiler.{Domain, PreparationRequired, RTSProc, symlevel}
 import xscala.util.MathUtils.*
