@@ -830,12 +830,15 @@ trait CHIRParser
               NoValue()
 
             case _ =>
-              if (sig.isAbstractClass) {
-                Null()
-              } else if (sig.containsTypeVariables) {
-                NewGeneric(sig)(loadTypeInfo(sig))
-              } else {
-                New(sig)()
+              sig match {
+                case _ if sig.isAbstractClass =>
+                  Null()
+                case sig: SignatureType.InstantiatedReference if sig.name.startsWith("$Cl") || sig.name.startsWith("$Cw") =>
+                  NewGeneric(sig)(loadTypeInfo(sig))
+                case _ if sig.containsTypeVariables =>
+                  NewGeneric(sig)(loadTypeInfo(sig))
+                case _ =>
+                  New(sig)()
               }
           }
 
