@@ -2356,7 +2356,7 @@ trait CHIRParser
       }
     }
 
-    private def vArrayGet(vArrayType: VArray, obj: Node, idx: Node): Node = {
+    private def vArrayGet(vArrayType: SignatureType.VArray, obj: Node, idx: Node): Node = {
       val elemType = vArrayType.elemType
       if (elemType.isZST) {
         NoValue()
