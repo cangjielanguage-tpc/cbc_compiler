@@ -586,24 +586,24 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
         val fields = (collect[CangjieReferenceNode](g.fields) ++ n.fields).toSeq
         n match {
           case n: GetFieldSeqRef => replaceTransitively(n,
-            GetFieldSeqRef.proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(n.inCtrl +: g.obj +: fields: _*))
+            GetFieldSeqRef.proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(n.inCtrl +: g.obj +: fields*))
           case n: LoadFieldSeq => replaceByCode(n) {
-            LoadFieldSeq(g.obj, fields: _*)
+            LoadFieldSeq(g.obj, fields*)
           }
           case n: StoreFieldSeq => replaceByCode(n) {
-            StoreFieldSeq(g.obj, n.inValue, fields: _*)
+            StoreFieldSeq(g.obj, n.inValue, fields*)
           }
         }
         true
       case g: GetStaticFieldSeqRef =>
         val fields = (collect[CangjieReferenceNode](g.fields) ++ n.fields).toSeq
         n match {
-          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(FieldSeqOperation.resTpe(fields))(n.inCtrl +: fields: _*))
+          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(FieldSeqOperation.resTpe(fields))(n.inCtrl +: fields*))
           case n: LoadFieldSeq => replaceByCode(n) {
-            LoadStaticFieldSeq(fields: _*)
+            LoadStaticFieldSeq(fields*)
           }
           case n: StoreFieldSeq => replaceByCode(n) {
-            StoreStaticFieldSeq(n.inValue, fields: _*)
+            StoreStaticFieldSeq(n.inValue, fields*)
           }
         }
         true

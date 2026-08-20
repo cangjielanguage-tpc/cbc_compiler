@@ -888,8 +888,8 @@ trait CHIRParser
 
         } else {
           staticField match {
-            case None => GetFieldSeqRef(mem, fields: _*)
-            case Some(sf) => GetStaticFieldSeqRef(sf +: fields: _*)
+            case None => GetFieldSeqRef(mem, fields*)
+            case Some(sf) => GetStaticFieldSeqRef(sf +: fields*)
           }
         }
         state(e) = n
@@ -930,17 +930,17 @@ trait CHIRParser
             staticField match {
               case None =>
                 if (needsCopy(lastField.fieldType)) {
-                  val addr = GetFieldSeqRef(maybeDerivedPtr(mem), fields: _*)
+                  val addr = GetFieldSeqRef(maybeDerivedPtr(mem), fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
-                  StoreFieldSeq(maybeDerivedPtr(mem), arg, fields: _*)
+                  StoreFieldSeq(maybeDerivedPtr(mem), arg, fields*)
                 }
               case Some(sf) =>
                 if (needsCopy(lastField.fieldType)) {
-                  val addr = GetStaticFieldSeqRef(fields: _*)
+                  val addr = GetStaticFieldSeqRef(fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
-                  StoreStaticFieldSeq(arg, sf +: fields: _*)
+                  StoreStaticFieldSeq(arg, sf +: fields*)
                 }
             }
           }
@@ -1012,15 +1012,15 @@ trait CHIRParser
               staticField match {
                 case None =>
                   if (lastField.fieldType.isRecord) {
-                    GetFieldSeqRef(mem, fields: _*)
+                    GetFieldSeqRef(mem, fields*)
                   } else {
-                    LoadFieldSeq(mem, fields: _*)
+                    LoadFieldSeq(mem, fields*)
                   }
                 case Some(sf) =>
                   if (lastField.fieldType.isRecord) {
-                    GetStaticFieldSeqRef(sf +: fields: _*)
+                    GetStaticFieldSeqRef(sf +: fields*)
                   } else {
-                    LoadStaticFieldSeq(sf +: fields: _*)
+                    LoadStaticFieldSeq(sf +: fields*)
                   }
               }
             }
@@ -1607,7 +1607,7 @@ trait CHIRParser
                       copy(mem.resType, res, mem)
                       res
                     } else {
-                      LoadFieldSeq(maybeDerivedPtr(base), fields: _*)
+                      LoadFieldSeq(maybeDerivedPtr(base), fields*)
                     }
                   case mem @ GetStaticFieldSeqRef(fields) =>
                     if (needsCopy(mem.resType)) {
@@ -1615,7 +1615,7 @@ trait CHIRParser
                       copy(mem.resType, res, mem)
                       res
                     } else {
-                      LoadStaticFieldSeq(fields: _*)
+                      LoadStaticFieldSeq(fields*)
                     }
                   case mem =>
                     if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive) {
@@ -1663,9 +1663,9 @@ trait CHIRParser
                 } else {
                   mem match {
                     case GetFieldSeqRef(fields, base) =>
-                      StoreFieldSeq(maybeDerivedPtr(base), value, fields: _*)
+                      StoreFieldSeq(maybeDerivedPtr(base), value, fields*)
                     case GetStaticFieldSeqRef(fields) =>
-                      StoreStaticFieldSeq(value, fields: _*)
+                      StoreStaticFieldSeq(value, fields*)
                     case mem =>
                       if (sig.isTraceableReference || sig.isPrimitive || sig.isVariableSizeType) {
                         state(localVar) = value
