@@ -107,8 +107,15 @@ object Build {
     )
   )
 
+  lazy val flatbuffersVersion: String = {
+    val versionLine = s"${env.flatc} --version".!!.trim
+    val version = versionLine.stripPrefix("flatc version ").trim
+    println(s"[info] Flatbuffers version detected from flatc: $version")
+    version
+  }
+
   lazy val flatbuffersSettings = Def.settings(
-    libraryDependencies += "com.google.flatbuffers" % "flatbuffers-java" % "25.2.10",
+    libraryDependencies += "com.google.flatbuffers" % "flatbuffers-java" % flatbuffersVersion,
   )
 
   lazy val commonSourceLayout = Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src")
