@@ -73,7 +73,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       if (mt.hasRecordReceiver)         flags += MethodRefFlag.REC_RECEIVER
       if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT // TODO: is it correct?
       CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData)
-    case symbol: CangjieFieldReference =>
+    case symbol: SymLevelBasedFieldReference =>
       // Only symlevel field references supported here.
       // Index-based references should be handled outside.
       val field = symbol.field.get

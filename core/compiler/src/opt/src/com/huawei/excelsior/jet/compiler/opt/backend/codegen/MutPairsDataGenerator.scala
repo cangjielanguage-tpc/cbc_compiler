@@ -82,7 +82,7 @@ trait MutPairsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
 
       for (value <- valueNodes) {
         valueOf(value).producer match {
-          case GetFieldSeqRef(_, base) => pairs += base -> value
+          case GetFieldSeqRef(_, base, _) => pairs += base -> value
           case p: Param => 
             if (p.num == rootMethod.getMutRecordArgIdx)
               derivedParams ::= value

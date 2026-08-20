@@ -8,16 +8,18 @@
 
 package com.huawei.excelsior.jet.compiler.opt.ir.nodes
 
+import com.huawei.excelsior.common.CodeHelpers.notImplemented
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
-import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, SignatureType}
+import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, SignatureBasedFieldReference, SignatureType}
 
 trait CangjieNodes { self: Universe =>
 
   sealed trait FieldSeqOperation extends Node {
     require(!resType.isZST)
     def fields: Seq[CangjieFieldReference]
+    def indices: Seq[Node]
     def refType: SignatureType = FieldSeqOperation.refType(fields)
     def resType: SignatureType = FieldSeqOperation.resType(fields)
   }
@@ -25,6 +27,8 @@ trait CangjieNodes { self: Universe =>
   object FieldSeqOperation {
     def refType(fields: Seq[CangjieFieldReference]): SignatureType = fields.head.refType
     def resType(fields: Seq[CangjieFieldReference]): SignatureType = fields.last.fieldType
+
+    def indicesTypes(fields: Seq[CangjieFieldReference]): Seq[Type] = fields.collect{ case _: SignatureBasedFieldReference => AddrIntType }
 
     def refTpe(fields: Seq[CangjieFieldReference]): Type = ValueType.fromSig(refType(fields))
     def resTpe(fields: Seq[CangjieFieldReference]): Type = {
@@ -62,11 +66,12 @@ trait CangjieNodes { self: Universe =>
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
     def obj = arg(1)
+    override def indices: Seq[Node] = argsTail(2)
   }
 
   object GetFieldSeqRef {
     case class Proto private[GetFieldSeqRef](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[GetFieldSeqRef](ControlType, FieldSeqOperation.refTpe(fields))(FieldSeqOperation.resAddrTpe(fields)) {
+      extends FixedArgs[GetFieldSeqRef](ControlType +: FieldSeqOperation.refTpe(fields) +: FieldSeqOperation.indicesTypes(fields): _*)(FieldSeqOperation.resAddrTpe(fields)) {
       require(fields.head.field.forall(!_.isStatic))
 
       def newInstance() = new GetFieldSeqRef(this)
@@ -76,10 +81,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(obj: Node): Node =
-      proto(fields)(obj)
+    def apply(fields: Seq[CangjieFieldReference])(obj: Node, indices: Node*): Node =
+      proto(fields)(obj +: indices: _*)
 
-    def unapply(x: GetFieldSeqRef) = Some(x.fields, x.obj)
+    def unapply(x: GetFieldSeqRef) = Some(x.fields, x.obj, x.indices)
   }
 
   class GetFieldSeqRefGeneric private(proto: GetFieldSeqRefGeneric.Proto)
@@ -89,6 +94,8 @@ trait CangjieNodes { self: Universe =>
 
     def obj = arg(1)
     def typeInfos = argsTail(2)
+
+    override def indices = notImplemented("dynamic indices for generic")
   }
 
   object GetFieldSeqRefGeneric {
@@ -108,13 +115,14 @@ trait CangjieNodes { self: Universe =>
     def apply(fields: Seq[CangjieFieldReference])(obj: Node, typeInfos: Seq[Node]): Node =
       proto(fields)(obj +: typeInfos: _*)
 
-    def unapply(x: GetFieldSeqRefGeneric) = Some(x.fields, x.obj, x.typeInfos)
+    def unapply(x: GetFieldSeqRefGeneric) = Some(x.fields, x.obj, x.typeInfos, x.indices)
   }
 
   class GetStaticFieldSeqRef private(proto: GetStaticFieldSeqRef.Proto)
     extends FloatingNodeWithFixedArgs(proto) with FieldSeqOperation with ControlledNode {
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
+    override def indices: Seq[Node] = argsTail(1)
   }
 
   object GetStaticFieldSeqRef {
@@ -130,10 +138,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference]): Node =
-      proto(fields)()
+    def apply(fields: Seq[CangjieFieldReference])(indices: Node*): Node =
+      proto(fields)(indices: _*)
 
-    def unapply(x: GetStaticFieldSeqRef) = Some(x.fields)
+    def unapply(x: GetStaticFieldSeqRef) = Some(x.fields, x.indices)
   }
 
   class LoadFieldSeq private(proto: LoadFieldSeq.Proto)
@@ -142,12 +150,14 @@ trait CangjieNodes { self: Universe =>
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
     def obj = arg(2)
+    override def indices: Seq[Node] = argsTail(3)
   }
 
   object LoadFieldSeq {
     case class Proto private[LoadFieldSeq](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[LoadFieldSeq](ControlType, MemoryType, FieldSeqOperation.refTpe(fields))(FieldSeqOperation.resTpe(fields)) {
+      extends FixedArgs[LoadFieldSeq](ControlType +: MemoryType +: FieldSeqOperation.refTpe(fields) +: FieldSeqOperation.indicesTypes(fields): _*)(FieldSeqOperation.resTpe(fields)) {
       require(fields.head.field.forall(!_.isStatic))
+      // TODO why do we need this require?
       require(!FieldSeqOperation.resType(fields).isRecord)
       require(!FieldSeqOperation.resType(fields).isZST)
 
@@ -158,10 +168,11 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(obj: Node): Node =
-      proto(fields)(obj)
+    // TODO do we need both const and dynamic indices in this list?
+    def apply(fields: Seq[CangjieFieldReference])(obj: Node, indices: Node*): Node =
+      proto(fields)(obj +: indices: _*)
 
-    def unapply(x: LoadFieldSeq) = Some(x.fields, x.obj)
+    def unapply(x: LoadFieldSeq) = Some(x.fields, x.obj, x.indices)
   }
 
   class LoadFieldSeqGeneric private(proto: LoadFieldSeqGeneric.Proto)
@@ -172,6 +183,7 @@ trait CangjieNodes { self: Universe =>
 
     def obj = arg(2)
     def typeInfos = argsTail(3)
+    override def indices = notImplemented("dynamic indices for generic")
   }
 
   object LoadFieldSeqGeneric {
@@ -191,13 +203,14 @@ trait CangjieNodes { self: Universe =>
     def apply(fields: Seq[CangjieFieldReference])(obj: Node, typeInfos: Seq[Node]): Node =
       proto(fields)(obj +: typeInfos: _*)
 
-    def unapply(x: LoadFieldSeqGeneric) = Some(x.fields, x.obj, x.typeInfos)
+    def unapply(x: LoadFieldSeqGeneric) = Some(x.fields, x.obj, x.typeInfos, x.indices)
   }
 
   class LoadStaticFieldSeq private(proto: LoadStaticFieldSeq.Proto)
     extends FloatingNodeWithFixedArgs(proto) with FieldSeqOperation with ControlledNode with HasInMemory {
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
+    override def indices: Seq[Node] = argsTail(2)
   }
 
   object LoadStaticFieldSeq {
@@ -215,10 +228,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference]): Node =
-      proto(fields)()
+    def apply(fields: Seq[CangjieFieldReference])(indices: Node*): Node =
+      proto(fields)(indices: _*)
 
-    def unapply(x: LoadStaticFieldSeq) = Some(x.fields)
+    def unapply(x: LoadStaticFieldSeq) = Some(x.fields, x.indices)
   }
 
   class StoreFieldSeq private(proto: StoreFieldSeq.Proto)
@@ -228,11 +241,12 @@ trait CangjieNodes { self: Universe =>
 
     def obj = arg(2)
     def inValue = arg(3)
+    override def indices: Seq[Node] = argsTail(4)
   }
 
   object StoreFieldSeq {
     case class Proto private[StoreFieldSeq](fields: Seq[CangjieFieldReference])
-      extends FixedArgs[StoreFieldSeq](ControlType, MemoryType, FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(VoidType)
+      extends FixedArgs[StoreFieldSeq](ControlType +: MemoryType +: FieldSeqOperation.refTpe(fields) +: FieldSeqOperation.resTpe(fields) +: FieldSeqOperation.indicesTypes(fields): _*)(VoidType)
       with ControlMemoryTagged[StoreFieldSeq] {
       require(fields.head.field.forall(!_.isStatic))
       require(!FieldSeqOperation.resType(fields).isRecord)
@@ -245,10 +259,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(obj: Node, value: Node): Node =
-      proto(fields)(obj, value)
+    def apply(fields: Seq[CangjieFieldReference])(obj: Node, value: Node, indices: Node*): Node =
+      proto(fields)(obj +: value +: indices: _*)
 
-    def unapply(x: StoreFieldSeq) = Some(x.fields, x.obj, x.inValue)
+    def unapply(x: StoreFieldSeq) = Some(x.fields, x.obj, x.inValue, x.indices)
   }
 
   class StoreFieldSeqGeneric private(proto: StoreFieldSeqGeneric.Proto)
@@ -260,6 +274,7 @@ trait CangjieNodes { self: Universe =>
     def obj = arg(2)
     def inValue = arg(3)
     def typeInfos = argsTail(4)
+    override def indices = notImplemented("dynamic indices for generic")
   }
 
   object StoreFieldSeqGeneric {
@@ -279,7 +294,7 @@ trait CangjieNodes { self: Universe =>
     def apply(fields: Seq[CangjieFieldReference])(obj: Node, value: Node, typeInfos: Seq[Node]): Node =
       proto(fields)(obj +: value +: typeInfos: _*)
 
-    def unapply(x: StoreFieldSeqGeneric) = Some(x.fields, x.obj, x.inValue, x.typeInfos)
+    def unapply(x: StoreFieldSeqGeneric) = Some(x.fields, x.obj, x.inValue, x.typeInfos, x.indices)
   }
 
   class StoreStaticFieldSeq private(proto: StoreStaticFieldSeq.Proto)
@@ -288,6 +303,7 @@ trait CangjieNodes { self: Universe =>
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
     def inValue = arg(2)
+    override def indices: Seq[Node] = argsTail(3)
   }
 
   object StoreStaticFieldSeq {
@@ -306,8 +322,8 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(value: Node): Node =
-      proto(fields)(value)
+    def apply(fields: Seq[CangjieFieldReference])(value: Node, indices: Node*): Node =
+      proto(fields)(value +: indices: _*)
 
     def unapply(x: StoreStaticFieldSeq) = Some(x.fields, x.inValue)
   }
@@ -823,4 +839,5 @@ trait CangjieNodes { self: Universe =>
       def fetchXor(objType: Type, field: CangjieFieldReference)(obj: Node, value: Node) = proto(Kind.FETCH_XOR, objType, field)(obj, value)
     }
   }
+
 }

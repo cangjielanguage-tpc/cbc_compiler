@@ -425,7 +425,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case n @ ArrayGet(_, _, IReg(obj), IReg(idx)) =>
           assert(n.arrayType.isRecordArray)
           builder.obj(obj)
-            .index(idx, n.arrayType.getArrayElemType.toCbc, checked = false)
+            .index(idx, n.arrayType.toCbc, checked = false)
 
         case IReg(r) =>
           if (fieldRefs.head.refType.isTraceableReference) {
@@ -435,16 +435,17 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           }
       }
 
-      def fields(fields: Seq[CangjieFieldReference], typeInfos: Seq[Node] = Seq.empty): Unit = {
-        for ((f, i) <- fields.zipWithIndex) f.field match {
-          case Some(field) =>
+      def fields(fields: Seq[CangjieFieldReference], indexes: Seq[Node] = Seq.empty, typeInfos: Seq[Node] = Seq.empty): Unit = {
+        val indexesIterator = indexes.iterator
+        for ((f, i) <- fields.zipWithIndex) f match {
+          case f: SymLevelBasedFieldReference =>
             if (f.refType.isVariableLayoutType) {
               val IReg(ti) = typeInfos(i)
               builder.fieldGeneric(adapter.field(f), ti)
             } else {
               builder.field(adapter.field(f))
             }
-          case None =>
+          case f: IndexBasedFieldReference =>
             val refType = f.refType match {
               case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
               case t => t
@@ -455,7 +456,15 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             } else {
               builder.constIndex(f.idx.toInt, refType.toCbc)
             }
+          case f: SignatureBasedFieldReference =>
+            val IReg(idx) = indexesIterator.next()
+            if (f.refType.isVariableLayoutType) {
+              notImplemented("field ops for generic types")
+            } else {
+              builder.index(idx, f.refType.toCbc, checked = false)
+            }
         }
+        assert(indexesIterator.isEmpty)
       }
 
       def store(value: Node): Unit = (value match {
@@ -470,17 +479,17 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case n: (GetFieldSeqRef | LoadFieldSeq) =>
           val Reg(dst) = n
           memExprHead(n.obj)
-          fields(fieldRefs)
+          fields(fieldRefs, indexes = n.indices)
           builder.load(dst).gen(fasm)
         case n: GetFieldSeqRefGeneric =>
           val Reg(dst) = n
           memExprHead(n.obj)
-          fields(fieldRefs, n.typeInfos)
+          fields(fieldRefs, typeInfos = n.typeInfos)
           builder.load(dst).gen(fasm)
         case n: LoadFieldSeqGeneric =>
           val Reg(dst) = n
           memExprHead(n.obj)
-          fields(fieldRefs, n.typeInfos)
+          fields(fieldRefs, typeInfos = n.typeInfos)
           if (n.resType.isVariableSizeType) {
             val IReg(ti) = n.typeInfos.last
             builder.loadGeneric(dst.asInstanceOf[IR], ti).gen(fasm)
@@ -498,12 +507,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case n: StoreFieldSeq =>
           addXSite(n)
           memExprHead(n.obj)
-          fields(fieldRefs)
+          fields(fieldRefs, indexes = n.indices)
           store(n.inValue)
         case n: StoreFieldSeqGeneric =>
           addXSite(n)
           memExprHead(n.obj)
-          fields(fieldRefs, n.typeInfos)
+          fields(fieldRefs, typeInfos = n.typeInfos)
           if (n.resType.isVariableSizeType) {
             val IReg(ti) = n.typeInfos.last
             val IReg(src) = n.inValue

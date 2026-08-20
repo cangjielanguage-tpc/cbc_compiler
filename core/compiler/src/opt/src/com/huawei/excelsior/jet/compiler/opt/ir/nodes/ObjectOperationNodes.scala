@@ -1686,7 +1686,6 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
     def unapply(n: ArrayPut) = Some(n.array, n.idx, n.inValue0)
   }
 
-
   class ArrayFill private (proto: ArrayFill.Proto) extends NodeWithFixedArgs(proto) with TypedArrayOperation with SpinalMemoryNode with NotProducesValue {
     import ArrayFill.adjustValue
 

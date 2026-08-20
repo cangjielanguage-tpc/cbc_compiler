@@ -516,7 +516,7 @@ final class TypeImpl private[light](val o2type: pc.SymType) extends ClassType wi
       for (field <- c.getDeclaredFields) {
         if (!field.isStatic) {
           val fieldType = field.getType
-          if (fieldType.isTraceableReference || fieldType.isRecord && asClassType(fieldType).classHasRefFields) {
+          if (!fieldType.isVArray && (fieldType.isTraceableReference || fieldType.isRecord && asClassType(fieldType).classHasRefFields)) {
             return true
           }
         }

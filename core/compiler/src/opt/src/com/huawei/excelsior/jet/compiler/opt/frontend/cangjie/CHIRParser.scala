@@ -23,9 +23,10 @@ import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
 import com.huawei.excelsior.jet.compiler.opt.middle.{ContextTypesRecalculation, DCEComponent, UCEComponent}
 import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, GenerateWriteBarriers, PackageInitFromMain}
+import com.huawei.excelsior.jet.compiler.symlevel.CangjieFieldReference.{newIndexBased, newSymLevelBased, newSigBased}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CangjieEnumWrapper, fromSymType}
-import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeFieldReference, BitcodeMethodReference, CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
+import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.ScalaCollections.*
 import com.huawei.excelsior.jet.compiler.util.{Maps, Sets}
@@ -654,10 +655,10 @@ trait CHIRParser
                 // nothing to do
               case StackAlloc.Local(allocType) =>
                 // string
-                val mem = GetStaticFieldSeqRef(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))
+                val mem = GetStaticFieldSeqRef(Seq(CangjieFieldReference.newSymLevelBased(field, SignatureType.fromSymType(declType), field.getType)))()
                 copy(allocType, mem, value)
               case _ =>
-                StoreStaticFieldSeq(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(value)
+                StoreStaticFieldSeq(Seq(CangjieFieldReference.newSymLevelBased(field, SignatureType.fromSymType(declType), field.getType)))(value)
             }
           case _ =>
         }
@@ -894,7 +895,7 @@ trait CHIRParser
               } else {
                 GetFieldSeqRef(fields)(mem)
               }
-            case Some(sf) => GetStaticFieldSeqRef(sf +: fields)
+            case Some(sf) => GetStaticFieldSeqRef(sf +: fields)()
           }
         }
         state(e) = n
@@ -944,7 +945,7 @@ trait CHIRParser
                 }
               case Some(sf) =>
                 if (needsCopy(lastField.fieldType)) {
-                  val addr = GetStaticFieldSeqRef(fields)
+                  val addr = GetStaticFieldSeqRef(fields)()
                   copy(lastField.fieldType, addr, arg)
                 } else {
                   StoreStaticFieldSeq(sf +: fields)(arg)
@@ -991,7 +992,7 @@ trait CHIRParser
             val res = chirPath match {
               case Seq(0) =>
                 val tupleType = SignatureType.Tuple(Seq(SignatureType.UInt32))
-                LoadFieldSeq(Seq(CangjieFieldReference(0, None, tupleType, SignatureType.UInt32)))(
+                LoadFieldSeq(Seq(CangjieFieldReference.newIndexBased(0, tupleType, SignatureType.UInt32)))(
                   ReinterpretCast(ValueType(host), ValueType(tupleType))(mem)
                 )
             }
@@ -1033,9 +1034,9 @@ trait CHIRParser
                   }
                 case Some(sf) =>
                   if (lastField.fieldType.isRecord) {
-                    GetStaticFieldSeqRef(sf +: fields)
+                    GetStaticFieldSeqRef(sf +: fields)()
                   } else {
-                    LoadStaticFieldSeq(sf +: fields)
+                    LoadStaticFieldSeq(sf +: fields)()
                   }
               }
             }
@@ -1089,7 +1090,7 @@ trait CHIRParser
 
         val args = argVals match {
           case Seq(gv: PackageFormat.GlobalVar, rest: _*) =>
-            GetStaticFieldSeqRef(Seq(staticFieldRef(gv))) +: rest.map(state.apply)
+            GetStaticFieldSeqRef(Seq(staticFieldRef(gv)))() +: rest.map(state.apply)
           case _ =>
             argVals.map(state.apply)
         }
@@ -1551,6 +1552,36 @@ trait CHIRParser
                 // TODO pointer to a method?
                 shouldNotReachHere(cpointerType)
             }
+
+          case PackageFormat.IntrinsicKind.VARRAY_SET =>
+            // TODO: ArrayIndexCheck
+            val (arrayType: SignatureType.VArray, obj, value, idx) = operands(e.base.base) match {
+              case Seq(obj: PackageFormat.LocalVar, value, idx) =>
+                (resolver.typeSig(obj.base.`type`), state(obj), state(value), state(idx))
+              case Seq(obj: PackageFormat.Parameter, value, idx) =>
+                (resolver.typeSig(obj.base.`type`), state(obj), state(value), state(idx))
+            }
+            vArrayPut(arrayType, obj, idx, value)
+
+          case PackageFormat.IntrinsicKind.VARRAY_GET =>
+            // TODO: ArrayIndexCheck
+            var (arrayType: SignatureType.VArray, obj: Node, indices) = operands(e.base.base) match {
+              case (obj: PackageFormat.LocalVar) :: indices =>
+                (resolver.typeSig(obj.base.`type`), state(obj), indices)
+              case (obj: PackageFormat.Parameter) :: indices =>
+                (resolver.typeSig(obj.base.`type`), state(obj), indices)
+            }
+            for ((elem, i) <- indices.zipWithIndex) {
+              val idx = state(elem)
+              obj = vArrayGet(arrayType, obj, idx)
+              if (i + 1 != indices.length) {
+                val SignatureType.VArray(elemType: SignatureType.VArray, _) = arrayType
+                arrayType = elemType
+              }
+            }
+            state(e) = obj
+
+          case k => notImplemented(CHIRExprKind.name(k))
         }
 
       case e: PackageFormat.SpawnBase =>
@@ -1585,6 +1616,7 @@ trait CHIRParser
                 case UNIT => IntegralConst(AddrType)(v)
               }
               case t: PackageFormat.CustomType => IntegralConst(AddrType)(v)
+              case t: PackageFormat.VArrayType => IntegralConst(AddrType)(v)
             }
           }
           val value = singleElement(operands(e)) match {
@@ -1616,7 +1648,7 @@ trait CHIRParser
 
               } else {
                 val n = state(localVar) match {
-                  case mem @ GetFieldSeqRef(fields, base) =>
+                  case mem @ GetFieldSeqRef(fields, base, _) =>
                     if (needsCopy(mem.resType)) {
                       val res = StackAlloc.Local(mem.resType)
                       copy(mem.resType, res, mem)
@@ -1624,7 +1656,7 @@ trait CHIRParser
                     } else {
                       LoadFieldSeq(fields)(maybeDerivedPtr(base))
                     }
-                  case mem @ GetFieldSeqRefGeneric(fields, base, tis) =>
+                  case mem @ GetFieldSeqRefGeneric(fields, base, tis, _) =>
                     if (mem.resType.isVariableSizeType || !needsCopy(mem.resType)) {
                       LoadFieldSeqGeneric(fields)(maybeDerivedPtr(base), tis)
                     } else {
@@ -1632,13 +1664,13 @@ trait CHIRParser
                       copy(mem.resType, res, mem)
                       res
                     }
-                  case mem @ GetStaticFieldSeqRef(fields) =>
+                  case mem @ GetStaticFieldSeqRef(fields, _) =>
                     if (needsCopy(mem.resType)) {
                       val res = StackAlloc.Local(mem.resType)
                       copy(mem.resType, res, mem)
                       res
                     } else {
-                      LoadStaticFieldSeq(fields)
+                      LoadStaticFieldSeq(fields)()
                     }
                   case mem =>
                     if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive) {
@@ -1655,11 +1687,11 @@ trait CHIRParser
                 Void()
               } else if (needsCopy(field.fieldType)) {
                 val local = StackAlloc.Local(field.fieldType)
-                val addr = GetStaticFieldSeqRef(Seq(field))
+                val addr = GetStaticFieldSeqRef(Seq(field))()
                 copy(field.fieldType, local, addr)
                 local
               } else {
-                LoadStaticFieldSeq(Seq(field))
+                LoadStaticFieldSeq(Seq(field))()
               }
               state(e) = n
           }
@@ -1685,11 +1717,11 @@ trait CHIRParser
 
                 } else {
                   mem match {
-                    case GetFieldSeqRef(fields, base) =>
-                      StoreFieldSeq(fields)(maybeDerivedPtr(base), value)
-                    case GetFieldSeqRefGeneric(fields, base, tis) =>
+                    case GetFieldSeqRef(fields, base, indices) =>
+                      StoreFieldSeq(fields)(maybeDerivedPtr(base), value, indices: _*)
+                    case GetFieldSeqRefGeneric(fields, base, tis, _) =>
                       StoreFieldSeqGeneric(fields)(maybeDerivedPtr(base), value, tis)
-                    case GetStaticFieldSeqRef(fields) =>
+                    case GetStaticFieldSeqRef(fields, _) =>
                       StoreStaticFieldSeq(fields)(value)
                     case mem =>
                       if (sig.isTraceableReference || sig.isPrimitive || sig.isVariableSizeType) {
@@ -1714,7 +1746,7 @@ trait CHIRParser
 
                 val value = state(valueVar)
                 if (needsCopy(staticField.fieldType)) {
-                  val addr = GetStaticFieldSeqRef(Seq(staticField))
+                  val addr = GetStaticFieldSeqRef(Seq(staticField))()
                   copy(sig, addr, value)
                 } else {
                   writeBarrier()
@@ -1962,6 +1994,58 @@ trait CHIRParser
         case CHIRExprKind.GetRtti =>
           state(e) = ThisTypeInfoBy(ReceiverParam())
 
+        case CHIRExprKind.VArrayExpr =>
+          val arrayType = resolver.typeSig(e.resultTy).asInstanceOf[SignatureType.VArray]
+          val mem = StackAlloc.Local(arrayType)
+          val values = operands(e).map(state.apply)
+          for ((value, idx) <- values.zipWithIndex) {
+            vArrayPut(arrayType, mem, LConst(idx), value)
+          }
+          state(e) = mem
+
+        case CHIRExprKind.VArrayBuilder =>
+          val arrayType = resolver.typeSig(e.resultTy).asInstanceOf[SignatureType.VArray]
+          val mem = StackAlloc.Local(arrayType)
+
+          val (length: LConst, func: (Int => Node)) = operands(e).map(state.apply) match {
+            case Seq(length: LConst, item: Node, _: AnyNull) =>
+              (length, (_: Int) => item)
+
+            case Seq(length: LConst, item, function) =>
+              val firstArg = operands(e).drop(2)
+              val generatorLambda = resolver.typeSig(operands(e).drop(2) match {
+                case Seq(x: PackageFormat.LocalVar) =>  x.base.`type`
+                case Seq(x: PackageFormat.GlobalVar) => x.base.base.`type`
+                case Seq(x: PackageFormat.Parameter) => x.base.`type`
+              })
+
+              val declType: SignatureType.CangjieNamedReference = generatorLambda match
+                case x: SignatureType.CangjieNamedReference => x
+                case _ => shouldNotReachHere("not")
+
+              val vtable = asClassType(declType).getCHIRVTable
+              val extDef = vtable.extDefs(2) // at index 2 is a specialized function
+              val vnum = 0  // there is only one function in the funcTable
+              val entry = extDef.funcTable(vnum)
+              val refType = extDef.extType.instantiate(genericParams(declType), Seq.empty)
+              val method = entry.impl.get
+              val target = new MethodReference(method, MAK.VIRTUAL, CompiledType(refType), vnum)
+              val retType = arrayType.elemType
+
+              def func(idx: Int): Node = {
+                val argVals = Seq(function, LConst(idx))
+                val paramTypes = Seq(declType, SignatureType.Int64)
+                callMethod(target, Some(refType), Some(declType), retType, paramTypes, argVals, None)
+              }
+              (length, func)
+          }
+          for (idx <- 0 until length.value.toInt) {
+            val value = func(idx)
+            state(e) = value
+            vArrayPut(arrayType, mem, LConst(idx), value)
+          }
+          state(e) = mem
+
         case k => notImplemented(CHIRExprKind.name(k))
       }
 
@@ -1984,7 +2068,7 @@ trait CHIRParser
       val f = symRefType.findDeclaredFieldOrNull(xstr(name), sig) ensuring
         (_ != null, s"cannot find field '$name' with signature '${sig.toJETSignature}' in class '${symRefType.getName}'")
 
-      CangjieFieldReference(f.getFieldIndex, Some(f), refType, f.getType)
+      CangjieFieldReference.newSymLevelBased(f, refType, f.getType)
     }
 
     private def calcMethodRef(declType: SymClassType, refType: SignatureType, _name: String,
@@ -2199,7 +2283,7 @@ trait CHIRParser
           val allClassFields = (refClass +: refClass.getSuperClasses.toArray).reverse.flatMap(_.getDeclaredFields)
           val next = allClassFields.filterNot(_.isStatic).apply(idx.toInt)
           val fieldType = next.getType.instantiate(genericParams(refType), Seq.empty)
-          CangjieFieldReference(idx, Some(next), refType, fieldType)
+          CangjieFieldReference.newSymLevelBased(next, refType, fieldType)
         }
 
         refType match {
@@ -2209,14 +2293,17 @@ trait CHIRParser
             fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
           case refType: SignatureType.Tuple =>
             val fieldType = refType.params(idx.toInt)
-            CangjieFieldReference(idx, None, refType, fieldType)
+            CangjieFieldReference.newIndexBased(idx, refType, fieldType)
+          case refType: SignatureType.VArray =>
+            val fieldType = refType.elemType
+            CangjieFieldReference.newIndexBased(idx, refType, fieldType)
           case refType: SignatureType.OptionLikeEnum =>
             assert(!refType.isNullableOption && !refType.someType.isTypeVariable, refType)
             val fieldType = idx match {
               case 0 => SignatureType.Boolean
               case 1 => refType.someType
             }
-            CangjieFieldReference(idx, None, refType, fieldType)
+            CangjieFieldReference.newIndexBased(idx, refType, fieldType)
           case refType: (SignatureType.ZeroSizedEnum | SignatureType.PrimitiveBasedEnum | SignatureType.UnionBasedEnum) =>
             shouldNotReachHere(refType)
           case refType =>
@@ -2227,7 +2314,7 @@ trait CHIRParser
 
     private def declaredFields(host: SignatureType): Seq[CangjieFieldReference] = {
       asClassType(host).getDeclaredFields.toSeq map { f =>
-        CangjieFieldReference(f.getFieldIndex, Some(f), host, f.getType.instantiate(genericParams(host), Seq.empty))
+        CangjieFieldReference.newSymLevelBased(f, host, f.getType.instantiate(genericParams(host), Seq.empty))
       }
     }
 
@@ -2260,6 +2347,48 @@ trait CHIRParser
       }
     }
 
+    private def vArrayFields(vArrayType: SignatureType.VArray, idx: Node): (CangjieFieldReference, Option[Node]) = {
+      val elemType = vArrayType.elemType
+      idx match {
+        case IConst(i) => (CangjieFieldReference.newIndexBased(i, vArrayType, elemType), None)
+        case LConst(i) => (CangjieFieldReference.newIndexBased(i, vArrayType, elemType), None)
+        case _ => (CangjieFieldReference.newSigBased(vArrayType, elemType), Some(idx))
+      }
+    }
+
+    private def vArrayGet(vArrayType: VArray, obj: Node, idx: Node): Node = {
+      val elemType = vArrayType.elemType
+      if (elemType.isZST) {
+        NoValue()
+        // nop
+      } else {
+        val (idxRef, maybeIdx) = vArrayFields(vArrayType, idx)
+        if (needsCopy(elemType)) {
+          val local = StackAlloc.Local(elemType)
+          val addr = GetFieldSeqRef(Seq(idxRef))(obj, maybeIdx.toSeq: _*)
+          copy(elemType, local, addr)
+          local
+        } else {
+          LoadFieldSeq(Seq(idxRef))(obj, maybeIdx.toSeq: _*)
+        }
+      }
+    }
+
+    private def vArrayPut(vArrayType: SignatureType.VArray, obj: Node, idx: Node, value: Node): Unit = {
+      val elemType = vArrayType.elemType
+      if (elemType.isZST) {
+        // nop
+      } else {
+        val (idxRef, maybeIdx) = vArrayFields(vArrayType, idx)
+        if (needsCopy(elemType)) {
+          val addr = GetFieldSeqRef(Seq(idxRef))(obj, maybeIdx.toSeq: _*)
+          copy(elemType, addr, value)
+        } else {
+          StoreFieldSeq(Seq(idxRef))(obj, value, maybeIdx.toSeq: _*)
+        }
+      }
+    }
+
     private def allocEnumObject(objType: SignatureType, args: Seq[Node]): Node = {
       val obj = New(objType)()
       val superType = asClassType(objType).getSuperClassSig
@@ -2282,7 +2411,7 @@ trait CHIRParser
     private def allocTuple(tupleType: SignatureType.Tuple, args: Seq[Node]): Node = {
       val mem = StackAlloc.Local(tupleType)
       for (((arg, i), sig) <- args.zipWithIndex zip tupleType.params) {
-        val fieldRef = CangjieFieldReference(i, None, tupleType, sig)
+        val fieldRef = CangjieFieldReference.newIndexBased(i, tupleType, sig)
         if (sig.isZST) {
           // Nothing to do
 

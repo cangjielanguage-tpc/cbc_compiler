@@ -14,16 +14,15 @@ import com.huawei.excelsior.jet.common.XString.xstr
 import com.huawei.excelsior.jet.compiler.*
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.{SpecialParamSet, SpecialParameter}
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{ArraySlice, BString, Box, CPointer, CangjieArray, CangjieEnum, CangjieEnumWrapper, ClassBasedEnum, ClassTypeVariable, InstantiatedRecord, InstantiatedReference, JavaArray, LocalTypeVariable, NameBased, NamedRecord, NonNullableWrapper, NullableWrapper, OptionLikeEnum, Primitive, PrimitiveBasedEnum, Record, Reference, SymRecord, SymTypeBased, ThisTypeInfo, Tuple, UnionBasedEnum, VArray, ZeroSizedEnum}
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{ArraySlice, BString, Box, CPointer, CangjieArray, CangjieEnumWrapper, ClassBasedEnum, ClassTypeVariable, InstantiatedRecord, InstantiatedReference, JavaArray, LocalTypeVariable, NameBased, NamedRecord, NonNullableWrapper, NullableWrapper, OptionLikeEnum, Primitive, PrimitiveBasedEnum, Record, Reference, SymRecord, SymTypeBased, ThisTypeInfo, Tuple, UnionBasedEnum, VArray, ZeroSizedEnum}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
-import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeFieldReference, BitcodeMethodReference, BytecodeMethodReference, CallConv, CallKind, ConstraintCallMethodReference, Field, FrameDescSymbol, InstantiatedMethodReference, Method, MethodReference, MethodReferenceAccessKind, MethodSignature, MethodType, Signature, SignatureType, SymlevelReader, SymlevelWriter, TypeKind, Type as SymType}
+import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeFieldReference, BitcodeMethodReference, BytecodeMethodReference, CallConv, CallKind, CangjieFieldReference, ConstraintCallMethodReference, Field, FrameDescSymbol, IndexBasedFieldReference, InstantiatedMethodReference, Method, MethodReference, MethodReferenceAccessKind, MethodSignature, MethodType, Signature, SignatureBasedFieldReference, SignatureType, SymLevelBasedFieldReference, SymlevelReader, SymlevelWriter, TypeKind, Type as SymType}
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.{ClassType, ReferenceType}
 import com.huawei.excelsior.jet.compiler.types.References.*
 
 import scala.Function.tupled
 import scala.annotation.nowarn
 import scala.collection.mutable
-import com.huawei.excelsior.jet.compiler.symlevel.CangjieFieldReference
 import com.huawei.excelsior.jet.compiler.types.CompiledType
 
 trait IOBase {
@@ -96,10 +95,22 @@ trait IOBase {
     }
 
     def cangjieFieldReference(fieldRef: CangjieFieldReference): Unit = {
-      longNumber(fieldRef.idx)
-      option(fieldRef.field)(field)
-      sigType(fieldRef.refType)
-      sigType(fieldRef.fieldType)
+      fieldRef match {
+        case SymLevelBasedFieldReference(fieldValue, refType, fieldType) =>
+          number(0)
+          field(fieldValue)
+          sigType(refType)
+          sigType(fieldType)
+        case IndexBasedFieldReference(idx, refType, fieldType) =>
+          number(1)
+          longNumber(idx)
+          sigType(refType)
+          sigType(fieldType)
+        case SignatureBasedFieldReference(refType, fieldType) =>
+          number(2)
+          sigType(refType)
+          sigType(fieldType)
+      }
     }
 
     def option[T](option: Option[T])(f: T => Unit): Unit = {
@@ -394,7 +405,11 @@ trait IOBase {
     }
 
     def cangjieFieldReference(): CangjieFieldReference = {
-      CangjieFieldReference(longNumber(), option(field), sigType(), sigType())
+      number() match {
+        case 0 => CangjieFieldReference.newSymLevelBased(field(), sigType(), sigType())
+        case 1 => CangjieFieldReference.newIndexBased(longNumber(), sigType(), sigType())
+        case 2 => CangjieFieldReference.newSigBased(sigType(), sigType())
+      }
     }
 
     def option[T](f: () => T): Option[T] = {

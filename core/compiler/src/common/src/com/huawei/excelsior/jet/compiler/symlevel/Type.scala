@@ -261,6 +261,8 @@ abstract class Type extends ConstantPoolObject {
     if (isArray) {
       val elemType = getArrayElemType
       elemType.isPrimitive || (elemType.isRecord && !elemType.symType.classHasRefFields)
+    } else if (isVArray) {
+      true
     } else {
       !classHasRefFields
     }
