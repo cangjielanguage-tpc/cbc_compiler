@@ -559,6 +559,7 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
 
   /** Creates new class instance in heap. */
   class New private (proto: New.Proto) extends AnyNewClass(proto) with CanThrow with InlineableAllocator {
+    assert(!allocType.containsTypeVariables)
     def inlinedAllocator = RT.Allocator.newObjectInlined(allocType.symType.getHeapObjectSize)
   }
 
