@@ -71,7 +71,7 @@ trait Preparation extends SimpleSteps with SpecialSteps with RMACombining
     step         ("redundant casts removed",          removeRedundantCasts())
     step         ("MutFunc nodes preparation",        prepareMutFuncNodes())
     step         ("DerivedPtr preparation",           prepareDerivedPtr())
-    step         ("CopyStructure preparation",        prepareCopyStructure())
+    //step         ("CopyStructure preparation",        prepareCopyStructure())
     step         ("RecordArrayGet preparation",       prepareRecordArrayGet())
     step         ("CangjieReferenceNode preparation", prepareCangjieReferenceNode())
     step         ("Lea created",                      createLeaForRMA())
