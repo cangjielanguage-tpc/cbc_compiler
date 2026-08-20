@@ -147,6 +147,7 @@ object MemSpace {
       lastType = refType match {
         case CangjieArray(elem) => elem
         case CbcFileFormat.Tuple(args) => args(idx)
+        case CbcFileFormat.VArray(elem, _) => elem
         case x => shouldNotReachHere(s"unexpected type $x")
       }
       op(BodyOperation.ConstIndex(idx, refType))
