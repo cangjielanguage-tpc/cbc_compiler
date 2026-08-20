@@ -923,6 +923,9 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
 
         case AtomicOps.Simple.Proto =>
           AtomicOps.Simple.proto(read.enumeration(AtomicOps.Simple.Kind.fromOrdinal), read.tpe(), read.cangjieFieldReference())
+
+        case NewGeneric.Proto =>
+          NewGeneric.proto(read.sigType())
       }
     }
 

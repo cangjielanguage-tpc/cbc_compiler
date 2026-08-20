@@ -252,7 +252,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | LoadFieldSeqGeneric | StoreFieldSeqGeneric | GetFieldSeqRefGeneric
       | DerivedPtr | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | SpawnFuture | SpawnClosure
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
-      | AssignGeneric | InstanceOfGeneric
+      | AssignGeneric | InstanceOfGeneric | NewGeneric
       | AtomicOps.AtomicNode) => true
 
     case _: (TypeTest | CallTarget | MutFuncArgNode | RecordArrayGet) => true // always grouped with another node
@@ -303,7 +303,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case _: SaveCallRefTypeInfo =>
       tailRegSet // fixed register for call ref type info passing
 
-    case _: (New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | UniversalGeneric.CopyResultVST | SpawnFuture | SpawnClosure) => ir1Set
+    case _: (New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | UniversalGeneric.CopyResultVST | SpawnFuture | SpawnClosure | NewGeneric) => ir1Set
 
     case _ => super.resultResourcesSetImpl(node)
   }

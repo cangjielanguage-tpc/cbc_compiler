@@ -362,6 +362,16 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
     saveState()
   }
 
+  def newobjGeneric(ti: IR, t: Signature): Unit = instr {
+    regSymGroup(RegSymGroup.NewObjGeneric, analyzer.usePrim(ti), t); analyzer.ref(IR.IR1)
+    saveState()
+  }
+
+  def newClosureGeneric(ti: IR, t: Signature): Unit = instr {
+    regSymGroup(RegSymGroup.NewClosureGeneric, analyzer.usePrim(ti), t); analyzer.ref(IR.IR1)
+    saveState()
+  }
+
   def loadTypeInfoSig(dst: IR, sig_id: Signature): Unit = instr {
     regSymGroup(RegSymGroup.LoadTypeInfoSig, analyzer.prim(dst), sig_id)
   }
@@ -1141,6 +1151,8 @@ object Assembler {
     case CallClosure
     case NewClosure
     case CallClosureGeneric
+    case NewObjGeneric
+    case NewClosureGeneric
   }
 
   enum RegGroup extends Ordinal {

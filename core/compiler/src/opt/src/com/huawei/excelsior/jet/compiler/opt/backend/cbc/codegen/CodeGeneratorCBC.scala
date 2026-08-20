@@ -1645,6 +1645,25 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       fasm.instanceOfGeneric(dst, obj, bti)
     }
 
+    private def genNewGeneric(n: NewGeneric): Unit = {
+      assert(iReg(n) == IR1)
+      val IReg(ti) = n.allocTypeInfo
+      // TODO: do we need it here?
+      val t = n.allocType match {
+        case SignatureType.Box(t) => t
+        case t => t
+      }
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      t match {
+        case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") =>
+          fasm.newClosureGeneric(ti, t.toCbc)
+        case _ =>
+          fasm.newobjGeneric(ti, t.toCbc)
+      }
+      addXSite(n)
+      saveGCState(n)
+    }
+
     private def genAtomic(n: AtomicOps.AtomicNode): Unit = {
       val fasm = asm.asInstanceOf[ForkedISA12Assembler]
       val adapter = fasm.adapter
@@ -1779,6 +1798,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: NewSomeOptionGeneric => genNewSomeOptionGeneric(x)
         case x: AssignGeneric => genAssignGeneric(x)
         case x: InstanceOfGeneric => genInstanceOfGeneric(x)
+        case x: NewGeneric => genNewGeneric(x)
 
         case x: FieldSeqOperation => genFieldSeqOperation(x)
 
