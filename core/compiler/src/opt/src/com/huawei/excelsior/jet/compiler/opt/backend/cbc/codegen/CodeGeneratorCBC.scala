@@ -918,10 +918,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       def fields(fields: Seq[CangjieFieldReference], typeInfos: Seq[Node] = Seq.empty): Unit = {
-        for ((f, i) <- fields.zipWithIndex) f.field match {
-          case Some(field) =>
+        for ((f, i) <- fields.zipWithIndex) f match {
+          case f: SymLevelBasedFieldReference =>
             builder.field(adapter.field(f))
-          case None =>
+          case f: IndexBasedFieldReference =>
             val refType = f.refType match {
               case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
               case t => t
