@@ -70,6 +70,8 @@ trait SpecialSteps { self: Universe with BackEnd =>
     }
   }
 
+  protected def prepareCopyStructure(): Unit = {}
+
   protected def prepareDerivedPtr(): Unit = {}
 
   protected def prepareCangjieReferenceNode(): Unit = {}

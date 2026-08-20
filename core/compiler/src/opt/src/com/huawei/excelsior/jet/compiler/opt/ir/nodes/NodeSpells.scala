@@ -49,6 +49,7 @@ trait NodeSpells { self: Universe with Nodes =>
         reason match {
           case Group.AttachReason.IMPLICIT_CHECK_ARG =>
           case Group.AttachReason.INSTANCE_OF_BRANCH =>
+          case Group.AttachReason.CANGJIE_REFERENCE =>
             assert(node.singleOutEdge.isValue)
           case _ =>
             assert(node.singleUse == root)

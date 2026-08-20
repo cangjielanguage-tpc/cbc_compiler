@@ -128,6 +128,37 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
     }
   }
 
+  override def prepareCopyStructure(): Unit = {
+    if (!isStandalone) {
+      return
+    }
+
+    def attachToCopyStructure(cs: CopyStructure, node: FloatingNode): Unit = {
+      Node.rematerializeConditionally(node, {
+        _.target == cs
+      }) foreach {
+        _.attachToGroup(cs, Group.AttachReason.COPY_STRUCTURE)
+      }
+    }
+
+    for {
+      cs <- all[CopyStructure]
+    } {
+      (cs.src, cs.dst) match {
+        case ((_: GetStaticFieldSeqRef | _: GetFieldSeqRef), (_: GetStaticFieldSeqRef | _: GetFieldSeqRef)) => {
+          shouldNotReachHere()
+        }
+        case (g: (GetStaticFieldSeqRef | GetFieldSeqRef), _) => {
+          attachToCopyStructure(cs, g)
+        }
+        case (_, g: (GetStaticFieldSeqRef | GetFieldSeqRef)) => {
+          attachToCopyStructure(cs, g)
+        }
+        case (_, _) =>
+      }
+    }
+  }
+
   override def prepareDerivedPtr(): Unit = {
     if (isStandalone) {
       for {
