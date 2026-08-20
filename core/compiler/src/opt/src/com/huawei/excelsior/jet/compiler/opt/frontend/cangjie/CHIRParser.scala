@@ -977,6 +977,8 @@ trait CHIRParser
             case _ =>
               if (sig.isAbstractClass) {
                 Null()
+              } else if (sig.containsTypeVariables) {
+                NewGeneric(sig)(loadTypeInfo(sig))
               } else {
                 New(sig)()
               }
@@ -2095,7 +2097,12 @@ trait CHIRParser
 
             case t: SignatureType.Box =>
               // Variable-sized type
-              New(SignatureType.Box(retType))()
+              val box = SignatureType.Box(retType)
+              if (box.containsTypeVariables) {
+                NewGeneric(box)(loadTypeInfo(retType))
+              } else {
+                New(box)()
+              }
 
             case SignatureType.Address =>
               // Type variable
@@ -2105,7 +2112,12 @@ trait CHIRParser
               val value = if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && (retType.isTraceableReference || retType.isTypeVariable)) {
                 Null()
               } else {
-                New(SignatureType.Box(retType))()
+                val box = SignatureType.Box(retType)
+                if (box.containsTypeVariables) {
+                  NewGeneric(box)(loadTypeInfo(retType))
+                } else {
+                  New(box)()
+                }
               }
               StoreMemory(memType.toAsm, memType, atomic = false)(mem, value)
               mem
@@ -2334,7 +2346,12 @@ trait CHIRParser
       if (t.containsTypeVariables) {
         import SignatureType.*
         t match {
-          case t: ClassTypeVariable => GenericTypeArg(t.idx)(outerTypeInfoParam())
+          case t: ClassTypeVariable =>
+            if (method.getDeclaringClass.isCangjiePackage) {
+              genericTypeInfoParam(t.idx)
+            } else {
+              GenericTypeArg(t.idx)(outerTypeInfoParam())
+            }
           case t: LocalTypeVariable => genericTypeInfoParam(t.idx)
           case t: InstantiatedType  => LoadTypeInfoGeneric(t)(t.instantiatedTypeParameters.map(loadTypeInfo): _*)
           case t: ArraySlice        => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))

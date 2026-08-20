@@ -348,6 +348,7 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: AtomicOps.Store => AtomicOps.Store.Proto
         case _: AtomicOps.CAS => AtomicOps.CAS.Proto
         case _: AtomicOps.Simple => AtomicOps.Simple.Proto
+        case _: NewGeneric => NewGeneric.Proto
 
         case _ => n.proto
       }
