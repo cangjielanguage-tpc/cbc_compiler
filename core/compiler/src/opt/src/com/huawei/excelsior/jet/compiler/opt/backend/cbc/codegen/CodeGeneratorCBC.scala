@@ -1357,7 +1357,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         if (isStandalone) {
           val fasm = asm.asInstanceOf[ForkedISA12Assembler]
           if (targetRef.refType.symType.getName.startsWith("$C")) {
-            fasm.callClosure(isa12ResultReg, targetRef.refType.sigType.toCbc)
+            if (targetRef.method.getName == "$GenericVirtualFunc") {
+              fasm.callClosureGeneric(isa12ResultReg, targetRef.refType.sigType.toCbc)
+            } else {
+              fasm.callClosure(isa12ResultReg, targetRef.refType.sigType.toCbc)
+            }
           } else {
             val outerTI = call.invokeArgs(targetRef.methodType.getOuterTypeInfoArgIdx)
             val loc = outerTI match {
