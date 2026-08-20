@@ -823,4 +823,23 @@ trait CangjieNodes { self: Universe =>
       def fetchXor(objType: Type, field: CangjieFieldReference)(obj: Node, value: Node) = proto(Kind.FETCH_XOR, objType, field)(obj, value)
     }
   }
+
+  class NewGeneric private(proto: NewGeneric.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with ProducesValue with CanThrow {
+    def allocType = proto.allocType
+
+    def allocTypeInfo = arg(2)
+  }
+
+  object NewGeneric {
+    case class Proto private[NewGeneric](allocType: SignatureType)
+      extends FixedArgs[NewGeneric](ControlType, MemoryType, AddrType)(ValueType.fromSig(allocType))
+      with ControlMemoryValueTagged[NewGeneric] {
+      assert(allocType.containsTypeVariables)
+
+      def newInstance() = new NewGeneric(this)
+    }
+
+    def proto(allocType: SignatureType) = Prototype.intern(Proto(allocType))
+    def apply(allocType: SignatureType)(allocTypeInfo: Node) = proto(allocType)(allocTypeInfo)
+  }
 }

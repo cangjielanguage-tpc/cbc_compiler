@@ -331,7 +331,7 @@ trait TypeAnalysis extends OptExtraInfo with CallTargetInfos { self: Universe =>
     case _: MutFunc.Host => OpenCone(ReferenceType.ajLangAJObject, mayBeNull = true)
 
     case _: DerivedPtr.Local | _: DerivedPtr.Global | _: Box | _: Unbox | _: SpawnFuture | _: SpawnClosure |
-         _: EnumCast | _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric =>
+         _: EnumCast | _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric | _: NewGeneric =>
       OpenCone(ReferenceType.cangjieStdCoreObject, mayBeNull = true)
 
     case n: AtomicOps.AtomicNode =>  

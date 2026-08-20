@@ -832,6 +832,8 @@ trait CHIRParser
             case _ =>
               if (sig.isAbstractClass) {
                 Null()
+              } else if (sig.containsTypeVariables) {
+                NewGeneric(sig)(loadTypeInfo(sig))
               } else {
                 New(sig)()
               }
@@ -2318,7 +2320,12 @@ trait CHIRParser
       if (t.containsTypeVariables) {
         import SignatureType.*
         t match {
-          case t: ClassTypeVariable => GenericTypeArg(t.idx)(outerTypeInfoParam())
+          case t: ClassTypeVariable =>
+            if (method.getDeclaringClass.isCangjiePackage) {
+              genericTypeInfoParam(t.idx)
+            } else {
+              GenericTypeArg(t.idx)(outerTypeInfoParam())
+            }
           case t: LocalTypeVariable => genericTypeInfoParam(t.idx)
           case t: InstantiatedType  => LoadTypeInfoGeneric(t)(t.instantiatedTypeParameters.map(loadTypeInfo): _*)
           case t: ArraySlice        => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
