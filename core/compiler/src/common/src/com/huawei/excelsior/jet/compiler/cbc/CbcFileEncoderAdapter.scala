@@ -202,7 +202,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       if (modifiers.contains(Modifier.FINAL)) {
         builder.addFlag(TypeFlag.FINAL)
       }
-      if (t.getName.startsWith("$Cl")) {
+      if (t.getName.startsWith("$Cl") || t.getName.startsWith("$Cw")) {
         builder.addFlag(TypeFlag.LAMBDA)
       }
     }

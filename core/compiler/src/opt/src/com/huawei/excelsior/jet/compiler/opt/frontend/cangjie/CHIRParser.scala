@@ -1302,7 +1302,7 @@ trait CHIRParser
         val (gsig, _, _, _) = resolver.functionSig(func.base.base.`type`, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
-          if (g.isTypeVariable && !i.isTypeVariable) SignatureType.Box(i) else i
+          if (g.isTypeVariable && !i.isTypeVariable && !i.isInstanceOf[SignatureType.Box]) SignatureType.Box(i) else i
         }
 
         val isig = MethodSignature(retType, isigParams.drop(if (isStatic) 0 else 1))
@@ -2229,9 +2229,9 @@ trait CHIRParser
         }
 
         refType match {
-          case refType: SignatureType.Reference if refType.name.startsWith("$Cl") =>
+          case refType: SignatureType.Reference if refType.name.startsWith("$Cl") || refType.name.startsWith("$Cw") =>
             fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
-          case refType: SignatureType.InstantiatedReference if refType.name.startsWith("$Cl") =>
+          case refType: SignatureType.InstantiatedReference if refType.name.startsWith("$Cl") || refType.name.startsWith("$Cw") =>
             fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
           case refType: SignatureType.Tuple =>
             val fieldType = refType.params(idx.toInt)

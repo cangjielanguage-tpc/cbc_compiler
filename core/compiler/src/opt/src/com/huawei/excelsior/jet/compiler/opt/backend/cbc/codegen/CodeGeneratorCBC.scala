@@ -316,9 +316,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
         val fasm = asm.asInstanceOf[ForkedISA12Assembler]
         t match {
-          case t: SignatureType.CangjieReference if t.name.startsWith("$Cl") =>
+          case t: SignatureType.CangjieReference if t.name.startsWith("$Cl") || t.name.startsWith("$Cw") =>
             fasm.newClosure(IR1, t.toCbc)
-          case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") =>
+          case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") || t.name.startsWith("$Cw") =>
             fasm.newClosure(IR1, t.toCbc)
           case _ =>
             fasm.newobj(t.toCbc)
@@ -1741,7 +1741,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
       val fasm = asm.asInstanceOf[ForkedISA12Assembler]
       t match {
-        case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") =>
+        case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") || t.name.startsWith("$Cw") =>
           fasm.newClosureGeneric(ti, t.toCbc)
         case _ =>
           fasm.newobjGeneric(ti, t.toCbc)
