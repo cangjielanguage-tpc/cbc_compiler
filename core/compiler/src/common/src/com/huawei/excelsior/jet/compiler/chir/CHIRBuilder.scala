@@ -256,7 +256,7 @@ object CHIRBuilder {
         case typeSig: SignatureType.OptionLikeEnum if typeSig.someType.isTypeVariable => SignatureType.Box(typeSig)
         case _ => typeSig
       }
-      for (id <- d.methodsVector.iterator; m = pkg.getValue[Function](id)) {
+      for (id <- d.methodsVector.iterator; m = pkg.getValue[Function](id) if !isDeadFunction(m)) {
         val name = resolver.symName(m)
         val value = m.base.base
         val mutModifiers = m.funcKind match {
