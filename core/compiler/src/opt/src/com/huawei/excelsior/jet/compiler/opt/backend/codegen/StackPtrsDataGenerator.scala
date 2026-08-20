@@ -16,7 +16,7 @@ trait StackPtrsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
   /** Returns true iff `node` resource contains pointer to stack. */
   private def containsStackPtr(n: Node): Boolean = (valueOf(n).producer match {
     case p: Param => 
-      (rootMethod.hasRetByValParameter && p.num == rootMethod.getRetByValArgIdx) 
+      (rootMethod.hasRetByValParameter && p.num == rootMethod.getRetByValArgIdx && !rootMethod.getReturnType.isTypeVariable) 
       || p.formalType.isRecord
     case _: StackAlloc => !n.isInstanceOf[StackAlloc] // producer is StackAlloc but not the node itself
     case _ => false

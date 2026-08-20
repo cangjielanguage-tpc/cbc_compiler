@@ -145,6 +145,8 @@ trait XSitesToolbox extends RecordSlotsLiveness { self: Universe with BackEnd wi
   /** Returns true iff `node` resource will be collected in GC map at XSites which it live through. */
   def willBeCollectedInGCMap(n: Node): Boolean = (valueOf(n).producer match {
     case _: Constant => false // TODO: expand this list with compile-known non-GC nodes, like ExtractLongBits
+    case p: Param if rootMethod.hasRetByValParameter && p.num == rootMethod.getRetByValArgIdx 
+      && rootMethod.getReturnType.isTypeVariable => true // sret points to box object
     case _ => mayBeTraceableReference(n)
   }) && !n.resource.isInstanceOf[TailSlot] // tail slots are presented in caller's gcmaps, where they live as frame slots
 
