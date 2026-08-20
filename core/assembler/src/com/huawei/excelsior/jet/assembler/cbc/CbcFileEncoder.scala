@@ -36,6 +36,7 @@ object CbcFileEncoder {
   def apply(file: CbcFile): CbcFileEncoder = {
     val generator = new CbcFileEncoder(file)
     file.types.foreach(generator.addType)
+    file.extensions.foreach(generator.addExtension)
     generator
   }
 
@@ -103,6 +104,7 @@ enum StatTag(val name: String, val children: StatTag*) {
   case MethodDef extends StatTag("method definitions")
   case MethodRef extends StatTag("method references")
   case TypeDef extends StatTag("type definitions")
+  case Extension extends StatTag("extensions")
   case AotData extends StatTag("aot data")
 
   case TypeIndex extends StatTag("type index")
@@ -125,6 +127,7 @@ class CbcFileEncoder(file: CbcFile) { self =>
   private val fields = CountingPool(new FieldPool with PoolView with GlobalPool, statistics.listener(StatTag.FieldDef))
   private val fieldRefPool = DedupPool(CountingPool(new FieldReferencePool with PoolView with GlobalPool, statistics.listener(StatTag.FieldRef)))
   private val methodRefPool = DedupPool(CountingPool(new MethodReferencePool with PoolView with GlobalPool, statistics.listener(StatTag.MethodRef)))
+  private val extensionPool = DedupPool(CountingPool(new ExtensionPool with PoolView with GlobalPool, statistics.listener(StatTag.Extension)))
   private val typeIndex = new MemberTable[Type](CountingPool(new TypePool with PoolView with GlobalPool, statistics.listener(StatTag.TypeDef)))
 
   private val aotTablePool = DedupPool(CountingPool(new AotDataPool with PoolView with GlobalPool, statistics.listener(StatTag.AotData)))
@@ -144,6 +147,8 @@ class CbcFileEncoder(file: CbcFile) { self =>
   private val signatures = new SignatureTable(signaturePool)
   private val fieldRefs = new FieldRefTable(fieldRefPool) with PoolView with GlobalPool
   private val methodRefs = new MethodRefTable(methodRefPool) with PoolView with GlobalPool
+
+  private val extensions = mutable.ArrayBuffer.empty[Int]
 
   private trait GlobalPool extends RawPool {
     def buffer: ByteBuffer = self.globalPoolBuffer
@@ -175,12 +180,15 @@ class CbcFileEncoder(file: CbcFile) { self =>
 
   def addType(tpe: Type): Unit = typeIndex.add(tpe)
 
+  def addExtension(ext: Extension): Unit = {
+    extensions += extensionPool.add(ext)
+  }
+
   def generate(output: DataOutput): Unit = {
     val layout = Layout()
     layout.bytes { buffer =>
       buffer.putBytes('C', 'B', 'C', FILE_VERSION) // magic & file_version
       buffer.putByte(file.bytecodeVersion) // bytecode_version
-      buffer.putByte(0) // file_properties
     }
 
     val typeIndexOffs = layout.offset() // type_idx_offs
@@ -192,14 +200,14 @@ class CbcFileEncoder(file: CbcFile) { self =>
     val staticFieldAotTableOffset = layout.offset()
     val instanceFieldAotTableOffset = layout.offset()
 
-    layout.w16(1) // num_index_regions
+    val extensionsOffset = layout.offset()
+
     val indexSectionOffs = layout.offset() // index_section_off[0]
 
     layout.w32(file.mainTypeName.map(strings.add).getOrElse(-1)) // main type
     layout.w32(file.cbcDeps.map(strings.add).getOrElse(-1))      // cbc package dependencies
     layout.w32(file.aotDeps.map(strings.add).getOrElse(-1))      // aot lib dependencies
     layout.w32(file.foreignLibs.map(strings.add).getOrElse(-1))  // foreign libs
-    layout.uleb(0) // coverage id
 
     poolOffset.elem = layout.bytes(globalPoolBuffer.toByteArray)
 
@@ -217,6 +225,11 @@ class CbcFileEncoder(file: CbcFile) { self =>
     val methodRefIndex  = layout.bytes(methodRefs.asByteArray())
     val fieldRefIndex = layout.bytes(fieldRefs.asByteArray())
     val signatureIndex = layout.bytes(signatures.asByteArray())
+
+    layout.setStatListener(statistics.listener(StatTag.Extension)) 
+    val extensionsBuf = ByteBuffer()
+    writeSequence(extensionsBuf, extensions)
+    extensionsOffset.elem = layout.bytes(extensionsBuf.toByteArray)
 
     // regions data
     layout.alignment(4) // TODO: why only here?
@@ -894,6 +907,27 @@ private class TypePool extends Pool[Type] { self: RawPool with PoolProvider =>
         output.putW8(TypeTag.UnionFields.tag)
         writeSequence(output, data.unionFields.map(signatures.add))
       case NotEnum =>
+    }
+
+    output.putW8(TypeTag.Nothing.tag)
+  }
+}
+
+private class ExtensionPool extends Pool[Extension] { self: RawPool with PoolProvider =>
+  override def add(data: Extension): Offset = put { output =>
+    output.putULEB(signatures.add(data.extendedType))
+
+    val virtualMethods = data.methods.filter(_.flags.contains(MethodFlag.VIRTUAL))
+
+    writeSequence(output, virtualMethods.map(methods.add))
+
+    if (data.interfaces.nonEmpty) {
+      output.putW8(TypeTag.Interfaces.tag)
+      writeSequence(output, data.interfaces.map(signatures.add))
+    }
+    if (data.genericConstraints.nonEmpty) {
+      output.putW8(TypeTag.GenericParameters.tag)
+      output.putULEB(data.genericConstraints.length)
     }
 
     output.putW8(TypeTag.Nothing.tag)

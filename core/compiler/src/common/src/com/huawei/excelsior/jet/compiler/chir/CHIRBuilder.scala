@@ -265,7 +265,7 @@ object CHIRBuilder {
             Modifiers(Modifier.CJ_MUT)
           case _ => Modifiers.EMPTY
         }
-        def isInVTable = vtableFuncs.exists(id)
+        def isInVTable = vtableFuncs.contains(id)
         val extendModifiers = if (symType.isCangjieExtend && !isInVTable) Modifiers(STATIC) else Modifiers.EMPTY
         val modifiers = resolver.symModifiers(value.base.attributes) | extendModifiers | mutModifiers
         val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
