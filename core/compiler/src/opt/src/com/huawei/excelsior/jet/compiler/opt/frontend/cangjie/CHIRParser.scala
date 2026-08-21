@@ -617,6 +617,16 @@ trait CHIRParser
         }
       }
 
+      if (pkg.getValue[Function](pkg.pkg.packageInitFunc) == func) {
+        val pkgLitFunc = pkg.getValue[Function](pkg.pkg.packageInitFunc)
+        val refType = resolver.findClass(pkgLitFunc.base.packageName).get
+
+        val name = resolver.symName(pkgLitFunc)
+        val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, pkgLitFunc, pkgLitFunc.funcKind, pkgLitFunc.base.base.base.attributes)
+
+        callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
+      }
+
       if (pkg.getValue[Function](pkg.pkg.packageLiteralInitFunc) == func) {
         // TODO: consider moving it under @has_invoked_pkg_init_literal check
         for (id <- 1L to pkg.pkg.valuesLength) pkg.getValue[Table](id) match {
