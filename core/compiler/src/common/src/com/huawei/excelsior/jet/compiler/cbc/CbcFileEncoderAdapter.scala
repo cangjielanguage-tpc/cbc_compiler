@@ -175,7 +175,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
         (t.getDeclaredMethods.filter(m => isVirtual(m)),
           t.getDeclaredFields.filter(f => !f.isStatic))
       } else {
-        (t.getDeclaredMethods, t.getDeclaredFields)
+        (t.getDeclaredMethods.filterNot(isWrapperHack), t.getDeclaredFields)
       }
 
       methods.foreach(MethodWrapper(_).build(builder.newMethodBuilder()))
@@ -358,6 +358,10 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
   private def isVirtual(method: Method): Boolean = {
     val vtable = method.getDeclaringClass.getCHIRVTable
     vtable != null && vtable.extDefs.exists(_.funcTable.exists(_.impl.contains(method)))
+  }
+
+  private def isWrapperHack(method: Method): Boolean = {
+    method.getCHIRDef.isEmpty && method.getDeclaringClass.getDeclaredMethods.exists(m => m.getExportedName == method.getExportedName && m != method)
   }
 
 }
