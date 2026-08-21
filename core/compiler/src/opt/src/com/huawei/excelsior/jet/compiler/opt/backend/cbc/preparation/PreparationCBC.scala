@@ -129,14 +129,10 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
   }
 
   override def prepareCopyStructure(): Unit = {
-    if (!isStandalone) {
-      return
-    }
+    if (!isStandalone) { return }
 
     def attachToCopyStructure(cs: CopyStructure, node: FloatingNode): Unit = {
-      Node.rematerializeConditionally(node, {
-        _.target == cs
-      }) foreach {
+      Node.rematerializeConditionally(node, { _.target == cs }) foreach {
         _.attachToGroup(cs, Group.AttachReason.COPY_STRUCTURE)
       }
     }

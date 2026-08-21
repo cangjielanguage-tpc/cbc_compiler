@@ -1825,22 +1825,22 @@ trait CHIRParser
                         operands(e).map(state.apply) match {
                           case Seq(IConst(c)) =>
                             assert(c == 0 || c == 1, c)
-                            StoreFieldSeq(mem, IConst(c), tagChain: _*)
+                            StoreFieldSeq(mem, IConst(c), tagChain*)
 
                           case Seq(IConst(c), x) =>
                             assert(c == 0 || c == 1, c)
-                            StoreFieldSeq(mem, IConst(c), tagChain: _*)
+                            StoreFieldSeq(mem, IConst(c), tagChain*)
                             val payloadChain = fieldChain(enumType, Seq(1))
                             val lastFieldType = collect[CangjieReferenceNode](payloadChain).toSeq.last
                             if (payloadType.isZST) {
                               // nothing to do
 
                             } else if (needsCopy(payloadType)) {
-                              val addr = GetFieldSeqRef(mem, payloadChain: _*)
+                              val addr = GetFieldSeqRef(mem, payloadChain*)
                               copy(payloadType, addr, x)
 
                             } else {
-                              StoreFieldSeq(mem, x, payloadChain: _*)
+                              StoreFieldSeq(mem, x, payloadChain*)
                             }
                         }
                         state(e) = mem
