@@ -483,7 +483,8 @@ object pcOModule {
     }
 
     def setCHIRVTable(vtable: CHIRVTable): Unit = {
-      if (!hasFEXT(chirVTable)) {
+      val fextMark = if (isCHIRDef) chirVTableDef else chirVTable
+      if (!hasFEXT(fextMark)) {
         // TODO: stop serializing everything
         for (ed <- vtable.extDefs) {
           addImport(ed.extType)
@@ -499,12 +500,14 @@ object pcOModule {
             addImport(m.instantiatedReturnType)
           }
         }
-        addFEXT(CHIRVTableFEXT(vtable), chirVTable)
+        addFEXT(CHIRVTableFEXT(vtable), fextMark)
       }
     }
 
     def getCHIRVTable: Option[CHIRVTable] = {
-      fextOption[CHIRVTableFEXT](chirVTable).map(_.getVTable)
+      fextOption[CHIRVTableFEXT](chirVTableDef)
+        .orElse(fextOption[CHIRVTableFEXT](chirVTable))
+        .map(_.getVTable)
     }
 
     def setCangjieEnumInfo(info: CangjieEnumInfo): Unit = {
@@ -4838,7 +4841,8 @@ object pcOModule {
   private val ajDelayedIntrinsic: Byte = 48
   private val cangjieBoxValueType: Byte = 49
   private val cangjieEnumInfo: Byte = 50
-  val lastpersistenttype: Byte = 50
+  private val chirVTableDef: Byte = 51
+  val lastpersistenttype: Byte = 51
 
   /*----------------------------------------------------------------*/
   private var classLookupTable: Hashtable = _
@@ -5231,6 +5235,8 @@ object pcOModule {
       new CHIRVTableFEXT
     case `cangjieEnumInfo` =>
       new CangjieEnumInfoFEXT
+    case `chirVTableDef` =>
+      new CHIRVTableFEXT
     case _ =>
       throw new AssertionError(type0)
   }
