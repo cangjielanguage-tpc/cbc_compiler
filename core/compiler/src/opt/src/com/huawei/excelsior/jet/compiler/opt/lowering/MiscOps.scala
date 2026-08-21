@@ -461,7 +461,7 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
       case _ => false
     }
 
-    if (isCopyable(dst, src)) {
+    if (false/*isCopyable(dst, src)*/) {
       CopyStructure.primitive(refType)(dst, src)
     } else {
       val temp = StackAlloc.Local(refType)
