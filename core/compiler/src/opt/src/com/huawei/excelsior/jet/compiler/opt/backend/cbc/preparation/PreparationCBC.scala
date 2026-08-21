@@ -159,6 +159,7 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
     if (isStandalone) {
       for {
         n <- (all[GetFieldSeqRef] ++ all[GetFieldSeqRefGeneric]).toList
+        if !n.hasGroup
         m <- Node.rematerializeCompletely(n)
       } {
         m.singleUse match {
@@ -173,7 +174,7 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
         m <- Node.rematerializeCompletely(n)
       } {
         m.singleUse match {
-          case use: InstanceFieldSeqOperation => m.attachToGroup(use, Group.AttachReason.DERIVED_PTR)
+          case use: InstanceFieldSeqOperation => if (!use.hasGroup) m.attachToGroup(use, Group.AttachReason.DERIVED_PTR)
           case use: Call =>
           case use => shouldNotReachHere(use)
         }
