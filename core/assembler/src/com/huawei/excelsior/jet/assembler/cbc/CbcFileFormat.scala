@@ -318,6 +318,7 @@ object CbcFileFormat {
   sealed trait FieldReference extends BytecodeReference
   sealed trait FieldReferenceWithRefType extends FieldReference {
     def refType: Signature
+    def fieldType: Signature
     def aotData: Option[AotData]
   }
   case class SingleFieldReference(refType: Signature, name: String, fieldType: Signature,

@@ -14,7 +14,7 @@ import com.huawei.excelsior.jet.assembler.Location.IReg
 import com.huawei.excelsior.jet.assembler.Width.{W32, W64}
 import com.huawei.excelsior.jet.assembler.cbc.*
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileEncoder.Offset
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, BytecodeReference}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.MultiFieldReference
 import com.huawei.excelsior.jet.assembler.cbc.Local.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
@@ -341,16 +341,22 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case slot: FrameSlotCBC => slot.untypedSlot
         case _ => shouldNotReachHere(sa)
       }
-      case MutFunc.Combine(IReg(obj), IReg(offset)) => MemExpr.Head.RegPair(obj, offset)
+      case MutFunc.Combine(IReg(obj), IReg(offset)) => if (!isStandalone)
+        MemExpr.Head.RegPair(obj, offset) else shouldNotReachHere("wrong head for standalone")
 
       case IReg(r) => r
-      case _: Void => MemExpr.Head.StaticField
+      case _: Void => if (!isStandalone)
+        MemExpr.Head.StaticField else shouldNotReachHere("wrong head for standalone")
 
       case n @ RecordArrayGet(IReg(obj), IReg(idx)) =>
-        assert(Isa12Mode)
-        MemExpr.Head.RecordArray(obj, idx, CodeSigSymbol(n.arrayType))
+        if (!isStandalone)
+          assert(Isa12Mode)
+          MemExpr.Head.RecordArray(obj, idx, CodeSigSymbol(n.arrayType))
+        else
+          shouldNotReachHere("wrong head for standalone")
     }
 
+    @deprecated(message = "cjvm specific")
     private def genGetField(n: GetField): Unit = {
       addXSite(n)
 
@@ -358,6 +364,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       asm.mov(dst, MemExpr(memExprHead(n.obj), Array(createFieldRef(n.field))))
     }
 
+    @deprecated(message = "cjvm specific")
     private def genGetField(n: UniversalGeneric.GetField): Unit = {
       addXSite(n)
 
@@ -366,6 +373,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       asm.mov(dst, MemExpr(memExprHead(n.obj), body, isGeneric = true))
     }
 
+    @deprecated(message = "cjvm specific")
     private def genGetFieldOHM(n: UniversalGeneric.GetFieldOHM): Unit = {
       addXSite(n)
 
@@ -380,6 +388,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    @deprecated(message = "cjvm specific")
     private def genFieldChainRead(n: FieldChainRead): Unit = {
       addXSite(n)
 
@@ -389,6 +398,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       asm.mov(dst, MemExpr(memExprHead(n.obj), body, isGeneric))
     }
 
+    @deprecated(message = "cjvm specific")
     private def genPutField(n: PutField): Unit = {
       addXSite(n)
 
@@ -396,6 +406,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       storeToMemExpr(MemExpr(memExprHead(n.obj), Array(createFieldRef(n.field))), n.inValue0)
     }
 
+    @deprecated(message = "cjvm specific")
     private def genPutField(n: UniversalGeneric.PutField): Unit = {
       addXSite(n)
 
@@ -434,6 +445,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             builder.rec(r)
           }
       }
+      
+      def getBaseLocation(n: Node) = n match {
+        case IReg(r) => r
+        case DerivedPtr(IReg(_), IReg(derived)) => derived
+      }
 
       def fields(fields: Seq[CangjieFieldReference], typeInfos: Seq[Node] = Seq.empty): Unit = {
         for ((f, i) <- fields.zipWithIndex) f.field match {
@@ -458,6 +474,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
       }
 
+      // TODO remove
       def store(value: Node): Unit = (value match {
         case _: AnyNull       => builder.storeImm(0)
         case IntegralConst(c) => builder.storeImm(c)
@@ -466,7 +483,30 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case Reg(r)           => builder.store(r)
       }).gen(fasm)
 
+      def maybeImmValue(value: Node): Option[Long] = value match {
+        case _: AnyNull => Some(0L)
+        case IntegralConst(c) => Some(c)
+        case FConst(c) => Some(java.lang.Float.floatToRawIntBits(c))
+        case DConst(c) => Some(java.lang.Double.doubleToRawLongBits(c))
+        case Reg(r) => None
+      }
+
+      def constrFieldRef(frs: Seq[CangjieFieldReference]): CbcFileFormat.FieldReference = {
+        frs.map(adapter.field) match {
+          case Seq(field) => field
+          case refs => MultiFieldReference(frs.length, refs)
+        }
+      }
+
       n match {
+        case n: GetFieldSeqRef if !n.isInstanceOf[HasFrameSlot] =>
+          val IReg(dst) = n
+          val base = getBaseLocation(n.obj)
+          fasm.lea(dst, base, constrFieldRef(fieldRefs))
+        case n: LoadFieldSeq if !n.isInstanceOf[HasFrameSlot] =>
+          val Reg(dst) = n
+          val base = getBaseLocation(n.obj)
+          fasm.ld(dst, base, constrFieldRef(fieldRefs))
         case n: (GetFieldSeqRef | LoadFieldSeq) =>
           val Reg(dst) = n
           memExprHead(n.obj)
@@ -489,14 +529,26 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           }
           addXSite(n)
           saveGCState(n)
-        case n: (GetStaticFieldSeqRef | LoadStaticFieldSeq) =>
+        case n: GetStaticFieldSeqRef =>
           val Reg(dst) = n
           assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
           builder.static(adapter.field(fieldRefs.head))
           fields(fieldRefs.tail)
           builder.load(dst).gen(fasm)
-        case n: StoreFieldSeq =>
+        case n: LoadStaticFieldSeq =>
+          val Reg(dst) = n
+          assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
+          fasm.ld(dst, constrFieldRef(fieldRefs))
+        case n: StoreFieldSeq if !n.isInstanceOf[HasFrameSlot] =>
           addXSite(n)
+          maybeImmValue(n.inValue) match {
+            case Some(_) => shouldNotReachHere("Field seq stores with imm are not supported")
+            case None =>
+              val Reg(src) = n.inValue
+              val base = getBaseLocation(n.obj)
+              fasm.st(src, base, constrFieldRef(fieldRefs))
+          }
+        case n: StoreFieldSeq =>
           memExprHead(n.obj)
           fields(fieldRefs)
           store(n.inValue)
@@ -514,9 +566,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case n: StoreStaticFieldSeq =>
           addXSite(n)
           assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
-          builder.static(adapter.field(fieldRefs.head))
-          fields(fieldRefs.tail)
-          store(n.inValue)
+          maybeImmValue(n.inValue) match {
+            case Some(_) => shouldNotReachHere("Field seq stores with imm are not supported")
+            case None =>
+              val Reg(src) = n.inValue
+              fasm.st(src, constrFieldRef(fieldRefs))
+          }
       }
     }
 
@@ -528,22 +583,26 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       FieldRef.createFieldRef(n.field, Some(n.instantiatedRefType), Some(n.instantiatedFieldType))
     }
 
+    @deprecated(message = "cjvm specific")
     private def genCopyResultVST(n: UniversalGeneric.CopyResultVST): Unit = {
       val (IReg(IR1), IReg(rv), IReg(rr), ftcIdx) = (n, n.value, n.resultPointerAddress, CodeSigSymbol(n.sig) ensuring (_.containsTypeVariables))
       asm.copyResultVST(rv, rr, ftcIdx)
     }
 
+    @deprecated(message = "cjvm specific")
     private def genOHMSPtr(n: UniversalGeneric.OffHeapMemorySlotPointer): Unit = (n, n.ohms) match {
       case (IReg(dst), sa: HasFrameSlot) =>
         asm.ohmsPtr(dst, sa.slot.asInstanceOf[OHMSlotCBC].ohmSlot)
     }
 
+    @deprecated(message = "cjvm specific")
     private def genTypeVarIsRef(n: UniversalGeneric.TypeVarIsRef): Unit = {
       val IReg(dst) = n
       val ftcIdx = CodeSigSymbol(n.typeVar)
       asm.doTypeVarIsRef(dst, ftcIdx)
     }
 
+    @deprecated(message = "cjvm specific")
     private def genCopyUniversalVariable(n: UniversalGeneric.CopyUniversalVariable): Unit = {
       (n, n.dst, n.src) match {
         case (IReg(dst), sa: HasFrameSlot, IReg(src)) =>
@@ -553,6 +612,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    @deprecated(message = "cjvm specific")
     private def genFieldChainWrite(n: FieldChainWrite): Unit = {
       addXSite(n)
       val isGeneric = n.fields.head.isGeneric
@@ -569,17 +629,20 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       case Reg(r)     => asm.mov(memExpr, r)
     }
 
+    @deprecated(message = "cjvm specific")
     private def genGetStatic(n: GetStatic): Unit = {
       val Reg(dst) = n
       asm.mov(dst, MemExpr(MemExpr.Head.StaticField, Array(createFieldRef(n.field))))
     }
 
+    @deprecated(message = "cjvm specific")
     private def genPutStatic(n: PutStatic): Unit = {
       assert(!n.field.getType.isRecord)
       val Reg(src) = n.inValue0
       asm.mov(MemExpr(MemExpr.Head.StaticField, Array(createFieldRef(n.field))), src)
     }
 
+    @deprecated(message = "cjvm specific")
     private def genBitcodeDeferredFieldOp(n: BitcodeDeferred.FieldOp): Unit = {
       val field = n.fieldRef
       val fieldType = field.fieldType
@@ -1144,6 +1207,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    @deprecated(message = "cjvm specific")
     private def genEnrich(enrich: EnrichOperation): Unit = {
       val IReg(dst) = enrich
       val IReg(obj) = enrich.obj
@@ -1154,6 +1218,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    @deprecated(message = "cjvm specific")
     private def genEnrichCBC(enrich: EnrichCBC): Unit = {
       val IReg(dst) = enrich
       val IReg(obj) = enrich.obj
@@ -1161,6 +1226,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       asm.eopPack(dst, obj, CodeSigSymbol(enrich.rcvType), CodeSigSymbol(enrich.interfaceType))
     }
 
+    @deprecated(message = "cjvm specific")
     private def genDeprive(deprive: DepriveOperation): Unit = {
       val IReg(dst) = deprive
       val IReg(obj) = deprive.obj
@@ -1171,12 +1237,14 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
     override protected def mergeRichPointer(dst: IREG, imt: IREG, ptr: IREG): Unit = notImplemented(CBC)
 
+    @deprecated(message = "cjvm specific")
     private def genExtractEnrichment(extractEnrichment: ExtractEnrichment): Unit = {
       val IReg(dst) = extractEnrichment
       val IReg(obj) = extractEnrichment.obj
       asm.eopEnrichment(dst, obj)
     }
 
+    @deprecated(message = "cjvm specific")
     private def genInterfaceCast(iCast: InterfaceCastCBC): Unit = {
       val IReg(dst) = iCast
       val IReg(obj) = iCast.obj
@@ -1201,6 +1269,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       asm.nullcheck(obj)
     }
 
+    @deprecated(message = "cjvm specific")
     private def genMutFuncCombine(combine: MutFunc.Combine): Unit = {
       val IReg(dst) = combine
       asm.combineHostAndOffset(dst, MemExpr(memExprHead(combine), CbcTypeKind.REC))
@@ -1518,6 +1587,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       saveGCState(gcPoint)
     }
 
+    @deprecated(message = "cjvm specific")
     private def genConvertHolder(convert: UniversalGeneric.ConvertHolder): Unit = {
       if (isStandalone) {
         notImplemented("convert holder")
@@ -1690,6 +1760,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     /** Generates assembler pattern for given `node`. */
+    @nowarn("cat=deprecation")
     override protected def genNodeImpl(node: Node): Unit = {
       if (!trackLivenessDuringCodegen(node)) {
         addLivenessHints(node)

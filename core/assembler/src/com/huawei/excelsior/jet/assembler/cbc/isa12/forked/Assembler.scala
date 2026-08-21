@@ -9,7 +9,7 @@
 package com.huawei.excelsior.jet.assembler.cbc.isa12.forked
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, BytecodeReferenceSymbol, FieldReference, MethodReference, Signature, SingleFieldReference, StringLiteral}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, BytecodeReferenceSymbol, FieldReference, FieldReferenceWithRefType, MethodReference, Signature, SingleFieldReference, StringLiteral}
 import com.huawei.excelsior.jet.assembler.cbc.CbcTypeKind.{F32, F64}
 import com.huawei.excelsior.jet.assembler.cbc.{CbcAssembler, CbcFileFormat, CbcTypeKind, MemExpr, StackSlot, Register as Rg}
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
@@ -19,6 +19,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Checked, Comm
 import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.LoadAccessKind.{LD_F32, LD_F64, LD_REC, LD_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.StoreAccessKind.{ST_F32, ST_F64, ST_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.{LoadAccessKind, StoreAccessKind}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.Opcode.{Ld, Ld_Static, LoadField, LoadStatic, St, St_Static, StoreField, StoreStatic}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.RegGroup.{DivCheck, NullCheck}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.{LivenessAnalyzer, LivenessInfoCollector, MeaningfulNewIsaParts, NewIsaParts, Assembler as OldAssembler, SymbolicObjectControl as SOC}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{FloatOperations, Opcode, RegGroup, RegSymGroup, low4, scut4}
@@ -805,6 +806,70 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       .bits(_.w1(resW.nbits == 64).w1(argW.nbits == 64).write(offset, 6))
       .bits(_.w1(sx).write(size, 7))
   }
+
+  // region NewMemops
+
+  private def markLoadStoreValue(r: Rg, fr: FieldReference, load: Boolean): Unit = {
+    val hasRefFieldType = fr match {
+      case withFieldType: FieldReferenceWithRefType => withFieldType.fieldType.isReference
+      case _ => false
+    }
+    r match {
+      case r: IR if hasRefFieldType => if (load) analyzer.ref(r) else analyzer.useRef(r)
+      case r: IR        => if (load) analyzer.prim(r) else analyzer.usePrim(r)
+      case _ =>
+    }
+  }
+  
+  private def markMemBase(base: IR, fr: FieldReference) = fr match {
+    case withRefType: FieldReferenceWithRefType if withRefType.refType.isReference => analyzer.useRef(base)
+    case _ => analyzer.useRec(base)
+  }
+
+  def ld(dst: Rg, base: IR, fr: FieldReference): Unit = instr {
+    stream
+      .opc8(Ld)
+      .bits(_.w4(dst).w4(base))
+      .sym16(fr)
+    markMemBase(base, fr)
+    markLoadStoreValue(dst, fr, load = true)
+  }
+  
+  def ld(dst: Rg, fr: FieldReference): Unit = instr {
+    stream
+      .opc8(Ld_Static)
+      .bits(_.w4(dst).w4(dst))
+      .sym16(fr)
+    markLoadStoreValue(dst, fr, load = true)
+  }
+  
+  def lea(dst: IR, base: IR, fr: FieldReference): Unit = {
+    stream
+      .opc8(Opcode.Lea)
+      .bits(_.w4(dst).w4(base))
+      .sym16(fr)
+    markMemBase(base, fr)
+    analyzer.prim(dst)
+  }
+  
+  def st(src: Rg, base: IR, fr: FieldReference): Unit = instr {
+    stream
+      .opc8(St)
+      .bits(_.w4(src).w4(base))
+      .sym16(fr)
+    markMemBase(base, fr)
+    markLoadStoreValue(src, fr, load = false)
+  }
+  
+  def st(src: Rg, fr: FieldReference): Unit = instr {
+    stream
+      .opc8(St_Static)
+      .bits(_.w4(src).w4(src))
+      .sym16(fr)
+    markLoadStoreValue(src, fr, load = false)
+  }
+
+  // endregion
 }
 
 class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler with NewIsaParts with CbcAssembler { self: SymbolAdapter =>
@@ -976,6 +1041,7 @@ object Assembler {
     def ordinal: Int
   }
 
+  // TODO remove opcodes for old memops
   enum Opcode extends Ordinal {
     case Bcc32Eq
     case Bcc32Ne
@@ -1107,6 +1173,11 @@ object Assembler {
     case CBinaryImm16
     case CBinaryImm32
     case CBinaryImm64
+    case Ld
+    case Ld_Static
+    case Lea
+    case St
+    case St_Static
   }
 
   enum MemOpcode extends Ordinal {
