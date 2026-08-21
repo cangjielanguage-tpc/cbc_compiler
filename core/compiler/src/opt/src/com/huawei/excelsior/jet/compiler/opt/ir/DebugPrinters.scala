@@ -19,6 +19,7 @@ import com.huawei.excelsior.jet.util.graph.ordering.TopSort
 import xscala.io.{ByteBuffer, Files, Path, TextOutput, stdout}
 
 import java.io.FileNotFoundException
+import java.nio.file.Paths
 import scala.collection.mutable
 import scala.util.Using
 import scala.util.control.NonFatal
@@ -349,10 +350,13 @@ trait DebugPrinters { self: Universe with DebugPrinters =>
     protected def openOut(message: String, extension: String): TextOutput = {
       val num = nextLogNum()
       try {
-        TextOutput.fromFile("%s/ir__%04d__%s.%s" format(logsDirectory, num, prepareMsg(message), extension))
+        val file = ("%s/ir__%04d__%s.%s" format(logsDirectory, num, prepareMsg(message), extension)).replace(':', '_')
+        val path = xscala.io.Path(file)
+        Files.makeDir(path)
+        TextOutput.fromFile(file)
       } catch {
         case _: FileNotFoundException =>
-          TextOutput.fromFile("%s/ir__%04d.%s" format(logsDirectory, num, extension))
+          TextOutput.fromFile(("%s/ir__%04d.%s" format(logsDirectory, num, extension)).replace(':', '_'))
       }
     }
 

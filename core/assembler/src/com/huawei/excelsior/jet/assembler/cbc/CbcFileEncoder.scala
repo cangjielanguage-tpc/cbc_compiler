@@ -470,11 +470,12 @@ private class FieldRefTable(pool: Pool[FieldReference]) extends Table[FieldRefer
       case fr: FieldReferenceWithRefType =>
         fr.refType match {
           case _: AotTypeSignature => fr.aotData.get match {
-          case x: StaticFieldAotData => staticFieldAotTable.add (idx, IndexedAotData (idx, x) )
-          case x: InstanceFieldAotData => instanceFieldAotTable.add (idx, IndexedAotData (idx, x) )
+            case x: StaticFieldAotData => staticFieldAotTable.add (idx, IndexedAotData (idx, x) )
+            case x: InstanceFieldAotData => instanceFieldAotTable.add (idx, IndexedAotData (idx, x) )
+          }
+          case _: TypeSignature => // TODO support. Intentionally empty for now
         }
-        case _: TypeSignature => // TODO support. Intentionally empty for now
-        }
+      case _ => // has no associated AOT data
     }
     idx
   }
