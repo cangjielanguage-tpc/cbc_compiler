@@ -164,7 +164,7 @@ object CHIRBuilder {
 
       pkg.getDef[Table](id) match {
         case d: StructDef =>
-          if (!resolver.isImported(d.base) && !resolver.isGenericInstantiated(d.base)) {
+          if (!resolver.isImported(d.base)) {
             builder.markAsCHIRDef(symType)
           }
           val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
@@ -175,7 +175,7 @@ object CHIRBuilder {
 
         case d: ClassDef =>
           val genericInstantiated = resolver.isGenericInstantiated(d.base)
-          if (!resolver.isImported(d.base) && !genericInstantiated) {
+          if (!resolver.isImported(d.base)) {
             builder.markAsCHIRDef(symType)
           }
           if (!genericInstantiated) {
@@ -193,7 +193,7 @@ object CHIRBuilder {
           fillFields(symType, d.base)
 
         case d: EnumDef =>
-          val imported = resolver.isImported(d.base) || resolver.isGenericInstantiated(d.base)
+          val imported = resolver.isImported(d.base)
           if (!imported) {
             builder.markAsCHIRDef(symType)
           }
