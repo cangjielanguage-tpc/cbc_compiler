@@ -2109,7 +2109,11 @@ trait CHIRParser
             case t: SignatureType.Box =>
               // Variable-sized type
               val box = SignatureType.Box(retType)
-              NewGeneric(box)(loadTypeInfo(box))
+              if (box.containsTypeVariables) {
+                NewGeneric(box)(loadTypeInfo(box))
+              } else {
+                New(box)()
+              }
 
             case SignatureType.Address =>
               // Type variable
@@ -2119,7 +2123,12 @@ trait CHIRParser
               val value = if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && (retType.isTraceableReference || retType.isTypeVariable)) {
                 Null()
               } else {
-                New(SignatureType.Box(retType))()
+                val box = SignatureType.Box(retType)
+                if (box.containsTypeVariables) {
+                  NewGeneric(box)(loadTypeInfo(box))
+                } else {
+                  New(box)()
+                }
               }
               StoreMemory(memType.toAsm, memType, atomic = false)(mem, value)
               mem
