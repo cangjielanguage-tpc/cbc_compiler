@@ -617,7 +617,7 @@ trait CHIRParser
         }
       }
 
-      if (pkg.getValue[Function](pkg.pkg.packageLiteralInitFunc) == func) {
+      if (pkg.getValue[Function](pkg.pkg.packageInitFunc) == func) {
         // TODO: consider moving it under @has_invoked_pkg_init_literal check
         for (id <- 1L to pkg.pkg.valuesLength) pkg.getValue[Table](id) match {
           case g: PackageFormat.GlobalVar if !resolver.isImported(g.base) =>
