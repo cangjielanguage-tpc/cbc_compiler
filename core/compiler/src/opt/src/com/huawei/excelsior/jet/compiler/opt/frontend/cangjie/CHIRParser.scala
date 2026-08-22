@@ -2108,7 +2108,8 @@ trait CHIRParser
 
             case t: SignatureType.Box =>
               // Variable-sized type
-              New(SignatureType.Box(retType))()
+              val box = SignatureType.Box(retType)
+              NewGeneric(box)(loadTypeInfo(box))
 
             case SignatureType.Address =>
               // Type variable
