@@ -2096,7 +2096,7 @@ trait CHIRParser
               // Variable-sized type
               val box = SignatureType.Box(retType)
               if (box.containsTypeVariables) {
-                NewGeneric(box)(loadTypeInfo(box))
+                NewGeneric(box)(loadTypeInfo(retType))
               } else {
                 New(box)()
               }
@@ -2111,7 +2111,7 @@ trait CHIRParser
               } else {
                 val box = SignatureType.Box(retType)
                 if (box.containsTypeVariables) {
-                  NewGeneric(box)(loadTypeInfo(box))
+                  NewGeneric(box)(loadTypeInfo(retType))
                 } else {
                   New(box)()
                 }
