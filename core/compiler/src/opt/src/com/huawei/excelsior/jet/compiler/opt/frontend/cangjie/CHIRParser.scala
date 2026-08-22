@@ -1015,28 +1015,36 @@ trait CHIRParser
               Void()
 
             } else {
-              staticField match {
+              val shouldCopy = needsCopy(lastField.fieldType)
+              val valueOrMem = staticField match {
                 case None =>
                   if (host.isVariableLayoutType || fields.exists(_.fieldType.isVariableSizeType)) {
                     val tis = typeInfos(fields)
-                    if (lastField.fieldType.isRecord) {
+                    if (shouldCopy) {
                       GetFieldSeqRefGeneric(fields)(mem, tis)
                     } else {
                       LoadFieldSeqGeneric(fields)(mem, tis)
                     }
                   } else {
-                    if (lastField.fieldType.isRecord) {
+                    if (shouldCopy) {
                       GetFieldSeqRef(fields)(mem)
                     } else {
                       LoadFieldSeq(fields)(mem)
                     }
                   }
                 case Some(sf) =>
-                  if (lastField.fieldType.isRecord) {
+                  if (shouldCopy) {
                     GetStaticFieldSeqRef(sf +: fields)
                   } else {
                     LoadStaticFieldSeq(sf +: fields)
                   }
+              }
+              if (shouldCopy) {
+                val local = StackAlloc.Local(lastField.fieldType)
+                copy(lastField.fieldType, local, valueOrMem)
+                local
+              } else {
+                valueOrMem
               }
             }
             state(e) = n
