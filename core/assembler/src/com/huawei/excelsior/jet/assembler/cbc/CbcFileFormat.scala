@@ -318,7 +318,7 @@ object CbcFileFormat {
   case class SingleFieldReference(refType: Signature, name: String, fieldType: Signature,
                                   aotData: Option[AotData] = None) extends FieldReferenceWithRefType
   case class ConstIndexFieldReference(refType: Signature, idx: Int, fieldType: Signature,
-                                      aotData: Option[AotData] = None) extends FieldReferenceWithRefType
+                                      aotData: Option[AotData] = None) extends FieldReferenceWithRefType // TODO remove aot data?
   case class MultiFieldReference(length: Int, subRefs: Seq[FieldReference]) extends FieldReference
   case class NoneFieldReference(sig: Signature) extends FieldReference // TODO specify more
 
