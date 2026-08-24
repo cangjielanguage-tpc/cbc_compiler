@@ -494,7 +494,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       def constrFieldRef(frs: Seq[CangjieFieldReference]): CbcFileFormat.FieldReference = {
         frs.map(adapter.field) match {
           case Seq(field) => field
-          case refs => MultiFieldReference(frs.length, refs)
+          case refs => MultiFieldReference(refs.length, refs)
         }
       }
 
