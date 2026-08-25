@@ -319,7 +319,9 @@ object CbcFileFormat {
                                   aotData: Option[AotData] = None) extends FieldReferenceWithRefType
   case class ConstIndexFieldReference(refType: Signature, idx: Int, fieldType: Signature,
                                       aotData: Option[AotData] = None) extends FieldReferenceWithRefType // TODO remove aot data?
-  case class MultiFieldReference(length: Int, subRefs: Seq[FieldReference]) extends FieldReference
+  case class MultiFieldReference(length: Int, subRefs: Seq[FieldReferenceWithRefType]) extends FieldReference {
+    require(length == subRefs.length)
+  }
   case class NoneFieldReference(sig: Signature) extends FieldReference // TODO specify more
 
   sealed trait AotData
