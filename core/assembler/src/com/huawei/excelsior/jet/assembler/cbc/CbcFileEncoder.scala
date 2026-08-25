@@ -486,7 +486,7 @@ private class FieldRefTable(pool: Pool[FieldReference]) extends Table[FieldRefer
             case x: StaticFieldAotData => staticFieldAotTable.add(idx, IndexedAotData(idx, x))
             case x: InstanceFieldAotData => instanceFieldAotTable.add(idx, IndexedAotData(idx, x))
           }
-          case _: (TypeSignature | OptionSignature | Tuple | PrimitiveEnum | UnionEnum) => // TODO support. Intentionally empty for now
+          case _: (TypeSignature | OptionSignature | Tuple | PrimitiveEnum | UnionEnum) =>
         }
       case _ => // has no associated AOT data
     }
