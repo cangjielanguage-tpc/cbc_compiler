@@ -494,21 +494,23 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       def constrFieldRef(frs: Seq[CangjieFieldReference]): CbcFileFormat.FieldReference = {
-        val adaptedRefs = frs.map { fr => fr.field match
-          case Some(name) => fr
-          case None => 
-            val refType = fr.refType match {
-              case t: SignatureType.OptionLikeEnum => 
-                require(!t.isNullableOption)
-                SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
-              case t => t
-            }
-            CangjieFieldReference(fr.idx, None, refType, fr.fieldType)
+        val adaptedRefs = frs.map { fr => 
+          fr.field match {
+            case Some(name) => fr
+            case None =>
+              val refType = fr.refType match {
+                case t: SignatureType.OptionLikeEnum =>
+                  require(!t.isNullableOption)
+                  SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
+                case t => t
+              }
+              CangjieFieldReference(fr.idx, None, refType, fr.fieldType)
+          }
         }.map(adapter.field) 
         
         adaptedRefs match {
           case Seq(field) => field
-          case refs => MultiFieldReference(refs.length, refs)
+          case refs => MultiFieldReference(refs)
         }
       }
 
@@ -581,7 +583,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           addXSite(n)
           assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
           maybeImmValue(n.inValue) match {
-            case Some(_) => shouldNotReachHere("Field seq stores with imm are not supported")
+            case Some(x) => shouldNotReachHere(s"Field seq stores with imm are not supported: $x")
             case None =>
               val Reg(src) = n.inValue
               fasm.st(src, constrFieldRef(fieldRefs))

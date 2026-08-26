@@ -480,7 +480,7 @@ private class FieldRefTable(pool: Pool[FieldReference]) extends Table[FieldRefer
   override def add(data: FieldReference): Index = {
     val idx = super.add(data)
     data match {
-      case fr: FieldReferenceWithRefType =>
+      case fr: SingleFieldReference =>
         fr.refType match {
           case _: AotTypeSignature => fr.aotData.get match {
             case x: StaticFieldAotData => staticFieldAotTable.add(idx, IndexedAotData(idx, x))
@@ -713,7 +713,7 @@ private class FieldReferencePool extends Pool[FieldReference] { self: RawPool wi
       output.putULEB(signatures.add(constIdx.fieldType))
     case multi: MultiFieldReference =>
       output.putByte(FieldRefTag.Multi.tag)
-      output.putULEB(multi.length)
+      output.putULEB(multi.subRefs.length)
       multi.subRefs.map(fieldRefs.add).foreach(output.putULEB)
     case none: NoneFieldReference =>
       output.putByte(FieldRefTag.None.tag)

@@ -316,17 +316,16 @@ object CbcFileFormat {
   //       It will be sufficient to compute the final `type` of memory location,
   //       just by sequentially applying operations.
   sealed trait FieldReference extends BytecodeReference
-  sealed trait FieldReferenceWithRefType extends FieldReference {
+  sealed trait FieldReferenceWithType extends FieldReference {
     def refType: Signature
     def fieldType: Signature
-    def aotData: Option[AotData]
   }
   case class SingleFieldReference(refType: Signature, name: String, fieldType: Signature,
-                                  aotData: Option[AotData] = None) extends FieldReferenceWithRefType
-  case class ConstIndexFieldReference(refType: Signature, idx: Int, fieldType: Signature,
-                                      aotData: Option[AotData] = None) extends FieldReferenceWithRefType // TODO remove aot data?
-  case class MultiFieldReference(length: Int, subRefs: Seq[FieldReferenceWithRefType]) extends FieldReference {
-    require(length == subRefs.length)
+                                  aotData: Option[AotData] = None) extends FieldReferenceWithType
+  case class ConstIndexFieldReference(refType: Signature, idx: Int, fieldType: Signature) extends FieldReferenceWithType
+  case class MultiFieldReference(subRefs: Seq[FieldReferenceWithType]) extends FieldReferenceWithType {
+    def refType = subRefs.head.refType
+    def fieldType = subRefs.last.fieldType
   }
   case class NoneFieldReference(sig: Signature) extends FieldReference // TODO specify more
 
