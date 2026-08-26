@@ -425,6 +425,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val fieldRefs = n.fields
       val builder = MemSpace.Builder()
 
+      // TODO remove
       def memExprHead(n: Node): Unit = n match {
         case sa: HasFrameSlot => sa.slot match {
           case slot: TypedFrameSlotCBC => builder.typed(slot.typedSlot)
@@ -445,12 +446,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             builder.rec(r)
           }
       }
-      
-      def getBaseLocation(n: Node) = n match {
-        case IReg(r) => r
-        case DerivedPtr(IReg(_), IReg(derived)) => derived
-      }
 
+      // TODO remove
       def fields(fields: Seq[CangjieFieldReference], typeInfos: Seq[Node] = Seq.empty): Unit = {
         for ((f, i) <- fields.zipWithIndex) f.field match {
           case Some(field) =>
@@ -483,6 +480,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case Reg(r)           => builder.store(r)
       }).gen(fasm)
 
+      def getBaseLocation(n: Node) = n match {
+        case IReg(r) => r
+        case DerivedPtr(IReg(_), IReg(derived)) => derived
+      }
+
       def maybeImmValue(value: Node): Option[Long] = value match {
         case _: AnyNull => Some(0L)
         case IntegralConst(c) => Some(c)
@@ -492,7 +494,19 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       def constrFieldRef(frs: Seq[CangjieFieldReference]): CbcFileFormat.FieldReference = {
-        frs.map(adapter.field) match {
+        val adaptedRefs = frs.map { fr => fr.field match
+          case Some(name) => fr
+          case None => 
+            val refType = fr.refType match {
+              case t: SignatureType.OptionLikeEnum => 
+                require(!t.isNullableOption)
+                SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
+              case t => t
+            }
+            CangjieFieldReference(fr.idx, None, refType, fr.fieldType)
+        }.map(adapter.field) 
+        
+        adaptedRefs match {
           case Seq(field) => field
           case refs => MultiFieldReference(refs.length, refs)
         }
