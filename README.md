@@ -73,7 +73,7 @@ Currently, building Cangjie compiler artifacts directly in the Windows environme
 Building compiler requires
 - Java 8 or higher
 - [sbt](https://www.scala-sbt.org)
-- [flatc](https://flatbuffers.dev/flatc/) v25.2.10 or higher
+- [flatc](https://flatbuffers.dev/flatc/) v25.2.10
 
 For ease of development, it is advised to copy [env.properties.sample](/env.properties.sample)
 to `env.properties`, uncomment and modify corresponding properties for configuration:
