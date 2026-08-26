@@ -55,6 +55,9 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
     val builder = CbcFileFormat.newBuilder()
     for (t <- typeDefs.accumulate) {
       TypeWrapper(t).build(builder.newTypeBuilder())
+      if (t.isCangjieExtend && t.getDeclaredSuperInterfaces.nonEmpty && t.isCHIRDef) {
+        ExtensionWrapper(t).build(builder.newExtensionBuilder())
+      }
     }
 
     var mainPkgName: String = null
@@ -202,6 +205,27 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       if (t.getName.startsWith("$Cl")) {
         builder.addFlag(TypeFlag.LAMBDA)
       }
+    }
+  }
+
+  private class ExtensionWrapper(val t: ClassType) {
+    require(t.isCangjieExtend)
+    require(t.isCHIRDef)
+
+    def build(builder: CbcFileFormat.Extension.Builder): Unit = {
+      typeDefs ++= t.getDeclaredSuperTypes.filterNot(isFunctionalType)
+
+      builder.setExtendedType(t.getCangjieExtendInfo.toCbc)
+      builder.setInterfaces(t.getDeclaredSuperInterfacesSig
+        .map(_.toCbc)
+        .toSeq)
+
+      if (t.isUniversalGeneric) {
+        builder.setGenericConstraints(Seq.fill(t.getGenericInfo.constraints.size)(BuiltinSignature.Nil))
+      }
+
+      val virtualMethods = t.getDeclaredMethods.filter(m => isVirtual(m))
+      virtualMethods.foreach(MethodWrapper(_).build(builder.newMethodBuilder()))
     }
   }
 
