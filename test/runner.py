@@ -78,9 +78,18 @@ class TestSuite:
     architecture = platform.machine()
     cpu_count = multiprocessing.cpu_count()
     root_dir = dirname(os.path.abspath(__file__))
+    _stderr_lock = asyncio.Lock()
 
     def __init__(self, toolchain_path: str = ""):
         self.toolchain_path = toolchain_path
+
+    async def print_stderr(self, msg: str):
+        async with self._stderr_lock:
+            print(msg, file=sys.stderr)
+
+    async def print_status(self, msg: str):
+        async with self._stderr_lock:
+            print(msg, file=sys.stderr)
 
     def parallelism(self, args) -> int:
         if args.parallelism is not None:
@@ -104,10 +113,17 @@ class TestSuite:
     async def check_result(self, test_name: str, custom_actual: str = None):
         expected = dotexpected(test_name)
         actual = custom_actual if custom_actual is not None else dotactual(test_name)
-        return await run_async(" ".join(diff(actual, expected)), shell=True)
+        diff_err = io.StringIO()
+        res = await run_async(" ".join(diff(actual, expected)), shell=True, stderr_log=diff_err)
+        if res != 0:
+            if diff_err.getvalue().strip():
+                await self.print_stderr(f"diff error: {res}\n{diff_err.getvalue()}")
+            else:
+                await self.print_stderr(f"diff error: {res}")
+        return res
 
     async def run_cjc(self, file: str, output_file: str, output_type: str = None,
-                      additional_args: list[str] = [], use_tool_sh: bool = True, cwd=None):
+                      additional_args: list[str] = [], use_tool_sh: bool = True, cwd=None, log=None):
         assert '.' in file
         cjc_args = []
         cjc_args += additional_args
@@ -122,7 +138,7 @@ class TestSuite:
 
         cjc_cmd_list = ['cjc', '--int-overflow', 'wrapping', '-Woff', 'unused', file, *cjc_args]
 
-        return await run_in_env(use_tool_sh, os.environ.copy(), cjc_cmd_list, cwd=cwd)
+        return await run_in_env(use_tool_sh, os.environ.copy(), cjc_cmd_list, cwd=cwd, log=log)
 
     def clean(self):
         print("Cleaning up...")
@@ -157,17 +173,22 @@ class StandaloneTestSuite(TestSuite):
 
         excluded_modes = self.standalone_tests.get(test_name, [])
 
-        print(f"Building test {test_name}")
+        await self.print_status(f"Building test {test_name}")
 
         import_args = []
         if os.path.isfile(dotcjaot(test_name)):
             import_args = ["--import-path", test_work_dir]
+            aot_log = io.StringIO()
             res = await self.run_cjc(dotcjaot(test_name),
                                      output_file=f"{test_work_dir}/libaot.so",
                                      output_type="dylib",
-                                     use_tool_sh=True)
+                                     use_tool_sh=True,
+                                     log=aot_log)
             if res != 0:
-                print(f"Standalone test AOT part compilation error: {res}", file=sys.stderr)
+                err_msg = f"Standalone test AOT part compilation error: {res}\n"
+                if aot_log.getvalue().strip():
+                    err_msg += aot_log.getvalue()
+                await self.print_stderr(err_msg)
                 self.compilation_failures.append((test_name, in_mode, "during AOT compilation"))
                 return 1
 
@@ -176,9 +197,15 @@ class StandaloneTestSuite(TestSuite):
                 compile_asm_to_obj = [java_cmd(), '-jar', self.asm_jar, dotasm(test_name)]
 
                 with open(f"{test_work_dir}/asm.out", "w") as asm_log:
-                    res = await run_in_env(True, env, compile_asm_to_obj, log=asm_log)
+                    asm_err = io.StringIO()
+                    res = await run_in_env(True, env, compile_asm_to_obj, log=asm_log, stderr_log=asm_err)
                     if res != 0:
-                        print(f"Standalone test asm error: {res}", file=sys.stderr)
+                        asm_msg = f"Standalone test asm error: {res}"
+                        if asm_log.getvalue().strip():
+                            asm_msg += asm_log.getvalue()
+                        if asm_err.getvalue().strip():
+                            asm_msg += asm_err.getvalue()
+                        await self.print_stderr(asm_msg)
                         self.compilation_failures.append((test_name, in_mode, "during asm compilation"))
                         return 1
 
@@ -187,7 +214,7 @@ class StandaloneTestSuite(TestSuite):
                 attempted_modes = 0
                 for mode, opt_flags in [("default", []), ("O2", ["-O2"])]:
                     if mode in excluded_modes:
-                        print(f"Skipping {test_name} compilation ({mode} mode) due to config exclusion.")
+                        await self.print_status(f"Skipping {test_name} compilation ({mode} mode) due to config exclusion.")
                         continue
 
                     attempted_modes += 1
@@ -196,19 +223,31 @@ class StandaloneTestSuite(TestSuite):
 
                     output_chir = dotchir(f"{mode_work_dir}/{name}")
 
+                    chir_log = io.StringIO()
                     res = await self.run_cjc(dotcj(test_name),
                                              output_file=output_chir,
                                              additional_args=["--emit-chir"] + import_args + opt_flags,
-                                             use_tool_sh=True)
+                                             use_tool_sh=True,
+                                             log=chir_log)
                     if res != 0:
-                        print(f"Standalone test compilation error ({test_name} - {mode}): {res}", file=sys.stderr)
+                        err_msg = f"Standalone test compilation error ({test_name} - {mode}): {res}\n"
+                        if chir_log.getvalue().strip():
+                            err_msg += chir_log.getvalue()
+                        await self.print_stderr(err_msg)
                         self.compilation_failures.append((test_name, in_mode, f"during compilation ({mode})"))
                         continue
 
                     chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"{name}.chir", args.jc_options]
-                    res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir)
+                    cbc_log = io.StringIO()
+                    cbc_err = io.StringIO()
+                    res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)
                     if res != 0:
-                        print(f"Standalone test cbc-compiler.jar error ({test_name} - {mode}): {res}\n cmd: {chir_to_cbc}", file=sys.stderr)
+                        err_detail = f"Standalone test cbc-compiler.jar error ({test_name} - {mode}): {res}\n cmd: {chir_to_cbc}\n"
+                        if cbc_log.getvalue().strip():
+                            err_detail += cbc_log.getvalue()
+                        if cbc_err.getvalue().strip():
+                            err_detail += cbc_err.getvalue()
+                        await self.print_stderr(err_detail)
                         self.compilation_failures.append((test_name, in_mode, f"during compilation ({mode})"))
                         continue
 
@@ -231,14 +270,22 @@ class StandaloneTestSuite(TestSuite):
         env["LD_LIBRARY_PATH"] = f"{test_work_dir}:{current_ld_path}" if current_ld_path else test_work_dir
 
         if in_mode == "asm":
-            print(f'Running {test_name} in standalone mode (asm)')
+            await self.print_status(f'Running {test_name} in standalone mode (asm)')
             cmd = ["launcher", dotcbc(test_name)]
+            launcher_err = io.StringIO()
             with open(dotactual(test_name), "w") as test_output:
-                res = await run_in_env(True, env, cmd, log=test_output)
+                res = await run_in_env(True, env, cmd, log=test_output, stderr_log=launcher_err)
                 test_output.write(f"{res}\n")
+            if res != 0:
+                if launcher_err.getvalue().strip():
+                    await self.print_stderr(f"launcher error (asm): {res}\n{launcher_err.getvalue()}")
+                else:
+                    await self.print_stderr(f"launcher error (asm): {res}")
 
             if await self.check_result(test_name) != 0:
-                return test_failed(test_name, in_mode, msg="diff (mode: standalone asm)")
+                msg = test_failed(test_name, in_mode, msg="diff (mode: standalone asm)")
+                await self.print_stderr(msg)
+                return True
 
         elif in_mode == "cj":
             excluded_modes = self.standalone_tests.get(test_name, [])
@@ -252,16 +299,23 @@ class StandaloneTestSuite(TestSuite):
                 if not os.path.isfile(mode_cbc):
                     continue
 
-                print(f'Running {test_name} in standalone mode (cj - {mode})')
+                await self.print_status(f'Running {test_name} in standalone mode (cj - {mode})')
                 cmd = ["launcher", mode_cbc]
 
                 actual_file = f"{mode_work_dir}/{name}.actual"
+                launcher_err = io.StringIO()
                 with open(actual_file, "w") as test_output:
-                    res = await run_in_env(True, env, cmd, log=test_output)
+                    res = await run_in_env(True, env, cmd, log=test_output, stderr_log=launcher_err)
                     test_output.write(f"{res}\n")
+                if res != 0:
+                    if launcher_err.getvalue().strip():
+                        await self.print_stderr(f"launcher error (cj - {mode}): {res}\n{launcher_err.getvalue()}")
+                    else:
+                        await self.print_stderr(f"launcher error (cj - {mode}): {res}")
 
                 if await self.check_result(test_name, custom_actual=actual_file) != 0:
-                    test_failed(test_name, in_mode, msg=f"diff (mode: standalone cj - {mode})")
+                    msg = test_failed(test_name, in_mode, msg=f"diff (mode: standalone cj - {mode})")
+                    await self.print_stderr(msg)
                     continue
 
         else:
@@ -281,7 +335,8 @@ class StandaloneTestSuite(TestSuite):
         succeeded: list[str] = await self.build_parallel(tests, self.build_test, args)
 
         for test_name, in_mode, msg in self.compilation_failures:
-            test_failed(test_name, in_mode, msg=msg)
+            full_msg = test_failed(test_name, in_mode, msg=msg)
+            await self.print_stderr(full_msg)
 
         for test in succeeded:
             await self.run_test(test)
@@ -303,19 +358,18 @@ def collect_enabled_exact_tests(args):
         enabled_exact_tests = parse_tests_list(args.filter_file, dirname(os.path.abspath(__file__)))
 
 
-async def run_in_env(use_tool_sh: bool, env: dict[str, str], cmd: list[str], cwd=None, log=None):
+async def run_in_env(use_tool_sh: bool, env: dict[str, str], cmd: list[str], cwd=None, log=None, stderr_log=None):
     if use_tool_sh:
         env['TOOLCHAIN'] = toolchain_path
         cmd = [f'{TestSuite.root_dir}/tool.sh'] + cmd
 
-    cmd_to_run = " ".join(cmd)
-    return await run_async(cmd_to_run, shell=True, log=log, env=env, cwd=cwd)
+    return await run_async(cmd, shell=False, log=log, env=env, cwd=cwd, stderr_log=stderr_log)
 
 
 toolchain_path: str = ""
 
 
-def test_failed(name, in_mode="cj", msg=None, log=None):
+def test_failed(name, in_mode="cj", msg=None):
     global failedTests
 
     if in_mode == "asm":
@@ -327,25 +381,25 @@ def test_failed(name, in_mode="cj", msg=None, log=None):
 
     full_msg = f'{fname} failed ' + str(msg)
     failedTests.append(full_msg)
-    print(full_msg, file=log, flush=True if not log else None)
-    return True
+    return full_msg
 
 
 failedTests: list = []
 
 
-async def run_async(what, log=None, env=None, shell=False, cwd=None) -> int:
+async def run_async(what, log=None, env=None, shell=False, cwd=None, stderr_log=None) -> int:
     async def logger(log_file, stream):
         while not stream.at_eof():
             data = await stream.readline()
-            if isinstance(log_file, (io.TextIOBase, io.TextIOWrapper)):
-                log.write(data.decode())
-            else:
-                log.write(data)
+            decoded = data.decode() if isinstance(data, bytes) else data
+            if log_file is not None:
+                log_file.write(decoded)
 
     kwargs = {}
-    if log:
+    if log is not None:
         kwargs["stdout"] = asyncio.subprocess.PIPE
+    if stderr_log is not None:
+        kwargs["stderr"] = asyncio.subprocess.PIPE
     if env:
         kwargs["env"] = env
 
@@ -354,8 +408,16 @@ async def run_async(what, log=None, env=None, shell=False, cwd=None) -> int:
     else:
         process = await asyncio.create_subprocess_exec(*what, cwd=cwd, **kwargs)
 
-    if log:
-        await logger(log, process.stdout)
+    stdout_task = None
+    stderr_task = None
+    if log is not None:
+        stdout_task = asyncio.create_task(logger(log, process.stdout))
+    if stderr_log is not None:
+        stderr_task = asyncio.create_task(logger(stderr_log, process.stderr))
+
+    tasks = [t for t in [stdout_task, stderr_task] if t is not None]
+    if tasks:
+        await asyncio.gather(*tasks)
     return await process.wait()
 
 
