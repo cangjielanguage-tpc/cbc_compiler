@@ -178,7 +178,6 @@ table NeedCheckCast {
 
 enum OverflowStrategy: uint8 {
   NA,
-  CHECKED,
   WRAPPING,
   THROWING,
   SATURATING,
@@ -495,7 +494,7 @@ table ClassDef {
 
 enum CHIRExprKind: uint8 {
   Invalid,
- 
+
   // terminator
   Goto,
   Branch,
@@ -518,12 +517,12 @@ enum CHIRExprKind: uint8 {
   TryExp,
   TryLShift,
   TryRShift,
- 
+
   // unary expr
   Neg,
   Not,
   BitNot,
- 
+
   // binary expr
   Add,
   Sub,
@@ -1065,7 +1064,7 @@ table ApplyBase {
 
 table InvokeBase {
   base: FuncCall;
-  virMethodCtx: FuncSigInfo;
+  overflowStrategy: OverflowStrategy = NA;
 }
 
 table IntrinsicBase {
