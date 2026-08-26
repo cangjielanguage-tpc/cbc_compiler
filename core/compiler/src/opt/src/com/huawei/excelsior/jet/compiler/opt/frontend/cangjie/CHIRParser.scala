@@ -2136,7 +2136,12 @@ trait CHIRParser
         case SMutRecord => Seq(SMutRecArg(receiver.get))
         case SMutObject => Seq(SMutObjectArg(SMutRecArg(receiver.get)))
         case OuterTypeInfo =>
-          Seq(loadTypeInfo(outerTypeInfo.get))
+          outerTypeInfo.get match {
+            case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") || t.name.startsWith("$Cw") || t.name.startsWith("$Ci") || t.name.startsWith("$Cg") =>
+              Seq(ThisTypeInfoBy(receiver.get))
+            case t =>
+              Seq(loadTypeInfo(t))
+          }
         case SpecialParameter.ThisTypeInfo =>
           Seq(thisTypeInfo.getOrElse(loadTypeInfo(thisType.get)))
         case GenericFuncParams =>
