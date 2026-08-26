@@ -690,7 +690,7 @@ trait CHIRParser
         case PackageFormat.OverflowStrategy.SATURATING => notImplemented("saturating type cast")
       }
 
-      val n = (from, to) match {
+      (from, to) match {
         case (from: (Reference | InstantiatedReference | TypeVariable), to: (Reference | InstantiatedReference)) =>
           // TODO: remove this case when numeric cast will handle only *numeric* types
           CheckCast(to, trusted = true)(value)
@@ -807,7 +807,6 @@ trait CHIRParser
 
         case _ => notImplemented(s"cast from ${from.toJETSignature} to ${to.toJETSignature}")
       }
-      n
     }
 
     private def parseExpression(e: Table, block: Block, state: State): Unit = e match {
