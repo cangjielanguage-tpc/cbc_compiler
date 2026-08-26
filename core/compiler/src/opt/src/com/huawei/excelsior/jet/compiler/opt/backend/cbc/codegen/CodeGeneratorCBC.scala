@@ -508,7 +508,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         
         adaptedRefs match {
           case Seq(field) => field
-          case refs => MultiFieldReference(refs.length, refs)
+          case refs => MultiFieldReference(refs)
         }
       }
 

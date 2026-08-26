@@ -102,7 +102,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
           val refType = symbol.refType.toCbc
           val fieldType = symbol.fieldType.toCbc
           CbcFileFormat.ConstIndexFieldReference(idx = symbol.idx.toInt,
-            refType = refType, fieldType = fieldType, aotData = None)
+            refType = refType, fieldType = fieldType)
       }
     case symbol: ConstStringSymbol => StringLiteral(symbol.value.toString)
     case symbol: RawData => CbcFileFormat.RawData(ArraySeq.from(symbol.data))
