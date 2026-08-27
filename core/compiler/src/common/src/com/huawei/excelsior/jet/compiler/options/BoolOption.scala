@@ -340,6 +340,8 @@ enum BoolOption(override val isAlias: Boolean,
   case IgnoreHLIRGlobalFuncNames extends BoolOption(true)
   case IgnoreHLIRGlobalVarNames extends BoolOption(true)
   case IgnoreDelayedIntrinsics extends BoolOption(false)
+  
+  case FailArrayAcquireRawData extends BoolOption(false)
 
   case HLIRExplicitAccessModifiers extends BoolOption(true)
 

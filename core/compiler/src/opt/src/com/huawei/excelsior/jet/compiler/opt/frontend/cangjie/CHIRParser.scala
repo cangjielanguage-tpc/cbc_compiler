@@ -22,7 +22,7 @@ import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimina
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
 import com.huawei.excelsior.jet.compiler.opt.middle.{ContextTypesRecalculation, DCEComponent, UCEComponent}
-import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, GenerateWriteBarriers, PackageInitFromMain}
+import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, FailArrayAcquireRawData, GenerateWriteBarriers, PackageInitFromMain}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CangjieEnumWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeFieldReference, BitcodeMethodReference, CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
@@ -1567,7 +1567,15 @@ trait CHIRParser
               case Seq(n: PackageFormat.Parameter) =>
                 (resolver.typeSig(n.base.`type`), state(n))
             }
-            notImplemented("ARRAY_ACQUIRE_RAW_DATA intrinsic")
+            if (env.enabled(FailArrayAcquireRawData)) {
+              notImplemented("ARRAY_ACQUIRE_RAW_DATA intrinsic")
+            }
+            state(e) = LConst(123456789)
+
+          case PackageFormat.IntrinsicKind.ARRAY_RELEASE_RAW_DATA =>
+            if (env.enabled(FailArrayAcquireRawData)) {
+              notImplemented("ARRAY_RELEASE_RAW_DATA intrinsic")
+            }
         }
 
       case e: PackageFormat.SpawnBase =>
