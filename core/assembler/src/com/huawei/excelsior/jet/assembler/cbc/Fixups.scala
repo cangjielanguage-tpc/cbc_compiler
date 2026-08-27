@@ -10,9 +10,7 @@ package com.huawei.excelsior.jet.assembler.cbc
 
 import com.huawei.excelsior.common.CodeHelpers.notImplemented
 import com.huawei.excelsior.jet.assembler.Width.*
-import com.huawei.excelsior.jet.assembler.cbc.FExtBCC
 import com.huawei.excelsior.jet.assembler.cbc.Fixups.BTT.Kind.*
-import com.huawei.excelsior.jet.assembler.cbc.FormatExtension
 import com.huawei.excelsior.jet.assembler.cbc.Register.{FR, IR}
 import com.huawei.excelsior.jet.assembler.fixups.{ControlFixup, Relocation}
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.CBC_ID16

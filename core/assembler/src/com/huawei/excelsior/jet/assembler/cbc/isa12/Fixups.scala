@@ -10,7 +10,7 @@ package com.huawei.excelsior.jet.assembler.cbc.isa12
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.jet.assembler.cbc.Fixups.BTT
-import com.huawei.excelsior.jet.assembler.cbc.Assembler.normalizeImm
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.normalizeImm
 import com.huawei.excelsior.jet.assembler.cbc.Register.{FR, IR}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.ImmEXT.N.*
@@ -18,7 +18,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.ConditionalBranch.{B2xri16dM
 import com.huawei.excelsior.jet.assembler.cbc.isa12.SymbolicObjectControl as SOC
 import com.huawei.excelsior.jet.assembler.cbc.isa12.SymbolicObjectControl.Jump
 import com.huawei.excelsior.jet.assembler.cbc.isa12.SymbolicObjectControl.Jump.K.K8
-import com.huawei.excelsior.jet.assembler.cbc.{Bits, FExtBCC, Assembler as OldAssembler}
+import com.huawei.excelsior.jet.assembler.cbc.{Bits, FExtBCC}
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.CBC_ID16
 import com.huawei.excelsior.jet.assembler.fixups.{ControlFixup, Relocation}
 import com.huawei.excelsior.jet.assembler.util.Overflows

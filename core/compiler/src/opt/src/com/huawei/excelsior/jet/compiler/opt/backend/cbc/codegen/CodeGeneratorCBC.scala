@@ -17,7 +17,7 @@ import com.huawei.excelsior.jet.assembler.cbc.Local.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.{LoadAccessKind, StoreAccessKind}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{MemSpace, Assembler as ForkedISA12Assembler}
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Location, Segment, Symbol, Width}
 import com.huawei.excelsior.jet.compiler.NotImplementedFeature.CBC
@@ -47,8 +47,6 @@ import scala.annotation.{nowarn, tailrec}
 
 @nowarn("msg=match may not be exhaustive")
 trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGeneratorCBC with LocalLivenessAnalyzerCBC { self: Universe with BackEndCBC =>
-
-  type ASM = Assembler
 
   override protected lazy val asm = new ForkedISA12Assembler with CbcSymbolAdapter
 
@@ -170,9 +168,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     private def genFDiv(div: FDiv): Unit = {
       val FReg(l) = div.l
       div.r match {
-        case FReg(r)                => asm.fdiv(widthOf(div), fReg(div), l, r)
-        case FConst(r) if Isa12Mode => fasm.fdivi(fReg(div), l, r, W32)
-        case DConst(r) if Isa12Mode => fasm.fdivi(fReg(div), l, r, W64)
+        case FReg(r) => asm.fdiv(widthOf(div), fReg(div), l, r)
       }
     }
 
@@ -250,18 +246,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       addXSite(op)
     }
 
-    private def genStackZeroing(sz: StackZeroing): Unit = {
-      // We don't support StackZeroing with offset, that's used only by StackZeroing.Single,
-      // and that is used only by object allocation on stack that we don't support yet.
-      assert(sz.extraOffset == 0)
-      // We only support zeroing out FrameSlots, fail when we receive IReg, FReg or Acc
-      val startSlot = sz.slot.asInstanceOf[FrameSlotCBC]
-      asm.blkzero(startSlot.untypedSlot, sz.size)
-      for (i <- 0 until sz.size) {
-        mark(FrameCBC.Slot(LocX(startSlot.local.encoding + i)), LocalType.CLEARED)
-      }
-    }
-
     private def genCast(cast: Cast): Unit = {
       cast match {
         case ReinterpretCast(_, _, arg) =>
@@ -302,15 +286,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
       addXSite(n)
       saveGCState(n)
-    }
-
-    private def memExprHead(n: Node): MemExpr.Head = n match {
-      case sa: HasFrameSlot => sa.slot match {
-        case slot: TypedFrameSlotCBC => slot.typedSlot
-        case slot: FrameSlotCBC => slot.untypedSlot
-        case _ => shouldNotReachHere(sa)
-      }
-      case IReg(r) => r
     }
 
     private def genFieldSeqOperation(n: FieldSeqOperation): Unit = {
@@ -597,16 +572,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val dst = if asmType.isFloatingPoint && asmType != AsmType.F16 then fReg(arrGet) else iReg(arrGet)
       (arrGet.array, arrGet.idx) match {
         case (IReg(arr), IReg(idx)) =>
-          if (arrayType.isJavaArray) {
-            asm.javaLdarr(asmType, dst, arr, idx)
+          if (elemType.isRecord) {
+            asm.ldarrRecord(dst.asInstanceOf[IR], arr, idx, CodeSigSymbol(elemType))
+          } else if (elemType.isTraceableReference) {
+            asm.ldarrObj(dst, arr, idx)
           } else {
-            if (elemType.isRecord) {
-              asm.ldarrRecord(dst.asInstanceOf[IR], arr, idx, CodeSigSymbol(elemType))
-            } else if (elemType.isTraceableReference) {
-              asm.ldarrObj(dst, arr, idx)
-            } else {
-              asm.ldarr(asmType, dst, arr, idx)
-            }
+            asm.ldarr(asmType, dst, arr, idx)
           }
       }
     }
@@ -618,15 +589,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         val arrayType = arrPut.arrayType
         val elemType = arrayType.getArrayElemType
 
-        if (arrayType.isJavaArray) {
-          asm.javaStarr(elemType.toAsm, arr, idx, value)
+        assert(!elemType.isRecord)
+        if (elemType.isTraceableReference) {
+          asm.starrObj(arr, idx, value)
         } else {
-          assert(!elemType.isRecord)
-          if (elemType.isTraceableReference) {
-            asm.starrObj(arr, idx, value)
-          } else {
-            asm.starr(elemType.toAsm, arr, idx, value)
-          }
+          asm.starr(elemType.toAsm, arr, idx, value)
         }
     }
 
@@ -644,17 +611,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       assert(iReg(newArr) == IR1)
 
       val ftcSigIdx = CodeSigSymbol(allocType)
-      if (allocType.isJavaArray) {
-        asm.javaNewarr(ftcSigIdx)
+      assert(allocType.isCangjieArray)
+      if (zeroValue) {
+        asm.newarrzv(ftcSigIdx)
+      } else if (ftcSigIdx.containsTypeVariables) {
+        asm.newarrVST(ftcSigIdx)
       } else {
-        assert(allocType.isCangjieArray)
-        if (zeroValue) {
-          asm.newarrzv(ftcSigIdx)
-        } else if (ftcSigIdx.containsTypeVariables) {
-          asm.newarrVST(ftcSigIdx)
-        } else {
-          asm.newarr(ftcSigIdx)
-        }
+        asm.newarr(ftcSigIdx)
       }
 
       addXSite(newArr)
@@ -678,28 +641,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       (aic.array, aic.idx, aic.length) match {
         case (Null(), IReg(idx), IReg(len)) =>
           val arrayType = aic.arrayType
-          if (arrayType.symType.isJavaArray) {
-            asm.javaArrIC(idx, len)
-          } else {
-            assert(arrayType.isCangjieArray)
-            asm.arrIC(idx, len)
-          }
+          assert(arrayType.isCangjieArray)
+          asm.arrIC(idx, len)
       }
       addXSite(aic)
-    }
-
-    private def genArrayStoreCheck(asc: ArrayStoreCheck): Unit = {
-      (asc.array, asc.value) match {
-        case (IReg(arr), IReg(value)) =>
-          assert(asc.arrayType.symType.isJavaArray)
-          asm.javaArrSC(arr, value)
-      }
-      addXSite(asc)
-    }
-
-    private def genPackageInit(init: PackageInit): Unit = {
-      asm.packageInit(CodeSigSymbol(init.klass))
-      addXSite(init)
     }
 
     // TODO: use or remove
@@ -723,12 +668,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       asm.loadConstDataAddr(dst, buf.toByteArray, alignment)
     }
 
-    private def genLoadConstString(dst: IR, cs: ConstString): Unit = {
-      val value = new ConstStringSymbol(cs.stringValue)
-      require(cs.strType.isJavaReference)
-      asm.javaLdaStr(dst, value)
-    }
-
     private def genLoadStackAlloc(dst: IR, sa: HasFrameSlot): Unit = {
       sa.slot match {
         case slot: TypedFrameSlotCBC =>
@@ -743,7 +682,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               if (sig.isRecord) {
                 asm.ldstackrec(dst, slot.typedSlot)
               } else {
-                asm.ldstackobj(dst, slot.typedSlot)
+                notImplemented("Stack alloc")
               }
           }
         case slot: FrameSlotCBC =>
@@ -831,17 +770,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           asm.initobj(slot.typedSlot)
     }
 
-    private def genEvacuate(evacuate: Evacuate): Unit = {
-      assert(iReg(evacuate) == IR1)
-      assert(iReg(evacuate.obj) == IR1)
-      asm.evacuate()
-    }
-
-    private def genSingletonObject(singleton: SingletonObject): Unit = {
-      val IReg(dst) = singleton
-      asm.singleton(dst, CodeSigSymbol(singleton.allocType))
-    }
-
     private def genEndLocalUnmovable(endLocalUnmovable: EndLocalUnmovable): Unit = {
       val IReg(obj) = endLocalUnmovable.obj
       assert(check(obj, LocalType.UNMOVABLE_REFERENCE))
@@ -862,17 +790,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       fasm.isInstanceOf(dstReg, objReg, realTpe.toCbc)
     }
 
-    private def genCheckCast(checkCast: CheckCast): Unit = {
-      val IReg(dst) = checkCast
-      val IReg(src) = checkCast.obj
-      genCheckCast(dst, src, checkCast.targetType)
-      addXSite(checkCast)
-    }
-
-    private def genCheckCast(dst: IR, src: IR, tpe: SignatureType): Unit = {
-      assert(tpe.isJavaReference)
-      asm.javaCheckCast(dst, src, CodeSigSymbol(tpe))
-    }
+    private def genCheckCast(checkCast: CheckCast): Unit = shouldNotReachHere("Unsupported")
 
     /** Obtains stack slot accessed by [[LoadStoreMemoryAccess]] operation and its type kind. */
     private def getSlotForStackAllocLoadStore(access: LoadStoreMemoryAccess): (StackSlot.Untyped, CbcTypeKind) = {
@@ -982,22 +900,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       for (mut <- call.attachedByReason(Group.AttachReason.MUT_FUNC_ARG)) {
         val mutRecordReg = call.abi.paramLocations(call.methodType.getMutRecordArgIdx).asInstanceOf[IR]
         val mutObjectReg = call.abi.paramLocations(call.methodType.getMutObjectArgIdx).asInstanceOf[IR]
-        mut match {
-          case offset: MutFunc.Offset =>
-            offset.record match {
-              case sa: StackAlloc if call.targetRef.hasMethod && call.targetRef.method.isRecordConstructor =>
-                val slot = sa.slot.asInstanceOf[TypedFrameSlotCBC]
-                assert(slot.tpe.isRecord, s"$sa")
-                assert(mutRecordReg == IR1)
-                asm.prepareRecord(slot.typedSlot)
-                asm.offsetFromHost(mutObjectReg, mutRecordReg, IR1)
-              case IReg(record) =>
-                asm.offsetFromHost(mutObjectReg, mutRecordReg, record)
-            }
-          case offset: MutFunc.OffsetCBC =>
-            val body: MemExpr.Body = if (offset.fields.nonEmpty) offset.fields else CbcTypeKind.REC
-            asm.offsetFromHost(mutObjectReg, mutRecordReg, MemExpr(memExprHead(offset.host), body))
-        }
         mark(mutObjectReg, LocalType.REFERENCE)
         mark(mutRecordReg, LocalType.CLEARED)
       }
@@ -1147,9 +1049,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case (IReg(dst), as: AJString) =>
           genAJString(dst, as)
 
-        case (IReg(dst), cs: ConstString) =>
-          genLoadConstString(dst, cs)
-
         case (IReg(dst), sa @ StackAlloc.Local(t)) =>
           val fasm = asm.asInstanceOf[ForkedISA12Assembler]
           sa.slot match {
@@ -1180,14 +1079,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           asm.movbp(dst, local = false)
 
         case (Reg(dst), UntypedSlot(src, _)) => arg.tpe match {
-          case HolderType(tv: TypeVariable) =>
-            asm.mov(dst, MemExpr(src, Array[Symbol](CodeSigSymbol(tv)), isGeneric = true))
-          case tpe =>
-            asm.loadUntyped(dst, cbcTypeKind(tpe), src)
+          case tpe => asm.loadUntyped(dst, cbcTypeKind(tpe), src)
         }
         case (UntypedSlot(dst, _), src) => (node.tpe, src) match {
-          case (HolderType(tv: TypeVariable), Reg(src)) =>
-            asm.mov(MemExpr(dst, Array[Symbol](CodeSigSymbol(tv)), isGeneric = true), src)
           case (tpe, Reg(src)) =>
             asm.storeUntyped(src, cbcTypeKind(tpe), dst)
           case (_, _: AnyNull) =>
@@ -1391,10 +1285,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: ArrayPut                   => genArrayPut(x)
         case x: ArrayFill                  => genArrayFill(x)
         case x: ArrayIndexCheck            => genArrayIndexCheck(x)
-        case x: ArrayStoreCheck            => genArrayStoreCheck(x)
         case x: NewArray                   => genNewArr(x)
         case x: NewArrayFill               => genNewArrFill(x)
-        case x: PackageInit                => genPackageInit(x)
         case x: PackageInitCheck           => genPackageInitCheck(x)
         case x: InstanceOf                 => genInstanceOf(x)
         case x: ControlledInstanceOf       => genInstanceOf(x)
@@ -1404,11 +1296,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: MathIntrinsic              => genMathIntrinsic(x)
         case x: LoadMemory                 => genLoadMemory(x)
         case x: StoreMemory                => genStoreMemory(x)
-        case x: StackZeroing               => genStackZeroing(x)
         case x: CopyStructure              => genCopyStructure(x)
         case x: InitObj                    => genInitObj(x)
-        case x: Evacuate                   => genEvacuate(x)
-        case x: SingletonObject            => genSingletonObject(x)
         case x: EndLocalUnmovable          => genEndLocalUnmovable(x)
         case x: CatchCBC                   => genCatch(x)
 
@@ -1551,27 +1440,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         val selector = branch.singleAttachedByReason(Group.AttachReason.COND_BRANCH_ARG).get
 
         selector match {
-          case tt: TypeTest =>
-            val negated = condition == Condition.EQ
-            val l = iReg(tt.obj)
-            tt.guard match {
-              case CHABitGuard              => asm.bttCHA   (l, negated,                               condJmpLabel)
-              case LevelGuard(level)        => asm.bttLevel (l, negated, level,                        condJmpLabel)
-              case PointGuard(klass)        => asm.bttPoint (l, negated, CodeSigSymbol(klass),         condJmpLabel)
-              case ConeGuard(klass, closed) => asm.bttCone  (l, negated, CodeSigSymbol(klass), closed, condJmpLabel)
-            }
-
-          case cmp @ CmpAnyInstanceOf(iof, tpe, obj) if branch.hasAttachedByReason(Group.AttachReason.INSTANCE_OF_BRANCH) =>
-            assert(iof.attachedTo(branch), s"$iof $branch")
-            if (tpe.isClass) {
-              asm.bttIOFC(iReg(obj), negated = condition == Condition.EQ, CodeSigSymbol(tpe), condJmpLabel)
-            } else if (tpe.isInterface) {
-              asm.bttIOFI(iReg(obj), negated = condition == Condition.EQ, CodeSigSymbol(tpe), condJmpLabel)
-            } else {
-              require(tpe.isArray)
-              asm.bttIOFA(iReg(obj), negated = condition == Condition.EQ, CodeSigSymbol(tpe), condJmpLabel)
-            }
-
           case Cmp(_, l, r) if l.tpe.isFloatingPointType =>
             asm.bcc(branchOp(condition, l.tpe), fReg(l), fReg(r), widthOf(l), condJmpLabel)
 

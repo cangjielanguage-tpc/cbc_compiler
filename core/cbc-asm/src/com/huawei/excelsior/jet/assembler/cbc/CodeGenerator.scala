@@ -9,17 +9,13 @@
 package com.huawei.excelsior.jet.assembler.cbc
 
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.*
-import com.huawei.excelsior.jet.assembler.{AsmType, Label, Segment, Symbol, Width}
+import com.huawei.excelsior.jet.assembler.{AsmType, Label, Symbol, Width}
 import com.huawei.excelsior.jet.assembler.cbc.Register.{FR, IR}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.ImmEXT
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Sign.{Signed, Unsigned}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W32, W64}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.{LivenessAnalyzer, LivenessInfoCollector, MemoryAccess}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.MemSpace.Builder as MemBuilder
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{FlowAnalyzer, MemSpace, SymbolAdapter}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
 
-import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
 class CodeGenerator extends isa12.forked.Assembler with SymbolAdapter {
