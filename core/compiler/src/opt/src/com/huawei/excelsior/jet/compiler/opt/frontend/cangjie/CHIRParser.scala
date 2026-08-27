@@ -16,16 +16,16 @@ import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
 import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
 import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.*
-import com.huawei.excelsior.jet.compiler.chir.{Attribute, CHIRLoader, CHIRResolver, EnumKind, PackageFormat, ParsedCHIRPackage}
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.{BlockGroup, CHIRExprKind, CHIRTypeKind, EnumDef, Expression, FuncType, Function, Block as BlockVal}
+import com.huawei.excelsior.jet.compiler.chir.{Attribute, CHIRLoader, CHIRResolver, PackageFormat, ParsedCHIRPackage}
+import com.huawei.excelsior.jet.compiler.chir.PackageFormat.{BlockGroup, CHIRExprKind, CHIRTypeKind, Expression, Function, Block as BlockVal}
 import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimination, Universe}
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
 import com.huawei.excelsior.jet.compiler.opt.middle.{ContextTypesRecalculation, DCEComponent, UCEComponent}
-import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, GenerateWriteBarriers, PackageInitFromMain}
+import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, PackageInitFromMain}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CangjieEnumWrapper, fromSymType}
-import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeFieldReference, BitcodeMethodReference, CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
+import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.ScalaCollections.*
 import com.huawei.excelsior.jet.compiler.util.{Maps, Sets}
