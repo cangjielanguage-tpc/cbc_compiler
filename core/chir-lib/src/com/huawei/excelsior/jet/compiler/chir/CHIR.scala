@@ -25,7 +25,6 @@ object CHIR {
   }
 
   trait Annotation {
-
   }
 
   trait IsAutoEnvClass extends Annotation {
@@ -33,7 +32,7 @@ object CHIR {
   }
 
   trait OverrideSrcFuncType extends Annotation {
-
+    def tpe(): FuncType
   }
 
   trait WrappedRawMethod extends Annotation {
@@ -56,8 +55,15 @@ object CHIR {
   }
 
   trait Func extends Value with HasDeclaringDef {
+    def packageName(): String
+    def kind(): FuncKind
     def funcType(): FuncType
     def genericTypeParams(): Seq[GenericType]
+    def body(): Option[BlockGroup]
+  }
+  
+  trait BlockGroup extends Value {
+    
   }
 
   trait Block extends Value {
@@ -66,7 +72,8 @@ object CHIR {
 
   // static field or global var
   trait GlobalVar extends Value with HasDeclaringDef {
-
+    def packageName(): String
+    def tpe(): Type
   }
 
   trait LocalVar extends Value {
@@ -77,8 +84,9 @@ object CHIR {
 
   }
 
-  trait InstanceVar {
+  trait InstanceVar extends HasAttributes {
     def tpe(): Type
+    def name(): String
   }
 
   trait Type {
@@ -120,6 +128,7 @@ object CHIR {
 
   trait FuncType extends Type {
     def paramTypes(): Seq[Type]
+    def receiverType(): Type
     def returnType(): Type
     def isC: Boolean
     def hasVarArg: Boolean
@@ -161,6 +170,7 @@ object CHIR {
     def staticVars(): Seq[GlobalVar]
     def methods(): Seq[Func]
     def vTables(): Seq[VTable]
+    def implementedInterfaces(): Seq[ClassType]
   }
 
   trait EnumDef extends CustomTypeDef {
@@ -170,7 +180,9 @@ object CHIR {
   }
 
   trait ClassDef extends CustomTypeDef {
+    def isClass(): Boolean
     def tpe(): ClassType
+    def superClass(): Option[ClassType]
   }
 
   trait StructDef extends CustomTypeDef {
@@ -187,12 +199,18 @@ object CHIR {
   }
 
   trait VTable {
+    def srcParentType(): ClassType
     def vMethods(): Seq[VMethod]
   }
 
-  trait VMethod {
+  trait VMethod extends HasAttributes {
+    def name(): String
+    def sig(): FuncType
     def instance(): Func
     def genericTypeParams(): Seq[Type]
+    def originalType(): FuncType
+    def parentType(): Type
+    def returnType(): Type
   }
 
   trait EnumCtor {
@@ -256,11 +274,6 @@ object CHIR {
 
     case ATTR_END
 
-
-    def in(attrs: Long): Boolean = {
-      (attrs & (1L << ordinal)) != 0L
-    }
-
     def name: String = this match {
       case READONLY => "readOnly"
       case CONST => "compileTimeVal"
@@ -274,5 +287,23 @@ object CHIR {
       case JAVA_IMPL => "javaImpl"
       case _ => toString.toLowerCase
     }
+  }
+
+  enum FuncKind {
+    case DEFAULT,
+    GETTER,
+    SETTER,
+    LAMBDA,
+    CLASS_CONSTRUCTOR,
+    PRIMAL_CLASS_CONSTRUCTOR,
+    STRUCT_CONSTRUCTOR,
+    PRIMAL_STRUCT_CONSTRUCTOR,
+    GLOBALVAR_INIT,
+    FINALIZER,
+    MAIN_ENTRY,
+    ANNOFACTORY_FUNC,
+    MACRO_FUNC,
+    DEFAULT_PARAMETER_FUNC,
+    INSTANCEVAR_INIT
   }
 }
