@@ -115,11 +115,6 @@ class TestSuite:
         actual = custom_actual if custom_actual is not None else dotactual(test_name)
         diff_err = io.StringIO()
         res = await run_async(" ".join(diff(actual, expected)), shell=True, stderr_log=diff_err)
-        if res != 0:
-            if diff_err.getvalue().strip():
-                await self.print_stderr(f"diff error: {res}\n{diff_err.getvalue()}")
-            else:
-                await self.print_stderr(f"diff error: {res}")
         return res
 
     async def run_cjc(self, file: str, output_file: str, output_type: str = None,
@@ -276,13 +271,10 @@ class StandaloneTestSuite(TestSuite):
             with open(dotactual(test_name), "w") as test_output:
                 res = await run_in_env(True, env, cmd, log=test_output, stderr_log=launcher_err)
                 test_output.write(f"{res}\n")
-            if res != 0:
-                if launcher_err.getvalue().strip():
-                    await self.print_stderr(f"launcher error (asm): {res}\n{launcher_err.getvalue()}")
-                else:
-                    await self.print_stderr(f"launcher error (asm): {res}")
-
             if await self.check_result(test_name) != 0:
+                err = launcher_err.getvalue().strip()
+                if err:
+                    await self.print_stderr(err)
                 msg = test_failed(test_name, in_mode, msg="diff (mode: standalone asm)")
                 await self.print_stderr(msg)
                 return True
@@ -307,13 +299,10 @@ class StandaloneTestSuite(TestSuite):
                 with open(actual_file, "w") as test_output:
                     res = await run_in_env(True, env, cmd, log=test_output, stderr_log=launcher_err)
                     test_output.write(f"{res}\n")
-                if res != 0:
-                    if launcher_err.getvalue().strip():
-                        await self.print_stderr(f"launcher error (cj - {mode}): {res}\n{launcher_err.getvalue()}")
-                    else:
-                        await self.print_stderr(f"launcher error (cj - {mode}): {res}")
-
                 if await self.check_result(test_name, custom_actual=actual_file) != 0:
+                    err = launcher_err.getvalue().strip()
+                    if err:
+                        await self.print_stderr(err)
                     msg = test_failed(test_name, in_mode, msg=f"diff (mode: standalone cj - {mode})")
                     await self.print_stderr(msg)
                     continue
