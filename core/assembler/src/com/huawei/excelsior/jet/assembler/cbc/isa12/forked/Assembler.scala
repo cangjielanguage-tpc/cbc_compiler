@@ -9,7 +9,7 @@
 package com.huawei.excelsior.jet.assembler.cbc.isa12.forked
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, BytecodeReferenceSymbol, FieldReference, FieldReferenceWithRefType, MethodReference, Signature, SingleFieldReference, StringLiteral}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, BytecodeReferenceSymbol, FieldReference, FieldReferenceWithType, MethodReference, Signature, SingleFieldReference, StringLiteral}
 import com.huawei.excelsior.jet.assembler.cbc.CbcTypeKind.{F32, F64}
 import com.huawei.excelsior.jet.assembler.cbc.{CbcAssembler, CbcFileFormat, CbcTypeKind, MemExpr, StackSlot, Register as Rg}
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
@@ -811,18 +811,18 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
 
   private def markLoadStoreValue(r: Rg, fr: FieldReference, load: Boolean): Unit = {
     val hasRefFieldType = fr match {
-      case withFieldType: FieldReferenceWithRefType => withFieldType.fieldType.isReference
+      case fr: FieldReferenceWithType => fr.fieldType.isReference
       case _ => false
     }
     r match {
       case r: IR if hasRefFieldType => if (load) analyzer.ref(r) else analyzer.useRef(r)
-      case r: IR        => if (load) analyzer.prim(r) else analyzer.usePrim(r)
+      case r: IR => if (load) analyzer.prim(r) else analyzer.usePrim(r)
       case _ =>
     }
   }
   
   private def markMemBase(base: IR, fr: FieldReference) = fr match {
-    case withRefType: FieldReferenceWithRefType if withRefType.refType.isReference => analyzer.useRef(base)
+    case fr: FieldReferenceWithType if fr.refType.isReference => analyzer.useRef(base)
     case _ => analyzer.useRec(base)
   }
 

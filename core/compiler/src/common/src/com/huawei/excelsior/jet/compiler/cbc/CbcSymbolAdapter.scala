@@ -81,7 +81,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
             if (field.isStatic) {
               StaticFieldAotData(field.getExportedName.toString)
             } else {
-              val idx = field.getDeclaringClass.getFields.indexOf(field)
+              val idx = symbol.idx.toInt
               InstanceFieldAotData(idx)
             }
           }
