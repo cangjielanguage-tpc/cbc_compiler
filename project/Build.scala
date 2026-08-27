@@ -147,6 +147,7 @@ object Build {
 
   lazy val chirLib = (project in file("core/chir-lib"))
     .settings(flatbuffersSettings)
+    .settings(commonSourceLayout)
     .settings(
       Compile / managedSourceDirectories += file("core/chir-lib/generated/src"),
       Compile / sourceGenerators += Def.task {
