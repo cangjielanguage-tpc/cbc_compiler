@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.jet.compiler.{Environment, Stage}
 import com.huawei.excelsior.jet.compiler.cangjie.CHIRSymLevelBuilder
+import com.huawei.excelsior.jet.compiler.chir.CHIR.Version.V1_0
 import com.huawei.excelsior.jet.compiler.symlevel.Type
 
 import scala.collection.mutable
@@ -26,7 +27,8 @@ object CHIRLoader {
 
   def getCHIRResolver(source: String)(implicit env: Environment): CHIRResolver = {
     parsedCHIR.get(source).flatMap(_.get).getOrElse {
-      implicit val pkg: ParsedCHIRPackage = ParsedCHIRPackage(source)
+      // TODO pass fbs version
+      implicit val pkg: CHIR.Package = CHIR.newPackage(V1_0, source)
       val resolver = CHIRResolver()
       parsedCHIR.put(source, new SoftReference(resolver))
       resolver

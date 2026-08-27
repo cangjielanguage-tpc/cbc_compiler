@@ -36,6 +36,12 @@ case class ClassDefImpl() extends CHIR.ClassDef {
   override def annotations(): Seq[CHIR.Annotation] = ???
 
   override def vTables(): Seq[CHIR.VTable] = ???
+
+  override def isClass(): Boolean = ???
+
+  override def implementedInterfaces(): Seq[CHIR.ClassType] = ???
+
+  override def superClass(): Option[CHIR.ClassType] = ???
 }
 
 case class FuncTypeImpl() extends CHIR.Type

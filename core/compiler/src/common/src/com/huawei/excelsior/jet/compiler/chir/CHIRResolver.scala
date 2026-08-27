@@ -281,6 +281,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       case CHIR.Attribute.REDEF => mods += CJ_REDEF
       case CHIR.Attribute.OVERRIDE => mods += CJ_OVERRIDE
       case CHIR.Attribute.STATIC => mods -= FINAL; mods += STATIC
+      case _ => // do nothing
     }
 
     mods
@@ -296,6 +297,14 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       case t: (CHIR.Func | CHIR.GlobalVar)  => (t.attributes(), false)
     }
     attrs.contains(CHIR.Attribute.IMPORTED) || isFunctionalTypeBase
+  }
+
+  /**
+   * Sorts out redundant functions marked by diff-tool.
+   * For example, the global functions are referenced from vtable.
+   */
+  def isDeadFunction(f: CHIR.Func): Boolean = {
+    f.attributes().contains(Attribute.UNREACHABLE)
   }
 
   private def isFunctionalType(t: CHIR.CustomTypeDef): Boolean = {
