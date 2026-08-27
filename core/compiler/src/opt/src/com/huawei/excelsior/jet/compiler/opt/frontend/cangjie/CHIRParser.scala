@@ -2240,8 +2240,10 @@ trait CHIRParser
     }
 
     private def declaredFields(host: SignatureType): Seq[CangjieFieldReference] = {
-      asClassType(host).getDeclaredFields.toSeq map { f =>
-        CangjieFieldReference(f.getFieldIndex, Some(f), host, f.getType.instantiate(genericParams(host), Seq.empty))
+      val hostClass = asClassType(host)
+      val baseIdx = hostClass.getSuperClasses.map(_.getDeclaredFields.size).sum
+      hostClass.getDeclaredFields.toSeq map { f =>
+        CangjieFieldReference(baseIdx + f.getFieldIndex, Some(f), host, f.getType.instantiate(genericParams(host), Seq.empty))
       }
     }
 

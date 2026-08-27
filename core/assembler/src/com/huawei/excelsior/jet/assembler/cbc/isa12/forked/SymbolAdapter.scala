@@ -9,12 +9,12 @@
 package com.huawei.excelsior.jet.assembler.cbc.isa12.forked
 
 import com.huawei.excelsior.jet.assembler.Symbol
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BytecodeReference, FieldReference, MethodReference, RawData, Signature, StringLiteral}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BytecodeReference, FieldReference, FieldReferenceWithType, MethodReference, RawData, Signature, StringLiteral}
 
 trait SymbolAdapter {
   def adapt(symbol: Symbol): BytecodeReference
 
-  final def field(symbol: Symbol): FieldReference   = adapt(symbol).asInstanceOf[FieldReference]
+  final def field(symbol: Symbol): FieldReferenceWithType = adapt(symbol).asInstanceOf[FieldReferenceWithType]
   final def method(symbol: Symbol): MethodReference = adapt(symbol).asInstanceOf[MethodReference]
   final def sigType(symbol: Symbol): Signature      = adapt(symbol).asInstanceOf[Signature]
   final def string(symbol: Symbol): StringLiteral   = adapt(symbol).asInstanceOf[StringLiteral]
