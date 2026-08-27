@@ -8,6 +8,7 @@
 
 package com.huawei.excelsior.jet.compiler.opt.backend.cbc.codegen
 
+import com.huawei.excelsior.common.CodeHelpers.notImplemented
 import com.huawei.excelsior.jet.compiler.opt.backend.cbc.BackEndCBC
 import com.huawei.excelsior.jet.compiler.opt.backend.cbc.FrameComponentCBC.FrameSlotCBC
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
@@ -20,6 +21,6 @@ trait DebugGeneratorCBC { self: Universe with BackEndCBC =>
     override protected def locationOfDebugSlot(slot: FrameSlot): Any =
       slot.asInstanceOf[FrameSlotCBC].local.encoding
 
-    override def genCoverageCounter(locs: Array[(String, Array[Int])]): Unit = cbc.covinc(locs)
+    override def genCoverageCounter(locs: Array[(String, Array[Int])]): Unit = notImplemented("Coverage")
   }
 }

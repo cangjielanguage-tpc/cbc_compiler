@@ -9,31 +9,23 @@
 package com.huawei.excelsior.jet.compiler.opt.backend.cbc
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.assembler.Width.W32
-import com.huawei.excelsior.jet.assembler.cbc.Assembler.normalizeImm
-import com.huawei.excelsior.jet.assembler.cbc.{Assembler, FieldReference}
-import com.huawei.excelsior.jet.assembler.{AsmType, Symbol, Width}
-import com.huawei.excelsior.jet.codeemitter.BranchOp
+import com.huawei.excelsior.jet.assembler.cbc.FieldReference
+import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.Env.{addressSize, isStandalone}
 import com.huawei.excelsior.jet.compiler.NotImplementedFeature.CBC
 import com.huawei.excelsior.jet.compiler.opt.backend.MachineDescription
-import com.huawei.excelsior.jet.compiler.opt.ir.Resources.{FrameSlot, Resource, ResourceSet, emptySet}
-import com.huawei.excelsior.jet.compiler.opt.ir.Tag.VALUE
+import com.huawei.excelsior.jet.compiler.opt.ir.Resources.{FrameSlot, ResourceSet, emptySet}
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
-import com.huawei.excelsior.jet.compiler.opt.ir.nodes.ObjectOperationNodes
-import com.huawei.excelsior.jet.compiler.options.BoolOption.UseIsa12
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{ArraySlice, Record, VArray}
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.VArray
 import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeFieldReference, Field, PermanentMember, SignatureType}
-import com.huawei.excelsior.jet.util.ScalaCollections
 import xscala.util.MathUtils.*
 
 import scala.PartialFunction.cond
-import scala.annotation.{nowarn, tailrec}
+import scala.annotation.nowarn
 
 @nowarn("msg=match may not be exhaustive")
 trait MachineDescriptionCBC extends MachineDescription { self: Universe with BackEndCBC =>
 
-  import ExitKind.*
   import RegFile.*
 
 

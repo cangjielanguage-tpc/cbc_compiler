@@ -9,8 +9,8 @@
 package com.huawei.excelsior.jet.compiler.opt.backend.cbc
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
-import com.huawei.excelsior.jet.assembler.cbc.Assembler
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2, IR7}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.ForkedAssembler
 import com.huawei.excelsior.jet.compiler.abi.XTableGenerator
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator
 import com.huawei.excelsior.jet.compiler.opt.backend.BackEnd
@@ -93,10 +93,7 @@ trait BackEndCBC
       case x: OHMSlotCBC => x
     }.toArray.sortBy(_.index).map(_.kind.allocType).toSeq
 
-    val literalsOffset = asm match {
-      case a: Assembler => a.literalsStart.position
-      case _ => 0 // literals offset is not needed for new isa
-    }
+    val literalsOffset = 0 // literals offset is not needed for new isa
 
     CBCFileGenerator.sendCode(
       codeUnit.method, segment, literalsOffset, packedXInfo, exTable, liveness,
