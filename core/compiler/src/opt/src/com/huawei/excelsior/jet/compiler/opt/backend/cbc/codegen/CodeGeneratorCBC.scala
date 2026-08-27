@@ -315,13 +315,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           case t => t
         }
         val fasm = asm.asInstanceOf[ForkedISA12Assembler]
-        t match {
-          case t: SignatureType.CangjieReference if t.name.startsWith("$Cl") || t.name.startsWith("$Cw") =>
-            fasm.newClosure(IR1, t.toCbc)
-          case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") || t.name.startsWith("$Cw") =>
-            fasm.newClosure(IR1, t.toCbc)
-          case _ =>
-            fasm.newobj(t.toCbc)
+        if (t.isCangjieLambda) {
+          fasm.newClosure(IR1, t.toCbc)
+        } else {
+          fasm.newobj(t.toCbc)
         }
       } else {
         val ftcSigIdx = CodeSigSymbol(allocType)
@@ -1441,7 +1438,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         val permanent = targetRef.getPermanent
         if (isStandalone) {
           val fasm = asm.asInstanceOf[ForkedISA12Assembler]
-          if (targetRef.refType.symType.getName.startsWith("$C")) {
+          if (targetRef.refType.sigType.isCangjieClosure) {
             if (targetRef.method.getName == "$GenericVirtualFunc") {
               fasm.callClosureGeneric(isa12ResultReg, targetRef.refType.sigType.toCbc)
             } else {
@@ -1744,11 +1741,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case t => t
       }
       val fasm = asm.asInstanceOf[ForkedISA12Assembler]
-      t match {
-        case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") || t.name.startsWith("$Cw") =>
-          fasm.newClosureGeneric(ti, t.toCbc)
-        case _ =>
-          fasm.newobjGeneric(ti, t.toCbc)
+      if (t.isCangjieLambda) {
+        fasm.newClosureGeneric(ti, t.toCbc)
+      } else {
+        fasm.newobjGeneric(ti, t.toCbc)
       }
       addXSite(n)
       saveGCState(n)

@@ -978,7 +978,7 @@ trait CHIRParser
               sig match {
                 case _ if sig.isAbstractClass =>
                   Null()
-                case sig: SignatureType.InstantiatedReference if sig.name.startsWith("$Cl") || sig.name.startsWith("$Cw") =>
+                case sig: SignatureType.InstantiatedReference if sig.isCangjieLambda =>
                   NewGeneric(sig)(loadTypeInfo(sig))
                 case _ if sig.containsTypeVariables =>
                   NewGeneric(sig)(loadTypeInfo(sig))
@@ -2144,11 +2144,11 @@ trait CHIRParser
         case SMutRecord => Seq(SMutRecArg(receiver.get))
         case SMutObject => Seq(SMutObjectArg(SMutRecArg(receiver.get)))
         case OuterTypeInfo =>
-          outerTypeInfo.get match {
-            case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") || t.name.startsWith("$Cw") || t.name.startsWith("$Ci") || t.name.startsWith("$Cg") =>
-              Seq(ThisTypeInfoBy(receiver.get))
-            case t =>
-              Seq(loadTypeInfo(t))
+          val t = outerTypeInfo.get
+          if (t.isCangjieClosure) {
+            Seq(ThisTypeInfoBy(receiver.get))
+          } else {
+            Seq(loadTypeInfo(t))
           }
         case SpecialParameter.ThisTypeInfo =>
           Seq(thisTypeInfo.getOrElse(loadTypeInfo(thisType.get)))
@@ -2245,9 +2245,7 @@ trait CHIRParser
         }
 
         refType match {
-          case refType: SignatureType.Reference if refType.name.startsWith("$Cl") || refType.name.startsWith("$Cw") =>
-            fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
-          case refType: SignatureType.InstantiatedReference if refType.name.startsWith("$Cl") || refType.name.startsWith("$Cw") =>
+          case refType if refType.isCangjieLambda =>
             fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
           case refType: SignatureType.Tuple =>
             val fieldType = refType.params(idx.toInt)

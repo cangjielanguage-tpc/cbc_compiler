@@ -185,9 +185,9 @@ object CbcSignatureAdapter {
 
   @tailrec
   private def adaptFunctional(sig: SignatureType): Option[CbcFileFormat.Functional] = sig match {
-    case sig: SignatureType.CangjieReference if sig.name.startsWith("$Ci") =>
+    case sig: SignatureType.CangjieReference if sig.isCangjieLambdaSuper => // $Ci
       adaptFunctional(asClassType(sig).getSuperClassSig)
-    case sig: SignatureType.InstantiatedReference if sig.name.startsWith("$Cg") =>
+    case sig: SignatureType.InstantiatedReference if sig.isCangjieLambdaSuper => // $Cg
       Some(CbcFileFormat.Functional(sig.instantiatedTypeParameters.init.map(_.toCbc), sig.instantiatedTypeParameters.last.toCbc))
     case _ =>
       None
