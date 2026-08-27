@@ -494,16 +494,18 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       def constrFieldRef(frs: Seq[CangjieFieldReference]): CbcFileFormat.FieldReference = {
-        val adaptedRefs = frs.map { fr => fr.field match
-          case Some(name) => fr
-          case None => 
-            val refType = fr.refType match {
-              case t: SignatureType.OptionLikeEnum => 
-                require(!t.isNullableOption)
-                SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
-              case t => t
-            }
-            CangjieFieldReference(fr.idx, None, refType, fr.fieldType)
+        val adaptedRefs = frs.map { fr => 
+          fr.field match {
+            case Some(name) => fr
+            case None =>
+              val refType = fr.refType match {
+                case t: SignatureType.OptionLikeEnum =>
+                  require(!t.isNullableOption)
+                  SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
+                case t => t
+              }
+              CangjieFieldReference(fr.idx, None, refType, fr.fieldType)
+          }
         }.map(adapter.field) 
         
         adaptedRefs match {
