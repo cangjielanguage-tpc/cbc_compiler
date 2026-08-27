@@ -583,7 +583,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           addXSite(n)
           assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
           maybeImmValue(n.inValue) match {
-            case Some(_) => shouldNotReachHere(s"Field seq stores with imm are not supported: ${n.inValue}")
+            case Some(x) => shouldNotReachHere(s"Field seq stores with imm are not supported: $x")
             case None =>
               val Reg(src) = n.inValue
               fasm.st(src, constrFieldRef(fieldRefs))
