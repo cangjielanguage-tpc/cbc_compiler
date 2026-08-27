@@ -504,4 +504,12 @@ class FakeType private (val klass: Class[?], name: String, private val kind: Typ
   def setCangjieEnumInfo(info: CangjieEnumInfo): Unit = {
     enumInfo = info
   }
+
+  override def isCangjieExtend = extendInfo != null
+
+  private var extendInfo: SignatureType = null
+  override def getCangjieExtendInfo = extendInfo
+  def setCangjieExtendInfo(info: SignatureType): Unit = {
+    extendInfo = info
+  }
 }

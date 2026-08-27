@@ -235,6 +235,7 @@ object CHIRBuilder {
           if (!resolver.isImported(d.base)) {
             builder.markAsCHIRDef(symType)
           }
+          builder.setExtendInfo(symType, resolver.typeSig(d.extendedType))
           val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
           builder.setSuperinterfaces(symType, superinterfaces)
           fillFields(symType, d.base)
@@ -263,7 +264,7 @@ object CHIRBuilder {
             Modifiers(Modifier.CJ_MUT)
           case _ => Modifiers.EMPTY
         }
-        val extendModifiers = if (resolver.isExtendedBaseFunc(m)) Modifiers(STATIC) else Modifiers.EMPTY
+        val extendModifiers = if (resolver.isStaticExtendFunc(m)) Modifiers(STATIC) else Modifiers.EMPTY
         val modifiers = resolver.symModifiers(value.base.attributes) | extendModifiers | mutModifiers
         val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
         val genericInfo = resolver.genericInfo(m)

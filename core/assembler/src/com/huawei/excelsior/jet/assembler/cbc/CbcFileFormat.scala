@@ -227,7 +227,8 @@ object CbcFileFormat {
                      cbcDeps: Option[String],
                      aotDeps: Option[String],
                      foreignLibs: Option[String],
-                     types: Seq[Type])
+                     types: Seq[Type],
+                     extensions: Seq[Extension])
 
   sealed trait Named {
     def name: String
@@ -250,6 +251,11 @@ object CbcFileFormat {
                   genericConstraints: Seq[Signature],
                   enumKind: TypeEnumKind,
                   unionFields: Seq[Signature] = Seq.empty) extends Named
+
+  case class Extension(extendedType: Signature,
+                       methods: Seq[Method],
+                       interfaces: Seq[Signature],
+                       genericConstraints: Seq[Signature])
 
   case class Method(name: String,
                     typeName: String,
@@ -325,6 +331,7 @@ object CbcFileFormat {
 
   trait Builder {
     def newTypeBuilder(): Type.Builder
+    def newExtensionBuilder(): Extension.Builder
     def setBytecodeVersion(version: Int): Unit
     def setMainTypeName(name: String): Unit
     def setCbcDeps(libs: String): Unit
@@ -347,6 +354,18 @@ object CbcFileFormat {
       // in which corresponding builders were created.
       def newMethodBuilder(): Method.Builder
       def newFieldBuilder(): Field.Builder
+    }
+  }
+
+  object Extension {
+    trait Builder {
+      def setExtendedType(signature: Signature): Unit
+      def setInterfaces(interfaces: Seq[Signature]): Unit
+      def setGenericConstraints(genericConstraints: Seq[Signature]): Unit
+
+      // The order of methods are defined by the order,
+      // in which corresponding builders were created.
+      def newMethodBuilder(): Method.Builder
     }
   }
 
@@ -390,6 +409,7 @@ object CbcFileFormat {
 
 private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
   private val typeBuilders = ArrayBuffer.empty[TypeBuilder]
+  private val extensionBuilders = ArrayBuffer.empty[ExtensionBuilder]
 
   private var bytecodeVersion: Int = 0
   private var mainTypeName: String = _
@@ -410,13 +430,20 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     builder
   }
 
+  override def newExtensionBuilder(): CbcFileFormat.Extension.Builder = {
+    val builder = new ExtensionBuilder()
+    extensionBuilders += builder
+    builder
+  }
+
   override def build(): CbcFile = CbcFile(
     bytecodeVersion = bytecodeVersion,
     mainTypeName = Option(mainTypeName),
     cbcDeps = Option(cbcDeps),
     aotDeps = Option(aotDeps),
     foreignLibs = Option(foreignLibs),
-    types = typeBuilders.toSeq.map(_.build())
+    types = typeBuilders.toSeq.map(_.build()),
+    extensions = extensionBuilders.toSeq.map(_.build())
   )
 
   private class TypeBuilder extends CbcFileFormat.Type.Builder {
@@ -466,6 +493,31 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
       genericConstraints = genericConstraints,
       enumKind = enumKind,
       unionFields = unionFields
+    )
+  }
+
+  private class ExtensionBuilder extends CbcFileFormat.Extension.Builder {
+    private val methodBuilders = ArrayBuffer.empty[MethodBuilder]
+
+    private var extendedType: Signature = _
+    private var interfaces: Seq[Signature] = Seq.empty
+    private var genericConstraints: Seq[Signature] = Seq.empty
+
+    override def setExtendedType(tpe: Signature): Unit = this.extendedType = tpe
+    override def setInterfaces(interfaces: Seq[Signature]): Unit = this.interfaces = interfaces
+    override def setGenericConstraints(genericConstraints: Seq[Signature]): Unit = this.genericConstraints = genericConstraints
+
+    override def newMethodBuilder(): Method.Builder = {
+      val builder = new MethodBuilder
+      methodBuilders += builder
+      builder
+    }
+
+    def build(): CbcFileFormat.Extension = Extension(
+      extendedType = extendedType,
+      methods = methodBuilders.toSeq.map(_.build()),
+      interfaces = interfaces,
+      genericConstraints = genericConstraints,
     )
   }
 
