@@ -31,7 +31,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
     case _: InterfaceCastCBC => true
     case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeqGeneric |
          _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric |
-         _: AssignGeneric => true
+         _: AssignGeneric | _: NewGeneric => true
     case _ => super.needXSite(node)
   }
 
@@ -43,7 +43,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
     case _: InterfaceCastCBC => XSiteKind.CALL
     case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeqGeneric |
          _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric |
-         _: AssignGeneric => XSiteKind.CALL
+         _: AssignGeneric | _: NewGeneric => XSiteKind.CALL
     case WithImplicitCheck(_: DivisorCheck) => XSiteKind.DIV_WITH_CHECK
     case _ => super.xSiteKind(node)
   }

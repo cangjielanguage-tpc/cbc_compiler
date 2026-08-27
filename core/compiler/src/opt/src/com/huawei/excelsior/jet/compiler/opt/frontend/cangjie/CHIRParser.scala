@@ -22,7 +22,7 @@ import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimina
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
 import com.huawei.excelsior.jet.compiler.opt.middle.{ContextTypesRecalculation, DCEComponent, UCEComponent}
-import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, GenerateWriteBarriers, PackageInitFromMain}
+import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, FailArrayAcquireRawData, GenerateWriteBarriers, PackageInitFromMain}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CangjieEnumWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.{BitcodeFieldReference, BitcodeMethodReference, CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
@@ -975,10 +975,15 @@ trait CHIRParser
               NoValue()
 
             case _ =>
-              if (sig.isAbstractClass) {
-                Null()
-              } else {
-                New(sig)()
+              sig match {
+                case _ if sig.isAbstractClass =>
+                  Null()
+                case sig: SignatureType.InstantiatedReference if sig.isCangjieLambda =>
+                  NewGeneric(sig)(loadTypeInfo(sig))
+                case _ if sig.containsTypeVariables =>
+                  NewGeneric(sig)(loadTypeInfo(sig))
+                case _ =>
+                  New(sig)()
               }
           }
 
@@ -1300,7 +1305,7 @@ trait CHIRParser
         val (gsig, _, _, _) = resolver.functionSig(func.base.base.`type`, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
-          if (g.isTypeVariable && !i.isTypeVariable) SignatureType.Box(i) else i
+          if (g.isTypeVariable && !i.isTypeVariable && !i.isInstanceOf[SignatureType.Box]) SignatureType.Box(i) else i
         }
 
         val isig = MethodSignature(retType, isigParams.drop(if (isStatic) 0 else 1))
@@ -1562,7 +1567,15 @@ trait CHIRParser
               case Seq(n: PackageFormat.Parameter) =>
                 (resolver.typeSig(n.base.`type`), state(n))
             }
-            notImplemented("ARRAY_ACQUIRE_RAW_DATA intrinsic")
+            if (env.enabled(FailArrayAcquireRawData)) {
+              notImplemented("ARRAY_ACQUIRE_RAW_DATA intrinsic")
+            }
+            state(e) = LConst(123456789)
+
+          case PackageFormat.IntrinsicKind.ARRAY_RELEASE_RAW_DATA =>
+            if (env.enabled(FailArrayAcquireRawData)) {
+              notImplemented("ARRAY_RELEASE_RAW_DATA intrinsic")
+            }
         }
 
       case e: PackageFormat.SpawnBase =>
@@ -2095,7 +2108,12 @@ trait CHIRParser
 
             case t: SignatureType.Box =>
               // Variable-sized type
-              New(SignatureType.Box(retType))()
+              val box = SignatureType.Box(retType)
+              if (box.containsTypeVariables) {
+                NewGeneric(box)(loadTypeInfo(retType))
+              } else {
+                New(box)()
+              }
 
             case SignatureType.Address =>
               // Type variable
@@ -2105,7 +2123,12 @@ trait CHIRParser
               val value = if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && (retType.isTraceableReference || retType.isTypeVariable)) {
                 Null()
               } else {
-                New(SignatureType.Box(retType))()
+                val box = SignatureType.Box(retType)
+                if (box.containsTypeVariables) {
+                  NewGeneric(box)(loadTypeInfo(retType))
+                } else {
+                  New(box)()
+                }
               }
               StoreMemory(memType.toAsm, memType, atomic = false)(mem, value)
               mem
@@ -2121,7 +2144,12 @@ trait CHIRParser
         case SMutRecord => Seq(SMutRecArg(receiver.get))
         case SMutObject => Seq(SMutObjectArg(SMutRecArg(receiver.get)))
         case OuterTypeInfo =>
-          Seq(loadTypeInfo(outerTypeInfo.get))
+          val t = outerTypeInfo.get
+          if (t.isCangjieClosure) {
+            Seq(ThisTypeInfoBy(receiver.get))
+          } else {
+            Seq(loadTypeInfo(t))
+          }
         case SpecialParameter.ThisTypeInfo =>
           Seq(thisTypeInfo.getOrElse(loadTypeInfo(thisType.get)))
         case GenericFuncParams =>
@@ -2217,9 +2245,7 @@ trait CHIRParser
         }
 
         refType match {
-          case refType: SignatureType.Reference if refType.name.startsWith("$Cl") =>
-            fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
-          case refType: SignatureType.InstantiatedReference if refType.name.startsWith("$Cl") =>
+          case refType if refType.isCangjieLambda =>
             fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
           case refType: SignatureType.Tuple =>
             val fieldType = refType.params(idx.toInt)
@@ -2334,7 +2360,12 @@ trait CHIRParser
       if (t.containsTypeVariables) {
         import SignatureType.*
         t match {
-          case t: ClassTypeVariable => GenericTypeArg(t.idx)(outerTypeInfoParam())
+          case t: ClassTypeVariable =>
+            if (method.getDeclaringClass.isCangjiePackage) {
+              genericTypeInfoParam(t.idx)
+            } else {
+              GenericTypeArg(t.idx)(outerTypeInfoParam())
+            }
           case t: LocalTypeVariable => genericTypeInfoParam(t.idx)
           case t: InstantiatedType  => LoadTypeInfoGeneric(t)(t.instantiatedTypeParameters.map(loadTypeInfo): _*)
           case t: ArraySlice        => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))

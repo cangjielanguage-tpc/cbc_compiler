@@ -25,7 +25,7 @@ import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.FINAL
 import com.huawei.excelsior.jet.compiler.layout.MethodTables
 import com.huawei.excelsior.jet.compiler.options.{BoolOption, StrOption}
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{NonNullableWrapper, NullableWrapper}
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{NonNullableWrapper, NullableWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.*
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.{Closure, Worklist}
@@ -44,7 +44,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
   private val methodsCode = mutable.LinkedHashMap.empty[Method, Code]
 
   private def isFunctionalType(t: Type): Boolean = {
-    t.getName.startsWith("$Cg") || t.getName.startsWith("$Ci")
+    fromSymType(t).isCangjieClosure
   }
 
   def cbcPackageName(aotName: String): String = {
@@ -202,7 +202,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       if (modifiers.contains(Modifier.FINAL)) {
         builder.addFlag(TypeFlag.FINAL)
       }
-      if (t.getName.startsWith("$Cl")) {
+      if (fromSymType(t).isCangjieLambda) {
         builder.addFlag(TypeFlag.LAMBDA)
       }
     }

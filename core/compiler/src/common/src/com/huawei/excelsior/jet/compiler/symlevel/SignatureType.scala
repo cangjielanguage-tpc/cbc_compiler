@@ -268,6 +268,24 @@ sealed abstract class SignatureType extends Signature {
     case _ => false
   }
 
+  final def isCangjieClosure: Boolean = this match {
+    case x: CangjieReference => x.name.startsWith("$C")
+    case x: InstantiatedReference => x.name.startsWith("$C")
+    case _ => false
+  }
+
+  final def isCangjieLambda: Boolean = this match {
+    case x: CangjieReference => x.name.startsWith("$Cl") || x.name.startsWith("$Cw")
+    case x: InstantiatedReference => x.name.startsWith("$Cl") || x.name.startsWith("$Cw")
+    case _ => false
+  }
+
+  final def isCangjieLambdaSuper: Boolean = this match {
+    case x: CangjieReference => x.name.startsWith("$Ci")
+    case x: InstantiatedReference => x.name.startsWith("$Cg")
+    case _ => false
+  }
+
   @tailrec
   final def isUniversalGeneric: Boolean = Wrapper.skip(this) match {
     case _: (TypeVariable | InstantiatedType | Tuple | Box) => true

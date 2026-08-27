@@ -293,7 +293,7 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
 
   def isImported(t: CustomTypeDef | GlobalValue): Boolean = {
     val (attrs, isFunctionalTypeBase) = t match {
-      case t: CustomTypeDef => (t.base.attributes, isFunctionalType(t) && !isLambda(pkg.getType[Table](t.`type`)))
+      case t: CustomTypeDef => (t.base.attributes, isFunctionalType(t) && !isLambda(t.`type`))
       case t: GlobalValue   => (t.base.base.attributes, false)
     }
     (Attribute.IMPORTED in attrs) || isFunctionalTypeBase
@@ -303,8 +303,8 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
     annotations(t.base) exists isAutoEnv
   }
 
-  def isLambda(t: Table): Boolean = {
-    symName(t).startsWith("$Cl")
+  def isLambda(t: Long): Boolean = {
+    typeSig(t).isCangjieLambda
   }
 
   def isAutoEnv(x: Table): Boolean = cond(x) {

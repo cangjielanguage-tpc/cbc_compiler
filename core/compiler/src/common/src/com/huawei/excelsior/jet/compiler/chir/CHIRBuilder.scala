@@ -118,7 +118,7 @@ object CHIRBuilder {
 
     def fillFields(symType: SymClassType, d: PackageFormat.CustomTypeDef): Unit = {
       // TODO: do better
-      if (symType.getName.startsWith("$Cl")) {
+      if (SignatureType.fromSymType(symType).isCangjieLambda) {
         for (name <- Seq("$g", "$i")) {
           val f = builder.addField(symType, name, SignatureType.Int64, null, Modifiers(PUBLIC).value)
           if (symType.isCHIRDef) {
@@ -306,7 +306,7 @@ object CHIRBuilder {
           val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
             ABI.Description(rcvParam,
             hasMutParam, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, hasRetByVal = hasRetByVal, genericFuncParamsCount))
-          if (symType.getName.startsWith("$Cl") && name == "$GenericVirtualFunc") {
+          if (SignatureType.fromSymType(symType).isCangjieLambda && name == "$GenericVirtualFunc") {
             assert(symMethod.hasRetByValParameter)
           }
           virtMethods(id.toInt) = symMethod

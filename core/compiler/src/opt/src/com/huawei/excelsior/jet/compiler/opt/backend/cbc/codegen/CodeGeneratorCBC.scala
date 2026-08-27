@@ -315,13 +315,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           case t => t
         }
         val fasm = asm.asInstanceOf[ForkedISA12Assembler]
-        t match {
-          case t: SignatureType.CangjieReference if t.name.startsWith("$Cl") =>
-            fasm.newClosure(IR1, t.toCbc)
-          case t: SignatureType.InstantiatedReference if t.name.startsWith("$Cl") =>
-            fasm.newClosure(IR1, t.toCbc)
-          case _ =>
-            fasm.newobj(t.toCbc)
+        if (t.isCangjieLambda) {
+          fasm.newClosure(IR1, t.toCbc)
+        } else {
+          fasm.newobj(t.toCbc)
         }
       } else {
         val ftcSigIdx = CodeSigSymbol(allocType)
@@ -1441,8 +1438,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         val permanent = targetRef.getPermanent
         if (isStandalone) {
           val fasm = asm.asInstanceOf[ForkedISA12Assembler]
-          if (targetRef.refType.symType.getName.startsWith("$C")) {
-            fasm.callClosure(isa12ResultReg, targetRef.refType.sigType.toCbc)
+          if (targetRef.refType.sigType.isCangjieClosure) {
+            if (targetRef.method.getName == "$GenericVirtualFunc") {
+              fasm.callClosureGeneric(isa12ResultReg, targetRef.refType.sigType.toCbc)
+            } else {
+              fasm.callClosure(isa12ResultReg, targetRef.refType.sigType.toCbc)
+            }
           } else {
             val outerTI = call.invokeArgs(targetRef.methodType.getOuterTypeInfoArgIdx)
             val loc = outerTI match {
@@ -1731,6 +1732,24 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       fasm.instanceOfGeneric(dst, obj, bti)
     }
 
+    private def genNewGeneric(n: NewGeneric): Unit = {
+      assert(iReg(n) == IR1)
+      val IReg(ti) = n.allocTypeInfo
+      // TODO: do we need it here?
+      val t = n.allocType match {
+        case SignatureType.Box(t) => t
+        case t => t
+      }
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      if (t.isCangjieLambda) {
+        fasm.newClosureGeneric(ti, t.toCbc)
+      } else {
+        fasm.newobjGeneric(ti, t.toCbc)
+      }
+      addXSite(n)
+      saveGCState(n)
+    }
+
     private def genAtomic(n: AtomicOps.AtomicNode): Unit = {
       val fasm = asm.asInstanceOf[ForkedISA12Assembler]
       val adapter = fasm.adapter
@@ -1866,6 +1885,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: NewSomeOptionGeneric => genNewSomeOptionGeneric(x)
         case x: AssignGeneric => genAssignGeneric(x)
         case x: InstanceOfGeneric => genInstanceOfGeneric(x)
+        case x: NewGeneric => genNewGeneric(x)
 
         case x: FieldSeqOperation => genFieldSeqOperation(x)
 
