@@ -2016,7 +2016,7 @@ trait CHIRParser
 
     private def calcMethodRef(declType: SymClassType, refType: SignatureType, _name: String,
                               func: Function, funcKind: Int, attributes: Long): MethodReference = {
-      val isStatic = declType.isCangjiePackage || (Attribute.STATIC in attributes) || resolver.isStaticExtendFunc(func)
+      val isStatic = declType.isCangjiePackage || (Attribute.STATIC in attributes)
       val (sig, _, isCFunc, vararg) = resolver.functionSig(func, hasReceiver = !isStatic)
 
       // TODO: explain
@@ -2027,7 +2027,7 @@ trait CHIRParser
       }
 
       val method = refType match {
-        case refType: (SignatureType.InstantiatedType | SignatureType.CangjieEnum) if !resolver.isStaticExtendFunc(func) =>
+        case refType: (SignatureType.InstantiatedType | SignatureType.CangjieEnum) =>
           val cparams = genericParams(refType)
           val lparams = Seq.empty[SignatureType] //FIXME
           declType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig, MethodSignature.equalInstantiated(cparams, lparams))

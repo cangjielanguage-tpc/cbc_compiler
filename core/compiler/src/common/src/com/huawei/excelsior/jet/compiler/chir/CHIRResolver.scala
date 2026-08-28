@@ -443,13 +443,6 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
     assert(idx >= 0, s"$name:$idx")
     s"$name:$idx"
   }
-  
-  def isStaticExtendFunc(f: Function): Boolean = pkg.getDef[Table](f.base.declaredParent) match {
-    case d: ExtendDef =>
-      val vtableFuncs = d.base.vtableVector.toSeq.flatMap(_.virtualMethodsVector.toSeq).map(m => pkg.getValue[Function](m.instance))
-      vtableFuncs.contains(f)
-    case _ => false
-  }
 
   def getOverrideSrcFuncType(f: Function): Option[OverrideSrcFuncType] = {
     annotations(f.base.base.base).collectFirst {

@@ -264,22 +264,21 @@ object CHIRBuilder {
             Modifiers(Modifier.CJ_MUT)
           case _ => Modifiers.EMPTY
         }
-        val extendModifiers = if (resolver.isStaticExtendFunc(m)) Modifiers(STATIC) else Modifiers.EMPTY
-        val modifiers = resolver.symModifiers(value.base.attributes) | extendModifiers | mutModifiers
+        val modifiers = resolver.symModifiers(value.base.attributes) | mutModifiers
         val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
         val genericInfo = resolver.genericInfo(m)
         val genericFuncParamsCount = m.genericTypeParamsLength
         val hasOuterTypeInfo = true // All member functions have outer type info parameter
         val hasThisTypeInfoParam = modifiers.contains(STATIC)
         val linkageName = resolver.linkageName(m)
-        val hasMutParam = symType.isRecord && modifiers.contains(Modifier.CJ_MUT)
+        val hasMutParam = rcvSig.isRecord && modifiers.contains(Modifier.CJ_MUT)
         val rcvParam = if (hasMutParam) None else rcv map {
           case t: SignatureType.OptionLikeEnum if t.someType.isTypeVariable => SignatureType.Box(t)
           case t => t
         }
 
         // TODO: explain
-        val symMethods = if (symType.isVariableSizeType) {
+        val symMethods = if (rcvSig.isVariableSizeType) {
 
           val mutName = resolver.mutWithoutTI(name)
           val mutLinkageName = resolver.mutWithoutTI(linkageName)
