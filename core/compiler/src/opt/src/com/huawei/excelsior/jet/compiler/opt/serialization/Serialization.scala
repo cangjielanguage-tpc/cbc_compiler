@@ -336,6 +336,7 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: Box => Box.Proto
         case _: Unbox => Unbox.Proto
         case _: UnboxRec => UnboxRec.Proto
+        case _: UnboxLea => UnboxLea.Proto
         case _: SpawnFuture => SpawnFuture.Proto
         case _: SpawnClosure => SpawnClosure.Proto
         case _: OptionTagGeneric => OptionTagGeneric.Proto

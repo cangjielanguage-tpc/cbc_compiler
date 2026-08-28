@@ -51,6 +51,7 @@ trait CHIRParser
   def loadCHIRMethod(method: Method, args0: Seq[Node]): RTPartsInfo = stage(Stage.LoadCHIR) {
     val args = args0
     val (ret, message) = method match {
+      case _ if method.isMutWrapper => (loadMutWrapper(method, args), "after load mut wrapper")
       case _ => (loadNormal(method, args), "after load normal")
     }
 
@@ -83,6 +84,63 @@ trait CHIRParser
   private def withRecordConversion[T](action: => T): T = {
     Node.withImplicitArgConversion(convertRecord) {
       action
+    }
+  }
+
+  private def loadMutWrapper(method: Method, args: Seq[Node]): Return = {
+    val Some(source, idx) = method.getCHIRDef
+    implicit val resolver: CHIRResolver = CHIRLoader.getCHIRResolver(source.toString)(env)
+    implicit val pkg: ParsedCHIRPackage = resolver.pkg
+
+    // Mut wrapper C.foo is a wrapper around method C.foo$withoutTI
+    // but with boxed receiver argument instead of mut pair or single record
+    // receiver in C.foo$withoutTI.
+    //
+    // Note: wrapped method may not be "mut" with mut pair as receiver,
+    //       despite what the name "mut wrapper" might suggest.
+    currentScope.inState(entryBlock, entryBlock) {
+      val declType = method.getDeclaringClass
+      val wrappedMethod = declType.findDeclaredMethodOrNull(xstr(resolver.mutWithoutTI(method.getName)), method.getSignature)
+      assert(wrappedMethod != null)
+
+      val rcvBoxed = args(method.getReceiverArgIdx)
+      val nonRcvArgs = args.drop(method.getReceiverArgIdx + 1)
+
+      val sret = if (method.hasRetByValParameter) {
+        args.headOption
+      } else {
+        None
+      }
+
+      val (mutObject, rcvType, mak) = if (wrappedMethod.isCangjieMut) {
+        assert(wrappedMethod.getMutRecordArgIdx == method.getReceiverArgIdx)
+        (Some(rcvBoxed), wrappedMethod.getMutRecordType, MAK.MUT)
+      } else {
+        assert(wrappedMethod.getReceiverArgIdx == method.getReceiverArgIdx)
+        (None, wrappedMethod.getParamType(wrappedMethod.getReceiverArgIdx), MAK.SPECIAL)
+      }
+
+      val payload = UnboxLea(rcvType)(rcvBoxed)
+
+      val refType = rcvType
+      val target = new MethodReference(wrappedMethod, mak, CompiledType(refType))
+      val call = Invoke(target)(sret.toSeq ++ Seq(payload) ++ mutObject.toSeq ++ nonRcvArgs: _*)
+
+      val retType = method.getReturnType
+      val retVal = if (retType.isZST) {
+        Void()
+      } else {
+        call
+      }
+      val ret = Return.proto(ValueType(retType))(retVal)
+
+      dbgPrinter.debugCFG("CFG after parsing")
+      dbgPrinter.debugGraphs("CFG after parsing")
+
+      checkGraphConsistency(CheckLevels.Important, cfg)
+      checkIRConsistency(CheckLevels.Important)
+
+      ret
     }
   }
 
@@ -997,6 +1055,9 @@ trait CHIRParser
         } else if (sig.isPrimitive) {
           ZeroValueNode(ValueType.fromSig(sig))
 
+        } else if (sig.isVariableSizeType) {
+          NewGeneric(sig)(loadTypeInfo(sig))
+
         } else {
           assert(sig.isRecord)
           StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
@@ -1085,7 +1146,7 @@ trait CHIRParser
             staticField match {
               case None =>
                 if (host.isVariableLayoutType || fields.exists(_.fieldType.isVariableSizeType)) {
-                  StoreFieldSeqGeneric(fields)(mem, arg, typeInfos(fields))
+                  StoreFieldSeqGeneric(fields)(maybeDerivedPtr(mem), arg, typeInfos(fields))
                 } else if (needsCopy(lastField.fieldType)) {
                   val addr = GetFieldSeqRef(fields)(maybeDerivedPtr(mem))
                   copy(lastField.fieldType, addr, arg)
@@ -1576,6 +1637,17 @@ trait CHIRParser
             if (env.enabled(FailArrayAcquireRawData)) {
               notImplemented("ARRAY_RELEASE_RAW_DATA intrinsic")
             }
+
+          case PackageFormat.IntrinsicKind.OBJECT_ZERO_VALUE =>
+            val sig = resolver.typeSig(e.base.base.resultTy)
+            val res = if (sig.isZST) {
+              Void()
+            } else if (sig.isRecord) {
+              StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
+            } else {
+              ZeroValueNode(ValueType.fromSig(sig))
+            }
+            state(e) = res
         }
 
       case e: PackageFormat.SpawnBase =>
@@ -2016,18 +2088,18 @@ trait CHIRParser
 
     private def calcMethodRef(declType: SymClassType, refType: SignatureType, _name: String,
                               func: Function, funcKind: Int, attributes: Long): MethodReference = {
-      val isStatic = declType.isCangjiePackage || (Attribute.STATIC in attributes) || resolver.isStaticExtendFunc(func)
+      val isStatic = declType.isCangjiePackage || (Attribute.STATIC in attributes)
       val (sig, _, isCFunc, vararg) = resolver.functionSig(func, hasReceiver = !isStatic)
 
       // TODO: explain
-      val name = if (!isStatic && declType.isVariableSizeType) {
+      val name = if (!isStatic && declType.isVariableSizeType && !refType.isVariableSizeType) {
         resolver.mutWithoutTI(_name)
       } else {
         _name
       }
 
       val method = refType match {
-        case refType: (SignatureType.InstantiatedType | SignatureType.CangjieEnum) if !resolver.isStaticExtendFunc(func) =>
+        case refType: (SignatureType.InstantiatedType | SignatureType.CangjieEnum) =>
           val cparams = genericParams(refType)
           val lparams = Seq.empty[SignatureType] //FIXME
           declType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig, MethodSignature.equalInstantiated(cparams, lparams))
@@ -2086,7 +2158,7 @@ trait CHIRParser
           case (from: SignatureType.OptionLikeEnum, to: SignatureType.Box) if from.someType.isTypeVariable => a
           case (from: SignatureType.OptionLikeEnum, to: SignatureType.Box) if from.isNullableOption =>
             Box(from)(loadTypeInfo(from), a)
-          case (from, to: SignatureType.Box) if from.isTraceableReference => a
+          case (from, to: SignatureType.Box) if from.isTraceableReference || from.isVariableSizeType => a
           case (from, to: SignatureType.Box) => Box(from)(loadTypeInfo(from), a)
 
           case (_, _) => a
@@ -2356,40 +2428,6 @@ trait CHIRParser
       typeInfoSigs(fields) map loadTypeInfo
     }
 
-    private def loadTypeInfo(t: SignatureType): Node = {
-      if (t.containsTypeVariables) {
-        import SignatureType.*
-        t match {
-          case t: ClassTypeVariable =>
-            if (method.getDeclaringClass.isCangjiePackage) {
-              genericTypeInfoParam(t.idx)
-            } else {
-              GenericTypeArg(t.idx)(outerTypeInfoParam())
-            }
-          case t: LocalTypeVariable => genericTypeInfoParam(t.idx)
-          case t: InstantiatedType  => LoadTypeInfoGeneric(t)(t.instantiatedTypeParameters.map(loadTypeInfo): _*)
-          case t: ArraySlice        => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
-          case t: CangjieArray      => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
-          case t: VArray            => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
-          case t: Tuple             => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
-          case t: CangjieEnum       => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
-          case t => shouldNotReachHere(t)
-        }
-      } else {
-        LoadTypeInfo(t)
-      }
-    }
-
-    private def genericTypeInfoParam(idx: Int): Node = {
-      assert(rootMethod.getMethodType.hasGenericFuncParams)
-      rootMethodParam(rootMethod.getMethodType.getGenericFuncParamsStartIdx(rootMethod.getGenericInfo.constraints.size) + idx)
-    }
-
-    private def outerTypeInfoParam(): Node = {
-      assert(rootMethod.getMethodType.hasOuterTypeInfoParameter)
-      rootMethodParam(rootMethod.getMethodType.getOuterTypeInfoArgIdx)
-    }
-
     private def writeBarrier(): Unit = {
       // FIXME
     }
@@ -2425,6 +2463,40 @@ trait CHIRParser
     for (n <- all[SMutRecArg]) {
       n.replaceBy(n.receiver)
     }
+  }
+
+  private def loadTypeInfo(t: SignatureType): Node = {
+    if (t.containsTypeVariables) {
+      import SignatureType.*
+      t match {
+        case t: ClassTypeVariable =>
+          if (rootMethod.getDeclaringClass.isCangjiePackage) {
+            genericTypeInfoParam(t.idx)
+          } else {
+            GenericTypeArg(t.idx)(outerTypeInfoParam())
+          }
+        case t: LocalTypeVariable => genericTypeInfoParam(t.idx)
+        case t: InstantiatedType  => LoadTypeInfoGeneric(t)(t.instantiatedTypeParameters.map(loadTypeInfo): _*)
+        case t: ArraySlice        => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
+        case t: CangjieArray      => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
+        case t: VArray            => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
+        case t: Tuple             => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
+        case t: CangjieEnum       => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
+        case t => shouldNotReachHere(t)
+      }
+    } else {
+      LoadTypeInfo(t)
+    }
+  }
+
+  private def genericTypeInfoParam(idx: Int): Node = {
+    assert(rootMethod.getMethodType.hasGenericFuncParams)
+    rootMethodParam(rootMethod.getMethodType.getGenericFuncParamsStartIdx(rootMethod.getGenericInfo.constraints.size) + idx)
+  }
+
+  private def outerTypeInfoParam(): Node = {
+    assert(rootMethod.getMethodType.hasOuterTypeInfoParameter)
+    rootMethodParam(rootMethod.getMethodType.getOuterTypeInfoArgIdx)
   }
 
 }

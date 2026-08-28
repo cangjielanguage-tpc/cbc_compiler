@@ -171,6 +171,8 @@ abstract class Method extends Symbol with Member with ConstantPoolObject with Fr
 
   def isGlobalInit: Boolean
 
+  def isMutWrapper: Boolean
+
   def isAJRTAllocator: Boolean
 
   /** True if method is marked with AJ annotation @NoLocalGCPoints or JCA directive NO_LOCAL_GC_POINTS. */
@@ -221,8 +223,8 @@ abstract class Method extends Symbol with Member with ConstantPoolObject with Fr
     if (getDeclaringClass.isRecord) {
       SignatureType.fromSymType(getDeclaringClass)
     } else {
-      assert(isStatic) // array slice constructor
-      getSignature.parameterTypes.head ensuring (_.isArraySliceLike)
+      assert(getDeclaringClass.isCangjieExtend)
+      getDeclaringClass.getCangjieExtendInfo
     }
   }
 

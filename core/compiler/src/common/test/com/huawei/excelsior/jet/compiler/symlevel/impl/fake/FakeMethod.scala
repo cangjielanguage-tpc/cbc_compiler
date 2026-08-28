@@ -79,6 +79,8 @@ class FakeMethod(name: String = "fake", private var methodType: MethodType = Fak
 
   override def isGlobalInit = false
 
+  override def isMutWrapper = false
+
   private def calcDeclaredMethodIndex: Int = {
     getDeclaringClass.getDeclaredMethods.indexOf(this)
   }

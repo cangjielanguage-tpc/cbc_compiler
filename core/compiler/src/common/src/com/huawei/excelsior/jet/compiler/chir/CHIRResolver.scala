@@ -58,7 +58,7 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
   def symName(v: Table): String = {
     def typeDefName(v: CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
-      if (srcName.isEmpty) v.identifier.tail else s"${v.packageName}:$srcName"
+      if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
     }
 
     def globalName(_v: GlobalValue, t: Table): String = {
@@ -442,13 +442,6 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
   def classBasedEnumConstructorName(name: String, idx: Int): String = {
     assert(idx >= 0, s"$name:$idx")
     s"$name:$idx"
-  }
-  
-  def isStaticExtendFunc(f: Function): Boolean = pkg.getDef[Table](f.base.declaredParent) match {
-    case d: ExtendDef =>
-      val vtableFuncs = d.base.vtableVector.toSeq.flatMap(_.virtualMethodsVector.toSeq).map(m => pkg.getValue[Function](m.instance))
-      vtableFuncs.contains(f)
-    case _ => false
   }
 
   def getOverrideSrcFuncType(f: Function): Option[OverrideSrcFuncType] = {

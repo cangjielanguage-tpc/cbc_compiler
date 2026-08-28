@@ -164,21 +164,20 @@ object CHIRBuilder {
 
       pkg.getDef[Table](id) match {
         case d: StructDef =>
-          if (!resolver.isImported(d.base) && !resolver.isGenericInstantiated(d.base)) {
+          if (!resolver.isImported(d.base)) {
             builder.markAsCHIRDef(symType)
           }
-          val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
           if (!resolver.isGenericInstantiated(d.base)) {
+            val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
             builder.setSuperinterfaces(symType, superinterfaces)
           }
           fillFields(symType, d.base)
 
         case d: ClassDef =>
-          val genericInstantiated = resolver.isGenericInstantiated(d.base)
-          if (!resolver.isImported(d.base) && !genericInstantiated) {
+          if (!resolver.isImported(d.base)) {
             builder.markAsCHIRDef(symType)
           }
-          if (!genericInstantiated) {
+          if (!resolver.isGenericInstantiated(d.base)) {
             val isInterface = symType.isInterface
             val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
             
@@ -193,13 +192,15 @@ object CHIRBuilder {
           fillFields(symType, d.base)
 
         case d: EnumDef =>
-          val imported = resolver.isImported(d.base) || resolver.isGenericInstantiated(d.base)
+          val imported = resolver.isImported(d.base)
           if (!imported) {
             builder.markAsCHIRDef(symType)
           }
 
-          val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
-          builder.setSuperinterfaces(symType, superinterfaces)
+          if (!resolver.isGenericInstantiated(d.base)) {
+            val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
+            builder.setSuperinterfaces(symType, superinterfaces)
+          }
 
           val ctorSigs = d.ctorsVector.toSeq.map(c => pkg.getType[FuncType](c.funcType))
           val ctors = ctorSigs.map(_.base.argTysVector.toSeq.init).map(_.map(resolver.typeSig))
@@ -264,22 +265,27 @@ object CHIRBuilder {
             Modifiers(Modifier.CJ_MUT)
           case _ => Modifiers.EMPTY
         }
-        val extendModifiers = if (resolver.isStaticExtendFunc(m)) Modifiers(STATIC) else Modifiers.EMPTY
-        val modifiers = resolver.symModifiers(value.base.attributes) | extendModifiers | mutModifiers
+        val modifiers = resolver.symModifiers(value.base.attributes) | mutModifiers
         val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
         val genericInfo = resolver.genericInfo(m)
         val genericFuncParamsCount = m.genericTypeParamsLength
         val hasOuterTypeInfo = true // All member functions have outer type info parameter
         val hasThisTypeInfoParam = modifiers.contains(STATIC)
         val linkageName = resolver.linkageName(m)
-        val hasMutParam = symType.isRecord && modifiers.contains(Modifier.CJ_MUT)
+        val hasMutParam = rcvSig.isRecord && modifiers.contains(Modifier.CJ_MUT)
         val rcvParam = if (hasMutParam) None else rcv map {
           case t: SignatureType.OptionLikeEnum if t.someType.isTypeVariable => SignatureType.Box(t)
           case t => t
         }
 
+        for (receiver <- rcv) {
+          if (!symType.isCangjieExtend && resolver.isGenericInstantiated(d)) {
+            builder.setExtendInfo(symType, receiver)
+          }
+        }
+
         // TODO: explain
-        val symMethods = if (symType.isVariableSizeType) {
+        val symMethods = if (rcvSig.isVariableSizeType) {
 
           val mutName = resolver.mutWithoutTI(name)
           val mutLinkageName = resolver.mutWithoutTI(linkageName)
@@ -295,6 +301,8 @@ object CHIRBuilder {
           val mutWrapper = builder.addMethod(symType, mutWrapperName, sig, mutWrapperLinkageName, mutWrapperModifiers.value, genericInfo,
             ABI.Description(mutWrapperReceiver, mutWrapperHasMutParam, hasThisTypeInfoParam,
             isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
+
+          builder.markAsMutWrapper(mutWrapper)
 
           virtMethods(id.toInt) = mutWrapper
 

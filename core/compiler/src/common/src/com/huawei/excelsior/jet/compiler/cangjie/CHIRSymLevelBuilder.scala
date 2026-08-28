@@ -43,6 +43,7 @@ trait CHIRSymLevelBuilder {
   def markAsConstructor(method: Method): Unit
   def markAsPackageInit(method: Method): Unit
   def markAsPackageLiteralInit(method: Method): Unit
+  def markAsMutWrapper(method: Method): Unit
 
   def markAsCHIRDef(clazz: ClassType): Unit
   def markAsCHIRDef(field: Field, id: Int): Unit

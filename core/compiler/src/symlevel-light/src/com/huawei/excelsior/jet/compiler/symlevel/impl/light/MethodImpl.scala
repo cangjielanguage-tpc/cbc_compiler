@@ -129,6 +129,8 @@ class MethodImpl private[light](val o2m: pcOModule.Method) extends Method with S
 
   override def isGlobalInit = o2m.isGlobalInit
 
+  override def isMutWrapper = o2m.isMutWrapper
+
   override def isAJRTAllocator = o2m.isAjRTAllocator
 
   override protected def isNoLocalGCPoints = o2m.isNoLocalGCPoints
