@@ -10,13 +10,12 @@ package com.huawei.excelsior.jet.compiler.cbc
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.Symbol
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{DirectCallAotData, FieldFlag, InstanceFieldAotData, InterfaceCallAotData, MethodRefFlag, MethodRefFlags, StaticFieldAotData, StringLiteral}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{DirectCallAotData, InstanceFieldAotData, InterfaceCallAotData, MethodRefFlag, MethodRefFlags, StaticFieldAotData, StringLiteral}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.SymbolAdapter
-import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, FieldReference, RawData}
+import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, RawData}
 import com.huawei.excelsior.jet.compiler.TypeProvider
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.env
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
-import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.*
 import com.huawei.excelsior.jet.compiler.symlevel.*
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
