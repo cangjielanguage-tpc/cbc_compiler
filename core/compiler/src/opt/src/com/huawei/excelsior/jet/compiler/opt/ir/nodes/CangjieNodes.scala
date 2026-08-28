@@ -507,6 +507,24 @@ trait CangjieNodes { self: Universe =>
     def apply(base: SignatureType)(baseTypeInfo: Node, arg: Node) = proto(base)(baseTypeInfo, arg)
   }
 
+  class UnboxLea private(proto: UnboxLea.Proto) extends FloatingNodeWithFixedArgs(proto) with ControlledNode {
+    def base = proto.base
+
+    def value = arg(1)
+  }
+
+  object UnboxLea {
+    case class Proto private[UnboxLea](base: SignatureType)
+      extends FixedArgs[UnboxLea](ControlType, ValueType.fromSig(SignatureType.Box(base)))(ValueType.fromSig(base, instantiateRich = true)) {
+      assert(base.isRecord)
+
+      def newInstance() = new UnboxLea(this)
+    }
+
+    def proto(base: SignatureType) = Prototype.intern(Proto(base))
+    def apply(base: SignatureType)(arg: Node) = proto(base)(arg)
+  }
+
   class SpawnFuture private(proto: SpawnFuture.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with ProducesValue with CanThrow {
     def retType = proto.retType
 

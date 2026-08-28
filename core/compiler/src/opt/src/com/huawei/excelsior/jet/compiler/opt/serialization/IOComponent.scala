@@ -131,6 +131,7 @@ trait IOComponent extends BinaryIO { self: Universe =>
     Box.Proto,
     Unbox.Proto,
     UnboxRec.Proto,
+    UnboxLea.Proto,
     SpawnFuture.Proto,
     SpawnClosure.Proto,
     OptionTagGeneric.Proto,

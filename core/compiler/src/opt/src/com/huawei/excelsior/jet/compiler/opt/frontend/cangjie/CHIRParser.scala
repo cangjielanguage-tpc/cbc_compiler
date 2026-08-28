@@ -120,7 +120,7 @@ trait CHIRParser
         (None, wrappedMethod.getParamType(wrappedMethod.getReceiverArgIdx), MAK.SPECIAL)
       }
 
-      val payload = UnboxRec(rcvType)(loadTypeInfo(rcvType), rcvBoxed)
+      val payload = UnboxLea(rcvType)(rcvBoxed)
 
       val refType = rcvType
       val target = new MethodReference(wrappedMethod, mak, CompiledType(refType))

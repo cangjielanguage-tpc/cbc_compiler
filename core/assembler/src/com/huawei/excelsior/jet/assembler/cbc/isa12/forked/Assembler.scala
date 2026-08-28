@@ -876,6 +876,14 @@ trait ForkedAssembler {
     markLoadStoreValue(src, fr, load = false)
   }
 
+  def leaBox(dst: IR, base: IR): Unit = {
+    stream
+      .opc8(Opcode.LeaBox)
+      .bits(_.w4(dst).w4(base))
+    analyzer.useRef(base)
+    analyzer.prim(dst)
+  }
+
   // endregion
 }
 
@@ -1104,6 +1112,7 @@ object Assembler {
     case Lea
     case St
     case St_Static
+    case LeaBox
   }
 
   enum MemOpcode extends Ordinal {

@@ -242,7 +242,8 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | LoadMemory | StoreMemory | InitStringRecord | ThisTypeInfoCBC | ThisTypeInfoByCBC
       | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq | GetFieldSeqRef | GetStaticFieldSeqRef
       | LoadFieldSeqGeneric | StoreFieldSeqGeneric | GetFieldSeqRefGeneric
-      | DerivedPtr | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | SpawnFuture | SpawnClosure
+      | DerivedPtr | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | UnboxLea
+      | SpawnFuture | SpawnClosure
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
       | AssignGeneric | InstanceOfGeneric | NewGeneric
       | AtomicOps.AtomicNode) => true

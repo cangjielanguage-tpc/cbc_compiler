@@ -888,6 +888,9 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case UnboxRec.Proto =>
           UnboxRec.proto(read.sigType())
 
+        case UnboxLea.Proto =>
+          UnboxLea.proto(read.sigType())
+
         case SpawnFuture.Proto =>
           SpawnFuture.proto(read.sigType())
 

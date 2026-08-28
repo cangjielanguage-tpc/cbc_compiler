@@ -1105,6 +1105,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       asm.unbox(n.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot, src)
     }
 
+    private def genUnboxLea(n: UnboxLea): Unit = {
+      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
+      val IReg(dst) = n
+      val IReg(src) = n.value
+      fasm.leaBox(dst, src)
+    }
+
     private def genSpawnFuture(n: SpawnFuture): Unit = {
       val IReg(futureReg) = n.future
       asm.spawnFuture(futureReg, n.retType.toCbc)
@@ -1280,6 +1287,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: Box => genBox(x)
         case x: Unbox => genUnbox(x)
         case x: UnboxRec => genUnboxRec(x)
+        case x: UnboxLea => genUnboxLea(x)
 
         case x: SpawnFuture => genSpawnFuture(x)
         case x: SpawnClosure => genSpawnClosure(x)
