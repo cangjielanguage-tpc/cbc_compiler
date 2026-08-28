@@ -1055,6 +1055,9 @@ trait CHIRParser
         } else if (sig.isPrimitive) {
           ZeroValueNode(ValueType.fromSig(sig))
 
+        } else if (sig.isVariableSizeType) {
+          NewGeneric(sig)(loadTypeInfo(sig))
+
         } else {
           assert(sig.isRecord)
           StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
@@ -1143,7 +1146,7 @@ trait CHIRParser
             staticField match {
               case None =>
                 if (host.isVariableLayoutType || fields.exists(_.fieldType.isVariableSizeType)) {
-                  StoreFieldSeqGeneric(fields)(mem, arg, typeInfos(fields))
+                  StoreFieldSeqGeneric(fields)(maybeDerivedPtr(mem), arg, typeInfos(fields))
                 } else if (needsCopy(lastField.fieldType)) {
                   val addr = GetFieldSeqRef(fields)(maybeDerivedPtr(mem))
                   copy(lastField.fieldType, addr, arg)
@@ -2078,7 +2081,7 @@ trait CHIRParser
       val (sig, _, isCFunc, vararg) = resolver.functionSig(func, hasReceiver = !isStatic)
 
       // TODO: explain
-      val name = if (!isStatic && declType.isVariableSizeType) {
+      val name = if (!isStatic && declType.isVariableSizeType && !refType.isVariableSizeType) {
         resolver.mutWithoutTI(_name)
       } else {
         _name
@@ -2144,7 +2147,7 @@ trait CHIRParser
           case (from: SignatureType.OptionLikeEnum, to: SignatureType.Box) if from.someType.isTypeVariable => a
           case (from: SignatureType.OptionLikeEnum, to: SignatureType.Box) if from.isNullableOption =>
             Box(from)(loadTypeInfo(from), a)
-          case (from, to: SignatureType.Box) if from.isTraceableReference => a
+          case (from, to: SignatureType.Box) if from.isTraceableReference || from.isVariableSizeType => a
           case (from, to: SignatureType.Box) => Box(from)(loadTypeInfo(from), a)
 
           case (_, _) => a

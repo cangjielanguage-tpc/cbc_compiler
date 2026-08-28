@@ -2054,9 +2054,7 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
 
     def receiverType(targetRef: MethodReference): Type = {
       require(targetRef.hasNonRecordReceiverParameter)
-      // Note: probably should use methodType.getParameterType(methodType.getReceiverArgIdx),
-      //       but unit-tests do not properly set method type, so use refClass as a substitute.
-      ValueType(targetRef.refClass)
+      ValueType(targetRef.methodType.parameterType(targetRef.getReceiverArgIndex))
     }
 
     object ReceiverEdge extends EdgeMatcher[AnyInvokeTarget](2)

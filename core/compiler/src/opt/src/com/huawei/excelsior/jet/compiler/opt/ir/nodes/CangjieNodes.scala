@@ -850,7 +850,7 @@ trait CangjieNodes { self: Universe =>
 
   object NewGeneric {
     case class Proto private[NewGeneric](allocType: SignatureType)
-      extends FixedArgs[NewGeneric](ControlType, MemoryType, AddrType)(ValueType.fromSig(allocType))
+      extends FixedArgs[NewGeneric](ControlType, MemoryType, AddrType)(TRefType)
       with ControlMemoryValueTagged[NewGeneric] {
       assert(allocType.containsTypeVariables || allocType.isCangjieLambda)
 
