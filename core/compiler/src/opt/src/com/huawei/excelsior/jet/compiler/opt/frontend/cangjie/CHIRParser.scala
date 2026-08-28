@@ -1637,6 +1637,17 @@ trait CHIRParser
             if (env.enabled(FailArrayAcquireRawData)) {
               notImplemented("ARRAY_RELEASE_RAW_DATA intrinsic")
             }
+
+          case PackageFormat.IntrinsicKind.OBJECT_ZERO_VALUE =>
+            val sig = resolver.typeSig(e.base.base.resultTy)
+            val res = if (sig.isZST) {
+              Void()
+            } else if (sig.isRecord) {
+              StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
+            } else {
+              ZeroValueNode(ValueType.fromSig(sig))
+            }
+            state(e) = res
         }
 
       case e: PackageFormat.SpawnBase =>

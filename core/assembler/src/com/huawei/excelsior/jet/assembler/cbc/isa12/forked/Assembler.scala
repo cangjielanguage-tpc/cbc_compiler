@@ -959,7 +959,7 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
   def starrObj(ra: IR, ri: IR, rv: Rg): Unit = storeArray(rv, ST_REF, ra, ri)
 
   def newarr(ftc_sig_id: Symbol): Unit = newarr(adapter.sigType(ftc_sig_id))
-  def newarrzv(ftc_sig_id: Symbol): Unit = notImplemented("todo")
+  def newarrzv(ftc_sig_id: Symbol): Unit = newarr(adapter.sigType(ftc_sig_id))
   def newarrfillconst(dst: IR, len: IR, value: Long, ftc_sig_id: Symbol): Unit = notImplemented("todo")
   def newarrfillnonconst(dst: IR, len: IR, value: IR, ftc_sig_id: Symbol): Unit = notImplemented("todo")
 
