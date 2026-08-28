@@ -164,21 +164,20 @@ object CHIRBuilder {
 
       pkg.getDef[Table](id) match {
         case d: StructDef =>
-          if (!resolver.isImported(d.base) && !resolver.isGenericInstantiated(d.base)) {
+          if (!resolver.isImported(d.base)) {
             builder.markAsCHIRDef(symType)
           }
-          val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
           if (!resolver.isGenericInstantiated(d.base)) {
+            val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
             builder.setSuperinterfaces(symType, superinterfaces)
           }
           fillFields(symType, d.base)
 
         case d: ClassDef =>
-          val genericInstantiated = resolver.isGenericInstantiated(d.base)
-          if (!resolver.isImported(d.base) && !genericInstantiated) {
+          if (!resolver.isImported(d.base)) {
             builder.markAsCHIRDef(symType)
           }
-          if (!genericInstantiated) {
+          if (!resolver.isGenericInstantiated(d.base)) {
             val isInterface = symType.isInterface
             val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
             
@@ -193,13 +192,15 @@ object CHIRBuilder {
           fillFields(symType, d.base)
 
         case d: EnumDef =>
-          val imported = resolver.isImported(d.base) || resolver.isGenericInstantiated(d.base)
+          val imported = resolver.isImported(d.base)
           if (!imported) {
             builder.markAsCHIRDef(symType)
           }
 
-          val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
-          builder.setSuperinterfaces(symType, superinterfaces)
+          if (!resolver.isGenericInstantiated(d.base)) {
+            val superinterfaces = d.base.implementedInterfacesVector.iterator.flatMap(resolveSuperinterface(_, d)).toArray
+            builder.setSuperinterfaces(symType, superinterfaces)
+          }
 
           val ctorSigs = d.ctorsVector.toSeq.map(c => pkg.getType[FuncType](c.funcType))
           val ctors = ctorSigs.map(_.base.argTysVector.toSeq.init).map(_.map(resolver.typeSig))
@@ -275,6 +276,12 @@ object CHIRBuilder {
         val rcvParam = if (hasMutParam) None else rcv map {
           case t: SignatureType.OptionLikeEnum if t.someType.isTypeVariable => SignatureType.Box(t)
           case t => t
+        }
+
+        for (receiver <- rcv) {
+          if (!symType.isCangjieExtend && resolver.isGenericInstantiated(d)) {
+            builder.setExtendInfo(symType, receiver)
+          }
         }
 
         // TODO: explain

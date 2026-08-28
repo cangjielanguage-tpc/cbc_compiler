@@ -58,7 +58,7 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
   def symName(v: Table): String = {
     def typeDefName(v: CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
-      if (srcName.isEmpty) v.identifier.tail else s"${v.packageName}:$srcName"
+      if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
     }
 
     def globalName(_v: GlobalValue, t: Table): String = {
