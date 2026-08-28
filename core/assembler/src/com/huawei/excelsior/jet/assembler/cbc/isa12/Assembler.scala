@@ -9,22 +9,13 @@
 package com.huawei.excelsior.jet.assembler.cbc.isa12
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.assembler.cbc.Fixups.BTT.Kind.*
-import com.huawei.excelsior.jet.assembler.cbc.Register.IR.IRZ
-import com.huawei.excelsior.jet.assembler.cbc.Register.{FR, IR}
-import com.huawei.excelsior.jet.assembler.cbc.SignedImmCompactEncoding.{EncodedImmParts, calculateMemoryCompactImm}
-import com.huawei.excelsior.jet.assembler.cbc.StackSlot.OffHeapMemory
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.ImmEXT.N.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Fixups.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.SymbolicObjectControl as SOC
-import com.huawei.excelsior.jet.assembler.cbc.{Bits, CbcAssembler, CbcTypeKind, FExtBCC, FieldReference, OpcodePrefix, RawData, Register, StackSlot}
-import com.huawei.excelsior.jet.assembler.fixups.{CoverageLocs, Relocation}
-import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.{CBC_ID16, CBC_ID32}
-import com.huawei.excelsior.jet.assembler.{AsmType, Fixup, Label, Symbol, Width as AsmWidth}
+import com.huawei.excelsior.jet.assembler.cbc.{CbcTypeKind, Register}
+import com.huawei.excelsior.jet.assembler.Width as AsmWidth
 import com.huawei.excelsior.jet.codeemitter.BranchOp
 import xscala.util.MathUtils
-import xscala.util.MathUtils.{bitsSigned, isNBitsSigned, rangeMask64, rightNBits32, rightNBits64, signExtend, isNBits as isNBitsUnsigned}
+import xscala.util.MathUtils.{rangeMask64, rightNBits32, rightNBits64, signExtend, isNBits as isNBitsUnsigned}
 
 import scala.PartialFunction.condOpt
 
