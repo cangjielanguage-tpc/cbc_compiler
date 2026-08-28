@@ -9,22 +9,19 @@
 package com.huawei.excelsior.jet.assembler.cbc.isa12.forked
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, BytecodeReferenceSymbol, FieldReference, FieldReferenceWithType, MethodReference, Signature, SingleFieldReference, StringLiteral}
-import com.huawei.excelsior.jet.assembler.cbc.CbcTypeKind.{F32, F64}
-import com.huawei.excelsior.jet.assembler.cbc.{CbcAssembler, CbcFileFormat, CbcTypeKind, MemExpr, StackSlot, Register as Rg}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, FieldReference, FieldReferenceWithType, MethodReference, Signature, SingleFieldReference, StringLiteral}
+import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, CbcTypeKind, StackSlot, Register as Rg}
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IRZ}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W16, W32, W64, W8}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Checked, Common, Sign, Width}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.LoadAccessKind.{LD_F32, LD_F64, LD_REC, LD_REF}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.StoreAccessKind.{ST_F32, ST_F64, ST_REF}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.{LoadAccessKind, StoreAccessKind}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.Opcode.{Ld, Ld_Static, LoadField, LoadStatic, St, St_Static, StoreField, StoreStatic}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Checked, Common, Width}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.{LD_F32, LD_F64, LD_REC, LD_REF}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.{ST_F32, ST_F64, ST_REF}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.Opcode.{Ld, Ld_Static, St, St_Static}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.RegGroup.{DivCheck, NullCheck}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.{LivenessAnalyzer, LivenessInfoCollector, MeaningfulNewIsaParts, NewIsaParts, Assembler as OldAssembler, SymbolicObjectControl as SOC}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.{LivenessAnalyzer, LivenessInfoCollector, Assembler as OldAssembler}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{FloatOperations, Opcode, RegGroup, RegSymGroup, low4, scut4}
-import com.huawei.excelsior.jet.assembler.fixups.Relocation
-import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.{CBC_ID16, CBC_ID32}
 import com.huawei.excelsior.jet.assembler.{AsmEmitter, AsmType, Fixup, Label, Symbol, Width as AsmWidth}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
 import xscala.util.MathUtils
@@ -33,7 +30,7 @@ import java.lang.Double.doubleToRawLongBits
 import java.lang.Float.floatToRawIntBits
 import scala.annotation.nowarn
 
-trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
+trait ForkedAssembler {
   self: AsmEmitter.WithLiterals & SymbolAdapter =>
 
   private def segment = self.seg
@@ -49,7 +46,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   /** Save gc map state gathered using [[LivenessAnalyzer]] */
   def saveState(): Unit = analyzer match {
     case analyzer: LivenessAnalyzer => livenessCollector.saveStates(segment, analyzer.state.toSeq)
-    case _ => 
+    case _ =>
   }
 
   def collectLiveness: LivenessInfoCollector.AllStates = livenessCollector.collect
@@ -192,9 +189,9 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       analyzer.usePrim(src)
     }
     stream
-     .opc8(Opcode.AtomicStore)
-     .bits(_.w4(src).w4(obj))
-     .sym16(f)
+      .opc8(Opcode.AtomicStore)
+      .bits(_.w4(src).w4(obj))
+      .sym16(f)
   }
 
   def cas(dst: IR, obj: IR, src1: IR, src2: IR, f: FieldReference): Unit = {
@@ -331,7 +328,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       .bits(_.w4(opc).w4(r))
   }
 
-  override def nullcheck(r: IR): Unit = instr { regGroup(NullCheck, analyzer.useRef(r))}
+  def nullcheck(r: IR): Unit = instr { regGroup(NullCheck, analyzer.useRef(r))}
   def divisorCheck(r: IR): Unit =       instr { regGroup(RegGroup.DivCheck, analyzer.usePrim(r)) }
   def catchEx(dst: IR): Unit =          instr { regGroup(RegGroup.Catch, analyzer.ref(dst)) }
   def throwEx(dst: IR): Unit =          instr { regGroup(RegGroup.Throw, analyzer.useRef(dst)) }
@@ -830,7 +827,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       case _ =>
     }
   }
-  
+
   private def markMemBase(base: IR, fr: FieldReference) = fr match {
     case fr: FieldReferenceWithType if fr.refType.isReference => analyzer.useRef(base)
     case _ => analyzer.useRec(base)
@@ -844,7 +841,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
     markMemBase(base, fr)
     markLoadStoreValue(dst, fr, load = true)
   }
-  
+
   def ld(dst: Rg, fr: FieldReference): Unit = instr {
     stream
       .opc8(Ld_Static)
@@ -852,7 +849,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       .sym16(fr)
     markLoadStoreValue(dst, fr, load = true)
   }
-  
+
   def lea(dst: IR, base: IR, fr: FieldReference): Unit = {
     stream
       .opc8(Opcode.Lea)
@@ -861,7 +858,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
     markMemBase(base, fr)
     analyzer.prim(dst)
   }
-  
+
   def st(src: Rg, base: IR, fr: FieldReference): Unit = instr {
     stream
       .opc8(St)
@@ -870,7 +867,7 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
     markMemBase(base, fr)
     markLoadStoreValue(src, fr, load = false)
   }
-  
+
   def st(src: Rg, fr: FieldReference): Unit = instr {
     stream
       .opc8(St_Static)
@@ -882,9 +879,9 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   // endregion
 }
 
-class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler with NewIsaParts with CbcAssembler { self: SymbolAdapter =>
-  override def alignCode(alignment: Int): Unit = shouldNotReachHere("cbc doesn't have it")
-  override protected def symbolLiteralKind     = shouldNotReachHere("cbc doesn't have it")
+class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: SymbolAdapter =>
+  def alignCode(alignment: Int): Unit = shouldNotReachHere("cbc doesn't have it")
+  protected def symbolLiteralKind     = shouldNotReachHere("cbc doesn't have it")
 
   def adapter: SymbolAdapter = self
 
@@ -912,138 +909,57 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler with NewIsa
 
   def initConstString(ts: StackSlot.Typed, stringId: Symbol): Unit = initConstString(ts, adapter.string(stringId))
 
-  def mov(dst: MemExpr, src: Rg): Unit = shouldNotReachHere("cjvm specific")
-  def mov(dst: Rg, src: MemExpr): Unit = shouldNotReachHere("cjvm specific")
-  def copyRec(dst: MemExpr, src: MemExpr, sigId: Symbol): Unit = shouldNotReachHere("cjvm specific")
-
   def recordCopy(dst: IR, src: IR, sigId: Symbol): Unit = recordCopy(dst, src, adapter.sigType(sigId))
-
-  // FIXME: ISA12 support in CodeGeneratorCBC require direct usage of ISA12Assembler.
-  //        Since ISA12Assembler is needed, we will just create an new inheritor.
-  //        We need to properly split an hierarchy of CBC assemblers (or just remove unsupported ones) entirely,
-  //        so we won't depend on ISA12Assembler.
-  private def poorClassHierarchy() = shouldNotReachHere("ISA12 specific encodings should not be reachable")
-  def genCommon(op: Common, w: AsmWidth, d: IR, l: IR, r: IR, prohibitB2r: Boolean = false): Unit = poorClassHierarchy()
-  def genCommonImm(op: Common, w: AsmWidth, sign: Sign, d: IR, l: IR, imm: Long, prohibitB2r: Boolean = false): Unit = poorClassHierarchy()
-  def genB2xrI16(op: SOC.B2xrI, rx: IR, id: Symbol): Unit = poorClassHierarchy()
-  def genB3xrrrFloat(d: Rg, l: Rg, r: Rg, op: OldAssembler.FloatOperations, width: Width): Unit = poorClassHierarchy()
-  def genB3xrrt4iK(dst: FR, l: FR, fimm: Double, op: OldAssembler.FloatOperations, width: Width): Unit = poorClassHierarchy()
-  def genB3xrrz(op: SOC.B3xrrr, rd: IR, rx: IR): Unit = poorClassHierarchy()
-  def blkzero(start: StackSlot.Untyped, count: Int): Unit = poorClassHierarchy()
-  def mov(dst: Rg, src: Rg, hasMemExpr: Boolean, reference: Boolean = false): Unit = poorClassHierarchy()
-  def movi2f(frd: FR, irs: IR, w: AsmWidth): Unit = poorClassHierarchy()
-  def movf2i(frd: IR, irs: FR, w: AsmWidth): Unit = poorClassHierarchy()
-  def fmov(frd: FR, frs: FR, w: AsmWidth): Unit = poorClassHierarchy()
-  def mov(frd: IR, frs: IR, w: AsmWidth): Unit = poorClassHierarchy()
-
-  def faddi(d: FR, l: FR, r: Double, w: AsmWidth): Unit = shouldNotReachHere("ISA12 only")
-  def fsubi(d: FR, l: FR, r: Double, w: AsmWidth): Unit = shouldNotReachHere("ISA12 only")
-  def fmuli(d: FR, l: FR, r: Double, w: AsmWidth): Unit = shouldNotReachHere("ISA12 only")
-  def fdivi(d: FR, l: FR, r: Double, w: AsmWidth): Unit = shouldNotReachHere("ISA12 only")
 
   // FIXME: either delete it or use it for debugging of liveness map gathering
   private def doNothing: Unit = { /* no-op */ }
   private def doNotUseOldLiveness: Unit = shouldNotReachHere("Cannot use old liveness analyzer in standalone")
 
   def aliveRefCheck(data: Symbol): Unit = doNotUseOldLiveness
-  override def aliveReference(data: Array[Byte]): Unit = doNotUseOldLiveness
-  override def unmovableReference(data: Array[Byte]): Unit = doNotUseOldLiveness
-  override def beginLocalUnmovable(r: IR): Unit = doNothing
-  override def endLocalUnmovable(r: IR): Unit = doNothing
-  override def aliveRefDifference(data: Array[Byte]): Unit = doNotUseOldLiveness
-  override def aliveUnmovableDifference(data: Array[Byte]): Unit = doNotUseOldLiveness
-  override def aliveRefCheck(data: Array[Byte]): Unit = doNotUseOldLiveness
-  override def aliveReference(data: Symbol): Unit = doNotUseOldLiveness
-  override def unmovableReference(data: Symbol): Unit = doNotUseOldLiveness
-  override def aliveRefDifference(data: Symbol): Unit = doNotUseOldLiveness
-  override def aliveUnmovableDifference(data: Symbol): Unit = doNotUseOldLiveness
+  def aliveReference(data: Array[Byte]): Unit = doNotUseOldLiveness
+  def unmovableReference(data: Array[Byte]): Unit = doNotUseOldLiveness
+  def beginLocalUnmovable(r: IR): Unit = doNothing
+  def endLocalUnmovable(r: IR): Unit = doNothing
+  def aliveRefDifference(data: Array[Byte]): Unit = doNotUseOldLiveness
+  def aliveUnmovableDifference(data: Array[Byte]): Unit = doNotUseOldLiveness
+  def aliveRefCheck(data: Array[Byte]): Unit = doNotUseOldLiveness
+  def aliveReference(data: Symbol): Unit = doNotUseOldLiveness
+  def unmovableReference(data: Symbol): Unit = doNotUseOldLiveness
+  def aliveRefDifference(data: Symbol): Unit = doNotUseOldLiveness
+  def aliveUnmovableDifference(data: Symbol): Unit = doNotUseOldLiveness
 
   // TODO: Move meaningful parts to the trait
   def packageInitCheck(sig_id: Symbol): Unit = doNothing
 
-  override def movVST(dst: IR, src: IR): Unit = shouldNotReachHere("cjvm style ug")
-  override def movi32(dst: MemExpr, imm: Int): Unit = shouldNotReachHere("cjvm specific")
-  override def movi64(dst: MemExpr, imm: Long): Unit = shouldNotReachHere("cjvm specific")
-  override def arrFill(arr: IR, data: Array[Byte]): Unit = notImplemented("todo")
+  def arrFill(arr: IR, data: Array[Byte]): Unit = notImplemented("todo")
 
-  override def loadConstDataAddr(dst: IR, data: Array[Byte], alignment: Int): Unit = shouldNotReachHere("aj strings")
+  def loadConstDataAddr(dst: IR, data: Array[Byte], alignment: Int): Unit = shouldNotReachHere("aj strings")
 
-  override def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = notImplemented("todo")
+  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = notImplemented("todo")
 
-  override def bttCHA(arg: IR, negated: Boolean, target: Label): Unit = shouldNotReachHere("cjvm specific")
-  override def bttLevel(arg: IR, negated: Boolean, level: Int, target: Label): Unit = shouldNotReachHere("cjvm specific")
-  override def bttPoint(arg: IR, negated: Boolean, sig_id: Symbol, target: Label): Unit = shouldNotReachHere("cjvm specific")
-  override def bttIOFC(arg: IR, negated: Boolean, sig_id: Symbol, target: Label): Unit = shouldNotReachHere("cjvm specific")
-  override def bttIOFI(arg: IR, negated: Boolean, sig_id: Symbol, target: Label): Unit = shouldNotReachHere("cjvm specific")
-  override def bttIOFA(arg: IR, negated: Boolean, sig_id: Symbol, target: Label): Unit = shouldNotReachHere("cjvm specific")
-  override def bttCone(arg: IR, negated: Boolean, sig_id: Symbol, closed: Boolean, target: Label): Unit = shouldNotReachHere("cjvm specific")
+  def mulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("todo")
+  def umulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("todo")
+  def mulhi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = notImplemented("todo")
+  def umulhi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = notImplemented("todo")
 
-  override def mulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("todo")
-  override def umulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("todo")
-  override def mulhi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = notImplemented("todo")
-  override def umulhi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = notImplemented("todo")
+  def ldarr(asmType: AsmType, rd: Rg, ra: IR, ri: IR): Unit = loadArray(rd, LoadAccessKind.from(CbcTypeKind(asmType)), ra, ri)
+  def ldarrObj(rd: Rg, ra: IR, ri: IR): Unit = loadArray(rd, LD_REF, ra, ri)
 
-  override def ldarr(asmType: AsmType, rd: Rg, ra: IR, ri: IR): Unit = loadArray(rd, LoadAccessKind.from(CbcTypeKind(asmType)), ra, ri)
-  override def ldarrObj(rd: Rg, ra: IR, ri: IR): Unit = loadArray(rd, LD_REF, ra, ri)
+  def ldarrRecord(rd: IR, ra: IR, ri: IR, sig_id: Symbol): Unit = shouldNotReachHere("gc unsafe operation")
 
-  override def ldarrRecord(rd: IR, ra: IR, ri: IR, sig_id: Symbol): Unit = shouldNotReachHere("gc unsafe operation")
+  def starr(asmType: AsmType, ra: IR, ri: IR, rv: Rg): Unit = storeArray(rv, StoreAccessKind.from(CbcTypeKind(asmType)), ra, ri)
+  def starrObj(ra: IR, ri: IR, rv: Rg): Unit = storeArray(rv, ST_REF, ra, ri)
 
-  override def starr(asmType: AsmType, ra: IR, ri: IR, rv: Rg): Unit = storeArray(rv, StoreAccessKind.from(CbcTypeKind(asmType)), ra, ri)
-  override def starrObj(ra: IR, ri: IR, rv: Rg): Unit = storeArray(rv, ST_REF, ra, ri)
+  def newarr(ftc_sig_id: Symbol): Unit = newarr(adapter.sigType(ftc_sig_id))
+  def newarrzv(ftc_sig_id: Symbol): Unit = notImplemented("todo")
+  def newarrfillconst(dst: IR, len: IR, value: Long, ftc_sig_id: Symbol): Unit = notImplemented("todo")
+  def newarrfillnonconst(dst: IR, len: IR, value: IR, ftc_sig_id: Symbol): Unit = notImplemented("todo")
 
-  override def newarr(ftc_sig_id: Symbol): Unit = newarr(adapter.sigType(ftc_sig_id))
-  override def newarrzv(ftc_sig_id: Symbol): Unit = notImplemented("todo")
-  override def newarrfillconst(dst: IR, len: IR, value: Long, ftc_sig_id: Symbol): Unit = notImplemented("todo")
-  override def newarrfillnonconst(dst: IR, len: IR, value: IR, ftc_sig_id: Symbol): Unit = notImplemented("todo")
+  def callIndirect(targetReg: IR, sig_id: Symbol): Unit = notImplemented("todo")
 
-  override def callIndirect(targetReg: IR, sig_id: Symbol): Unit = notImplemented("todo")
-
-  override def evacuate(): Unit = shouldNotReachHere("cjvm specific")
-
-  override def ldstackobj(dst: IR, ts: StackSlot.Typed): Unit = shouldNotReachHere("cjvm specific")
-  override def offsetFromHost(dstHost: IR, dstOffset: IR, r: IR): Unit = shouldNotReachHere("cjvm specific")
-  override def offsetFromHost(dstHost: IR, dstOffset: IR, src: MemExpr): Unit = shouldNotReachHere("cjvm specific")
-  override def combineHostAndOffset(dst: IR, src: MemExpr): Unit = shouldNotReachHere("cjvm specific")
-  override def singleton(dst: IR, sig_id: Symbol): Unit = shouldNotReachHere("cjvm specific")
-  override def lea_static(dst: IR, field_id: Symbol): Unit = shouldNotReachHere("gc unsafe operation")
-  override def lea_us(dst: IR, us: StackSlot.Untyped): Unit = shouldNotReachHere("rec tracing unsafe operation. TODO: special tail instruction")
-  override def lea_cforeign(dst: IR, method_id: Symbol): Unit = notImplemented("todo")
-
-  override def eopPlain(dst: IR, obj: IR): Unit = shouldNotReachHere("cjvm specific")
-  override def eopEnrichment(dst: IR, obj: IR): Unit = shouldNotReachHere("cjvm specific")
-  override def eopPack(dst: IR, obj: IR, enrichment: IR): Unit = shouldNotReachHere("cjvm specific")
-  override def eopPack(dst: IR, obj: IR, enrichment_u16: Int): Unit = shouldNotReachHere("cjvm specific")
-  override def eopPack(dst: IR, obj: IR, typeId: Symbol, interfaceId: Symbol): Unit = shouldNotReachHere("cjvm specific")
-  override def weakCast(dst: IR, obj: IR, sig_id: Symbol): Unit = shouldNotReachHere("cjvm specific")
-  override def callInterfPlain(rd: IR, methodId: Symbol): Unit = shouldNotReachHere("cjvm specific")
-  override def callInterfRich(rx: IR, methodId: Symbol): Unit = shouldNotReachHere("cjvm specific")
-  override def callInterfConst(rd: IR, enrichment: Int, methodId: Symbol): Unit = shouldNotReachHere("cjvm specific")
-  override def packageInit(sig_id: Symbol): Unit = shouldNotReachHere("cjvm specific")
-  override def covinc(locs: Array[(String, Array[Int])]): Unit = shouldNotReachHere("cjvm specific")
-
-  override def javaNewarr(sig_id: Symbol): Unit = shouldNotReachHere("java")
-  override def javaLdarr(asmType: AsmType, rd: Rg, ra: IR, ri: IR): Unit = shouldNotReachHere("java")
-  override def javaStarr(asmType: AsmType, ra: IR, ri: IR, rv: Rg): Unit = shouldNotReachHere("java")
-  override def javaArrOp(asmType: AsmType): Int = shouldNotReachHere("java")
-  override def javaLenarr(rl: IR, ra: IR): Unit = shouldNotReachHere("java")
-  override def javaArrIC(ri: IR, rl: IR): Unit = shouldNotReachHere("java")
-  override def javaArrSC(arr: IR, value: IR): Unit = shouldNotReachHere("java")
-  override def javaLdaStr(dst: IR, string_id: Symbol): Unit = shouldNotReachHere("java")
-  override def javaCheckCast(dst: IR, src: IR, sig_id: Symbol): Unit = shouldNotReachHere("java")
-  override def javaClinit(sig_id: Symbol): Unit = shouldNotReachHere("java")
-
-  override def callGTDSig(sig_idx: Symbol, method_id: Symbol): Unit = shouldNotReachHere("cjvm-style-ug")
-  override def callGTDFTC(ftc_idx: Symbol, method_id: Symbol): Unit = shouldNotReachHere("cjvm-style-ug")
-  override def callGFDSig(sig_idx: Symbol, method_id: Symbol): Unit = shouldNotReachHere("cjvm-style-ug")
-  override def callGFDFTC(ftc_idx: Symbol, method_id: Symbol): Unit = shouldNotReachHere("cjvm-style-ug")
-  override def callConstraint(ftc_idx: Symbol, method_id: Symbol): Unit = shouldNotReachHere("cjvm-style-ug")
-  override def copyResultVST(rv: IR, rr: IR, ftc_symbol_id: Symbol): Unit = shouldNotReachHere("cjvm-style-ug")
-  override def ohmsPtr(rd: IR, ohms: StackSlot.OffHeapMemory): Unit = shouldNotReachHere("cjvm-style-ug")
-  override def doTypeVarIsRef(dst: IR, ftc_id: Symbol): Unit = shouldNotReachHere("cjvm-style-ug")
-  override def newobjVST(ftc_id: Symbol): Unit = shouldNotReachHere("cjvm-style-ug")
-  override def newarrVST(ftc_id: Symbol): Unit = shouldNotReachHere("cjvm-style-ug")
-
-  override def cFuncWrap(dst: IR, method_id: Symbol): Unit = shouldNotReachHere("cjvm specific")
+  def lea_static(dst: IR, field_id: Symbol): Unit = shouldNotReachHere("gc unsafe operation")
+  def lea_us(dst: IR, us: StackSlot.Untyped): Unit = shouldNotReachHere("rec tracing unsafe operation. TODO: special tail instruction")
+  def lea_cforeign(dst: IR, method_id: Symbol): Unit = notImplemented("todo")
 }
 
 object Assembler {

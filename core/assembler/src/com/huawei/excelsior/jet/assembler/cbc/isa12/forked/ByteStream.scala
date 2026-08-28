@@ -11,7 +11,7 @@ package com.huawei.excelsior.jet.assembler.cbc.isa12.forked
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BytecodeReferenceSymbol, FieldReference, MethodReference, RawData, Signature, StringLiteral}
 import com.huawei.excelsior.jet.assembler.cbc.{Register, StackSlot}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.CC
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.{LoadAccessKind, StoreAccessKind}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{MemOpcode, Opcode, Ordinal}
 import com.huawei.excelsior.jet.assembler.fixups.Relocation
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.{CBC_ID16, CBC_ID32}

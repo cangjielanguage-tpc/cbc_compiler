@@ -20,9 +20,9 @@ import com.huawei.excelsior.jet.assembler.cbc.Token.KeywordKind.{Type, *}
 import com.huawei.excelsior.jet.assembler.cbc.Token.StructuralKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W32, W64}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessAnalyzer
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.{LoadAccessKind, StoreAccessKind}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.LoadAccessKind.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.StoreAccessKind.*
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.*
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, ForkedAssembler, MemSpace}
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Segment, Width}
 import com.huawei.excelsior.jet.codeemitter.BranchOp

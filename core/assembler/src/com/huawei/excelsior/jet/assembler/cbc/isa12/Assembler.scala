@@ -8,693 +8,18 @@
 
 package com.huawei.excelsior.jet.assembler.cbc.isa12
 
-import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
-import com.huawei.excelsior.jet.assembler.cbc.Fixups.BTT.Kind.*
-import com.huawei.excelsior.jet.assembler.cbc.Register.IR.IRZ
-import com.huawei.excelsior.jet.assembler.cbc.Register.{FR, IR}
-import com.huawei.excelsior.jet.assembler.cbc.SignedImmCompactEncoding.{EncodedImmParts, calculateMemoryCompactImm}
-import com.huawei.excelsior.jet.assembler.cbc.StackSlot.OffHeapMemory
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.B3xrrt4iK.K
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.B3xrrt4iK.K.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.BFX.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Common.SRem
+import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.ImmEXT.N.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W32, W64}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Fixups.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.MemoryAccess.{ArrayType, LoadAccessKind, StoreAccessKind}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.SymbolicObjectControl as SOC
-import com.huawei.excelsior.jet.assembler.cbc.{Bits, CbcAssembler, CbcTypeKind, FExtBCC, FieldReference, MemExpr, OpcodePrefix, RawData, Register, StackSlot, Assembler as OldAssembler}
-import com.huawei.excelsior.jet.assembler.fixups.{CoverageLocs, Relocation}
-import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.{CBC_ID16, CBC_ID32}
-import com.huawei.excelsior.jet.assembler.{AsmType, Fixup, Label, Symbol, Width as AsmWidth}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.*
+import com.huawei.excelsior.jet.assembler.cbc.{CbcTypeKind, Register}
+import com.huawei.excelsior.jet.assembler.Width as AsmWidth
 import com.huawei.excelsior.jet.codeemitter.BranchOp
 import xscala.util.MathUtils
-import xscala.util.MathUtils.{bitsSigned, isNBitsSigned, rightNBits32, rightNBits64, signExtend, isNBits as isNBitsUnsigned}
+import xscala.util.MathUtils.{rangeMask64, rightNBits32, rightNBits64, signExtend, isNBits as isNBitsUnsigned}
 
 import scala.PartialFunction.condOpt
 
-trait MeaningfulNewIsaParts {
-  def movRef(dst: IR, src: IR): Unit
-  def fmov(frd: FR, frs: FR, w: AsmWidth): Unit
-  def fmov (frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit
-  def movi2f(frd: FR, irs: IR, w: AsmWidth): Unit
-  def movf2i(frd: IR, irs: FR, w: AsmWidth): Unit
-  def fneg (frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit
-  def fabs (frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit
-  def fsqrt(frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit
-  def ret(v: IR, w: AsmWidth): Unit
-  def retRef(v: IR): Unit
-  def fret(v: FR, w: AsmWidth): Unit
-  def initConstString(ts: StackSlot.Typed, stringId: Symbol): Unit
-  def faddi(d: FR, l: FR, r: Double, w: AsmWidth): Unit
-  def fsubi(d: FR, l: FR, r: Double, w: AsmWidth): Unit
-  def fmuli(d: FR, l: FR, r: Double, w: AsmWidth): Unit
-  def fdivi(d: FR, l: FR, r: Double, w: AsmWidth): Unit
-  def bfx(dst: IR, src: IR, resW: AsmWidth, argW: AsmWidth, sx: Boolean, offset: Int, size: Int): Unit
-}
-
-trait NewIsaParts extends MeaningfulNewIsaParts {
-  def callDirect(rd: IR, methodId: Symbol): Unit
-  def callVirt(rd: IR, methodId: Symbol): Unit
-  def callInterf(rd: IR, sig_id: Symbol, methodId: Symbol): Unit
-  def callInterfPlain(rd: IR, methodId: Symbol): Unit
-  def callInterfRich(rx: IR, methodId: Symbol): Unit
-  def callInterfConst(rd: IR, enrichment: Int, methodId: Symbol): Unit
-  def cFuncWrap(dst: IR, method_id: Symbol): Unit
-  def aliveReference(data: Symbol): Unit
-  def unmovableReference(data: Symbol): Unit
-  def aliveRefDifference(data: Symbol): Unit
-  def aliveUnmovableDifference(data: Symbol): Unit
-  def aliveRefCheck(data: Symbol): Unit
-  def copyRec(dst: MemExpr, src: MemExpr, sigId: Symbol): Unit
-  def movVST(dst: IR, src: IR): Unit
-}
-
-class Assembler extends OldAssembler with MemoryAccess with SymbolicObjectControl with NewIsaParts { self =>
-  protected class NewIsaBits extends Bits {
-    override def seg = segment
-
-    override def addFixup(fixup: Fixup): Unit = {
-      shouldNotReachHere(s"switch to old isa, $fixup")
-    }
-
-    override def op(opcode: Int): Bits = {
-      shouldNotReachHere(s"switch to old isa, $opcode")
-    }
-
-    override def op(prefix: OpcodePrefix, opcode: Int): Bits = {
-      shouldNotReachHere(s"switch to old isa, $prefix, $opcode")
-    }
-
-    override def op(width: AsmWidth, opcode32: Int, opcode64: Int): Bits = {
-      shouldNotReachHere(s"switch to old isa, $width, $opcode32, $opcode64")
-    }
-
-    override def op(prefix: OpcodePrefix, width: AsmWidth, opcode32: Int, opcode64: Int): Bits = {
-      shouldNotReachHere(s"switch to old isa, $prefix, $width, $opcode32, $opcode64")
-    }
-
-    override def id16(id16: Symbol): Bits = {
-      addFixupISA12(new Relocation(CBC_ID16, id16))
-      this
-    }
-
-    override def id32(id32: Symbol): Bits = {
-      addFixupISA12(new Relocation(CBC_ID32, id32))
-      this
-    }
-  }
-
-  override protected val emit: NewIsaBits = new NewIsaBits
-
-  private[isa12] def addFixupISA12(f: Fixup): Unit = {
-    super.addFixup(f)
-  }
-
-  override def add (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Add,  w, d, l, r)
-  override def sub (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Sub,  w, d, l, r)
-  override def mul (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Mul,  w, d, l, r)
-  override def pow (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Pow,  w, d, l, r)
-  override def and (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.And,  w, d, l, r)
-  override def or  (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Or,   w, d, l, r)
-  override def xor (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.Xor,  w, d, l, r)
-  override def div (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.SDiv, w, d, l, r, prohibitB2r = true)
-  override def rem (w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.SRem, w, d, l, r, prohibitB2r = true)
-  override def udiv(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.UDiv, w, d, l, r)
-  override def urem(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.URem, w, d, l, r)
-  override def lsl(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.LSL,  w, d, l, r)
-  override def lsr(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.LSR, w, d, l, r)
-  override def asr(w: AsmWidth, d: IR, l: IR, r: IR): Unit = genCommon(Common.ASR,  w, d, l, r)
-
-  override def neg(ird: IR, irs: IR, w: AsmWidth): Unit = {
-    if (ird == irs) {
-      genB2rr(IRZ, irs, Common.Sub, Width(w))
-    } else {
-      sub(w, ird, IRZ, irs)
-    }
-  }
-
-  override def addi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Add,  w, Sign.Signed, d, l, imm)
-  override def subi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = addi(w, d, l, -imm)
-  override def muli (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Mul,  w, Sign.Signed, d, l, imm)
-  override def powi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Pow,  w, Sign.Signed, d, l, imm)
-  override def andi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.And,  w, Sign.Signed, d, l, imm)
-  override def ori  (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Or ,  w, Sign.Signed, d, l, imm)
-  override def xori (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.Xor,  w, Sign.Signed, d, l, imm)
-  override def divi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.SDiv, w, Sign.Signed, d, l, imm, prohibitB2r = true)
-  override def remi (w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.SRem, w, Sign.Signed, d, l, imm, prohibitB2r = true)
-  override def udivi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.UDiv, w, Sign.Unsigned, d, l, imm)
-  override def uremi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genCommonImm(Common.URem, w, Sign.Unsigned, d, l, imm)
-
-  override def lsli(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = {
-    assert(0 < imm && imm < w.nbits)
-    genCommonImm(Common.LSL, w, Sign.Unsigned, d, l, imm - 1)
-  }
-
-  override def lsri(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = {
-    assert(0 < imm && imm < w.nbits)
-    genCommonImm(Common.LSR, w, Sign.Unsigned, d, l, imm - 1)
-  }
-
-  override def asri(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = {
-    assert(0 < imm && imm < w.nbits)
-    genCommonImm(Common.ASR, w, Sign.Unsigned, d, l, imm - 1)
-  }
-
-  override def cadd(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = genB3xrrrChecked(dst, src1, src2, Checked.Add, Width(width), Sign.Signed)
-  override def csub(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = genB3xrrrChecked(dst, src1, src2, Checked.Sub, Width(width), Sign.Signed)
-  override def cmul(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = genB3xrrrChecked(dst, src1, src2, Checked.Mul, Width(width), Sign.Signed)
-  override def cdiv(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = genB3xrrrChecked(dst, src1, src2, Checked.Div, Width(width), Sign.Signed)
-  override def cuadd(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = genB3xrrrChecked(dst, src1, src2, Checked.Add, Width(width), Sign.Unsigned)
-  override def cusub(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = genB3xrrrChecked(dst, src1, src2, Checked.Sub, Width(width), Sign.Unsigned)
-  override def cumul(dst: IR, src1: IR, src2: IR, width: AsmWidth): Unit = genB3xrrrChecked(dst, src1, src2, Checked.Mul, Width(width), Sign.Unsigned)
-  override def caddi(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = genB3xrrt4iKChecked(dst, src1, src2, Checked.Add, Width(width), Sign.Signed)
-  override def csubi(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = genB3xrrt4iKChecked(dst, src1, src2, Checked.Sub, Width(width), Sign.Signed)
-  override def cmuli(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = genB3xrrt4iKChecked(dst, src1, src2, Checked.Mul, Width(width), Sign.Signed)
-  override def cuaddi(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = genB3xrrt4iKChecked(dst, src1, src2, Checked.Add, Width(width), Sign.Unsigned)
-  override def cusubi(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = genB3xrrt4iKChecked(dst, src1, src2, Checked.Sub, Width(width), Sign.Unsigned)
-  override def cumuli(dst: IR, src1: IR, src2: Long, width: AsmWidth): Unit = genB3xrrt4iKChecked(dst, src1, src2, Checked.Mul, Width(width), Sign.Unsigned)
-
-  override def bcc(op: BranchOp, src1: IR, src2: IR, width: AsmWidth, target: Label): Unit = {
-    assert(!op.isFloatingPoint, s"$op")
-    addFixupISA12(new Fixups.BCC(op, src1, src2, width, target))
-  }
-
-  override def bcc(op: BranchOp, src1: FR, src2: FR, width: AsmWidth, target: Label): Unit = {
-    assert(op.isFloatingPoint, s"$op")
-    addFixupISA12(new Fixups.BCC(op, src1, src2, width, target))
-  }
-
-  override def bcc(op: BranchOp, src: IR, imm: Long, width: AsmWidth, target: Label): Unit = {
-    assert(!op.isFloatingPoint, s"$op") // TODO implement floating point branch imm
-    if (imm == 0 && !op.isTestBit) {
-      addFixupISA12(new Fixups.BCC(op, src, IR.IRZ, width, target))
-    } else {
-      addFixupISA12(new Fixups.BCCImm(op, src, imm, width, target))
-    }
-  }
-
-  override def scc(_op: BranchOp, dst: IR, _src1: IR, _src2: IR, _width: AsmWidth): Unit = {
-    val (op, swap, _) = FExtBCC.normalize(_op)
-    val (src1, src2) = if swap then (_src2, _src1) else (_src1, _src2)
-    val width = Width(_width)
-    genB3xrrr(dst, src1, src2, SetIf.prepareBits(CC.from(op), width))
-  }
-
-  override def scc(_op: BranchOp, dst: IR, _src1: FR, _src2: FR, _width: AsmWidth): Unit = {
-    val (op, swap, _) = FExtBCC.normalize(_op)
-    val (src1, src2) = if swap then (_src2, _src1) else (_src1, _src2)
-    val width = Width(_width)
-    genB3xrrr(dst, src1, src2, SetIf.prepareBits(CC.from(op), width))
-  }
-
-  override def scc(_op: BranchOp, dst: IR, src: IR, _imm: Long, _width: AsmWidth): Unit = {
-    val (op, imm) = OldAssembler.normalizeImm(_op, _imm, _width)
-    val cc = CC.from(op)
-    val sign = cc match {
-      case CC.ULT | CC.UGE | CC.TESTBIT | CC.TESTNBIT => Sign.Unsigned
-      case _ => Sign.Signed
-    }
-    val width = Width(_width)
-    genB3xrrt4iK(dst, src, imm, SetIf.prepareBits(cc, width), width, sign)
-  }
-
-  override def jmp(target: Label): Unit = addFixupISA12(new Fixups.Jump(target))
-  override def bttCHA(arg: IR, negated: Boolean, target: Label): Unit = addFixupISA12(new Fixups.BCHA(arg, negated, target))
-  override def bttLevel(arg: IR, negated: Boolean, level: Int, target: Label): Unit = addFixupISA12(new Fixups.BTTLevel(arg, level, negated, target))
-  override def bttCone(arg: IR, negated: Boolean, sig_id: Symbol, closed: Boolean, target: Label): Unit = addFixupISA12(new Fixups.BTTBySymbol(if (closed) CLOSED_CONE else OPEN_CONE, arg, sig_id, negated, target))
-  override def bttPoint(arg: IR, negated: Boolean, sig_id: Symbol, target: Label): Unit = addFixupISA12(new Fixups.BTTBySymbol(POINT, arg, sig_id, negated, target))
-  override def bttIOFC (arg: IR, negated: Boolean, sig_id: Symbol, target: Label): Unit = addFixupISA12(new Fixups.BTTBySymbol(IOFC,  arg, sig_id, negated, target))
-  override def bttIOFI (arg: IR, negated: Boolean, sig_id: Symbol, target: Label): Unit = addFixupISA12(new Fixups.BTTBySymbol(IOFI,  arg, sig_id, negated, target))
-  override def bttIOFA (arg: IR, negated: Boolean, sig_id: Symbol, target: Label): Unit = addFixupISA12(new Fixups.BTTBySymbol(IOFA,  arg, sig_id, negated, target))
-
-  private[isa12] def genB3xrrrChecked(d: IR, l: IR, r: IR, op: Checked, width: Width, sign: Sign): Unit = {
-    genB3xrrr(d, l, r, Checked.prepareBits(op, width, sign))
-  }
-
-  private[isa12] def genB3xrrt4iKChecked(dst: IR, l: IR, imm: Long, op: Checked, width: Width, sign: Sign): Unit = {
-    val parts = Checked.prepareBits(op, width, sign)
-    genB3xrrt4iK(dst, l, imm, parts, width, sign)
-  }
-
-  private[isa12] def genCommon(op: Common, w: AsmWidth, d: IR, l: IR, r: IR, prohibitB2r: Boolean = false): Unit = {
-    if (d == l && op.b2rAllowed && !prohibitB2r) {
-      genB2rr(d, r, op, Width(w))
-    } else {
-      genB3xrrr(d, l, r, Common.prepareBitsForB3Formats(op, Width(w)))
-    }
-  }
-
-  private[isa12] def genCommonImm(op: Common, w: AsmWidth, sign: Sign, d: IR, l: IR, imm: Long, prohibitB2r: Boolean = false): Unit = {
-    if (d == l && op.b2rAllowed && !prohibitB2r) {
-      genB2riKCommon(d, imm, op, Width(w))
-    } else {
-      val parts = Common.prepareBitsForB3Formats(op, Width(w))
-      genB3xrrt4iK(d, l, imm, parts, Width(w), sign)
-    }
-  }
-
-  private def genB2riKCommon(dst: IR, imm: Long, op: Common, width: Width): Unit = {
-    if (isNBitsSigned(imm, 4)) {
-      genB2ri4(dst, imm.toInt, op, width)
-    } else {
-      val low16 = bitsSigned(imm, 0, 16)
-      if (isNBitsSigned(low16, 4)) {
-        val hi48 = (imm >> 16) + ((low16 >>> 3) & 1)
-        val immext = getImmext(hi48)
-        if (immext.isDefined) {
-          genImmExt(immext.get)
-        }
-        genB2ri4(dst, (low16 & 0xF).toInt, op, width)
-      } else {
-        val parts = Common.prepareBitsForB3Formats(op, width)
-        genB3xrrt4iK(dst, dst, imm, parts, width, Sign.Signed)
-      }
-    }
-  }
-
-  private def genB3xrrt4iK(dst: IR, l: IR, imm: Long, parts: B3xrr_parts, width: Width, sign: Sign): Unit = {
-    val imm32 = imm.toInt
-
-    if (isNBits(imm, 4, sign)) {
-      genB3xrrt4i0(dst, l, imm32, parts)
-    } else if (isNBits(imm, 12, sign)) {
-      genB3xrrt4i8(dst, l, imm32 & 0xF, (imm32 >>> 4) & 0xFF, parts)
-    } else if (isNBits(imm, 16, sign)) {
-      genB3xrrt4i16(dst, l, 0, imm32 & 0xFFFF, parts)
-    } else if (sign == Sign.Unsigned) {
-      // memory compact encoding does not support unsigned imm
-      genImmExt(getImmext(imm >> 16).get)
-      genB3xrrt4i16(dst, l, 0, imm32 & 0xFFFF, parts)
-    } else {
-      val encImm @ EncodedImmParts(t4, shortImm, calculatedK, immext) = calculateMemoryCompactImm(imm, width)
-      if (immext.isDefined) {
-        genImmExt(immext.get)
-      }
-      calculatedK match {
-        case K0 =>
-          val packedImm = (shortImm << K0.bits) | t4
-          assert((packedImm & rightNBits32(encImm.encodedImmBits)) == packedImm)
-          genB3xrrt4i0(dst, l, t4 = t4, parts)
-
-        case K8 =>
-          val packedImm = (shortImm << K0.bits) | t4
-          assert((packedImm & rightNBits32(encImm.encodedImmBits)) == packedImm)
-          genB3xrrt4i8(dst, l, t4 = t4, shortImm, parts)
-
-        case K16 =>
-          assert((shortImm & rightNBits32(encImm.encodedImmBits)) == shortImm)
-          genB3xrrt4i16(dst, l, t4 = t4, shortImm, parts)
-      }
-    }
-  }
-
-  override def mov(dst: Register, src: Register, hasMemExpr: Boolean, reference: Boolean = false): Unit = {
-    (dst, src) match {
-      case (_, _) if hasMemExpr => super.mov(dst, src, hasMemExpr, reference.ensuring(!_)) // TODO support generic MemExpr in Isa12
-      case (dst: IR, src: IR) if reference => movRef(dst, src)
-      case (dst: IR, src: IR) => mov(dst, src, AsmWidth.W64)
-      case (dst: FR, src: FR) => fmov(dst, src, AsmWidth.W64)
-      case (dst: FR, src: IR) => movi2f(dst, src, AsmWidth.W64)
-      case (dst: IR, src: FR) => movf2i(dst, src, AsmWidth.W64)
-    }
-  }
-
-  override def movVST(dst: IR, src: IR): Unit = genB2rr(dst, src, Common.MovVst, W32)
-
-  override def mov(dst: Register, src: MemExpr): Unit = {
-    if (src.isGeneric) {
-      genGenericMemExprLdSt(isStore = false, dst, src)
-    } else {
-      genMemExprLdSt(isStore = false, dst, src)
-    }
-  }
-
-  override def mov(dst: MemExpr, src: Register): Unit = {
-    if (dst.isGeneric) {
-      genGenericMemExprLdSt(isStore = true, src, dst)
-    } else {
-      genMemExprLdSt(isStore = true, src, dst)
-    }
-  }
-
-  override def mov(dst: MemExpr, src: MemExpr): Unit = {
-    (dst.body, src.body) match {
-      case (Array(ohm: OffHeapMemory), Array(s: Symbol)) if dst.isGeneric && src.isGeneric =>
-        s match {
-          case _: FieldReference =>
-            genGenericMemExprLdSt(isStore = false, dst.headEncoding, src, ohm)
-          case _ =>
-            genB3xrrzII(SOC.B3xrrzII.CopyVst, dst.headEncoding, src.headEncoding, ohm, s)
-        }
-      case _ => shouldNotReachHere(s"$dst $src")
-    }
-  }
-
-  override def copyRec(dst: MemExpr, src: MemExpr, sigId: Symbol): Unit = {
-    assert(!dst.isGeneric && !src.isGeneric)
-    genCopyRec(dst, src, sigId)
-  }
-
-  override def recordCopy(dst: IR, src: IR, sig_id: Symbol): Unit = {
-    copyRec(MemExpr(dst, CbcTypeKind.REC), MemExpr(src, CbcTypeKind.REC), sig_id)
-  }
-
-  override def mov(dst: IR, src: IR, width: AsmWidth): Unit = genB2rr(dst, src, Common.Mov, Width(width))
-  override def movi32(r: IR, imm: Int): Unit = if isNBitsSigned(imm, 4) then genB2ri4(r, imm, Common.Mov, Width.W32) else addi(AsmWidth.W32, r, IRZ, imm)
-  override def movi64(r: IR, imm: Long): Unit = if isNBitsSigned(imm, 4) then genB2ri4(r, imm.toInt, Common.Mov, Width.W64) else addi(AsmWidth.W64, r, IRZ, imm)
-
-  def movRef(dst: IR, src: IR): Unit = genB2rr(dst, src, Common.MovRef, W64)
-
-  override def movi32(dst: MemExpr, imm: Int): Unit = {
-    genMemExprStImm(dst, imm, W32)
-  }
-
-  override def movi64(dst: MemExpr, imm: Long): Unit = {
-    genMemExprStImm(dst, imm, W64)
-  }
-
-  override def bfx(dst: IR, src: IR, resW: AsmWidth, argW: AsmWidth, sx: Boolean, offset: Int, size: Int): Unit = {
-    debugAssert(size > 0)
-    debugAssert(offset + size <= argW.nbits)
-
-    (Width(resW), Width(argW), offset, size) match {
-      case BFX.Extend(t4) =>
-        if (dst == src) {
-          genB2ri4(dst, t4, Common.Extend, Sign(sx))
-        } else {
-          genB3xrrt4i0(dst, src, t4, Common.prepareBitsForB3Formats(Common.Extend, Sign(sx)))
-        }
-
-      case BFX.Shift(nbytes, imm) =>
-        if (sx) {
-          asri(AsmWidth(nbytes), dst, src, imm)
-        } else {
-          lsri(AsmWidth(nbytes), dst, src, imm)
-        }
-
-      case BFX.B3xrrt4i8(t4, imm8) =>
-        genB3xrrt4i8(dst, src, t4, imm8, Checked.prepareBFX(Width(resW), Width(argW), Sign(sx)))
-
-      case _ => shouldNotReachHere(s"$dst $src $resW $argW $sx $offset $size")
-    }
-  }
-
-  override def ldarr(asmType: AsmType, rd: Register, ra: IR, ri: IR): Unit =
-    genLdArr(rd, ra, ri, indexCheck = false, ArrayType.Raw, LoadAccessKind.from(CbcTypeKind(asmType)))
-  override def ldarrObj(rd: Register, ra: IR, ri: IR): Unit =
-    genLdArr(rd, ra, ri, indexCheck = false, ArrayType.Raw, LoadAccessKind.LD_REF)
-  override def ldarrRecord(rd: IR, ra: IR, ri: IR, sig_id: Symbol): Unit =
-    genLdArrRecord(rd, ra, ri, sig_id)
-
-  override def starr(asmType: AsmType, ra: IR, ri: IR, rv: Register): Unit =
-    genStArr(rv, ra, ri, indexCheck = false, ArrayType.Raw, StoreAccessKind.from(CbcTypeKind(asmType)))
-  override def starrObj(ra: IR, ri: IR, rv: Register): Unit =
-    genStArr(rv, ra, ri, indexCheck = false, ArrayType.Raw, StoreAccessKind.ST_REF)
-
-  override def javaLdarr(asmType: AsmType, rd: Register, ra: IR, ri: IR): Unit =
-    genLdArr(rd, ra, ri, indexCheck = false, ArrayType.Java,
-      if asmType.isPointer then LoadAccessKind.LD_REF else LoadAccessKind.from(CbcTypeKind(asmType)))
-
-  override def javaStarr(asmType: AsmType, ra: IR, ri: IR, rv: Register): Unit =
-    genStArr(rv, ra, ri, indexCheck = false, ArrayType.Java,
-      if asmType.isPointer then StoreAccessKind.ST_REF else StoreAccessKind.from(CbcTypeKind(asmType)))
-
-  override def prepareRecord(ts: StackSlot.Typed): Unit = genAdr(IR.IRZ, ts)
-
-  override def ldstackrec(dst: IR, ts: StackSlot.Typed): Unit = genLdStackRec(dst, ts)
-  override def ldstackobj(dst: IR, ts: StackSlot.Typed): Unit = genAdr(dst, ts)
-  override def lea_us(dst: IR, us: StackSlot.Untyped): Unit = genAdr(dst, us)
-  override def lea_static(dst: IR, field_id: Symbol): Unit = genAdr(dst, field_id)
-
-  override def combineHostAndOffset(dst: IR, src: MemExpr): Unit = genAdr(dst, src)
-  override def offsetFromHost(dstHost: IR, dstOffset: IR, r: IR): Unit = genMakeHandle(dstHost, dstOffset, r)
-  override def offsetFromHost(dstHost: IR, dstOffset: IR, src: MemExpr): Unit = genMakeHandle(dstHost, dstOffset, src)
-
-  private def genB2rr(d: IR, r: IR, op: Common, width: Width): Unit = {
-    emit.seg.putW8(B2rr.format(Common.prepareBitsForB2Formats(op, width)))
-    emit.seg.putW8(pack8(d, r))
-  }
-
-  private def genB2ri4(d: IR, r: Int, op: Common, width: Width): Unit = genB2ri4(d, r, op, width.opcCommon)
-  private def genB2ri4(d: IR, r: Int, op: Common, sign: Sign): Unit = genB2ri4(d, r, op, sign.opc)
-
-  private def genB2ri4(d: IR, r: Int, op: Common, b1: Int): Unit = {
-    emit.seg.putW8(B2ri4.format(Common.prepareBitsForB2Formats(op, b1)))
-    emit.seg.putW8(pack8(r & 0xF, d))
-  }
-
-  private def genB3xrrr(d: Register, l: Register, r: Register, parts: B3xrr_parts): Unit = {
-    emit.seg.putW8(B3xrrr.format(parts.low3BitsOfFormatByte))
-    emit.seg.putW8(pack8(parts.low4BitsOfSecondByte, d))
-    emit.seg.putW8(pack8(l, r))
-  }
-
-  private def genB3xrrt4i0(d: Register, l: Register, t4: Int, parts: B3xrr_parts): Unit = {
-    genB3xrrt4iKBase(K0, d, l, t4, parts)
-  }
-
-  private def genB3xrrt4i8(d: Register, l: Register, t4: Int, imm8: Int, parts: B3xrr_parts): Unit = {
-    genB3xrrt4iKBase(K8, d, l, t4, parts)
-    emit.seg.putW8(imm8)
-  }
-
-  private def genB3xrrt4i16(d: Register, l: Register, t4: Int, imm16: Int, parts: B3xrr_parts): Unit = {
-    genB3xrrt4iKBase(K16, d, l, t4, parts)
-    emit.seg.putW16(imm16)
-  }
-
-  private def genB3xrrt4iKBase(k: K, d: Register, l: Register, t4: Int, parts: B3xrr_parts): Unit = {
-    emit.seg.putW8(B3xrrt4iK.format(k, parts.low3BitsOfFormatByte))
-    emit.seg.putW8(pack8(parts.low4BitsOfSecondByte, d))
-    emit.seg.putW8(pack8(l, t4 & 0xF))
-  }
-
-  // Float operations
-
-  override def fadd(w: AsmWidth, d: FR, l: FR, r: FR): Unit = genB3xrrrFloat(d, l, r, FloatOperations.FAdd, Width(w))
-  override def fsub(w: AsmWidth, d: FR, l: FR, r: FR): Unit = genB3xrrrFloat(d, l, r, FloatOperations.FSub, Width(w))
-  override def fmul(w: AsmWidth, d: FR, l: FR, r: FR): Unit = genB3xrrrFloat(d, l, r, FloatOperations.FMul, Width(w))
-  override def fdiv(w: AsmWidth, d: FR, l: FR, r: FR): Unit = genB3xrrrFloat(d, l, r, FloatOperations.FDiv, Width(w))
-  override def faddi(d: FR, l: FR, r: Double, w: AsmWidth): Unit = genB3xrrt4iK(d, l, r, FloatOperations.FAdd, Width(w))
-  override def fsubi(d: FR, l: FR, r: Double, w: AsmWidth): Unit = genB3xrrt4iK(d, l, r, FloatOperations.FSub, Width(w))
-  override def fmuli(d: FR, l: FR, r: Double, w: AsmWidth): Unit = genB3xrrt4iK(d, l, r, FloatOperations.FMul, Width(w))
-  override def fdivi(d: FR, l: FR, r: Double, w: AsmWidth): Unit = genB3xrrt4iK(d, l, r, FloatOperations.FDiv, Width(w))
-
-  override def fmovi(r: FR, fimm: Double, w: AsmWidth): Unit = fmovi(r, r, fimm, w)
-
-  def fmov(frd: FR, frs: FR, w: AsmWidth): Unit = fmov(frd, frd, frs, w)
-
-  def fmov (frd2: FR, frd1: FR, frs: FR,     w: AsmWidth): Unit = genB3xrrrFloat(frd2, frd1, frs, FloatOperations.FMov, Width(w))
-  private def fmovi(frd2: FR, frd1: FR, frs: Double, w: AsmWidth): Unit = genB3xrrt4iK  (frd2, frd1, frs, FloatOperations.FMov, Width(w))
-
-  def movi2f(frd: FR, irs: IR, w: AsmWidth): Unit = genB3xrrrFloat(frd, frd, irs, FloatOperations.Movi2f, Width(w))
-  def movf2i(frd: IR, irs: FR, w: AsmWidth): Unit = genB3xrrrFloat(frd, frd, irs, FloatOperations.Movf2i, Width(w))
-
-  override def fneg(frd: FR, frs: FR, w: AsmWidth): Unit = fneg(frd, frd, frs, w)
-  override def fabs(frd: FR, frs: FR, w: AsmWidth): Unit = fabs(frd, frd, frs, w)
-  override def fsqrt(frd: FR, frs: FR, w: AsmWidth): Unit = fsqrt(frd, frd, frs, w)
-
-  def fneg (frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit = genB3xrrrFloat(frd2, frd1, frs, FloatOperations.FNeg,  Width(w))
-  def fabs (frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit = genB3xrrrFloat(frd2, frd1, frs, FloatOperations.FAbs,  Width(w))
-  def fsqrt(frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit = genB3xrrrFloat(frd2, frd1, frs, FloatOperations.FSqrt, Width(w))
-
-  override def convert(toType: AsmType, fromType: AsmType, to: Register, from: Register): Unit = {
-    def extendWidthUpToW32(w: AsmWidth) = AsmWidth.apply(Math.max(w.nbytes, W32.nbytes))
-
-    import AsmType.*
-    import FloatOperations.*
-
-    val parts = (fromType, toType) match {
-      // Integer casts
-      case _ if fromType.isIntegral && toType.isIntegral =>
-        bfx(to.asInstanceOf[IR], from.asInstanceOf[IR], extendWidthUpToW32(toType.width), extendWidthUpToW32(fromType.width), toType.signed, offset = 0, size = toType.sizeInBits)
-        return
-
-      // T.to.fw
-      case _ if fromType.isIntegral && toType.isFloatingPoint =>
-        prepareConvertWithIntBits(toInteger = false, fromType.signed, fromType.width, toType.width)
-
-      // fw.to.T
-      case _ if fromType.isFloatingPoint && toType.isIntegral =>
-        prepareConvertWithIntBits(toInteger = true, toType.signed, toType.width, fromType.width)
-
-      // f32.to.F
-      case (F32, _) if toType.isFloatingPoint =>
-        prepareConvertBits(F32ToF, toType.width)
-
-      // F.to.f32
-      case (_, F32) if fromType.isFloatingPoint =>
-        prepareConvertBits(FToF32, fromType.width)
-
-      case _ => shouldNotReachHere(s"Unknown cast in convert: $fromType -> $toType")
-    }
-    genB3xrrt4i0(to, from, 0, parts)
-  }
-
-  private[isa12] def genB3xrrt4iK(dst: FR, l: FR, fimm: Double, op: FloatOperations, width: Width): Unit = {
-    val parts = FloatOperations.prepareBits(op, width)
-
-    val FloatImm.EncodeData(t4, k, iK, immext) = FloatImm.encode(fimm, width)
-
-    if (immext != 0) {
-      genImmExt(ImmEXT(ImmEXT.N.N48, Sign.Signed, immext))
-    }
-    k match {
-      case K.K0 => assert(iK == 0)
-        genB3xrrt4i0(dst, l, t4, parts)
-      case K.K8 => genB3xrrt4i8(dst, l, t4, iK, parts)
-      case K.K16 => genB3xrrt4i16(dst, l, t4, iK, parts)
-    }
-  }
-
-  private[isa12] def genB3xrrrFloat(d: Register, l: Register, r: Register, op: FloatOperations, width: Width): Unit = {
-    genB3xrrr(d, l, r, FloatOperations.prepareBits(op, width))
-  }
-
-  private[assembler] def genImmExt(ie: ImmEXT): Unit = {
-
-    emit.seg.putW8(ImmEXT.calculateOPCode(ie))
-
-    ie.n match {
-      case N8 => emit.seg.putW8(ie.value.toInt)
-      case N16 => emit.seg.putW16(ie.value.toInt)
-      case N32 => emit.seg.putW32(ie.value.toInt)
-      case N48 => emit.seg.putW32(ie.value.toInt); emit.seg.putW16((ie.value >> 32).toInt)
-    }
-  }
-
-  override def nop(): Unit = {
-    emit.seg.putW8(B1.Nop)
-  }
-
-  def ret(v: IR, w: AsmWidth): Unit = (Width(w): @unchecked) match {
-    case Width.W32 => genB2xr(SOC.B2xr.Opc0100.Ret32, v)
-    case Width.W64 => genB2xr(SOC.B2xr.Opc0100.Ret64, v)
-  }
-
-  def retRef(v: IR): Unit = ret(v, AsmWidth.W64) // TODO: mark as primitive/ref when ret.ref is separated from ret.64
-
-  def fret(v: FR, w: AsmWidth): Unit = (Width(w): @unchecked) match {
-    case Width.W32 => genB2xr(SOC.B2xr.Opc0100.Fret32, v)
-    case Width.W64 => genB2xr(SOC.B2xr.Opc0100.Fret64, v)
-  }
-
-  override def throwEx(ex: IR): Unit = genB2xr(SOC.B2xr.Opc0100.Throw, ex)
-  override def catchEx(dst: IR): Unit = genB2xr(SOC.B2xr.Opc0100.Catch, dst)
-
-  def callDirect(rd: IR, methodId: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1000.CallDirect, rd, methodId)
-  def callVirt(rd: IR, methodId: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1000.CallVirt, rd, methodId)
-
-  def callInterf(rd: IR, sig_id: Symbol, methodId: Symbol): Unit = genB2xrII(SOC.B2xrII.CallInterf, rd, sig_id, methodId)
-  def callInterfPlain(rd: IR, methodId: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1000.CallInterfPlain, rd, methodId)
-  def callInterfRich(rx: IR, methodId: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1000.CallInterfRich, rx, methodId)
-  def callInterfConst(rd: IR, enrichment: Int, methodId: Symbol): Unit = genB2xrII(SOC.B2xrII.CallInterfConst, rd, enrichment, methodId)
-
-  override def callIndirect(targetReg: IR, sigId: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1000.CallIndirect, targetReg, sigId)
-
-  override def divisorCheck(r: IR): Unit = genB2xr(SOC.B2xr.Opc0100.CheckDivZero64, r)
-  override def nullcheck(r: IR): Unit = genB2xr(SOC.B2xr.Opc0100.CheckNull, r)
-
-  override def lenarr(rl: IR, ra: IR): Unit = genLenArr(rl, ra, ArrayType.Raw)
-  override def arrIC(ri: IR, rl: IR): Unit = genAIC(ri, rl, ArrayType.Raw)
-  override def javaArrSC(arr: IR, value: IR): Unit = genArrStJava(arr, value, ArrayType.Raw)
-
-  override def javaLenarr(rl: IR, ra: IR): Unit = genLenArr(rl, ra, ArrayType.Java)
-  override def javaArrIC(ri: IR, rl: IR): Unit = genAIC(ri, rl, ArrayType.Java)
-
-  override def gcpoint(): Unit = genB2xz(SOC.B2xr.Opc0101.Gcpoint)
-
-  override def eopPack(dst: IR, obj: IR, enrichment: IR): Unit = genB3xrrr(SOC.B3xrrr.EopPack, dst, obj, enrichment)
-  override def eopPack(dst: IR, obj: IR, enrichment_u16: Int): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1101.EopPack, dst, obj, enrichment_u16)
-  override def eopPack(dst: IR, obj: IR, typeId: Symbol, interfaceId: Symbol): Unit = genB3xrrzII(SOC.B3xrrzII.EopPack, dst, obj, typeId, interfaceId)
-  override def eopPlain(dst: IR, obj: IR): Unit = genB3xrrz(SOC.B3xrrr.EopToPlain, dst, obj)
-  override def eopEnrichment(dst: IR, obj: IR): Unit = genB3xrrz(SOC.B3xrrr.EopGetRich, dst, obj)
-
-  override def evacuate(): Unit = genB3xrrz(SOC.B3xrrr.Evacuate, IR.IR1, IR.IR1)
-  override def singleton(dst: IR, sig_id: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1001.Singleton, dst, sig_id)
-
-  override def newobj(sig_idx: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1011.Newobj, IR.IR1, sig_idx)
-  override def newobjVST(ftc_idx: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1011.NewobjVst, IR.IR1, ftc_idx)
-
-  override def newarr(sig_id: Symbol): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1100.Newarr, IR.IR1, IR.IR2, sig_id)
-  override def newarrVST(ftc_id: Symbol): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1100.NewarrVst, IR.IR1, IR.IR2, ftc_id)
-  override def newarrzv(ftc_sig_id: Symbol): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1100.NewarrNoInit, IR.IR1, IR.IR2, ftc_sig_id)
-
-  override def javaNewarr(sig_id: Symbol): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1100.Newarr, IR.IR1, IR.IR2, sig_id)
-
-  override def newarrfillnonconst(dst: IR, len: IR, value: IR, ftc_sig_id: Symbol): Unit = genB3xrrrI(SOC.B3xrrrI.Opc1100.Newarrfill, dst, len, value, ftc_sig_id)
-
-  override def isInstanceOfClass(dst: IR, obj: IR, sig_id: Symbol): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1101.Iof, dst, obj, sig_id)
-  override def isInstanceOfInterface(dst: IR, obj: IR, sig_id: Symbol): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1101.Iof, dst, obj, sig_id)
-  override def isInstanceOfArray(dst: IR, obj: IR, sig_id: Symbol): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1101.Iof, dst, obj, sig_id)
-
-  override def weakCast(dst: IR, obj: IR, sig_id: Symbol): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1101.WeakCast, dst, obj, sig_id)
-  override def javaCheckCast(dst: IR, src: IR, sig_id: Symbol): Unit = genB3xrrzI(SOC.B3xrrrI.Opc1101.RichCheckcast, dst, src, sig_id)
-
-  override def lea_cforeign(dst: IR, method_id: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1001.CfuncPtr, dst, method_id)
-
-  override def loadTypeInfoSig(dst: IR, sig_id: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1010.LoadTypeInfoSig, dst, sig_id)
-  override def loadTypeInfoFTC(dst: IR, ftc_id: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1010.LoadTypeInfoFTC, dst, ftc_id)
-  override def loadTypeInfoObj(dst: IR, obj: IR): Unit = genB3xrrz(SOC.B3xrrr.LoadTypeInfoObj, dst, obj)
-
-  def cFuncWrap(dst: IR, method_id: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1001.CfuncWrap, dst, method_id)
-
-  override def javaClinit(sig_id: Symbol): Unit = genB2xzI16(SOC.B2xrI.Opc1010.JavaClinit, sig_id)
-  override def packageInit(sig_id: Symbol): Unit = genB2xzI16(SOC.B2xrI.Opc1010.PkgInit, sig_id)
-  override def packageInitCheck(sig_id: Symbol): Unit = genB2xzI16(SOC.B2xrI.Opc1010.PkgInitCheck, sig_id)
-
-  override def covinc(locs: Array[(String, Array[Int])]): Unit = {
-    genB2xz(SOC.B2xr.Opc0101.Covinc)
-    addFixupISA12(CoverageLocs(locs))
-  }
-
-  override def beginLocalUnmovable(r: IR): Unit = genB2xr(SOC.B2xr.Opc0101.BeginUnmovable, r)
-  override def endLocalUnmovable(r: IR): Unit = genB2xr(SOC.B2xr.Opc0101.EndUnmovable, r)
-
-  override def initobj(ts: StackSlot.Typed): Unit = genB2xzI16(SOC.B2xrI.Opc1010.InitObj, ts.idx)
-  override def zerorefs(ts: StackSlot.Typed): Unit = genB2xzI16(SOC.B2xrI.Opc1010.Zerorefs, ts.idx)
-
-  override def aliveReference(data: Array[Byte]): Unit = aliveReference(new RawData(data, 0))
-  override def unmovableReference(data: Array[Byte]): Unit = unmovableReference(new RawData(data, 0))
-  override def aliveRefDifference(data: Array[Byte]): Unit = aliveRefDifference(new RawData(data, 0))
-  override def aliveUnmovableDifference(data: Array[Byte]): Unit = aliveUnmovableDifference(new RawData(data, 0))
-  override def aliveRefCheck(data: Array[Byte]): Unit = aliveRefCheck(new RawData(data, 0))
-
-  def aliveReference(data: Symbol): Unit = genB2xzI32(SOC.B2xrI.Opc1010.AliveRef, data)
-  def unmovableReference(data: Symbol): Unit = genB2xzI32(SOC.B2xrI.Opc1010.AliveUnmovable, data)
-  def aliveRefDifference(data: Symbol): Unit = genB2xzI32(SOC.B2xrI.Opc1010.AliveRefDiff, data)
-  def aliveUnmovableDifference(data: Symbol): Unit = genB2xzI32(SOC.B2xrI.Opc1010.AliveUnmovableDiff, data)
-  def aliveRefCheck(data: Symbol): Unit = genB2xzI32(SOC.B2xrI.Opc1010.AliveRefCheck, data)
-
-  override def arrFill(arr: IR, data: Array[Byte]): Unit = genB2xrI32(SOC.B2xrI.Opc1001.ArrfillData, arr, new RawData(data, 0))
-  override def loadConstDataAddr(dst: IR, data: Array[Byte], alignment: Int): Unit = genB2xrI32(SOC.B2xrI.Opc1001.AdrData, dst, new RawData(data, alignment))
-  override def javaLdaStr(dst: IR, string_id: Symbol): Unit = genB2xrI32(SOC.B2xrI.Opc1001.JavaStrConst, dst, string_id)
-
-  def initConstString(ts: StackSlot.Typed, stringId: Symbol): Unit = genB2xzI16I32(SOC.B2xrII.InitStrConst, ts.idx, stringId)
-
-  // UG operations
-
-  override def callGTDSig(sig_idx: Symbol, method_id: Symbol): Unit = genB2xrII(SOC.B2xrII.CallGtdSig, IR.IR1, sig_idx, method_id)
-  override def callGTDFTC(ftc_idx: Symbol, method_id: Symbol): Unit = genB2xrII(SOC.B2xrII.CallGtdFtc, IR.IR1, ftc_idx, method_id)
-
-  override def callGFDSig(sig_idx: Symbol, method_id: Symbol): Unit = genB2xrII(SOC.B2xrII.CallAtcSig, IR.IR1, sig_idx, method_id)
-  override def callGFDFTC(ftc_idx: Symbol, method_id: Symbol): Unit = genB2xrII(SOC.B2xrII.CallAtcFtc, IR.IR1, ftc_idx, method_id)
-
-  override def callConstraint(ftc_idx: Symbol, method_id: Symbol): Unit = genB2xrII(SOC.B2xrII.CallConstraint, IR.IR1, ftc_idx, method_id)
-
-  override def copyResultVST(rv: IR, rr: IR, ftc_symbol_id: Symbol): Unit = {
-    genB3xrrrI(SOC.B3xrrrI.Opc1101.CopyVst, IR.IR1, rv, rr, ftc_symbol_id)
-  }
-
-  override def ohmsPtr(rd: IR, ohms: StackSlot.OffHeapMemory): Unit = genB2xrI16(SOC.B2xrI.Opc1001.AdrOhm, rd, ohms)
-
-  override def doTypeVarIsRef(dst: IR, ftc_id: Symbol): Unit = genB2xrI16(SOC.B2xrI.Opc1010.TypeVarIsRef, dst, ftc_id)
-
-  def putZeroes(n: Int): Unit = segment.putZeroes(n)
-}
-
+// TODO: Merge with forked part
 object Assembler {
   val BYTECODE_VERSION: Byte = 1
 
@@ -702,9 +27,7 @@ object Assembler {
     inline def FormatBits: Int = 0x9 // 01001
     inline def FormatFreeBits: Int = 3
     inline def ByteMask: Int = p(FormatBits, FormatFreeBits)
-
     inline def format(low3Bits: Int): Int = e3(ByteMask) | s3(low3Bits)
-
     val Nop = B1.format(0x0) // 0100_1000
   }
 
@@ -712,7 +35,6 @@ object Assembler {
     inline def FormatBits: Int = 0x0
     inline def FormatFreeBits: Int = 4
     inline def ByteMask: Int = p(FormatBits, FormatFreeBits)
-
     inline def format(low4Bits: Int): Int = e4(ByteMask) | s4(low4Bits)
   }
 
@@ -720,7 +42,6 @@ object Assembler {
     inline def FormatBits: Int = 0x1
     inline def FormatFreeBits: Int = 4
     inline def ByteMask: Int = p(FormatBits, FormatFreeBits)
-
     inline def format(low4Bits: Int): Int = e4(ByteMask) | s4(low4Bits)
   }
 
@@ -730,7 +51,6 @@ object Assembler {
     inline def FormatBits: Int = 0x1
     inline def FormatFreeBits: Int = 5
     inline def ByteMask: Int = p(FormatBits, FormatFreeBits)
-
     inline def format(k: K, low3Bits: Int): Int = e5(ByteMask) | p(s2(k.opc), freeBits = 3) | s3(low3Bits)
 
     /** For K0 and K8 imm bits length is {0, 8} + 4
@@ -749,7 +69,6 @@ object Assembler {
     inline def FormatBits: Int = 0x8
     inline def FormatFreeBits: Int = 3
     inline def ByteMask: Int = p(FormatBits, FormatFreeBits)
-
     inline def format(low3Bits: Int): Int = e3(ByteMask) | s3(low3Bits)
   }
 
@@ -872,7 +191,7 @@ object Assembler {
     def opcWithoutPage(width: Width): Int = opc(width) & 0xF
     def page: Int = s1(ordinal >> 3)
   }
-  
+
   object CC {
     val TESTBIT: CC = REQ
     val TESTNBIT: CC = RNE
@@ -920,6 +239,7 @@ object Assembler {
     case W64 extends Width(8)
 
     def opc: Int = ordinal
+
     def opcCommon: Int = {
       debugAssert((opc & 0x2) != 0)
       opc - W32.opc
@@ -937,6 +257,102 @@ object Assembler {
     }
   }
 
+  enum LoadAccessKind {
+    // ldk  | dst,w  | remarks
+    //-------------------------
+    case LD_U8 // 0000 | ir*,32 |
+    case LD_U16 // 0001 | ir*,32 |
+    case LD_32 // 0010 | ir*,32 |
+    case SPECIAL // 0011 | ir*,64 | load effective address
+    case LD_S8 // 0100 | ir*,32 |
+    case LD_S16 // 0101 | ir*,32 |
+    case LD_F32 // 0110 | fr*,32 |
+    case LD_F64 // 0111 | fr*,64 |
+    case LD_REC // 1000 | ir*,64 | load pointer to record
+    case LD_UNUSED1 // 1001 | ------ |
+    case LD_U32 // 1010 | ir*,64 |
+    case LD_64 // 1011 | ir*,64 |
+    case LD_UNUSED2 // 1100 | ------ |
+    case LD_UNUSED3 // 1101 | ------ |
+    case LD_S32 // 1110 | ir*,64 |
+    case LD_REF // 1111 | ir*,64 | load traced objref
+
+    def ldk: Int = ordinal
+  }
+
+  object LoadAccessKind {
+    // TODO: replace CbcTypeKind usages with LoadAccessKind
+    def from(cbcTypeKind: CbcTypeKind): LoadAccessKind = {
+      import CbcTypeKind.*
+
+      cbcTypeKind match {
+        case I8 => LoadAccessKind.LD_S8
+        case U8 => LoadAccessKind.LD_U8
+        case F16 | I16 => LoadAccessKind.LD_S16
+        case U16 => LoadAccessKind.LD_U16
+        case CHAR | I32 | U32 => LoadAccessKind.LD_32
+        case I64 | U64 | REC => LoadAccessKind.LD_64
+        case REF | NREF => LoadAccessKind.LD_REF
+        case F32 => LoadAccessKind.LD_F32
+        case F64 => LoadAccessKind.LD_F64
+        case x => shouldNotReachHere(s"unexpected cbc type kind for LoadAccessKind: $x")
+      }
+    }
+  }
+
+  enum StoreAccessKind {
+    // stk | MW* |  src    | remarks
+    //-------------------------------
+    case ST_8 // 000 |  8  | ir*/imm |
+    case ST_16 // 001 | 16  | ir*/imm |
+    case ST_32 // 010 | 32  | ir*/imm |
+    case ST_64 // 011 | 64  | ir*/imm | used to store pointer values
+    case ST_REF // 100 | 64  |   ir*   | store traced objref; (src == irz) means null reference
+    case SPECIAL // 101 | --  |   ir*   | set memexpr head and switch to Mem opcode space
+    case ST_F32 // 110 | 32  |   fr*   |
+    case ST_F64 // 111 | 64  |   fr*   |
+
+
+    def stk: Int = ordinal
+
+    def opx(highBit: Int): Int = {
+      p(highBit, freeBits = 3) | s3(stk)
+    }
+  }
+
+  object StoreAccessKind {
+    def apply(accessWidth: Width, fp: Boolean): StoreAccessKind = {
+      (accessWidth, fp) match {
+        case (W8, false) => ST_8
+        case (W16, false) => ST_16
+        case (W32, false) => ST_32
+        case (W64, false) => ST_64
+        // ST_REF
+        // SPECIAL
+        case (W32, true) => ST_F32
+        case (W64, true) => ST_F64
+
+        case x => shouldNotReachHere(s"Denied store access kind: $x")
+      }
+    }
+
+    // TODO: replace CbcTypeKind usages with StoreAccessKind
+    def from(cbcTypeKind: CbcTypeKind): StoreAccessKind = {
+      import CbcTypeKind.*
+
+      cbcTypeKind match {
+        case I8 | U8 => StoreAccessKind.ST_8
+        case F16 | I16 | U16 => StoreAccessKind.ST_16
+        case CHAR | I32 | U32 => StoreAccessKind.ST_32
+        case I64 | U64 | REC => StoreAccessKind.ST_64
+        case REF | NREF => StoreAccessKind.ST_REF
+        case F32 => StoreAccessKind.ST_F32
+        case F64 => StoreAccessKind.ST_F64
+        case x => shouldNotReachHere(s"unexpected cbc type kind for StoreAccessKind: $x")
+      }
+    }
+  }
+
   object BFX {
     object Extend {
       def unapply(packed: (Width, Width, Int, Int)): Option[Int] = condOpt(packed) {
@@ -944,6 +360,7 @@ object Assembler {
           p(s1(resW.opcCommon), 3) | p(s1(argW.opcCommon), 2) | (size / 8 - 1)
       }
     }
+
     // encoded as shift
     object Shift {
       def unapply(packed: (Width, Width, Int, Int)): Option[(Int, Int)] = condOpt(packed) {
@@ -951,6 +368,7 @@ object Assembler {
           (argW.nbytes, offset)
       }
     }
+
     object B3xrrt4i8 {
       /** Unpack (t4, imm8) */
       def unapply(packed: (Width, Width, Int, Int)): Option[(Int, Int)] = condOpt(packed) {
@@ -964,7 +382,7 @@ object Assembler {
   def getImmext(imm: Long): Option[ImmEXT] = if (imm != 0) {
     import ImmEXT.N
     def getSizeAndSign: (ImmEXT.N, Sign) = {
-      for (size <- Seq(N8, N16, N32) ; sign <- Sign.values) {
+      for (size <- Seq(N8, N16, N32); sign <- Sign.values) {
         if (isNBits(imm << 16, size.nBits + 16, sign)) {
           return (size, sign)
         }
@@ -980,7 +398,7 @@ object Assembler {
     def decodeImmEXT(w: Width): Long = {
       (if (sign == Sign.Signed) signExtend(value, n.nBits) else value & rightNBits64(n.nBits)) << 16
     }
-    
+
     def genSize = n.nBits / 8 + 1
   }
 
@@ -1107,4 +525,46 @@ object Assembler {
 
   def isNBits(v: Long, n: Int, sign: Sign): Boolean = MathUtils.isNBits(sign == Sign.Signed, v, n)
   def isNBits(v: Int,  n: Int, sign: Sign): Boolean = MathUtils.isNBits(sign == Sign.Signed, v, n)
+
+  /** See specification "Branch If (FExt BCC)" */
+  private def canBeEncodedInBCC(op: BranchOp): Boolean = {
+    import BranchOp.*
+    op match {
+      case EQ | NE |
+           LT | GE | // can't do LE and GT
+           ULT | UGE | // can't do ULE and UGT
+           REQ | RNE |
+           FEQ | FNE | FLT | FNLT | FGE | FNGE | // can't do FLE, FNLE and FGT and FNGT
+           TESTZ | TESTNZ | TESTBIT => true
+      case _ => false // anything, not listed here, must be achievable through swap of arguments or, in case of constant, normalization
+    }
+  }
+
+  def normalizeImm(op: BranchOp, c: Long, width: AsmWidth): (BranchOp, Long) = {
+    if (canBeEncodedInBCC(op)) {
+      return (op, c)
+    }
+
+    def incrementUnsigned(c: Long): Long = {
+      assert(c != rangeMask64(0, width.nbits - 1), s"$c $width")
+      width match {
+        case AsmWidth.W32 => c.toInt + 1
+        case AsmWidth.W64 => c + 1
+        case w => notImplemented(s"feel free to implement: $w")
+      }
+    }
+
+    def incrementSigned(c: Long): Long = {
+      assert(c != rangeMask64(0, width.nbits - 2), s"$c $width") // c != MaxSignedValue(width)
+      c + 1
+    }
+
+    import BranchOp.*
+    (op: @unchecked) match {
+      case LE => (LT, incrementSigned(c))
+      case GT => (GE, incrementSigned(c))
+      case ULE => (ULT, incrementUnsigned(c))
+      case UGT => (UGE, incrementUnsigned(c))
+    }
+  }
 }
