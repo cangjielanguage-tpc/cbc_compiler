@@ -2409,7 +2409,7 @@ object pcOModule {
   val mtag_unroll_loops: MTAG = UByte(24)                     // this method is marked as !UNROLL_LOOPS in JCA-file
   val mtag_contains_monitor_operations: MTAG = UByte(25)      //
   val mtag_get_flat_thin_intrinsic: MTAG = UByte(26)          // method is getFlat* intrinsic of Thin class
-  val mtag_unused27: MTAG = UByte(27)
+  val mtag_mut_wrapper: MTAG = UByte(27)                      // method is cangjie mut wrapper
   val mtag_is_generic: MTAG = UByte(28)                       //
   val mtag_has_source_full_name: MTAG = UByte(29)             //
   val mtag_thin_unchecked_cast: MTAG = UByte(30)              // method is uncheckedCast intrinsic of Thin class
@@ -3088,6 +3088,10 @@ object pcOModule {
     def isGlobalInit: Boolean = mtags contains mtag_global_init
 
     def markAsGlobalInit(): Unit = mtags += mtag_global_init
+
+    def isMutWrapper: Boolean = mtags contains mtag_mut_wrapper
+
+    def markAsMutWrapper(): Unit = mtags += mtag_mut_wrapper
 
     def isConstructor: Boolean = modifiers contains xot_constr
 

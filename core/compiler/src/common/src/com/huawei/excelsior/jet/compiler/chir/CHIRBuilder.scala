@@ -295,6 +295,8 @@ object CHIRBuilder {
             ABI.Description(mutWrapperReceiver, mutWrapperHasMutParam, hasThisTypeInfoParam,
             isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
 
+          builder.markAsMutWrapper(mutWrapper)
+
           virtMethods(id.toInt) = mutWrapper
 
           Seq(mutMethod, mutWrapper)

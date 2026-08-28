@@ -171,6 +171,8 @@ abstract class Method extends Symbol with Member with ConstantPoolObject with Fr
 
   def isGlobalInit: Boolean
 
+  def isMutWrapper: Boolean
+
   def isAJRTAllocator: Boolean
 
   /** True if method is marked with AJ annotation @NoLocalGCPoints or JCA directive NO_LOCAL_GC_POINTS. */

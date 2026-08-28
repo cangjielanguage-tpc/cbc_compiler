@@ -209,6 +209,10 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
     getO2Method(method).markAsPackageLiteralInit()
   }
 
+  override def markAsMutWrapper(method: Method): Unit = {
+    getO2Method(method).markAsMutWrapper()
+  }
+
   override def addInterface(pkg: Type, name: String, modifiers: Int, isCangjie: Boolean, genericInfo: GenericInfo): ClassType = {
     val xname = XString(name)
     val alreadyAdded = findClass(name)
