@@ -59,14 +59,16 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     }
 
     def globalName(_v: CHIR.Func | CHIR.GlobalVar): String = {
-      val wrappedMethod = _v.annotations().collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod() }
+      val (id, identifier, srcName, annotations) = _v match {
+        case v: CHIR.Func => (v.id(), v.identifier(), v.srcCodeIdentifier(), v.annotations())
+        case v: CHIR.GlobalVar => (v.id(), v.identifier(), v.srcCodeIdentifier(), v.annotations())
+      }
+      val wrappedMethod = annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod() }
       val v = wrappedMethod.getOrElse(_v)
-      val srcName = v.srcCodeIdentifier()
-      val isPrivate = v.attributes().contains(CHIR.Attribute.PRIVATE)
+      val isPrivate = v.attributes().contains(CHIR.Attribute.Private)
       val isPackageGlobal = v.declaringDef().isEmpty
       val suffix = if (isGenericInstantiated(v)) {
         // TODO another way without id usage?
-        val id = _v.id()
         assert(id > 0)
         s"$$instantiated$$${pkg.name()}$$$id"
       } else {
@@ -87,7 +89,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
             case None => shouldNotReachHere(v.base.identifier)
           }
         case None =>
-          if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) v.identifier().tail else srcName + suffix
+          if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
       }
     }
 
@@ -114,7 +116,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def functionSig(m: CHIR.Func, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
-    val (sig, rcv, isCFunc, hasVarArg) = functionSig(m.funcType(), hasReceiver)
+    val (sig, rcv, isCFunc, hasVarArg) = functionSig(m.tpe(), hasReceiver)
     if (m.srcCodeIdentifier() == "$lambda") {
       val cparams = Seq.tabulate(m.genericTypeParams().size)(SignatureType.LocalTypeVariable.apply)
       val lparams = Seq.empty
@@ -270,17 +272,17 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     var mods = Modifiers.EMPTY
 
     a.attributes().foreach {
-      case CHIR.Attribute.PUBLIC => mods += PUBLIC
-      case CHIR.Attribute.PROTECTED => mods += PROTECTED
-      case CHIR.Attribute.PRIVATE => mods += PRIVATE
+      case CHIR.Attribute.Public => mods += PUBLIC
+      case CHIR.Attribute.Protected => mods += PROTECTED
+      case CHIR.Attribute.Private => mods += PRIVATE
       //      case CHIR.Attribute.VIRTUAL => // TODO: support
-      case CHIR.Attribute.SEALED => mods += CJ_SEALED
-      case CHIR.Attribute.ABSTRACT => mods += ABSTRACT
-      case CHIR.Attribute.READONLY => mods += FINAL
-      case CHIR.Attribute.MUT => mods += CJ_MUT
-      case CHIR.Attribute.REDEF => mods += CJ_REDEF
-      case CHIR.Attribute.OVERRIDE => mods += CJ_OVERRIDE
-      case CHIR.Attribute.STATIC => mods -= FINAL; mods += STATIC
+      case CHIR.Attribute.Sealed => mods += CJ_SEALED
+      case CHIR.Attribute.Abstract => mods += ABSTRACT
+      case CHIR.Attribute.Readonly => mods += FINAL
+      case CHIR.Attribute.Mut => mods += CJ_MUT
+      case CHIR.Attribute.Redef => mods += CJ_REDEF
+      case CHIR.Attribute.Override => mods += CJ_OVERRIDE
+      case CHIR.Attribute.Static => mods -= FINAL; mods += STATIC
       case _ => // do nothing
     }
 
@@ -288,7 +290,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def isGenericInstantiated(t: CHIR.HasAttributes): Boolean = {
-    t.attributes().contains(CHIR.Attribute.GENERIC_INSTANTIATED)
+    t.attributes().contains(CHIR.Attribute.GenericInstantiated)
   }
 
   def isImported(t: CHIR.CustomTypeDef | CHIR.Func | CHIR.GlobalVar): Boolean = {
@@ -296,7 +298,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       case t: CHIR.CustomTypeDef => (t.attributes(), isFunctionalType(t) && !isLambda(t.tpe())
       case t: (CHIR.Func | CHIR.GlobalVar)  => (t.attributes(), false)
     }
-    attrs.contains(CHIR.Attribute.IMPORTED) || isFunctionalTypeBase
+    attrs.contains(CHIR.Attribute.Imported) || isFunctionalTypeBase
   }
 
   /**
@@ -355,7 +357,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
   private val enumKindByEnumDef = mutable.HashMap.empty[CHIR.EnumDef, EnumKind]
   def enumKind(enumDef: CHIR.EnumDef): EnumKind = enumKindByEnumDef.getOrElseUpdate(enumDef, {
-    val ctorSigs = enumDef.ctors().map(_.funcType())
+    val ctorSigs = enumDef.ctors().map(_.tpe())
     val ctors = ctorSigs.map(_.paramTypes())
     val noParams = ctors.forall(c => c.isEmpty)
 

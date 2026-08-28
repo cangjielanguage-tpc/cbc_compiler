@@ -188,7 +188,7 @@ object CHIRBuilder {
             builder.setSuperinterfaces(symType, superinterfaces)
           }
 
-          val ctorSigs = d.ctors().map(_.funcType())
+          val ctorSigs = d.ctors().map(_.tpe())
           val ctors = ctorSigs.map(_.paramTypes()).map(_.map(resolver.typeSig))
 
           builder.setEnumInfo(symType, CangjieEnumInfo(ctors.map(CangjieEnumInfo.Constructor.apply)))
@@ -246,7 +246,7 @@ object CHIRBuilder {
       for (m <- d.methods()) {
         val name = resolver.symName(m)
         val mutModifiers = m.kind() match {
-          case CHIR.FuncKind.STRUCT_CONSTRUCTOR | CHIR.FuncKind.PRIMAL_STRUCT_CONSTRUCTOR =>
+          case CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>
             Modifiers(Modifier.CJ_MUT)
           case _ => Modifiers.EMPTY
         }
@@ -314,8 +314,8 @@ object CHIRBuilder {
             builder.markAsCHIRDef(symMethod, m.id().toInt)
           }
           m.kind() match {
-            case CHIR.FuncKind.CLASS_CONSTRUCTOR | CHIR.FuncKind.PRIMAL_CLASS_CONSTRUCTOR |
-                 CHIR.FuncKind.STRUCT_CONSTRUCTOR | CHIR.FuncKind.PRIMAL_STRUCT_CONSTRUCTOR =>
+            case CHIR.Func.Kind.ClassCtor | CHIR.Func.Kind.PrimalClassCtor |
+                 CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>
               builder.markAsConstructor(symMethod)
             case _ =>
           }
@@ -331,8 +331,8 @@ object CHIRBuilder {
 
     object GlobalAbstractFunc {
       def unapply(f: CHIR.Func): Option[CHIR.Type] = {
-        if (f.declaringDef().isEmpty && f.attributes().contains(CHIR.Attribute.ABSTRACT)) {
-          val funcType = f.funcType()
+        if (f.declaringDef().isEmpty && f.attributes().contains(CHIR.Attribute.Abstract)) {
+          val funcType = f.tpe()
           Some(funcType.receiverType())
         } else {
           None
@@ -363,8 +363,8 @@ object CHIRBuilder {
           builder.markAsCHIRDef(symMethod, m.id().toInt)
         }
         m.kind() match {
-          case CHIR.FuncKind.CLASS_CONSTRUCTOR | CHIR.FuncKind.PRIMAL_CLASS_CONSTRUCTOR |
-               CHIR.FuncKind.STRUCT_CONSTRUCTOR | CHIR.FuncKind.PRIMAL_STRUCT_CONSTRUCTOR =>
+          case CHIR.Func.Kind.ClassCtor | CHIR.Func.Kind.PrimalClassCtor |
+               CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>
             builder.markAsConstructor(symMethod)
           case _ =>
         }
