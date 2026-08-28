@@ -44,7 +44,7 @@ case class ClassDefImpl() extends CHIR.ClassDef {
   override def superClass(): Option[CHIR.ClassType] = ???
 }
 
-case class FuncTypeImpl() extends CHIR.Type
+final case class FuncTypeImpl() extends CHIR.Type
 
 /** [[CHIRPackage]] with caching of core indexed entities:
   *  - Types

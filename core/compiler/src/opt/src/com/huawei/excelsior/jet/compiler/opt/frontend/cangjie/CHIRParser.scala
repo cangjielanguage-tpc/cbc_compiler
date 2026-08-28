@@ -15,9 +15,10 @@ import com.huawei.excelsior.jet.compiler.{PreparationRequired, RTSProc, Stage, S
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
 import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
+import com.huawei.excelsior.jet.compiler.chir.CHIR.TryUnaryExpression
 import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.*
-import com.huawei.excelsior.jet.compiler.chir.{Attribute, CHIRLoader, CHIRResolver, PackageFormat, ParsedCHIRPackage}
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.{BlockGroup, CHIRExprKind, CHIRTypeKind, Expression, Function, Block as BlockVal}
+import com.huawei.excelsior.jet.compiler.chir.{Attribute, CHIR, CHIRLoader, CHIRResolver, PackageFormat}
+import com.huawei.excelsior.jet.compiler.chir.PackageFormat.{BlockGroup, CHIRExprKind, CHIRTypeKind, Expression, Function}
 import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimination, Universe}
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
@@ -147,9 +148,9 @@ trait CHIRParser
   private def loadNormal(method: Method, args: Seq[Node]): Return = {
     val Some(source, idx) = method.getCHIRDef
     implicit val resolver: CHIRResolver = CHIRLoader.getCHIRResolver(source.toString)(env)
-    implicit val pkg: ParsedCHIRPackage = resolver.pkg
+    implicit val pkg: CHIR.Package = resolver.pkg
 
-    val func = pkg.getValue[Function](idx)
+    val func = pkg.function(idx)
 
     stage(Stage.CangjieFunctionParsing) {
       val blockMap = withFreeUnreachableBlocks {
@@ -256,31 +257,31 @@ trait CHIRParser
   }
 
   private class BlockMap {
-    private val _blocks = mutable.LinkedHashMap.empty[BlockVal, Block]
-    private val _blockVals = mutable.LinkedHashMap.empty[Block, BlockVal]
+    private val _blocks = mutable.LinkedHashMap.empty[CHIR.Block, Block]
+    private val _blockVals = mutable.LinkedHashMap.empty[Block, CHIR.Block]
 
-    def link(value: BlockVal, block: Block): Unit = {
+    def link(value: CHIR.Block, block: Block): Unit = {
       _blocks(value) = block
       _blockVals(block) = value
     }
 
-    def apply(value: BlockVal): Block = _blocks(value)
-    def apply(block: Block): BlockVal = _blockVals(block)
+    def apply(value: CHIR.Block): Block = _blocks(value)
+    def apply(block: Block): CHIR.Block = _blockVals(block)
 
     def contains(block: Block): Boolean = _blockVals.contains(block)
 
-    def iterator: Iterator[(BlockVal, Block)] = _blocks.iterator
+    def iterator: Iterator[(CHIR.Block, Block)] = _blocks.iterator
     def blocks: Iterator[Block] = _blocks.valuesIterator
-    def blockVals: Iterator[BlockVal] = _blocks.keysIterator
+    def blockVals: Iterator[CHIR.Block] = _blocks.keysIterator
   }
 
-  private def makeCFG(method: Method, func: Function)(implicit pkg: ParsedCHIRPackage): BlockMap = {
-    val bg = pkg.getValue[BlockGroup](func.body)
+  private def makeCFG(method: Method, func: CHIR.Func)(implicit pkg: CHIR.Package): BlockMap = {
+    val bg = func.body().get
 
     // Create blocks
     val blockMap = new BlockMap
-    for (id <- bg.blocksVector.iterator; v = pkg.getValue[BlockVal](id)) {
-      val b = if (v.isLandingPadBlock) {
+    for (v <- bg.blocks()) {
+      val b = if (v.isLandingPadBlock()) {
         val handler = XBlock()
         Catch(handler)
         handler
@@ -293,35 +294,25 @@ trait CHIRParser
     // Create block ends
     for ((bv, b) <- blockMap.iterator) {
 
-      def succBlocks(t: Expression): Seq[Block] = {
-        val operands = t.operandsVector.toSeq
-        val blockArgs = t.kind match {
-          case CHIRExprKind.Branch | CHIRExprKind.MultiBranch | CHIRExprKind.RaiseException => operands.tail
-          case CHIRExprKind.TryApply | CHIRExprKind.TryInvoke | CHIRExprKind.TryIntrinsic |
-               CHIRExprKind.TrySpawn | CHIRExprKind.TryNumericCast | CHIRExprKind.TryAllocate | CHIRExprKind.TryRawArrayAllocate |
-               CHIRExprKind.TryNeg | CHIRExprKind.TryAdd | CHIRExprKind.TrySub | CHIRExprKind.TryMul |
-               CHIRExprKind.TryDiv | CHIRExprKind.TryMod | CHIRExprKind.TryExp |
-               CHIRExprKind.TryLShift | CHIRExprKind.TryRShift => operands.takeRight(2)
-          case _ => operands
-        }
-        blockArgs.map(id => blockMap(pkg.getValue[BlockVal](id)))
+      def succBlocks(t: CHIR.HasSuccessors): Seq[Block] = {
+        t.successors().map(blockMap.apply)
       }
 
-      def goto(t: Expression): Unit = {
+      def goto(t: CHIR.Goto): Unit = {
         val end = Goto(b, b)
         succBlocks(t) foreach (_ addArg end)
       }
 
-      def branch(t: Expression): Unit = {
+      def branch(t: CHIR.Branch): Unit = {
         val end = If(b, b, Proxy(ConditionType)(b))
         val Seq(trueBlock, falseBlock) = succBlocks(t)
         trueBlock addArg end.trueExit
         falseBlock addArg end.falseExit
       }
 
-      def multiBranch(v: PackageFormat.MultiBranch): Unit = {
-        val end = Switch(v.caseValuesVector.toSeq.map(_.toInt))(b, b, Proxy(IntType)(b))
-        for ((exit, target) <- end.exits zip succBlocks(v.base)) {
+      def multiBranch(v: CHIR.MultiBranch): Unit = {
+        val end = Switch(v.caseValues().map(_.toInt))(b, b, Proxy(IntType)(b))
+        for ((exit, target) <- end.exits zip succBlocks(v)) {
           target addArg exit
         }
       }
@@ -331,7 +322,7 @@ trait CHIRParser
         Return(b, b, Proxy(retType)(b))
       }
 
-      def exceptGoto(t: Expression): Unit = {
+      def exceptGoto(t: CHIR.HasSuccessors): Unit = {
         val anchor = HandlerAnchor(b)
         val end = Goto(anchor, b)
         val Seq(target: BBlock, handler: XBlock) = succBlocks(t)
@@ -339,9 +330,9 @@ trait CHIRParser
         handler addArg anchor.xpoint
       }
 
-      def throwOp(t: Expression): Unit = {
+      def throwOp(t: CHIR.RaiseException): Unit = {
         var ctrl: ControlNode = b
-        for (handler <- ScalaCollections.singleton(succBlocks(t))) {
+        for (handler <- succBlocks(t)) {
           val anchor = HandlerAnchor(b)
           assert(handler.isInstanceOf[XBlock])
           handler addArg anchor.xpoint
@@ -350,67 +341,45 @@ trait CHIRParser
         Halt.empty()(ctrl, b)
       }
 
-      def processTerminator(t: Expression): Unit = t.kind match {
-        case CHIRExprKind.Goto => goto(t)
-        case CHIRExprKind.Exit => exit()
-        case CHIRExprKind.RaiseException => throwOp(t)
-        case CHIRExprKind.TryApply |
-             CHIRExprKind.TryInvoke |
-             CHIRExprKind.TryIntrinsic |
-             CHIRExprKind.TrySpawn |
-             CHIRExprKind.TryNumericCast |
-             CHIRExprKind.TryAllocate |
-             CHIRExprKind.TryRawArrayAllocate |
-             CHIRExprKind.TryNeg |
-             CHIRExprKind.TryAdd |
-             CHIRExprKind.TrySub |
-             CHIRExprKind.TryMul |
-             CHIRExprKind.TryDiv |
-             CHIRExprKind.TryMod |
-             CHIRExprKind.TryExp |
-             CHIRExprKind.TryLShift |
-             CHIRExprKind.TryRShift => exceptGoto(t)
-        case CHIRExprKind.Branch | CHIRExprKind.MultiBranch => shouldNotReachHere("Branch and MultiBranch are processed outside")
-        case _ => // the rest are not terminators
-      }
-
-      (pkg.getExpr[Table](bv.exprs(bv.exprsLength - 1)): @unchecked) match {
-        case v: PackageFormat.MultiBranch => multiBranch(v)
-        case v: PackageFormat.Expression => processTerminator(v)
-        case v: PackageFormat.AllocateBase => processTerminator(v.base)
-        case v: PackageFormat.ApplyBase => processTerminator(v.base.base)
-        case v: PackageFormat.BinaryExpressionBase => processTerminator(v.base)
-        case v: PackageFormat.Branch => branch(v.base)
-        case v: PackageFormat.IntrinsicBase => processTerminator(v.base.base)
-        case v: PackageFormat.InvokeBase => processTerminator(v.base.base)
-        case v: PackageFormat.NumericCastBase => processTerminator(v.base)
-        case v: PackageFormat.RawArrayAllocateBase => processTerminator(v.base)
-        case v: PackageFormat.SpawnBase => processTerminator(v.base)
-        case v: PackageFormat.UnaryExpressionBase => processTerminator(v.base)
+      bv.terminator() match {
+        case t: CHIR.Goto => goto(t)
+        case _: CHIR.Exit => exit()
+        case t: CHIR.RaiseException => throwOp(t)
+        case t: (CHIR.TryApply |
+          CHIR.TryInvoke |
+          CHIR.TryIntrinsic |
+          CHIR.TryInvokeStatic |
+          CHIR.TrySpawn |
+          CHIR.TryNumericCast |
+          CHIR.TryAllocate |
+          CHIR.TryRawArrayAllocate |
+          CHIR.TryUnaryExpression |
+          CHIR.TryBinaryExpression) => exceptGoto(t)
+        case t: CHIR.Branch => branch(t)
+        case t: CHIR.MultiBranch => multiBranch(t)
       }
     }
 
     // Link prologue with entry block
-    val chirEntryBlock = blockMap(pkg.getValue[BlockVal](bg.entryBlock))
+    val chirEntryBlock = blockMap(bg.entryBlock())
     chirEntryBlock addArg Goto(entryBlock, entryBlock)
 
     blockMap
   }
 
-  private class CHIRInterpreter(method: Method, func: Function, blockMap: BlockMap)(implicit pkg: ParsedCHIRPackage, resolver: CHIRResolver) extends AbstractInterpreter {
+  private class CHIRInterpreter(method: Method, func: CHIR.Func, blockMap: BlockMap)(implicit pkg: CHIR.Package, resolver: CHIRResolver) extends AbstractInterpreter {
     interpreter =>
 
-    private val entryBlockVal = pkg.getValue[BlockVal](pkg.getValue[BlockGroup](func.body).entryBlock)
+    case class CatchProxy()
+    private type StateValue = CHIR.Expression | CHIR.Parameter | CHIR.Value | CatchProxy
 
-    private val params = func.paramsVector.toSeq.map(pkg.getValue[PackageFormat.Parameter](_))
+    private val entryBlockVal = func.body().get.entryBlock()
 
-    private def exprs(b: BlockVal): Iterator[Table] = b.exprsVector.iterator.map(pkg.getExpr[Table](_))
+    private val params = func.params()
 
-    private def operands(e: PackageFormat.Expression): Seq[Table] = e.operandsVector.toSeq.map(pkg.getValue[Table](_))
+    private val catchProxy = CatchProxy()
 
-    private val catchProxy = Table()
-
-    private val localValues = Numbering[Table](catchProxy +: (params ++ blockMap.blockVals.flatMap(exprs)))
+    private val localValues = Numbering[StateValue](catchProxy +: (params ++ blockMap.blockVals.flatMap(_.expressions())))
 
     class State(private var locals: Array[NodeRef], _memory: NodeRef, _contextTypes: ContextTypesMap)
       extends Scope.State(null, _memory, _contextTypes) {
@@ -423,24 +392,18 @@ trait CHIRParser
       override def makeUnreachableCopy() =
         new State(locals map (_ => NoValue()), memory, ContextTypesMap.Unreachable)
 
-      def apply(id: Long): Node =
-        apply(pkg.getExpr[Table](id))
-
-      def apply(x: Table): Node = {
+      def apply(x: StateValue): Node = {
         val v = x match {
-          case x: PackageFormat.LocalVar => pkg.getExpr[Table](x.associatedExpr)
+          case x: CHIR.LocalVar => x.associatedExpr()
           case x => x
         }
         val i = localValues.number(v)
         locals(i).deref ensuring (_ != null)
       }
 
-      def update(id: Long, value: Node): Unit =
-        update(pkg.getExpr[Table](id), value)
-
-      def update(x: Table, value: Node): Unit = {
+      def update(x: StateValue, value: Node): Unit = {
         val v = x match {
-          case x: PackageFormat.LocalVar => pkg.getExpr[Table](x.associatedExpr)
+          case x: CHIR.LocalVar => x.associatedExpr()
           case x => x
         }
         assert(value != null)
@@ -583,9 +546,9 @@ trait CHIRParser
         block
 
       } else if (anchor != null) { // Block with handler
-        val blockExprs = exprs(blockMap(block)).toSeq
-        val spine = blockExprs.init
-        val terminator = blockExprs.last
+        val b = blockMap(block)
+        val spine = b.nonTerminatorExpressions()
+        val terminator = b.terminator()
 
         // In CHIR only terminator can throw exception and requires handler,
         // all expressions before it must not go to the same handler even if they can throw
@@ -618,7 +581,7 @@ trait CHIRParser
 
       } else { // Regular block
         processBlock(block) {
-          for (e <- exprs(blockMap(block))) {
+          for (e <- blockMap(block).expressions()) {
             parseExpression(e, block, state)
           }
         }
@@ -664,49 +627,44 @@ trait CHIRParser
       }
 
       if (env.enabled(PackageInitFromMain) && method.isMain) {
-        for (id <- Seq(pkg.pkg.packageLiteralInitFunc, pkg.pkg.packageInitFunc)) {
-          val func = pkg.getValue[Function](id)
-          val refType = resolver.findClass(func.base.packageName).get
+        for (func <- Seq(pkg.packageInitLiteralFunc(), pkg.packageInitFunc())) {
+          val refType = resolver.findClass(func.packageName()).get
 
           val name = resolver.symName(func)
-          val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, func, func.funcKind, func.base.base.base.attributes)
+          val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, func)
 
           callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
         }
       }
 
-      if (pkg.getValue[Function](pkg.pkg.packageLiteralInitFunc) == func) {
+      if (pkg.packageInitLiteralFunc() == func) {
         // TODO: consider moving it under @has_invoked_pkg_init_literal check
-        for (id <- 1L to pkg.pkg.valuesLength) pkg.getValue[Table](id) match {
-          case g: PackageFormat.GlobalVar if !resolver.isImported(g.base) =>
-            val declType = if (g.base.declaredParent == 0) {
-              resolver.findClass(pkg.pkg.name).get
-            } else {
-              resolver.symType(pkg.getDef[Table](g.base.declaredParent)).get
-            }
+        for (v <- pkg.values()) v match {
+          case g: CHIR.GlobalVar if !resolver.isImported(g) =>
+            val declType = g.declaringDef().flatMap(resolver.symType).getOrElse(resolver.findClass(pkg.name()).get)
             val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
             assert(field.isStatic, field)
-            val value = pkg.getValue[Table](g.initializer) match {
-              case null | _: PackageFormat.UnitLiteral => null
-              case v: PackageFormat.NullLiteral => IntegralConst(ValueType.fromSig(field.getType))(0)
-              case v: PackageFormat.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.`val`)
-              case v: PackageFormat.FloatLiteral => field.getType match {
-                case SignatureType.Float32 => FConst(v.`val`.toFloat)
-                case SignatureType.Float64 => DConst(v.`val`)
+            val value = g.initializer().map {
+              case CHIR.UnitLiteral => null
+              case _: CHIR.NullLiteral => IntegralConst(ValueType.fromSig(field.getType))(0)
+              case v: CHIR.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.value())
+              case v: CHIR.FloatLiteral => field.getType match {
+                case SignatureType.Float32 => FConst(v.value().toFloat)
+                case SignatureType.Float64 => DConst(v.value())
                 case t => notImplemented(s"unexpected static field type ${t.toJETSignature} of field $field")
               }
-              case v: PackageFormat.BoolLiteral => IConst(if (v.`val`) 1 else 0)
-              case v: PackageFormat.RuneLiteral => IConst(v.`val`.toInt)
-              case v: PackageFormat.StringLiteral => constString(v.`val`)
-              case func: PackageFormat.Function =>
-                val refType = resolver.findClass(func.base.packageName).get
+              case v: CHIR.BoolLiteral => IConst(if (v.value()) 1 else 0)
+              case v: CHIR.RuneLiteral => IConst(v.value().toInt)
+              case v: CHIR.StringLiteral => constString(v.value())
+              case v: CHIR.Func =>
+                val refType = resolver.findClass(v.packageName()).get
 
-                val name = resolver.symName(func)
-                val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, func, func.funcKind, func.base.base.base.attributes)
+                val name = resolver.symName(v)
+                val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, v)
 
                 callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
                 null
-            }
+            }.orNull
             value match {
               case null =>
                 // nothing to do
@@ -722,159 +680,19 @@ trait CHIRParser
       }
     }
 
-    private def parseCasts(e: Expression, overflowStrategy: Int, state: State) = {
-      import BitFieldExtract.*
-      import SignatureType.*
-      import AsmType.*
-
-      val (from, value) = operands(e) match {
-        case Seq(fromVar: PackageFormat.LocalVar, /*Exception targets*/ _*) =>
-          (resolver.typeSig(fromVar.base.`type`), state(fromVar))
-        case Seq(fromVar: PackageFormat.Parameter, /*Exception targets*/ _*) =>
-          (resolver.typeSig(fromVar.base.`type`), state(fromVar))
-      }
-      val to = resolver.typeSig(e.resultTy)
-
-      val fromAsm = from.toAsm
-      val toAsm = to.toAsm
-
-      def fromTpe = ValueType.fromSig(from)
-
-      def toTpe = ValueType.fromSig(to)
-
-      overflowStrategy match {
-        case PackageFormat.OverflowStrategy.WRAPPING | PackageFormat.OverflowStrategy.NA => // ok
-        case PackageFormat.OverflowStrategy.THROWING => // TODO: do we need to support it?
-        case PackageFormat.OverflowStrategy.SATURATING => notImplemented("saturating type cast")
-      }
-
-      (from, to) match {
-        case (from: (Reference | InstantiatedReference | TypeVariable), to: (Reference | InstantiatedReference)) =>
-          // TODO: remove this case when numeric cast will handle only *numeric* types
-          CheckCast(to, trusted = true)(value)
-          value
-
-        case (from: (Record | InstantiatedRecord), to: (Record | InstantiatedRecord)) =>
-          // TODO: check something
-          ReinterpretCast(fromTpe, toTpe)(value)
-
-        case (from: (Record | InstantiatedRecord), to: Tuple) =>
-          // TODO: assert from is enum!
-          ReinterpretCast(fromTpe, toTpe)(value)
-
-        case (from: TypeVariable, to: TypeVariable) =>
-          value
-
-        case (from: Integral, to: Integral) =>
-          BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, value)
-
-        case (from: Integral, UnicodeChar32) =>
-          BFX(toTpe, 0, (from.bits min 32), signExtension = from.signed, value)
-
-        case (UnicodeChar32, to: Integral) =>
-          BFX(toTpe, 0, (32 min to.bits), signExtension = true, value)
-
-        case (from: Integral, to: FloatingPoint) =>
-          val fpToAsm = if (toAsm == F16) F32 else toAsm
-          val res = fromAsm match {
-            case U64 =>
-              val proc = fpToAsm match {
-                case F32 => RTSProc.JR_ul2f
-                case F64 => RTSProc.JR_ul2d
-                case _ => shouldNotReachHere(toAsm)
-              }
-              RTSCall(proc)(value)
-
-            case U32 =>
-              // Non-long values could be zero-extended to bigger signed type and then converted to float.
-              val i64 = BFX(LongType, 0, from.bits, signExtension = false, value)
-              ValueConvert(I64, fpToAsm)(i64)
-
-            case _ =>
-              val (adjFromAsm, adjValue) = if (fromAsm.isShortIntegral) {
-                (I32, BFX(IntType, 0, fromAsm.sizeInBits, signExtension = fromAsm.signed, value))
-              } else {
-                (fromAsm, value)
-              }
-              ValueConvert(adjFromAsm, fpToAsm)(adjValue)
-          }
-
-          if (toAsm == F16) ValueConvert(F32, F16)(res) else res
-
-        case (from: FloatingPoint, to: Integral) =>
-          val (fpFromAsm, fpValue) = if (fromAsm == F16) {
-            (F32, ValueConvert(F16, F32)(value))
-          } else {
-            (fromAsm, value)
-          }
-
-          toAsm match {
-            case U64 =>
-              val proc = fpFromAsm match {
-                case F32 => RTSProc.JR_f2ul
-                case F64 => RTSProc.JR_d2ul
-                case _ => shouldNotReachHere(fromAsm)
-              }
-              RTSCall(proc)(fpValue)
-
-            case U32 =>
-              // Value could be converted to bigger signed type and then zero-extended to target type.
-              val i64 = ValueConvert(fpFromAsm, I64)(fpValue)
-              BitFieldExtract.Truncate(i64)
-
-            case _ =>
-              val adjToAsm = if (toAsm.isShortIntegral) I32 else toAsm
-              ValueConvert(fpFromAsm, adjToAsm)(fpValue)
-          }
-
-        case (from: FloatingPoint, to: FloatingPoint) =>
-          ValueConvert(fromAsm, toAsm)(value)
-
-        case (Int32 | UInt32 | _: PrimitiveBasedEnum, Int32 | UInt32 | _: PrimitiveBasedEnum) =>
-          value
-
-        case (from@OptionLikeEnum(_, _, x), to@Tuple(Seq(Boolean, y))) =>
-          assert(x == y, s"cast from $from to $to")
-          if (from.isNullableOption || x.isTypeVariable) {
-            EnumCast(from)(value)
-          } else {
-            ReinterpretCast(fromTpe, toTpe)(value)
-          }
-
-        case (from: ClassBasedEnum, to: Tuple) =>
-          val ctors = from.info.constructors
-          val targetCtor = to.params.tail // first element is tag
-          val idx = ctors.indexWhere(_.params == targetCtor) // TODO: instantiate
-          assert(idx >= 0)
-          val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
-          val enumType = if (from.params.isEmpty) {
-            CangjieReference(enumName)
-          } else {
-            InstantiatedReference(enumName, from.params)
-          }
-          EnumCast(enumType)(value)
-
-        case (from: UnionBasedEnum, to: Tuple) =>
-          ReinterpretCast(fromTpe, toTpe)(value)
-
-        case (from: ZeroSizedEnum, UInt32) =>
-          IConst(0)
-
-        case (UInt32, to: ZeroSizedEnum) =>
-          self.Void()
-
-        case _ => notImplemented(s"cast from ${from.toJETSignature} to ${to.toJETSignature}")
-      }
+    object ValueSig {
+      def unapply(v: CHIR.Value): Option[SignatureType] = Some(resolver.typeSig(v match {
+          case v: CHIR.GlobalVar => v.tpe()
+          case v: CHIR.LocalVar => v.tpe()
+          case v: CHIR.Parameter => v.tpe()
+      }))
     }
 
-    private def parseExpression(e: Table, block: Block, state: State): Unit = e match {
-      case e: PackageFormat.UnaryExpressionBase =>
+    private def parseExpression(e: CHIR.Expression, block: Block, state: State): Unit = e match {
+      case e: CHIR.UnaryExpression =>
         import SignatureType.*
-        val arg = operands(e.base) match {
-          case Seq(argVar, /*Exception targets*/ _*) => state(argVar)
-        }
-
-        val sig = resolver.typeSig(e.base.resultTy)
+        val arg = state(e.operand())
+        val sig = resolver.typeSig(e.resultTpe())
         val tpe = if (sig == Float16) FloatType else arg.tpe
         assert(tpe != ValueType, arg)
 
@@ -882,24 +700,21 @@ trait CHIRParser
           BitFieldExtract.BFX(tpe, 0, sig.toAsm.sizeInBits, signExtension = false, n)
         }
 
-        val n = e.base.kind match {
-          case CHIRExprKind.Neg | CHIRExprKind.TryNeg => Neg(tpe)(arg)
-          case CHIRExprKind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
-          case CHIRExprKind.BitNot => Xor(arg, IntegralConst(tpe)(-1))
-          case x => shouldNotReachHere(s"unexpected unary expression: ${PackageFormat.CHIRExprKind.name(x)}")
+        val n = e.kind() match {
+          case CHIR.UnaryExpression.Kind.Neg => Neg(tpe)(arg)
+          case CHIR.UnaryExpression.Kind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
+          case CHIR.UnaryExpression.Kind.BitNot => Xor(arg, IntegralConst(tpe)(-1))
         }
         state(e) = n
 
-      case e: PackageFormat.BinaryExpressionBase =>
+      case e: CHIR.BinaryExpression =>
         import SignatureType.*
-        val (sig, lraw, rraw) = operands(e.base) match {
-          case Seq(lvar: PackageFormat.LocalVar, rvar, /*Exception targets*/ _*) =>
-            (resolver.typeSig(lvar.base.`type`), state(lvar), state(rvar))
-          case Seq(lpar: PackageFormat.Parameter, rvar, /*Exception targets*/ _*) =>
-            (resolver.typeSig(lpar.base.`type`), state(lpar), state(rvar))
-        }
 
-        val resSig = resolver.typeSig(e.base.resultTy)
+        val ValueSig(sig) = e.leftOperand()
+        val lraw = state(e.leftOperand())
+        val rraw = state(e.rightOperand())
+
+        val resSig = resolver.typeSig(e.resultTpe())
 
         def adjustRes(n: Node) = if (resSig == Float16) ValueConvert(AsmType.F32, AsmType.F16)(n) else n
 
@@ -924,24 +739,24 @@ trait CHIRParser
               case _ => false
             }
             // Note: Cangjie does not have "unordered" floating point comparisons
-            val op = e.base.kind match {
-              case CHIRExprKind.LT => if (unsigned) Condition.ULT else Condition.LT
-              case CHIRExprKind.GT => if (unsigned) Condition.UGT else Condition.GT
-              case CHIRExprKind.LE => if (unsigned) Condition.ULE else Condition.LE
-              case CHIRExprKind.GE => if (unsigned) Condition.UGE else Condition.GE
-              case CHIRExprKind.Equal => Condition.EQ
-              case CHIRExprKind.NotEqual => Condition.NE
-              case x => shouldNotReachHere(s"unexpected boolean binary expression: ${PackageFormat.CHIRExprKind.name(x)}")
+            val op = e.kind() match {
+              case CHIR.BinaryExpression.Kind.Lt => if (unsigned) Condition.ULT else Condition.LT
+              case CHIR.BinaryExpression.Kind.Gt => if (unsigned) Condition.UGT else Condition.GT
+              case CHIR.BinaryExpression.Kind.Le => if (unsigned) Condition.ULE else Condition.LE
+              case CHIR.BinaryExpression.Kind.Ge => if (unsigned) Condition.UGE else Condition.GE
+              case CHIR.BinaryExpression.Kind.Eq => Condition.EQ
+              case CHIR.BinaryExpression.Kind.NotEq => Condition.NE
+              case x => shouldNotReachHere(s"unexpected boolean binary expression: ${e.kind()}")
             }
             CondVal(Cmp(tpe, op)(l, r))
 
           case resSig: FloatingPoint =>
-            e.base.kind match {
-              case CHIRExprKind.Add => Add(l, r)
-              case CHIRExprKind.Sub => Sub(l, r)
-              case CHIRExprKind.Mul => Mul(l, r)
-              case CHIRExprKind.Div => FDiv(tpe)(l, r)
-              case x => shouldNotReachHere(s"unexpected floating point binary expression: ${PackageFormat.CHIRExprKind.name(x)}")
+            e.kind() match {
+              case CHIR.BinaryExpression.Kind.Add => Add(l, r)
+              case CHIR.BinaryExpression.Kind.Sub => Sub(l, r)
+              case CHIR.BinaryExpression.Kind.Mul => Mul(l, r)
+              case CHIR.BinaryExpression.Kind.Div => FDiv(tpe)(l, r)
+              case x => shouldNotReachHere(s"unexpected floating point binary expression: ${e.kind()}")
             }
 
           case resSig: Integral =>
@@ -949,73 +764,73 @@ trait CHIRParser
             val size = resSig.bits
             val signed = resSig.signed
 
-            e.overflowStrategy match {
-              case PackageFormat.OverflowStrategy.WRAPPING | PackageFormat.OverflowStrategy.NA =>
-                e.base.kind match {
-                  case CHIRExprKind.Add | CHIRExprKind.TryAdd => Add(l, r)
-                  case CHIRExprKind.Sub | CHIRExprKind.TrySub => Sub(l, r)
-                  case CHIRExprKind.Mul | CHIRExprKind.TryMul => Mul(l, r)
-                  case CHIRExprKind.Div | CHIRExprKind.TryDiv => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = true)(l, r)
-                  case CHIRExprKind.Mod | CHIRExprKind.TryMod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(l, r)
-                  case CHIRExprKind.LShift => Shift(ArithOp.LSL, l, BitFieldExtract.Truncate(r)) // TODO explicit overshift check in compiler or runtime
-                  case CHIRExprKind.RShift =>
+            e.overflowStrategy() match {
+              case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na =>
+                e.kind() match {
+                  case CHIR.BinaryExpression.Kind.Add => Add(l, r)
+                  case CHIR.BinaryExpression.Kind.Sub => Sub(l, r)
+                  case CHIR.BinaryExpression.Kind.Mul => Mul(l, r)
+                  case CHIR.BinaryExpression.Kind.Div => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = true)(l, r)
+                  case CHIR.BinaryExpression.Kind.Mod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(l, r)
+                  case CHIR.BinaryExpression.Kind.LShift => Shift(ArithOp.LSL, l, BitFieldExtract.Truncate(r)) // TODO explicit overshift check in compiler or runtime
+                  case CHIR.BinaryExpression.Kind.RShift =>
                     val op = if (sig.toAsm.isSigned) ArithOp.ASR else ArithOp.LSR // Cangjie has arithmetic shift in case of signed left operand
                     Shift(op, l, BitFieldExtract.Truncate(r)) // TODO explicit overshift check in compiler or runtime
-                  case CHIRExprKind.BitAnd => And(l, r)
-                  case CHIRExprKind.BitOr => Or(l, r)
-                  case CHIRExprKind.BitXor => Xor(l, r)
-                  case CHIRExprKind.Exp => Pow(l, r)
-                  case x => shouldNotReachHere(s"unexpected wrapping binary expression: ${PackageFormat.CHIRExprKind.name(x)}")
+                  case CHIR.BinaryExpression.Kind.And => And(l, r)
+                  case CHIR.BinaryExpression.Kind.Or => Or(l, r)
+                  case CHIR.BinaryExpression.Kind.Xor => Xor(l, r)
+                  case CHIR.BinaryExpression.Kind.Exp => Pow(l, r)
+                  case x => shouldNotReachHere(s"unexpected wrapping binary expression: ${e.kind()}")
                 }
-              case PackageFormat.OverflowStrategy.THROWING =>
+              case CHIR.OverflowStrategy.Throwing =>
                 val width = sig.toAsm.width
                 val normalizedArgs = Seq(l, r) map { n =>
                   CheckedOp.normalizeArg(n.tpe, width, signed, n)
                 }
-                e.base.kind match {
-                  case CHIRExprKind.Add | CHIRExprKind.TryAdd => CheckedOp(tpe, width, CheckedOp.Kind.ADD, signed, method.isManaged)(normalizedArgs: _*)
-                  case CHIRExprKind.Sub | CHIRExprKind.TrySub => CheckedOp(tpe, width, CheckedOp.Kind.SUB, signed, method.isManaged)(normalizedArgs: _*)
-                  case CHIRExprKind.Mul | CHIRExprKind.TryMul => CheckedOp(tpe, width, CheckedOp.Kind.MUL, signed, method.isManaged)(normalizedArgs: _*)
-                  case CHIRExprKind.Div | CHIRExprKind.TryDiv => CheckedOp(tpe, width, CheckedOp.Kind.DIV, signed, method.isManaged)(normalizedArgs: _*)
-                  case CHIRExprKind.Mod | CHIRExprKind.TryMod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(normalizedArgs: _*)
-                  case CHIRExprKind.Exp | CHIRExprKind.TryExp => CheckedOp(tpe, width, CheckedOp.Kind.POW, signed, method.isManaged)(normalizedArgs: _*)
-                  case x => shouldNotReachHere(s"unexpected throwing binary expression: ${PackageFormat.CHIRExprKind.name(x)}")
+                e.kind() match {
+                  case CHIR.BinaryExpression.Kind.Add => CheckedOp(tpe, width, CheckedOp.Kind.ADD, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.BinaryExpression.Kind.Sub => CheckedOp(tpe, width, CheckedOp.Kind.SUB, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.BinaryExpression.Kind.Mul => CheckedOp(tpe, width, CheckedOp.Kind.MUL, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.BinaryExpression.Kind.Div => CheckedOp(tpe, width, CheckedOp.Kind.DIV, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.BinaryExpression.Kind.Mod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(normalizedArgs: _*)
+                  case CHIR.BinaryExpression.Kind.Exp => CheckedOp(tpe, width, CheckedOp.Kind.POW, signed, method.isManaged)(normalizedArgs: _*)
+                  case x => shouldNotReachHere(s"unexpected throwing binary expression: ${e.kind()}")
                 }
 
-              case PackageFormat.OverflowStrategy.SATURATING =>
-                val proc = e.base.kind match {
-                  case CHIRExprKind.Exp => assert(size == 64); RTSProc.CJ_saturatingPowI64
-                  case CHIRExprKind.Add => size match {
+              case CHIR.OverflowStrategy.Saturating =>
+                val proc = e.kind() match {
+                  case CHIR.BinaryExpression.Kind.Exp => assert(size == 64); RTSProc.CJ_saturatingPowI64
+                  case CHIR.BinaryExpression.Kind.Add => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingAddI8  else RTSProc.CJ_saturatingAddU8
                     case 16 => if (signed) RTSProc.CJ_saturatingAddI16 else RTSProc.CJ_saturatingAddU16
                     case 32 => if (signed) RTSProc.CJ_saturatingAddI32 else RTSProc.CJ_saturatingAddU32
                     case 64 => if (signed) RTSProc.CJ_saturatingAddI64 else RTSProc.CJ_saturatingAddU64
                   }
-                  case CHIRExprKind.Sub => size match {
+                  case CHIR.BinaryExpression.Kind.Sub => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingSubI8  else RTSProc.CJ_saturatingSubU8
                     case 16 => if (signed) RTSProc.CJ_saturatingSubI16 else RTSProc.CJ_saturatingSubU16
                     case 32 => if (signed) RTSProc.CJ_saturatingSubI32 else RTSProc.CJ_saturatingSubU32
                     case 64 => if (signed) RTSProc.CJ_saturatingSubI64 else RTSProc.CJ_saturatingSubU64
                   }
-                  case CHIRExprKind.Mul => size match {
+                  case CHIR.BinaryExpression.Kind.Mul => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingMulI8  else RTSProc.CJ_saturatingMulU8
                     case 16 => if (signed) RTSProc.CJ_saturatingMulI16 else RTSProc.CJ_saturatingMulU16
                     case 32 => if (signed) RTSProc.CJ_saturatingMulI32 else RTSProc.CJ_saturatingMulU32
                     case 64 => if (signed) RTSProc.CJ_saturatingMulI64 else RTSProc.CJ_saturatingMulU64
                   }
-                  case CHIRExprKind.Div => size match {
+                  case CHIR.BinaryExpression.Kind.Div => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingDivI8  else RTSProc.CJ_saturatingDivU8
                     case 16 => if (signed) RTSProc.CJ_saturatingDivI16 else RTSProc.CJ_saturatingDivU16
                     case 32 => if (signed) RTSProc.CJ_saturatingDivI32 else RTSProc.CJ_saturatingDivU32
                     case 64 => if (signed) RTSProc.CJ_saturatingDivI64 else RTSProc.CJ_saturatingDivU64
                   }
-                  case CHIRExprKind.Mod => size match {
+                  case CHIR.BinaryExpression.Kind.Mod => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingModI8  else RTSProc.CJ_saturatingModU8
                     case 16 => if (signed) RTSProc.CJ_saturatingModI16 else RTSProc.CJ_saturatingModU16
                     case 32 => if (signed) RTSProc.CJ_saturatingModI32 else RTSProc.CJ_saturatingModU32
                     case 64 => if (signed) RTSProc.CJ_saturatingModI64 else RTSProc.CJ_saturatingModU64
                   }
-                  case x => shouldNotReachHere(s"unexpected saturating binary expression: ${PackageFormat.CHIRExprKind.name(x)}")
+                  case x => shouldNotReachHere(s"unexpected saturating binary expression: ${e.kind()}")
                 }
                 if (env.enabled(FailSaturatingArithmetic)) {
                   notImplemented("Saturating arithmetic")
@@ -1028,11 +843,12 @@ trait CHIRParser
         }
         state(e) = adjustRes(n)
 
-      case e: PackageFormat.AllocateBase =>
-        val sig = resolver.typeSig(e.allocatedType)
+      case e: CHIR.AllocateExpression =>
+        val allocType = e.allocatedType()
+        val sig = resolver.typeSig(allocType)
         val n = if (sig.isTraceableReference) {
-          pkg.getType[Table](e.allocatedType) match {
-            case t: PackageFormat.Type if t.kind == CHIRTypeKind.REFTYPE =>
+          allocType match {
+            case t: CHIR.RefType =>
               // Uninitialized
               NoValue()
 
@@ -1068,19 +884,18 @@ trait CHIRParser
         }
         state(e) = n
 
-      case e: PackageFormat.RawArrayAllocateBase =>
-        val len = operands(e.base) match {
-          case Seq(len, /*Exception targets*/ _*) => state(len)
-        }
-        val elemType = resolver.typeSig(e.elementType)
+      case e: CHIR.RawArrayAllocate =>
+        val len = state(e.size())
+        val elemType = resolver.typeSig(e.elementType())
         val arrayType = SignatureType.CangjieArray(elemType)
         state(e) = NewArray(arrayType)(len)
 
-      case e: PackageFormat.GetElementRef =>
-        val (mem, memBase, staticField) = operands(e.base) match {
-          case Seq(memVal: PackageFormat.Parameter) => (state(memVal), memVal.base, None)
-          case Seq(memVal: PackageFormat.LocalVar) => (state(memVal), memVal.base, None)
-          case Seq(memVal: PackageFormat.GlobalVar) => (NoValue(), memVal.base.base, Some(staticFieldRef(memVal)))
+      case e: CHIR.GetElementRef =>
+        val memBase = e.base()
+        val mem = state(memBase)
+        val staticField = memBase match {
+          case v: CHIR.GlobalVar => Some(staticFieldRef(v))
+          case _ => None
         }
 
         staticField match {
@@ -1092,9 +907,9 @@ trait CHIRParser
             packageInitCheck(symRefType)
         }
 
-        val host = resolver.typeSig(memBase.`type`)
+        val ValueSig(host) = memBase
 
-        val fields = fieldChain(host, e.pathVector.toSeq)
+        val fields = fieldChain(host, e.path())
 
         val lastField = fields.last
         val n = if (lastField.fieldType.isZST) {
@@ -1114,11 +929,13 @@ trait CHIRParser
         }
         state(e) = n
 
-      case e: PackageFormat.StoreElementRef =>
-        val (arg, mem, memBase, staticField) = operands(e.base) match {
-          case Seq(argVal, memVal: PackageFormat.Parameter) => (state(argVal), state(memVal), memVal.base, None)
-          case Seq(argVal, memVal: PackageFormat.LocalVar) => (state(argVal), state(memVal), memVal.base, None)
-          case Seq(argVal, memVal: PackageFormat.GlobalVar) => (state(argVal), NoValue(), memVal.base.base, Some(staticFieldRef(memVal)))
+      case e: CHIR.StoreElementRef =>
+        val memBase = e.location()
+        val mem = state(memBase)
+        val arg = state(e.value())
+        val staticField = memBase match {
+          case v: CHIR.GlobalVar => Some(staticFieldRef(v))
+          case _ => None
         }
 
         staticField match {
@@ -1130,15 +947,15 @@ trait CHIRParser
             packageInitCheck(symRefType)
         }
 
-        val host = resolver.typeSig(memBase.`type`)
+        val ValueSig(host) = memBase
 
         if (host.isArray) {
-          assert(e.pathLength == 1)
-          val idx = e.path(0)
+          assert(e.path().size == 1)
+          val idx = e.path().head
           arrayPut(host, mem, LConst(idx), arg)
 
         } else {
-          val fields = fieldChain(host, e.pathVector.toSeq)
+          val fields = fieldChain(host, e.path())
 
           val lastField = fields.last
           if (lastField.fieldType.isZST) {
@@ -1168,19 +985,22 @@ trait CHIRParser
           }
         }
 
-      case e: PackageFormat.Field =>
-        val (_mem, memBase, staticField) = operands(e.base) match {
-          case Seq(memVal: PackageFormat.Parameter) => (state(memVal), memVal.base, None)
-          case Seq(memVal: PackageFormat.LocalVar) => (state(memVal), memVal.base, None)
-          case Seq(memVal: PackageFormat.GlobalVar) => (NoValue(), memVal.base.base, Some(staticFieldRef(memVal)))
+      case e: CHIR.Field =>
+        val memBase = e.base()
+        val _mem = state(memBase)
+        val staticField = memBase match {
+          case v: CHIR.GlobalVar => Some(staticFieldRef(v))
+          case _ => None
         }
 
         val (mem, host) = _mem match {
           case x: EnumCast => (x.base, x.enumType)
-          case x => (x, resolver.typeSig(memBase.`type`))
+          case x =>
+            val ValueSig(host) = memBase
+            (x, host)
         }
 
-        val chirPath = e.pathVector.toSeq
+        val chirPath = e.path()
 
         host match {
           case _: SignatureType.ZeroSizedEnum | _: SignatureType.PrimitiveBasedEnum => shouldNotReachHere(host)
@@ -1266,117 +1086,98 @@ trait CHIRParser
             state(e) = n
         }
 
-      case e: PackageFormat.ApplyBase =>
-        val (target, argVals, outerType, thisType) = operands(e.base.base) match {
-          case Seq(func: Function, argVals: _*) =>
-            val thisType = Option.when(e.base.objType != 0)(e.base.objType)
-              .map(resolver.typeSig)
+      case e: CHIR.Apply =>
+        val func = e.callee()
 
-            def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
-              val cparams = refType match {
-                case refType: SignatureType.InstantiatedType => refType.instantiatedTypeParameters
-                case _ => Seq.empty
-              }
-              val lparams = Seq.empty
+        val thisType = e.thisType().map(resolver.typeSig)
 
-              val refClass = asClassType(refType)
-              Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
-                refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
-            }
+        def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
+          val cparams = refType match {
+            case refType: SignatureType.InstantiatedType => refType.instantiatedTypeParameters
+            case _ => Seq.empty
+          }
+          val lparams = Seq.empty
 
-            val declClass = Option(pkg.getDef[Table](func.base.declaredParent))
-              .flatMap(resolver.symType)
-              .map(asClassType)
-              .getOrElse(resolver.findClass(func.base.packageName).get)
-
-            val thisTypeForRefining = thisType.filter(t => t.isRecord || t.isReference)
-            val declType = Closure(thisTypeForRefining)(refineSuperTypes).find(asClassType(_) == declClass)
-              .getOrElse(SignatureType.fromSymType(declClass))
-
-            val name = resolver.symName(func)
-            val target = calcMethodRef(declClass, declType, name, func, func.funcKind, func.base.base.base.attributes)
-
-            // TODO: add instantiated type parameters to base MethodReference
-            val lparams = e.base.instantiatedTypeArgsVector.toSeq.map(resolver.typeSig)
-            val targetWithUGContext = if (lparams.nonEmpty) {
-              target.toInstantiatedMethodReference(lparams, declType)
-            } else {
-              target
-            }
-            val nonBlockArgVals = e.base.base.kind match {
-              case CHIRExprKind.TryApply => argVals.dropRight(2)
-              case CHIRExprKind.Apply => argVals
-            }
-            val outerType = if (asClassType(declType).isCangjieExtend) thisType else Some(declType)
-            (targetWithUGContext, nonBlockArgVals, outerType, thisType)
+          val refClass = asClassType(refType)
+          Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
+            refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
         }
 
+        val declClass = func.declaringDef()
+          .flatMap(resolver.symType)
+          .map(asClassType)
+          .getOrElse(resolver.findClass(func.packageName()).get)
+
+        val thisTypeForRefining = thisType.filter(t => t.isRecord || t.isReference)
+        val declType = Closure(thisTypeForRefining)(refineSuperTypes).find(asClassType(_) == declClass)
+          .getOrElse(SignatureType.fromSymType(declClass))
+
+        val name = resolver.symName(func)
+        val _target = calcMethodRef(declClass, declType, name, func)
+
+        // TODO: add instantiated type parameters to base MethodReference
+        val lparams = e.instantiatedTypeArgs().map(resolver.typeSig)
+        val target = if (lparams.nonEmpty) {
+          _target.toInstantiatedMethodReference(lparams, declType)
+        } else {
+          _target
+        }
+        val argVals = e.args()
+        val outerType = if (asClassType(declType).isCangjieExtend) thisType else Some(declType)
+
         val args = argVals match {
-          case Seq(gv: PackageFormat.GlobalVar, rest: _*) =>
+          case Seq(gv: CHIR.GlobalVar, rest: _*) =>
             GetStaticFieldSeqRef(Seq(staticFieldRef(gv)))(DerivedPtr.Global()) +: rest.map(state.apply)
           case _ =>
             argVals.map(state.apply)
         }
-        val paramTypes = argVals.map {
-          case x: PackageFormat.LocalVar => x.base.`type`
-          case x: PackageFormat.GlobalVar => x.base.base.`type`
-          case x: PackageFormat.Parameter => x.base.`type`
-        } map (resolver.typeSig)
-        val retType = resolver.typeSig(e.base.base.resultTy)
+        val paramTypes = argVals.map { v =>
+          val ValueSig(sig) = v
+          sig
+        }
+        val retType = resolver.typeSig(e.resultTpe())
         val call = callMethod(target, outerType, thisType, retType, paramTypes, args, None)
         state(e) = call
 
-      case e: PackageFormat.InvokeBase =>
-        val argVals = operands(e.base.base)
-        val (methodArgVal, nonBlockArgVals) = (argVals.head, e.base.base.kind) match {
-          case (h: PackageFormat.Function, CHIRExprKind.TryInvoke) => (h, argVals.drop(1).dropRight(2))
-          case (h: PackageFormat.Function, CHIRExprKind.Invoke)    => (h, argVals.drop(1))
-        }
+      case e: CHIR.Invoke =>
+        val methodArgVal = e.callee()
+        val argVals = e.args()
 
-        val isStatic = nonBlockArgVals match {
-          case Seq(x: PackageFormat.LocalVar, rest*) =>
-            pkg.getExpr[Table](x.associatedExpr) match {
-              case _: PackageFormat.GetRTTIStatic => true
-              case xe: PackageFormat.Expression => xe.kind match {
-                case CHIRExprKind.GetRtti | CHIRExprKind.GetRttiStatic => true
-                case _ => false
-              }
+        val isStatic = e.thisArg() match {
+          case x: CHIR.LocalVar =>
+            x.associatedExpr() match {
+              case _: (CHIR.GetRTTI | CHIR.GetRTTIStatic) => true
               case _ => false
             }
           case _ => false
         }
 
         val (thisTypeArgVal, sourceArgVals) = if (isStatic) {
-          (nonBlockArgVals.headOption, nonBlockArgVals.tail)
+          (argVals.headOption, argVals.tail)
         } else {
-          (None, nonBlockArgVals)
+          (None, argVals)
         }
         val thisTypeInfo = thisTypeArgVal.map(state.apply)
 
-        val thisType = resolver.typeSig(e.base.objType) match {
+        val thisType = resolver.typeSig(e.thisType()) match {
           // FIXME
           case SignatureType.ThisTypeInfo => SignatureType.fromSymType(rootMethod.getDeclaringClass)
           case _: SignatureType.TypeVariable =>
             val v = if (isStatic) thisTypeArgVal.get else sourceArgVals.head
-            val tid = v match {
-              case v: PackageFormat.LocalVar => v.base.`type`
-              case v: PackageFormat.Parameter => v.base.`type`
-              case v: PackageFormat.GlobalVar => v.base.base.`type`
-            }
-            resolver.typeSig(tid)
+            val ValueSig(sig) = v
+            sig
           case t => t
         }
 
-        val retType = resolver.typeSig(e.base.base.resultTy)
-        val isigParams = sourceArgVals map {
-          case v: PackageFormat.LocalVar => v.base.`type`
-          case v: PackageFormat.Parameter => v.base.`type`
-          case v: PackageFormat.GlobalVar => v.base.base.`type`
-        } map (resolver.typeSig)
+        val retType = resolver.typeSig(e.resultTpe())
+        val isigParams = sourceArgVals map { v =>
+          val ValueSig(sig) = v
+          sig
+        }
 
         val func = methodArgVal
         val name = resolver.symName(func)
-        val (gsig, _, _, _) = resolver.functionSig(func.base.base.`type`, hasReceiver = !isStatic)
+        val (gsig, _, _, _) = resolver.functionSig(func.tpe(), hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
           if (g.isTypeVariable && !i.isTypeVariable && !i.isInstanceOf[SignatureType.Box]) SignatureType.Box(i) else i
@@ -1385,7 +1186,7 @@ trait CHIRParser
         val isig = MethodSignature(retType, isigParams.drop(if (isStatic) 0 else 1))
         val sig = MethodSignature(boxTypeVar(gsig.returnType, isig.returnType), gsig.parameterTypes.zip(isig.parameterTypes).map(boxTypeVar.tupled))
 
-        val lparams = e.base.instantiatedTypeArgsVector.toSeq.map(resolver.typeSig)
+        val lparams = e.instantiatedTypeArgs().map(resolver.typeSig)
 
         val vtable = asClassType(thisType).getCHIRVTable
         assert(vtable != null, thisType)
@@ -1415,36 +1216,169 @@ trait CHIRParser
         val target = new MethodReference(method, mak, CompiledType(refType), vnum)
 
         val args = sourceArgVals.map(state.apply)
-        val paramTypes = sourceArgVals.map {
-          case x: PackageFormat.LocalVar => x.base.`type`
-          case x: PackageFormat.GlobalVar => x.base.base.`type`
-          case x: PackageFormat.Parameter => x.base.`type`
-        } map (resolver.typeSig)
-        val call = callMethod(target, Some(refType), Some(thisType), retType, paramTypes, args, thisTypeInfo)
+        val call = callMethod(target, Some(refType), Some(thisType), retType, isigParams, args, thisTypeInfo)
         state(e) = call
 
-      case e: PackageFormat.InstanceOf =>
-        val tpe = resolver.typeSig(e.targetType)
-        state(e) = operands(e.base).map(state.apply) match {
-          case Seq(obj) =>
-            val refTpe = if (tpe.isTraceableReference) tpe else SignatureType.Box(tpe)
-            if (tpe.containsTypeVariables) {
-              InstanceOfGeneric(refTpe)(obj, loadTypeInfo(tpe))
-            } else {
-              InstanceOf(refTpe)(obj)
+      case e: CHIR.InstanceOf =>
+        val tpe = resolver.typeSig(e.testType())
+        val obj = state(e.obj())
+        val refTpe = if (tpe.isTraceableReference) tpe else SignatureType.Box(tpe)
+        state(e) = if (tpe.containsTypeVariables) {
+          InstanceOfGeneric(refTpe)(obj, loadTypeInfo(tpe))
+        } else {
+          InstanceOf(refTpe)(obj)
+        }
+
+      case e: (CHIR.NumericCast | CHIR.StaticCast) =>
+        import BitFieldExtract.*
+        import SignatureType.*
+        import AsmType.*
+
+        val from = resolver.typeSig(e.from())
+        val value = state(e.value())
+        val to = resolver.typeSig(e.to())
+
+        val fromAsm = from.toAsm
+        val toAsm = to.toAsm
+
+        def fromTpe = ValueType.fromSig(from)
+
+        def toTpe = ValueType.fromSig(to)
+
+        e match {
+          case e: CHIR.NumericCast => e.overflowStategy() match {
+            case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na => // ok
+            case CHIR.OverflowStrategy.Throwing => // TODO: do we need to support it?
+            case CHIR.OverflowStrategy.Saturating => notImplemented("saturating type cast")
+          }
+          case _ => // do nothing
+        }
+
+        val n = (from, to) match {
+          case (from: (Reference | InstantiatedReference | TypeVariable), to: (Reference | InstantiatedReference)) =>
+            // TODO: remove this case when numeric cast will handle only *numeric* types
+            CheckCast(to, trusted = true)(value)
+            value
+
+          case (from: (Record | InstantiatedRecord), to: (Record | InstantiatedRecord)) =>
+            // TODO: check something
+            ReinterpretCast(fromTpe, toTpe)(value)
+
+          case (from: (Record | InstantiatedRecord), to: Tuple) =>
+            // TODO: assert from is enum!
+            ReinterpretCast(fromTpe, toTpe)(value)
+
+          case (from: TypeVariable, to: TypeVariable) =>
+            value
+
+          case (from: Integral, to: Integral) =>
+            BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, value)
+
+          case (from: Integral, UnicodeChar32) =>
+            BFX(toTpe, 0, (from.bits min 32), signExtension = from.signed, value)
+
+          case (UnicodeChar32, to: Integral) =>
+            BFX(toTpe, 0, (32 min to.bits), signExtension = true, value)
+
+          case (from: Integral, to: FloatingPoint) =>
+            val fpToAsm = if (toAsm == F16) F32 else toAsm
+            val res = fromAsm match {
+              case U64 =>
+                val proc = fpToAsm match {
+                  case F32 => RTSProc.JR_ul2f
+                  case F64 => RTSProc.JR_ul2d
+                  case _ => shouldNotReachHere(toAsm)
+                }
+                RTSCall(proc)(value)
+
+              case U32 =>
+                // Non-long values could be zero-extended to bigger signed type and then converted to float.
+                val i64 = BFX(LongType, 0, from.bits, signExtension = false, value)
+                ValueConvert(I64, fpToAsm)(i64)
+
+              case _ =>
+                val (adjFromAsm, adjValue) = if (fromAsm.isShortIntegral) {
+                  (I32, BFX(IntType, 0, fromAsm.sizeInBits, signExtension = fromAsm.signed, value))
+                } else {
+                  (fromAsm, value)
+                }
+                ValueConvert(adjFromAsm, fpToAsm)(adjValue)
             }
+
+            if (toAsm == F16) ValueConvert(F32, F16)(res) else res
+
+          case (from: FloatingPoint, to: Integral) =>
+            val (fpFromAsm, fpValue) = if (fromAsm == F16) {
+              (F32, ValueConvert(F16, F32)(value))
+            } else {
+              (fromAsm, value)
+            }
+
+            toAsm match {
+              case U64 =>
+                val proc = fpFromAsm match {
+                  case F32 => RTSProc.JR_f2ul
+                  case F64 => RTSProc.JR_d2ul
+                  case _ => shouldNotReachHere(fromAsm)
+                }
+                RTSCall(proc)(fpValue)
+
+              case U32 =>
+                // Value could be converted to bigger signed type and then zero-extended to target type.
+                val i64 = ValueConvert(fpFromAsm, I64)(fpValue)
+                BitFieldExtract.Truncate(i64)
+
+              case _ =>
+                val adjToAsm = if (toAsm.isShortIntegral) I32 else toAsm
+                ValueConvert(fpFromAsm, adjToAsm)(fpValue)
+            }
+
+          case (from: FloatingPoint, to: FloatingPoint) =>
+            ValueConvert(fromAsm, toAsm)(value)
+
+          case (Int32 | UInt32 | _: PrimitiveBasedEnum, Int32 | UInt32 | _: PrimitiveBasedEnum) =>
+            value
+
+          case (from@OptionLikeEnum(_, _, x), to@Tuple(Seq(Boolean, y))) =>
+            assert(x == y, s"cast from $from to $to")
+            if (from.isNullableOption || x.isTypeVariable) {
+              EnumCast(from)(value)
+            } else {
+              ReinterpretCast(fromTpe, toTpe)(value)
+            }
+
+          case (from: ClassBasedEnum, to: Tuple) =>
+            val ctors = from.info.constructors
+            val targetCtor = to.params.tail // first element is tag
+            val idx = ctors.indexWhere(_.params == targetCtor) // TODO: instantiate
+            assert(idx >= 0)
+            val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
+            val enumType = if (from.params.isEmpty) {
+              CangjieReference(enumName)
+            } else {
+              InstantiatedReference(enumName, from.params)
+            }
+            EnumCast(enumType)(value)
+
+          case (from: UnionBasedEnum, to: Tuple) =>
+            ReinterpretCast(fromTpe, toTpe)(value)
+
+          case (from: ZeroSizedEnum, UInt32) =>
+            IConst(0)
+
+          case (UInt32, to: ZeroSizedEnum) =>
+            self.Void()
+
+          case _ => notImplemented(s"cast from ${from.toJETSignature} to ${to.toJETSignature}")
         }
 
-      case e: PackageFormat.NumericCastBase =>
-        state(e) = parseCasts(e.base, e.overflowStrategy, state)
+        state(e) = n
 
-      case e: PackageFormat.Branch =>
-        val (sig, selectorValue) = operands(e.base) match {
-          case Seq(selectorVar: PackageFormat.LocalVar, trueBlock: PackageFormat.Block, falseBlock: PackageFormat.Block) =>
-            (resolver.typeSig(selectorVar.base.`type`), state(selectorVar))
-          case Seq(selectorVar: PackageFormat.Parameter, trueBlock: PackageFormat.Block, falseBlock: PackageFormat.Block) =>
-            (resolver.typeSig(selectorVar.base.`type`), state(selectorVar))
-        }
+      case e: CHIR.Branch =>
+        val selectorVar = e.condition()
+        val ValueSig(sig) = selectorVar
+        val selectorValue = state(selectorVar)
+
         val selector = BitFieldExtract.BFX(IntType, 0, sig.toAsm.sizeInBits, signExtension = false, selectorValue)
         val cond = Cmp(selector.tpe, Condition.NE)(selector, IConst(0))
         val branch = block.blockEnd.asInstanceOf[If]
@@ -1452,35 +1386,31 @@ trait CHIRParser
         assert(proxy.isInstanceOf[Proxy] && proxy.singleUse == branch)
         proxy.replaceBy(cond)
 
-      case e: PackageFormat.MultiBranch =>
-        operands(e.base) match {
-          case Seq(selector, _*) =>
-            val branch = block.blockEnd.asInstanceOf[Switch]
-            val proxy = branch.selector
-            assert(proxy.isInstanceOf[Proxy] && proxy.singleUse == branch)
-            proxy.replaceBy(BitFieldExtract.Truncate(state(selector)))
-        }
+      case e: CHIR.MultiBranch =>
+        val branch = block.blockEnd.asInstanceOf[Switch]
+        val proxy = branch.selector
+        assert(proxy.isInstanceOf[Proxy] && proxy.singleUse == branch)
+        proxy.replaceBy(BitFieldExtract.Truncate(state(e.condition())))
 
-      case e: PackageFormat.IntrinsicBase =>
-        e.intrinsicKind match {
-          case PackageFormat.IntrinsicKind.PREINITIALIZE =>
+      case e: CHIR.Intrinsic =>
+        e.kind() match {
+          case CHIR.Intrinsic.Kind.Preinitialize =>
           // no-op
 
-          case PackageFormat.IntrinsicKind.BEGIN_CATCH =>
-            operands(e.base.base) match {
-              case Seq(ex: PackageFormat.LocalVar) =>
+          case CHIR.Intrinsic.Kind.BeginCatch =>
+            e.args() match {
+              case Seq(ex: CHIR.LocalVar) =>
                 state(e) = state(ex)
             }
 
-          case PackageFormat.IntrinsicKind.ARRAY_GET_UNCHECKED |
-               PackageFormat.IntrinsicKind.ARRAY_GET_REF_UNCHECKED |
-               PackageFormat.IntrinsicKind.ARRAY_GET =>
+          case CHIR.Intrinsic.Kind.ArrayGetUnchecked |
+               CHIR.Intrinsic.Kind.ArrayGetRefUnchecked |
+               CHIR.Intrinsic.Kind.ArrayGet =>
             // TODO: ArrayIndexCheck
-            val (arrayType, obj, idx) = operands(e.base.base) match {
-              case Seq(obj: PackageFormat.LocalVar, idx) =>
-                (resolver.typeSig(obj.base.`type`), state(obj), state(idx))
-              case Seq(obj: PackageFormat.Parameter, idx) =>
-                (resolver.typeSig(obj.base.`type`), state(obj), state(idx))
+            val args = e.args()
+            val ValueSig(arrayType) = args.head
+            val (obj, idx) = args match {
+              case Seq(_, obj, idx) => (state(obj), state(idx))
             }
             val elemType = arrayType.getArrayElemType
             val n = if (elemType.isZST) {
@@ -1497,106 +1427,128 @@ trait CHIRParser
             }
             state(e) = n
 
-          case PackageFormat.IntrinsicKind.ARRAY_SET_UNCHECKED |
-               PackageFormat.IntrinsicKind.ARRAY_SET =>
+          case CHIR.Intrinsic.Kind.ArraySetUnchecked |
+               CHIR.Intrinsic.Kind.ArraySet =>
             // TODO: ArrayIndexCheck
-            val (arrayType, obj, idx, value) = operands(e.base.base) match {
-              case Seq(obj: PackageFormat.LocalVar, idx, value) =>
-                (resolver.typeSig(obj.base.`type`), state(obj), state(idx), state(value))
-              case Seq(obj: PackageFormat.Parameter, idx, value) =>
-                (resolver.typeSig(obj.base.`type`), state(obj), state(idx), state(value))
+            val args = e.args()
+            val ValueSig(arrayType) = args.head
+            val (obj, idx, value) = args match {
+              case Seq(_, obj, idx, value) => (state(obj), state(idx), state(value))
             }
             arrayPut(arrayType, obj, idx, value)
 
-          case PackageFormat.IntrinsicKind.ARRAY_SIZE =>
-            operands(e.base.base).map(state.apply) match {
-              case Seq(obj) => state(e) = CangjieArrayLength(obj)
-            }
+          case CHIR.Intrinsic.Kind.ArraySize =>
+            val obj = state(e.args().head)
+            state(e) = CangjieArrayLength(obj)
 
-          case PackageFormat.IntrinsicKind.ARRAY_BUILT_IN_COPY_TO =>
-            val (arrayType, src, dst, srcStart, dstStart, len) = operands(e.base.base) match {
-              case Seq(src: PackageFormat.LocalVar, dst, srcStart, dstStart, len) =>
-                (resolver.typeSig(src.base.`type`), state(src), state(dst), state(srcStart), state(dstStart), state(len))
-              case Seq(src: PackageFormat.Parameter, dst, srcStart, dstStart, len) =>
-                (resolver.typeSig(src.base.`type`), state(src), state(dst), state(srcStart), state(dstStart), state(len))
+          case CHIR.Intrinsic.Kind.ArrayBuiltinCopyTo =>
+            val args = e.args()
+            val ValueSig(arrayType) = args.head
+            val (src, dst, srcStart, dstStart, len) = args match {
+              case Seq(_, src, dst, srcStart, dstStart, len) => (state(src), state(dst), state(srcStart), state(dstStart), state(len))
             }
             ArrayBuiltInCopyTo(arrayType)(src, dst, srcStart, dstStart, len)
 
-          case PackageFormat.IntrinsicKind.ATOMIC_LOAD =>
-            val (refType, obj) = operands(e.base.base) match {
-              case Seq(v: PackageFormat.LocalVar, memoryOrder) =>
-                (resolver.typeSig(v.base.`type`), state(v))
-              case Seq(p: PackageFormat.Parameter, memoryOrder) =>
-                (resolver.typeSig(p.base.`type`), state(p))
+          case CHIR.Intrinsic.Kind.AtomicLoad =>
+            val args = e.args()
+            val ValueSig(refType) = args.head
+            val obj = args match {
+              case Seq(obj, _) => state(obj)
             }
             val Seq(field) = declaredFields(refType)
             state(e) = AtomicOps.Load(obj.tpe, field)(obj)
 
-          case PackageFormat.IntrinsicKind.ATOMIC_STORE =>
-            val (refType, obj, value) = operands(e.base.base) match {
-              case Seq(v: PackageFormat.LocalVar, value, memoryOrder) =>
-                (resolver.typeSig(v.base.`type`), state(v), state(value))
-              case Seq(p: PackageFormat.Parameter, value, memoryOrder) =>
-                (resolver.typeSig(p.base.`type`), state(p), state(value))
+          case CHIR.Intrinsic.Kind.AtomicStore =>
+            val args = e.args()
+            val ValueSig(refType) = args.head
+            val (obj, value) = args match {
+              case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
             AtomicOps.Store(obj.tpe, field)(obj, PutMemoryOperation.adjustValue(field.fieldType.toAsm, value))
 
-          case PackageFormat.IntrinsicKind.ATOMIC_COMPARE_AND_SWAP =>
-            val (refType, obj, compareVal, swapVal) = operands(e.base.base) match {
-              case Seq(v: PackageFormat.LocalVar, compareVal, swapVal, compareMemoryOrder, swapMemoryOrder) =>
-                (resolver.typeSig(v.base.`type`), state(v), state(compareVal), state(swapVal))
-              case Seq(p: PackageFormat.Parameter, compareVal, swapVal, compareMemoryOrder, swapMemoryOrder) =>
-                (resolver.typeSig(p.base.`type`), state(p), state(compareVal), state(swapVal))
+          case CHIR.Intrinsic.Kind.AtomicCAS =>
+            val args = e.args()
+            val ValueSig(refType) = args.head
+            val (obj, compareVal, swapVal) = args match {
+              case Seq(obj, compareVal, swapVal, _, _) => (state(obj), state(compareVal), state(swapVal))
             }
             val Seq(field) = declaredFields(refType)
             state(e) = AtomicOps.CAS(obj.tpe, field)(obj, compareVal, swapVal)
 
-          case PackageFormat.IntrinsicKind.ATOMIC_SWAP |
-               PackageFormat.IntrinsicKind.ATOMIC_FETCH_ADD |
-               PackageFormat.IntrinsicKind.ATOMIC_FETCH_SUB |
-               PackageFormat.IntrinsicKind.ATOMIC_FETCH_AND |
-               PackageFormat.IntrinsicKind.ATOMIC_FETCH_OR |
-               PackageFormat.IntrinsicKind.ATOMIC_FETCH_XOR =>
-
-            val (refType, obj, value) = operands(e.base.base) match {
-              case Seq(v: PackageFormat.LocalVar, newValue, memoryOrder) =>
-                (resolver.typeSig(v.base.`type`), state(v), state(newValue))
-              case Seq(p: PackageFormat.Parameter, newValue, memoryOrder) =>
-                (resolver.typeSig(p.base.`type`), state(p), state(newValue))
+          case CHIR.Intrinsic.Kind.AtomicSwap =>
+            val args = e.args()
+            val ValueSig(refType) = args.head
+            val (obj, value) = args match {
+              case Seq(obj, value, _) => (state(obj), state(value))
             }
-
             val Seq(field) = declaredFields(refType)
+            AtomicOps.Simple.swap(obj.tpe, field)(obj, value)
 
-            state(e) = e.intrinsicKind match {
-              case PackageFormat.IntrinsicKind.ATOMIC_SWAP      => AtomicOps.Simple.swap(obj.tpe, field)(obj, value)
-              case PackageFormat.IntrinsicKind.ATOMIC_FETCH_ADD => AtomicOps.Simple.fetchAdd(obj.tpe, field)(obj, value)
-              case PackageFormat.IntrinsicKind.ATOMIC_FETCH_SUB => AtomicOps.Simple.fetchSub(obj.tpe, field)(obj, value)
-              case PackageFormat.IntrinsicKind.ATOMIC_FETCH_AND => AtomicOps.Simple.fetchAnd(obj.tpe, field)(obj, value)
-              case PackageFormat.IntrinsicKind.ATOMIC_FETCH_OR  => AtomicOps.Simple.fetchOr(obj.tpe, field)(obj, value)
-              case PackageFormat.IntrinsicKind.ATOMIC_FETCH_XOR => AtomicOps.Simple.fetchXor(obj.tpe, field)(obj, value)
+          case CHIR.Intrinsic.Kind.AtomicFetchAdd =>
+            val args = e.args()
+            val ValueSig(refType) = args.head
+            val (obj, value) = args match {
+              case Seq(obj, value, _) => (state(obj), state(value))
             }
+            val Seq(field) = declaredFields(refType)
+            AtomicOps.Simple.fetchAdd(obj.tpe, field)(obj, value)
 
-          case PackageFormat.IntrinsicKind.SQRT =>
-            operands(e.base.base).map(state.apply) match {
+          case CHIR.Intrinsic.Kind.AtomicFetchSub =>
+            val args = e.args()
+            val ValueSig(refType) = args.head
+            val (obj, value) = args match {
+              case Seq(obj, value, _) => (state(obj), state(value))
+            }
+            val Seq(field) = declaredFields(refType)
+            AtomicOps.Simple.fetchSub(obj.tpe, field)(obj, value)
+
+          case CHIR.Intrinsic.Kind.AtomicFetchAnd =>
+            val args = e.args()
+            val ValueSig(refType) = args.head
+            val (obj, value) = args match {
+              case Seq(obj, value, _) => (state(obj), state(value))
+            }
+            val Seq(field) = declaredFields(refType)
+            AtomicOps.Simple.fetchAnd(obj.tpe, field)(obj, value)
+
+          case CHIR.Intrinsic.Kind.AtomicFetchOr =>
+            val args = e.args()
+            val ValueSig(refType) = args.head
+            val (obj, value) = args match {
+              case Seq(obj, value, _) => (state(obj), state(value))
+            }
+            val Seq(field) = declaredFields(refType)
+            AtomicOps.Simple.fetchOr(obj.tpe, field)(obj, value)
+
+          case CHIR.Intrinsic.Kind.AtomicFetchXor =>
+            val args = e.args()
+            val ValueSig(refType) = args.head
+            val (obj, value) = args match {
+              case Seq(obj, value, _) => (state(obj), state(value))
+            }
+            val Seq(field) = declaredFields(refType)
+            AtomicOps.Simple.fetchXor(obj.tpe, field)(obj, value)
+
+          case CHIR.Intrinsic.Kind.Sqrt =>
+            e.args().map(state.apply) match {
               case Seq(x) =>
                 val kind = if (x.tpe == DoubleType) Java.Lang.MathIntrinsic.D_SQRT else Java.Lang.MathIntrinsic.F_SQRT
                 state(e) = MathIntrinsic(kind)(x)
             }
 
-          case PackageFormat.IntrinsicKind.ABS =>
-            operands(e.base.base).map(state.apply) match {
+          case CHIR.Intrinsic.Kind.Abs =>
+            e.args().map(state.apply) match {
               case Seq(x) =>
                 state(e) = Abs(x)
             }
 
           // TODO write cangjie tests (use -cbcaotdeps)
-          case PackageFormat.IntrinsicKind.CPOINTER_READ =>
-            val (cpointerType: SignatureType.CPointer, base, idx) = operands(e.base.base) match {
-              case Seq(base: PackageFormat.LocalVar, idx) =>
-                (resolver.typeSig(base.base.`type`), state(base), state(idx))
-              case Seq(base: PackageFormat.Parameter, idx) =>
-                (resolver.typeSig(base.base.`type`), state(base), state(idx))
+          case CHIR.Intrinsic.Kind.CPointerRead =>
+            val args = e.args()
+            val ValueSig(cpointerType: SignatureType.CPointer) = args.head
+            val (base, idx) = args match {
+              case Seq(base, idx) => (state(base), state(idx))
             }
             cpointerType.pointee match {
               case baseType: SignatureType =>
@@ -1613,12 +1565,11 @@ trait CHIRParser
             }
 
           // TODO write cangjie tests (use -cbcaotdeps)
-          case PackageFormat.IntrinsicKind.CPOINTER_WRITE =>
-            val (cpointerType: SignatureType.CPointer, base, idx, value) = operands(e.base.base) match {
-              case Seq(base: PackageFormat.LocalVar, idx, value) =>
-                (resolver.typeSig(base.base.`type`), state(base), state(idx), state(value))
-              case Seq(base: PackageFormat.Parameter, idx, value) =>
-                (resolver.typeSig(base.base.`type`), state(base), state(idx), state(value))
+          case CHIR.Intrinsic.Kind.CPointerWrite =>
+            val args = e.args()
+            val ValueSig(cpointerType: SignatureType.CPointer) = args.head
+            val (base, idx, value) = args match {
+              case Seq(base, idx, value) => (state(base), state(idx), state(value))
             }
             cpointerType.pointee match {
               case baseType: SignatureType =>
@@ -1634,13 +1585,7 @@ trait CHIRParser
                 shouldNotReachHere(cpointerType)
             }
 
-          case PackageFormat.IntrinsicKind.ARRAY_ACQUIRE_RAW_DATA =>
-            val (sig, from) = operands(e.base.base) match {
-              case Seq(n: PackageFormat.LocalVar) =>
-                (resolver.typeSig(n.base.`type`), state(n))
-              case Seq(n: PackageFormat.Parameter) =>
-                (resolver.typeSig(n.base.`type`), state(n))
-            }
+          case CHIR.Intrinsic.Kind.ArrayAcquireRawData =>
             if (env.enabled(FailArrayAcquireRawData)) {
               notImplemented("ARRAY_ACQUIRE_RAW_DATA intrinsic")
             }
@@ -1663,445 +1608,416 @@ trait CHIRParser
             state(e) = res
         }
 
-      case e: PackageFormat.SpawnBase =>
-        val (obj, objSig) = operands(e.base) match {
-          case Seq(objVar: PackageFormat.LocalVar, /*Exception targets*/ _*) =>
-            (state(objVar), resolver.typeSig(objVar.base.`type`))
-        }
-        pkg.getValue[Table](e.executeClosure) match {
-          case null =>
-            val retType = resolver.typeSig(e.base.resultTy)
+      case e: CHIR.Spawn =>
+        val objVar = e.obj()
+        val obj = state(objVar)
+        val ValueSig(objSig) = objVar
+        e.executeClosure() match {
+          case None =>
+            val retType = resolver.typeSig(e.resultTpe())
             state(e) = SpawnFuture(retType)(obj)
-          case _ =>
+          case Some(_) =>
             SpawnClosure(objSig)(obj)
         }
 
-      case e: PackageFormat.Debug =>
+      case e: CHIR.Debug =>
         // TODO: support debug
 
-      case e: PackageFormat.GetRTTIStatic =>
+      case e: CHIR.GetRTTIStatic =>
         assert(rootMethod.hasThisTypeInfoParameter)
         state(e) = rootMethodParam(rootMethod.getThisTypeInfoArgIdx)
 
-      case e: PackageFormat.Expression => e.kind match {
-
-        case CHIRExprKind.Constant =>
-          def intConst(v: Long, l: PackageFormat.LiteralValue): Node = {
-            import PackageFormat.CHIRTypeKind.*
-            pkg.getType[Table](l.base.`type`) match {
-              case t: PackageFormat.Type => t.kind match {
-                case INT8 | INT16 | INT32 | UINT8 | UINT16 | UINT32 | BOOLEAN => IConst(v.toInt)
-                case INT64 | INT_NATIVE | UINT64 | UINT_NATIVE => LConst(v)
-                case FLOAT16 => notImplemented(s"FLOAT16: $v")
-                case FLOAT32 => FConst(v.toFloat)
-                case FLOAT64 => DConst(v.toDouble)
-                case UNIT => IntegralConst(AddrType)(v)
-              }
-              case t: PackageFormat.CustomType => IntegralConst(AddrType)(v)
-            }
+      case e: CHIR.Constant =>
+        def intConst(v: Long, l: CHIR.Literal): Node = {
+          l.tpe() match {
+            case CHIR.BuiltinType.Int8 | CHIR.BuiltinType.Int16 | CHIR.BuiltinType.Int32 |
+                 CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 | CHIR.BuiltinType.Boolean => IConst(v.toInt)
+            case CHIR.BuiltinType.Int64 | CHIR.BuiltinType.IntNative |
+                 CHIR.BuiltinType.UInt64 | CHIR.BuiltinType.UIntNative => LConst(v)
+            case CHIR.BuiltinType.Float16 => notImplemented(s"FLOAT16: $v")
+            case CHIR.BuiltinType.Float32 => FConst(v.toFloat)
+            case CHIR.BuiltinType.Float64 => DConst(v.toDouble)
+            case CHIR.BuiltinType.Unit => IntegralConst(AddrType)(v)
+            case t: CHIR.CustomType => IntegralConst(AddrType)(v)
           }
-          val value = singleElement(operands(e)) match {
-            case v: PackageFormat.BoolLiteral => IConst(if (v.`val`) 1 else 0)
-            case v: PackageFormat.UnitLiteral => Void()
-            case v: PackageFormat.RuneLiteral => IConst(v.`val`.toInt)
-            case v: PackageFormat.NullLiteral => if (resolver.typeSig(e.resultTy).isTraceableReference) Null() else intConst(0, v.base)
-            case v: PackageFormat.IntLiteral => intConst(v.`val`, v.base)
-            case v: PackageFormat.FloatLiteral =>
-              import PackageFormat.CHIRTypeKind.*
-              val t = pkg.getType[PackageFormat.Type](v.base.base.`type`)
-              t.kind match {
-                case FLOAT16 => notImplemented(s"FLOAT16: ${v.`val`}")
-                case FLOAT32 => FConst(v.`val`.toFloat)
-                case FLOAT64 => DConst(v.`val`)
-              }
-            case v: PackageFormat.StringLiteral =>
-              constString(v.`val`)
+        }
+        val value = e.literal() match {
+          case v: CHIR.BoolLiteral => IConst(if (v.value()) 1 else 0)
+          case CHIR.UnitLiteral => Void()
+          case v: CHIR.RuneLiteral => IConst(v.value().toInt)
+          case v: CHIR.NullLiteral => if (resolver.typeSig(e.resultTpe()).isTraceableReference) Null() else intConst(0, v)
+          case v: CHIR.IntLiteral => intConst(v.value(), v)
+          case v: CHIR.FloatLiteral => v.tpe() match {
+            case CHIR.BuiltinType.Float16 => notImplemented(s"FLOAT16: ${v.value()}")
+            case CHIR.BuiltinType.Float32 => FConst(v.value().toFloat)
+            case CHIR.BuiltinType.Float64 => DConst(v.value())
           }
-          state(e) = value
+          case v: CHIR.StringLiteral => constString(v.value())
+        }
+        state(e) = value
 
-        case CHIRExprKind.Load =>
-          operands(e) match {
-            case Seq(localVar: PackageFormat.LocalVar) =>
-              val sig = resolver.typeSig(localVar.base.`type`)
-              if (sig.isZST) {
-                // nothing to do
-                state(e) = Void()
+      case e: CHIR.Load =>
+        e.location() match {
+          case Seq(localVar: CHIR.LocalVar) =>
+            val sig = resolver.typeSig(localVar.tpe())
+            if (sig.isZST) {
+              // nothing to do
+              state(e) = Void()
 
-              } else {
-                val n = state(localVar) match {
-                  case mem @ GetFieldSeqRef(fields, _, base) =>
-                    if (needsCopy(mem.resType)) {
-                      val res = StackAlloc.Local(mem.resType)
-                      copy(mem.resType, res, mem)
-                      res
-                    } else {
-                      LoadFieldSeq(fields)(maybeDerivedPtrBase(mem), base)
-                    }
-                  case mem @ GetFieldSeqRefGeneric(fields, _, base, tis) =>
-                    if (mem.resType.isVariableSizeType || !needsCopy(mem.resType)) {
-                      LoadFieldSeqGeneric(fields)(maybeDerivedPtrBase(mem), base, tis)
-                    } else {
-                      val res = StackAlloc.Local(mem.resType)
-                      copy(mem.resType, res, mem)
-                      res
-                    }
-                  case mem @ GetStaticFieldSeqRef(fields) =>
-                    if (needsCopy(mem.resType)) {
-                      val res = StackAlloc.Local(mem.resType)
-                      copy(mem.resType, res, mem)
-                      res
-                    } else {
-                      LoadStaticFieldSeq(fields)(DerivedPtr.Global())
-                    }
-                  case mem =>
-                    if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive) {
-                      mem
-                    } else {
-                      LoadMemory(sig.toAsm, sig, atomic = false)(mem)
-                    }
-                }
-                state(e) = n
-              }
-            case Seq(globalVar: PackageFormat.GlobalVar) =>
-              val field = staticFieldRef(globalVar)
-              val n = if (field.fieldType.isZST) {
-                Void()
-              } else if (needsCopy(field.fieldType)) {
-                val local = StackAlloc.Local(field.fieldType)
-                val addr = GetStaticFieldSeqRef(Seq(field))(DerivedPtr.Global())
-                copy(field.fieldType, local, addr)
-                local
-              } else {
-                LoadStaticFieldSeq(Seq(field))(DerivedPtr.Global())
+            } else {
+              val n = state(localVar) match {
+                case mem @ GetFieldSeqRef(fields, _, base) =>
+                  if (needsCopy(mem.resType)) {
+                    val res = StackAlloc.Local(mem.resType)
+                    copy(mem.resType, res, mem)
+                    res
+                  } else {
+                    LoadFieldSeq(fields)(maybeDerivedPtrBase(mem), base)
+                  }
+                case mem @ GetFieldSeqRefGeneric(fields, _, base, tis) =>
+                  if (mem.resType.isVariableSizeType || !needsCopy(mem.resType)) {
+                    LoadFieldSeqGeneric(fields)(maybeDerivedPtrBase(mem), base, tis)
+                  } else {
+                    val res = StackAlloc.Local(mem.resType)
+                    copy(mem.resType, res, mem)
+                    res
+                  }
+                case mem @ GetStaticFieldSeqRef(fields) =>
+                  if (needsCopy(mem.resType)) {
+                    val res = StackAlloc.Local(mem.resType)
+                    copy(mem.resType, res, mem)
+                    res
+                  } else {
+                    LoadStaticFieldSeq(fields)(DerivedPtr.Global())
+                  }
+                case mem =>
+                  if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive) {
+                    mem
+                  } else {
+                    LoadMemory(sig.toAsm, sig, atomic = false)(mem)
+                  }
               }
               state(e) = n
-          }
-
-        case CHIRExprKind.Store =>
-          operands(e) match {
-            case Seq(valueVar: (PackageFormat.LocalVar | PackageFormat.Parameter), localVar: PackageFormat.LocalVar) =>
-              val sig = resolver.typeSig(localVar.base.`type`)
-              if (sig.isZST) {
-                // nothing to do
-
-              } else {
-                val value = state(valueVar)
-                val mem = state(localVar)
-                writeBarrier()
-                if (!sig.isVariableSizeType && needsCopy(sig)) {
-                  value match {
-                    case ZeroValueNode() =>
-                      // TODO: zeroing?
-                    case _ =>
-                      copy(sig, mem, value)
-                  }
-
-                } else {
-                  mem match {
-                    case GetFieldSeqRef(fields, _, base) =>
-                      StoreFieldSeq(fields)(maybeDerivedPtrBase(mem), base, value)
-                    case GetFieldSeqRefGeneric(fields, _, base, tis) =>
-                      StoreFieldSeqGeneric(fields)(maybeDerivedPtrBase(mem), base, value, tis)
-                    case GetStaticFieldSeqRef(fields) =>
-                      StoreStaticFieldSeq(fields)(DerivedPtr.Global(), value)
-                    case mem =>
-                      if (sig.isTraceableReference || sig.isPrimitive || sig.isVariableSizeType) {
-                        state(localVar) = value
-                      } else {
-                        shouldNotReachHere(sig.toJETSignature)
-                      }
-                  }
-                }
-              }
-            case Seq(valueVar: (PackageFormat.LocalVar | PackageFormat.Parameter), globalVar: PackageFormat.GlobalVar) =>
-              val staticField = staticFieldRef(globalVar)
-              val sig = staticField.fieldType
-              if (sig.isZST) {
-                // nothing to do
-
-              } else {
-                val symRefType = asClassType(staticField.refType)
-
-                ensurePrepared(symRefType)
-                packageInitCheck(symRefType)
-
-                val value = state(valueVar)
-                if (needsCopy(staticField.fieldType)) {
-                  val addr = GetStaticFieldSeqRef(Seq(staticField))(DerivedPtr.Global())
-                  copy(sig, addr, value)
-                } else {
-                  writeBarrier()
-                  StoreStaticFieldSeq(Seq(staticField))(DerivedPtr.Global(), value)
-                }
-              }
-          }
-
-        case CHIRExprKind.Goto =>
-          assert(block.blockEnd.isInstanceOf[Goto])
-
-        case CHIRExprKind.Exit =>
-          val retType = rootMethod.getReturnType
-          val retVal = if (retType.isZST) {
-            Void()
-          } else {
-            val r = pkg.getValue[Table](func.retVal)
-            if (r == null) {
+            }
+          case Seq(globalVar: CHIR.GlobalVar) =>
+            val field = staticFieldRef(globalVar)
+            val n = if (field.fieldType.isZST) {
               Void()
-            } else if (rootMethod.hasRetByValParameter) {
-              val retByVal = rootMethodParam(rootMethod.getRetByValArgIdx)
-              val abiRetValType = rootMethod.getMethodType.parameterType(rootMethod.getMethodType.getRetByValArgIdx)
-              abiRetValType match {
-                case _ if abiRetValType.isZST =>
-                  retByVal
-
-                case t: SignatureType.Box =>
-                  // Variable-sized type
-                  val value = state(r)
-                  val ti = loadTypeInfo(t.base)
-                  val box = if (value.tpe.isTraceableRefType) value else Box(t.base)(ti, value)
-                  AssignGeneric(t.base)(ti, retByVal, box)
-                  retByVal
-
-                case SignatureType.Address =>
-                  // Type variable
-                  val value = state(r)
-                  val memType = if (retType.isInstanceOf[SignatureType.Box]) retType else SignatureType.Box(retType)
-                  StoreMemory(memType.toAsm, memType, atomic = false)(retByVal, value)
-                  value
-
-                case _ =>
-                  assert(abiRetValType.isRecord)
-                  copy(abiRetValType, retByVal, state(r))
-                  retByVal
-              }
+            } else if (needsCopy(field.fieldType)) {
+              val local = StackAlloc.Local(field.fieldType)
+              val addr = GetStaticFieldSeqRef(Seq(field))(DerivedPtr.Global())
+              copy(field.fieldType, local, addr)
+              local
             } else {
-              r match {
-                case r: PackageFormat.LocalVar =>
-                  val t = resolver.typeSig(r.base.`type`)
-                  if (t.isTraceableReference || t.isPrimitive) {
-                    state(r)
-                  } else {
-                    assert(!t.isRecord)
-                    LoadMemory(t.toAsm, t, atomic = false)(state(r))
-                  }
+              LoadStaticFieldSeq(Seq(field))(DerivedPtr.Global())
+            }
+            state(e) = n
+        }
+
+      case e: CHIR.Store =>
+        val valueVar = e.value()
+        val ValueSig(sig) = valueVar
+        val value = state(valueVar)
+        e.location() match {
+          case localVar: CHIR.LocalVar =>
+            if (sig.isZST) {
+              // nothing to do
+
+            } else {
+              val mem = state(localVar)
+              writeBarrier()
+              if (!sig.isVariableSizeType && needsCopy(sig)) {
+                value match {
+                  case ZeroValueNode() =>
+                  // TODO: zeroing?
+                  case _ =>
+                    copy(sig, mem, value)
+                }
+
+              } else {
+                mem match {
+                  case GetFieldSeqRef(fields, _, base) =>
+                    StoreFieldSeq(fields)(maybeDerivedPtrBase(mem), base, value)
+                  case GetFieldSeqRefGeneric(fields, _, base, tis) =>
+                    StoreFieldSeqGeneric(fields)(maybeDerivedPtrBase(mem), base, value, tis)
+                  case GetStaticFieldSeqRef(fields) =>
+                    StoreStaticFieldSeq(fields)(DerivedPtr.Global(), value)
+                  case mem =>
+                    if (sig.isTraceableReference || sig.isPrimitive || sig.isVariableSizeType) {
+                      state(localVar) = value
+                    } else {
+                      shouldNotReachHere(sig.toJETSignature)
+                    }
+                }
               }
             }
-          }
-          val ret = block.blockEnd.asInstanceOf[Return]
-          val proxy = ret.inValue
-          assert(proxy.isInstanceOf[Proxy] && proxy.singleUse == ret)
-          proxy.replaceBy(retVal)
+          case globalVar: CHIR.GlobalVar =>
+            val staticField = staticFieldRef(globalVar)
+            if (sig.isZST) {
+              // nothing to do
 
-        case CHIRExprKind.RaiseException =>
-          assert(block.blockEnd.isInstanceOf[Halt])
-          operands(e) match {
-            case Seq(ex, _*) => Throw(state(ex))
-          }
+            } else {
+              val symRefType = asClassType(staticField.refType)
 
-        case CHIRExprKind.Tuple =>
-          pkg.getType[Table](e.resultTy) match {
-            case t: PackageFormat.Type =>
-              t.kind match {
-                case CHIRTypeKind.TUPLE =>
-                  val tupleType = resolver.typeSig(e.resultTy).asInstanceOf[SignatureType.Tuple]
-                  state(e) = allocTuple(tupleType, operands(e).map(state.apply))
+              ensurePrepared(symRefType)
+              packageInitCheck(symRefType)
+
+              val value = state(valueVar)
+              if (needsCopy(staticField.fieldType)) {
+                val addr = GetStaticFieldSeqRef(Seq(staticField))(DerivedPtr.Global())
+                copy(sig, addr, value)
+              } else {
+                writeBarrier()
+                StoreStaticFieldSeq(Seq(staticField))(DerivedPtr.Global(), value)
               }
+            }
+        }
 
-            case t: PackageFormat.CustomType =>
-              import SignatureType.*
-              t.base.kind match {
-                case CHIRTypeKind.ENUM =>
-                  (resolver.typeSig(e.resultTy): @unchecked) match {
-                    case _: ZeroSizedEnum =>
-                      // nothing to do
+      case _: CHIR.Goto =>
+        assert(block.blockEnd.isInstanceOf[Goto])
 
-                    case _: PrimitiveBasedEnum =>
-                      state(e) = operands(e).map(state.apply) match {
-                        case Seq(c: IConst) => c
-                      }
+      case _: CHIR.Exit =>
+        val retType = rootMethod.getReturnType
+        val retVal = if (retType.isZST) {
+          Void()
+        } else {
+          val r = func.retVal()
+          if (r.isEmpty) {
+            Void()
+          } else if (rootMethod.hasRetByValParameter) {
+            val retByVal = rootMethodParam(rootMethod.getRetByValArgIdx)
+            val abiRetValType = rootMethod.getMethodType.parameterType(rootMethod.getMethodType.getRetByValArgIdx)
+            abiRetValType match {
+              case _ if abiRetValType.isZST =>
+                retByVal
 
-                    case enumType: ClassBasedEnum =>
-                      operands(e).map(state.apply) match {
-                        case args @ Seq(IConst(c), _*) =>
-                          assert(c >= 0, c)
-                          val constrName = resolver.classBasedEnumConstructorName(resolver.symName(t), c)
-                          val constr = resolver.findClass(constrName).get
-                          state(e) = allocEnumObject(SignatureType.fromSymType(constr), args)
-                      }
+              case t: SignatureType.Box =>
+                // Variable-sized type
+                val value = state(r.get)
+                val ti = loadTypeInfo(t.base)
+                val box = if (value.tpe.isTraceableRefType) value else Box(t.base)(ti, value)
+                AssignGeneric(t.base)(ti, retByVal, box)
+                retByVal
 
-                    case enumType: UnionBasedEnum =>
-                      operands(e).map(state.apply) match {
-                        case args @ Seq(IConst(c), _*) =>
-                          assert(c >= 0, c)
-                          val constrTypes = enumType.info.constructors(c).params
-                          val tupleType = Tuple(UInt32 +: constrTypes)
-                          state(e) = allocTuple(tupleType, args)
-                      }
+              case SignatureType.Address =>
+                // Type variable
+                val value = state(r.get)
+                val memType = if (retType.isInstanceOf[SignatureType.Box]) retType else SignatureType.Box(retType)
+                StoreMemory(memType.toAsm, memType, atomic = false)(retByVal, value)
+                value
 
-                    case enumType: OptionLikeEnum =>
-                      if (enumType.isNullableOption) {
-                        state(e) = operands(e).map(state.apply) match {
-                          case Seq(IConst(c)) => assert(c == 0 || c == 1, c); Null()
-                          case Seq(IConst(c), x) => assert(c == 0 || c == 1, c); x
-                        }
-                      } else if (enumType.someType.isTypeVariable) {
-                        val baseTypeInfo = loadTypeInfo(enumType.someType)
-                        val optionTypeInfo = loadTypeInfo(enumType)
-                        state(e) = operands(e).map(state.apply) match {
-                          case Seq(IConst(c)) =>
-                            assert(c == 0 || c == 1, c)
-                            NewNoneOptionGeneric(enumType)(baseTypeInfo, optionTypeInfo)
-                          case Seq(IConst(c), x) =>
-                            assert(c == 0 || c == 1, c)
-                            NewSomeOptionGeneric(enumType)(baseTypeInfo, optionTypeInfo, x)
-                        }
+              case _ =>
+                assert(abiRetValType.isRecord)
+                copy(abiRetValType, retByVal, state(r.get))
+                retByVal
+            }
+          } else {
+            r.get match {
+              case r: CHIR.LocalVar =>
+                val t = resolver.typeSig(r.tpe())
+                if (t.isTraceableReference || t.isPrimitive) {
+                  state(r)
+                } else {
+                  assert(!t.isRecord)
+                  LoadMemory(t.toAsm, t, atomic = false)(state(r))
+                }
+            }
+          }
+        }
+        val ret = block.blockEnd.asInstanceOf[Return]
+        val proxy = ret.inValue
+        assert(proxy.isInstanceOf[Proxy] && proxy.singleUse == ret)
+        proxy.replaceBy(retVal)
+
+      case e: CHIR.RaiseException =>
+        assert(block.blockEnd.isInstanceOf[Halt])
+        Throw(state(e.exceptionValue()))
+
+      case e: CHIR.Tuple =>
+        val resTpe = e.resultTpe()
+        resTpe match {
+          case t: CHIR.TupleType =>
+            val tupleType = resolver.typeSig(resTpe).asInstanceOf[SignatureType.Tuple]
+            state(e) = allocTuple(tupleType, e.elementValues().map(state.apply))
+
+          case t: CHIR.EnumType =>
+            import SignatureType.*
+            (resolver.typeSig(resTpe): @unchecked) match {
+              case _: ZeroSizedEnum =>
+              // nothing to do
+
+              case _: PrimitiveBasedEnum =>
+                state(e) = e.elementValues().map(state.apply) match {
+                  case Seq(c: IConst) => c
+                }
+
+              case enumType: ClassBasedEnum =>
+                e.elementValues().map(state.apply) match {
+                  case args@Seq(IConst(c), _*) =>
+                    assert(c >= 0, c)
+                    val constrName = resolver.classBasedEnumConstructorName(resolver.symName(t), c)
+                    val constr = resolver.findClass(constrName).get
+                    state(e) = allocEnumObject(SignatureType.fromSymType(constr), args)
+                }
+
+              case enumType: UnionBasedEnum =>
+                e.elementValues().map(state.apply) match {
+                  case args@Seq(IConst(c), _*) =>
+                    assert(c >= 0, c)
+                    val constrTypes = enumType.info.constructors(c).params
+                    val tupleType = Tuple(UInt32 +: constrTypes)
+                    state(e) = allocTuple(tupleType, args)
+                }
+
+              case enumType: OptionLikeEnum =>
+                if (enumType.isNullableOption) {
+                  state(e) = e.elementValues().map(state.apply) match {
+                    case Seq(IConst(c)) => assert(c == 0 || c == 1, c); Null()
+                    case Seq(IConst(c), x) => assert(c == 0 || c == 1, c); x
+                  }
+                } else if (enumType.someType.isTypeVariable) {
+                  val baseTypeInfo = loadTypeInfo(enumType.someType)
+                  val optionTypeInfo = loadTypeInfo(enumType)
+                  state(e) = e.elementValues().map(state.apply) match {
+                    case Seq(IConst(c)) =>
+                      assert(c == 0 || c == 1, c)
+                      NewNoneOptionGeneric(enumType)(baseTypeInfo, optionTypeInfo)
+                    case Seq(IConst(c), x) =>
+                      assert(c == 0 || c == 1, c)
+                      NewSomeOptionGeneric(enumType)(baseTypeInfo, optionTypeInfo, x)
+                  }
+                } else {
+                  val mem = StackAlloc.Local(enumType, workaroundForNonZeroedTraceableRecords = true)
+                  val payloadType = enumType.someType
+                  val tupleType = Tuple(Seq(Boolean, payloadType))
+                  val tagChain = fieldChain(enumType, Seq(0))
+                  e.elementValues().map(state.apply) match {
+                    case Seq(IConst(c)) =>
+                      assert(c == 0 || c == 1, c)
+                      if (enumType.isVariableLayoutType) {
+                        StoreFieldSeqGeneric(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c), typeInfos(tagChain))
                       } else {
-                        val mem = StackAlloc.Local(enumType, workaroundForNonZeroedTraceableRecords = true)
-                        val payloadType = enumType.someType
-                        val tupleType = Tuple(Seq(Boolean, payloadType))
-                        val tagChain = fieldChain(enumType, Seq(0))
-                        operands(e).map(state.apply) match {
-                          case Seq(IConst(c)) =>
-                            assert(c == 0 || c == 1, c)
-                            if (enumType.isVariableLayoutType) {
-                              StoreFieldSeqGeneric(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c), typeInfos(tagChain) )
-                            } else {
-                              StoreFieldSeq(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c))
-                            }
+                        StoreFieldSeq(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c))
+                      }
 
-                          case Seq(IConst(c), x) =>
-                            assert(c == 0 || c == 1, c)
-                            if (enumType.isVariableLayoutType) {
-                              StoreFieldSeqGeneric(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c), typeInfos(tagChain) )
-                            } else {
-                              StoreFieldSeq(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c))
-                            }
-                            val payloadChain = fieldChain(enumType, Seq(1))
-                            if (payloadType.isZST) {
-                              // nothing to do
+                    case Seq(IConst(c), x) =>
+                      assert(c == 0 || c == 1, c)
+                      if (enumType.isVariableLayoutType) {
+                        StoreFieldSeqGeneric(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c), typeInfos(tagChain))
+                      } else {
+                        StoreFieldSeq(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c))
+                      }
+                      val payloadChain = fieldChain(enumType, Seq(1))
+                      if (payloadType.isZST) {
+                        // nothing to do
 
-                            } else if (enumType.isVariableLayoutType || payloadChain.exists(_.fieldType.isVariableSizeType)) {
-                              StoreFieldSeqGeneric(payloadChain)(maybeDerivedPtrBase(mem), mem, x, typeInfos(payloadChain))
+                      } else if (enumType.isVariableLayoutType || payloadChain.exists(_.fieldType.isVariableSizeType)) {
+                        StoreFieldSeqGeneric(payloadChain)(maybeDerivedPtrBase(mem), mem, x, typeInfos(payloadChain))
 
-                            } else if (needsCopy(payloadType)) {
-                              val addr = GetFieldSeqRef(payloadChain)(maybeDerivedPtrBase(mem), mem)
-                              copy(payloadType, addr, x)
+                      } else if (needsCopy(payloadType)) {
+                        val addr = GetFieldSeqRef(payloadChain)(maybeDerivedPtrBase(mem), mem)
+                        copy(payloadType, addr, x)
 
-                            } else {
-                              StoreFieldSeq(payloadChain)(maybeDerivedPtrBase(mem), mem, x)
-                            }
-                        }
-                        state(e) = mem
+                      } else {
+                        StoreFieldSeq(payloadChain)(maybeDerivedPtrBase(mem), mem, x)
                       }
                   }
-              }
-          }
+                  state(e) = mem
+                }
+            }
+        }
 
-        case CHIRExprKind.Box =>
-          val (baseType, base) = operands(e) match {
-            case Seq(v: PackageFormat.LocalVar) => (resolver.typeSig(v.base.`type`), state(v))
-            case Seq(v: PackageFormat.Parameter) => (resolver.typeSig(v.base.`type`), state(v))
-          }
-          val res = baseType match {
+      case e: CHIR.Box =>
+        val v = e.value()
+        val ValueSig(baseType) = v
+        val base = state(v)
+        val res = baseType match {
+          case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
+            base
+          case _ =>
+            if (baseType.isTraceableReference && !baseType.isInstanceOf[SignatureType.OptionLikeEnum]) {
+              base
+            } else {
+              Box(baseType)(loadTypeInfo(baseType), base)
+            }
+        }
+        state(e) = res
+
+      case e: (CHIR.UnboxToValue | CHIR.CastToConcrete) =>
+        val base = state(e.value())
+        val baseType = resolver.typeSig(e.resultTpe())
+        val value = if (baseType.isRecord) {
+          baseType match {
             case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
               base
             case _ =>
-              if (baseType.isTraceableReference && !baseType.isInstanceOf[SignatureType.OptionLikeEnum]) {
-                base
+              if (base.tpe.isTraceableRefType) {
+                UnboxRec(baseType)(loadTypeInfo(baseType), base)
               } else {
-                Box(baseType)(loadTypeInfo(baseType), base)
+                base
               }
           }
-          state(e) = res
-
-        case CHIRExprKind.UnboxToValue | CHIRExprKind.CastToConcrete =>
-          val base = operands(e).map(state.apply) match {
-            case Seq(v) => v
-          }
-          val baseType = resolver.typeSig(e.resultTy)
-          val value = if (baseType.isRecord) {
-            baseType match {
-              case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
-                base
-              case _ =>
-                if (base.tpe.isTraceableRefType) {
-                  UnboxRec(baseType)(loadTypeInfo(baseType), base)
-                } else {
-                  base
-                }
-            }
-          } else if (baseType.isTraceableReference) {
+        } else if (baseType.isTraceableReference) {
+          base
+        } else {
+          if (base.tpe.isTraceableRefType) {
+            Unbox(baseType)(loadTypeInfo(baseType), base)
+          } else {
             base
-          } else {
-            if (base.tpe.isTraceableRefType) {
-              Unbox(baseType)(loadTypeInfo(baseType), base)
-            } else {
-              base
-            }
           }
-          state(e) = value
+        }
+        state(e) = value
 
-        case CHIRExprKind.GetException =>
-          state(e) = state(catchProxy)
+      case CHIR.GetException =>
+        state(e) = state(catchProxy)
 
-        case CHIRExprKind.RawArrayInitByValue =>
-          val (array, len, value) = operands(e).map(state.apply) match {
-            case Seq(array: NewArray, len, value) => (array, len, value)
+      case e: CHIR.RawArrayInitByValue =>
+        val array = state(e.array()).asInstanceOf[NewArray]
+        val len = state(e.size())
+        val value = state(e.initValue())
+        assert(array.lengths == Seq(len), s"RawArrayInitByValue($array, $len, $value)")
+        val arrayType = array.allocType
+        if (arrayType.getArrayElemType.isZST) {
+          stats.count(StatsKind.ArrayZeroingElimination, "Unit array zeroing eliminated on parsing", array)
+        } else {
+          AJArrayFill(arrayType, arrayType.getArrayElemType)(array, value)
+        }
+
+      case e: CHIR.RawArrayLiteralInit =>
+        val array = state(e.array()).asInstanceOf[NewArray]
+        val values = e.elementValues().map(state.apply)
+        assert(array.lengths == Seq(LConst(values.size)), s"RawArrayLiteralInit($array, $values)")
+        val arrayType = array.allocType
+        if (arrayType.getArrayElemType.isZST) {
+          // Nothing to do
+
+        } else {
+          // TODO: Support ArrayFill
+          for ((value, idx) <- values.zipWithIndex) {
+            arrayPut(arrayType, array, LConst(idx), value)
           }
-          assert(array.lengths == Seq(len), s"RawArrayInitByValue($array, $len, $value)")
-          val arrayType = array.allocType
-          if (arrayType.getArrayElemType.isZST) {
-            stats.count(StatsKind.ArrayZeroingElimination, "Unit array zeroing eliminated on parsing", array)
-          } else {
-            AJArrayFill(arrayType, arrayType.getArrayElemType)(array, value)
-          }
+        }
 
-        case CHIRExprKind.RawArrayLiteralInit =>
-          val (array, values) = operands(e).map(state.apply) match {
-            case Seq(array: NewArray, values: _*) => (array, values)
-          }
-          assert(array.lengths == Seq(LConst(values.size)), s"RawArrayLiteralInit($array, $values)")
-          val arrayType = array.allocType
-          if (arrayType.getArrayElemType.isZST) {
-            // Nothing to do
-
-          } else {
-            // TODO: Support ArrayFill
-            for ((value, idx) <- values.zipWithIndex) {
-              arrayPut(arrayType, array, LConst(idx), value)
-            }
-          }
-
-        case CHIRExprKind.GetRtti =>
-          state(e) = ThisTypeInfoBy(ReceiverParam())
-
-        case CHIRExprKind.StaticCast =>
-          state(e) = parseCasts(e, PackageFormat.OverflowStrategy.NA, state)
-
-        case k => notImplemented(CHIRExprKind.name(k))
-      }
+      case e: CHIR.GetRTTI =>
+        state(e) = ThisTypeInfoBy(ReceiverParam())
     }
 
-    private def staticFieldRef(globalVar: PackageFormat.GlobalVar): CangjieFieldReference = {
-      val decl = pkg.getDef[Table](globalVar.base.declaredParent)
-      val symRefType = if (decl == null) {
-        resolver.findClass(globalVar.base.packageName).get
-      } else {
-        asClassType(resolver.symType(decl).get)
-      }
+    private def staticFieldRef(globalVar: CHIR.GlobalVar): CangjieFieldReference = {
+      val symRefType  = globalVar.declaringDef()
+        .map(d => asClassType(resolver.symType(d).get))
+        .getOrElse(resolver.findClass(globalVar.packageName()).get)
 
       val refType = fromSymType(symRefType)
       val name = resolver.symName(globalVar)
-      val sig = resolver.typeSig(globalVar.base.base.`type`)
+      val sig = resolver.typeSig(globalVar.tpe())
       val f = symRefType.findDeclaredFieldOrNull(xstr(name), sig) ensuring
         (_ != null, s"cannot find field '$name' with signature '${sig.toJETSignature}' in class '${symRefType.getName}'")
 
       CangjieFieldReference(f.getFieldIndex, Some(f), refType, f.getType)
     }
 
-    private def calcMethodRef(declType: SymClassType, refType: SignatureType, _name: String,
-                              func: Function, funcKind: Int, attributes: Long): MethodReference = {
-      val isStatic = declType.isCangjiePackage || (Attribute.STATIC in attributes)
+    private def calcMethodRef(declType: SymClassType, refType: SignatureType, _name: String, func: CHIR.Func): MethodReference = {
+      val isStatic = declType.isCangjiePackage || func.attributes().contains(Attribute.STATIC)
       val (sig, _, isCFunc, vararg) = resolver.functionSig(func, hasReceiver = !isStatic)
 
       // TODO: explain
