@@ -9,13 +9,9 @@ struct TestStruct {
     }
 }
 
-foreign {
-    func createStruct(a: Int64, b: Int64): CPointer<TestStruct>
-    func createPrim(value: Int64): CPointer<Int64>
-}
-
 unsafe main(): Int64 {
-    let structPointer = createStruct(43, 44)
+    let structPointer = LibC.malloc<TestStruct>(count: 1)
+    structPointer.write(TestStruct(a: 43, b: 44))
     var value = structPointer.read()
     println(value.a)
     println(value.b)
@@ -25,7 +21,9 @@ unsafe main(): Int64 {
     println(value.a)
     println(value.b)
 
-    let primitivePointer = createPrim(42)
+    let primitivePointer = LibC.malloc<Int64>(count: 2)
+    primitivePointer.write(42)
+    primitivePointer.write(1, 84)
     println(primitivePointer.read())
     println(primitivePointer.read(1))
 
