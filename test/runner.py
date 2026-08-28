@@ -161,69 +161,6 @@ class StandaloneTestSuite(TestSuite):
         self.compiler_jar = self.toolchain_path + "/tools/bin/cbc-compiler.jar"
         self.compilation_failures = []
 
-    @staticmethod
-    def c_sources(test_work_dir: str) -> list[str]:
-        return sorted(glob.glob(os.path.join(test_work_dir, "*.c")))
-
-    @staticmethod
-    def c_shared_library_name(c_source: str) -> str:
-        return f"lib{os.path.splitext(os.path.basename(c_source))[0]}.so"
-
-    @staticmethod
-    def shared_library_aot_dep(shared_library: str) -> str:
-        library_name = os.path.basename(shared_library)
-        if library_name.startswith("lib"):
-            library_name = library_name[len("lib"):]
-        return os.path.splitext(library_name)[0]
-
-    def c_shared_libraries(self, test_work_dir: str) -> list[str]:
-        return [
-            os.path.join(test_work_dir, self.c_shared_library_name(c_source))
-            for c_source in self.c_sources(test_work_dir)
-        ]
-
-    async def build_c_shared_libraries(self, test_work_dir: str, env: dict[str, str]) -> int:
-        for c_source in self.c_sources(test_work_dir):
-            source_name = os.path.basename(c_source)
-            shared_library_name = self.c_shared_library_name(c_source)
-            compile_c_to_so = ["gcc", "-shared", "-fPIC", source_name, "-o", shared_library_name]
-            compiler_log = io.StringIO()
-            compiler_err = io.StringIO()
-
-            res = await run_in_env(
-                True,
-                env,
-                compile_c_to_so,
-                cwd=test_work_dir,
-                log=compiler_log,
-                stderr_log=compiler_err,
-            )
-            if res != 0:
-                err_msg = f"Standalone test C shared library compilation error: {res}\n"
-                if compiler_log.getvalue().strip():
-                    err_msg += compiler_log.getvalue()
-                if compiler_err.getvalue().strip():
-                    err_msg += compiler_err.getvalue()
-                await self.print_stderr(err_msg)
-                return res
-
-        return 0
-
-    def c_link_args(self, test_work_dir: str) -> list[str]:
-        c_link_args = []
-        for shared_library in self.c_shared_libraries(test_work_dir):
-            if os.path.isfile(shared_library):
-                c_link_args += ["-L", test_work_dir, "-l", self.shared_library_aot_dep(shared_library)]
-        return c_link_args
-
-    def cbc_aot_deps_args(self, test_work_dir: str) -> list[str]:
-        cbc_aot_deps = [
-            self.shared_library_aot_dep(shared_library)
-            for shared_library in self.c_shared_libraries(test_work_dir)
-            if os.path.isfile(shared_library)
-        ]
-        return [f"-cbcaotdeps={':'.join(cbc_aot_deps)}"] if cbc_aot_deps else []
-
     async def build_test(self, test_name: str):
         test_work_dir, name = test_name.rsplit('/', 1)
         in_mode = test_name[test_name.find('standalone'):].split('/')[1]
@@ -232,11 +169,6 @@ class StandaloneTestSuite(TestSuite):
         excluded_modes = self.standalone_tests.get(test_name, [])
 
         await self.print_status(f"Building test {test_name}")
-
-        res = await self.build_c_shared_libraries(test_work_dir, env)
-        if res != 0:
-            self.compilation_failures.append((test_name, in_mode, "during C shared library compilation"))
-            return 1
 
         import_args = []
         if os.path.isfile(dotcjaot(test_name)):
@@ -289,8 +221,7 @@ class StandaloneTestSuite(TestSuite):
                     chir_log = io.StringIO()
                     res = await self.run_cjc(dotcj(test_name),
                                              output_file=output_chir,
-                                             additional_args=["--emit-chir"] + import_args +
-                                                             self.c_link_args(test_work_dir) + opt_flags,
+                                             additional_args=["--emit-chir"] + import_args + opt_flags,
                                              use_tool_sh=True,
                                              log=chir_log)
                     if res != 0:
@@ -301,8 +232,7 @@ class StandaloneTestSuite(TestSuite):
                         self.compilation_failures.append((test_name, in_mode, f"during compilation ({mode})"))
                         continue
 
-                    chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"{name}.chir",
-                                   *self.cbc_aot_deps_args(test_work_dir), args.jc_options]
+                    chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"{name}.chir", args.jc_options]
                     cbc_log = io.StringIO()
                     cbc_err = io.StringIO()
                     res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)
