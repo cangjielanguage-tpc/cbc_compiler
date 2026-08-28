@@ -66,8 +66,8 @@ object Assembler {
       * For K16 and K32 bits length is {16, 32}
       */
     enum K(val bits: Int) {
-      case K0 extends K(0)
-      case K8 extends K(8)
+      case K0  extends K(0)
+      case K8  extends K(8)
       case K16 extends K(16)
 
       def opc: Int = ordinal
@@ -124,20 +124,20 @@ object Assembler {
   }
 
   enum Common {
-    case Add // 0b0000
-    case Sub // 0b0001, `ext.u` for B2ri4 and B3xrrt+iK
-    case Mul // 0b0010
-    case And // 0b0011
-    case Or // 0b0100
-    case Xor // 0b0101
+    case Add  // 0b0000
+    case Sub  // 0b0001, `ext.u` for B2ri4 and B3xrrt+iK
+    case Mul  // 0b0010
+    case And  // 0b0011
+    case Or   // 0b0100
+    case Xor  // 0b0101
     case SDiv // 0b0110, `mov` for B2r* encodings
     case SRem // 0b0111, `mov.vst` and `mov.ref` for B2rr
 
     case UDiv // 0b1000
     case URem // 0b1001
-    case LSR // 0b1010
-    case ASR // 0b1011
-    case LSL // 0b1100
+    case LSR  // 0b1010
+    case ASR  // 0b1011
+    case LSL  // 0b1100
 
     case Pow // 0b1101
 
@@ -207,42 +207,42 @@ object Assembler {
 
     /** Any case not mentioned below should be transformed in one of mentioned.
       * For example:
-      * integral:          x  <= y ~~ y  >= x
-      * floating-point:    x !>= y ~~ y !<= x
-      * integral constant: x  >= c ~~ x > c - 1 and e.t.c. (edge cases must be optimized with identities to avoid integer overflow)
+      *   integral:          x  <= y ~~ y  >= x
+      *   floating-point:    x !>= y ~~ y !<= x
+      *   integral constant: x  >= c ~~ x > c - 1 and e.t.c. (edge cases must be optimized with identities to avoid integer overflow)
       */
     def from(op: BranchOp): CC = tryFrom(op).getOrElse {
       shouldNotReachHere(s"Unexpected kind $op")
     }
 
     def tryFrom(op: BranchOp): Option[CC] = condOpt(op) {
-      case BranchOp.EQ => CC.EQ
-      case BranchOp.NE => CC.NE
-      case BranchOp.LT => CC.LT
-      case BranchOp.GE => CC.GE
+      case BranchOp.EQ  => CC.EQ
+      case BranchOp.NE  => CC.NE
+      case BranchOp.LT  => CC.LT
+      case BranchOp.GE  => CC.GE
       case BranchOp.ULT => CC.ULT
       case BranchOp.UGE => CC.UGE
 
-      case BranchOp.REQ => CC.REQ
-      case BranchOp.RNE => CC.RNE
-      case BranchOp.TESTBIT => CC.TESTBIT
+      case BranchOp.REQ      => CC.REQ
+      case BranchOp.RNE      => CC.RNE
+      case BranchOp.TESTBIT  => CC.TESTBIT
       case BranchOp.TESTNBIT => CC.TESTNBIT
 
-      case BranchOp.FEQ => CC.FEQ
-      case BranchOp.FNE => CC.FNE
-      case BranchOp.FLT => CC.FLT
+      case BranchOp.FEQ  => CC.FEQ
+      case BranchOp.FNE  => CC.FNE
+      case BranchOp.FLT  => CC.FLT
       case BranchOp.FNLT => CC.FNLT
-      case BranchOp.FGE => CC.FGE
+      case BranchOp.FGE  => CC.FGE
       case BranchOp.FNGE => CC.FNGE
 
-      case BranchOp.TESTZ => CC.TESTZ
+      case BranchOp.TESTZ  => CC.TESTZ
       case BranchOp.TESTNZ => CC.TESTNZ
     }
   }
 
   // TODO as this class more and more resembles assembler.Width, consider replacing it's uses
   enum Width(val nbytes: Int) {
-    case W8 extends Width(1)
+    case W8  extends Width(1)
     case W16 extends Width(2)
     case W32 extends Width(4)
     case W64 extends Width(8)
@@ -259,7 +259,7 @@ object Assembler {
 
   object Width {
     def apply(w: AsmWidth): Width = (w: @unchecked) match {
-      case AsmWidth.W8 => Width.W8
+      case AsmWidth.W8  => Width.W8
       case AsmWidth.W16 => Width.W16
       case AsmWidth.W32 => Width.W32
       case AsmWidth.W64 | AsmWidth.WPTR => Width.W64
@@ -453,7 +453,7 @@ object Assembler {
   }
 
   object FloatOperations {
-    val F32ToF = FAbs // only in B3xrrt+iK format (t should be 0, K should be 0)
+    val F32ToF = FAbs  // only in B3xrrt+iK format (t should be 0, K should be 0)
     val FToF32 = FSqrt // only in B3xrrt+iK format (t should be 0, K should be 0)
 
     private[Assembler] def prepareBits(op: FloatOperations, width: Width) = {
@@ -493,12 +493,12 @@ object Assembler {
     }
   }
 
-  private[isa12] def pack8(r1: Register, r2: Register): Int = pack8(r1.idx, r2.idx)
-  private[isa12] def pack8(r1: Register, v2: Int): Int = pack8(r1.idx, v2)
-  private[isa12] def pack8(v1: Int, r2: Register): Int = pack8(v1, r2.idx)
-  private[isa12] def pack16(r: Register, high12: Int): Int = p(s(high12, 12), freeBits = 4) | s4(r.idx)
-  private[isa12] def pack8(low4: Int, high4: Int): Int = p(s4(high4), freeBits = 4) | s4(low4)
-  private[isa12] def pack16(low8: Int, high8: Int): Int = p(s8(high8), freeBits = 8) | s8(low8)
+  private[isa12] def pack8 (r1: Register, r2: Register): Int = pack8(r1.idx, r2.idx)
+  private[isa12] def pack8 (r1: Register, v2: Int     ): Int = pack8(r1.idx, v2)
+  private[isa12] def pack8 (v1: Int,      r2: Register): Int = pack8(v1, r2.idx)
+  private[isa12] def pack16(r: Register,  high12: Int ): Int = p(s(high12, 12), freeBits = 4) | s4(r.idx)
+  private[isa12] def pack8 (low4: Int,    high4: Int  ): Int = p(s4(high4), freeBits = 4) | s4(low4)
+  private[isa12] def pack16(low8: Int,    high8: Int  ): Int = p(s8(high8), freeBits = 8) | s8(low8)
 
   inline def p(value: Int, freeBits: Int): Int = value << freeBits
 
@@ -533,7 +533,7 @@ object Assembler {
   inline def e1(value: Int): Int = e(value, 1)
 
   def isNBits(v: Long, n: Int, sign: Sign): Boolean = MathUtils.isNBits(sign == Sign.Signed, v, n)
-  def isNBits(v: Int, n: Int, sign: Sign): Boolean = MathUtils.isNBits(sign == Sign.Signed, v, n)
+  def isNBits(v: Int,  n: Int, sign: Sign): Boolean = MathUtils.isNBits(sign == Sign.Signed, v, n)
 
   /** See specification "Branch If (FExt BCC)" */
   private def canBeEncodedInBCC(op: BranchOp): Boolean = {
