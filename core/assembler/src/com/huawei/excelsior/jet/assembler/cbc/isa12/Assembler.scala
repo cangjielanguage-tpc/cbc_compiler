@@ -28,31 +28,6 @@ import xscala.util.MathUtils.{bitsSigned, isNBitsSigned, rangeMask64, rightNBits
 
 import scala.PartialFunction.condOpt
 
-trait MeaningfulNewIsaParts {
-  def movRef(dst: IR, src: IR): Unit
-  def fmov (frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit
-  def fneg (frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit
-  def fabs (frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit
-  def fsqrt(frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit
-  def ret(v: IR, w: AsmWidth): Unit
-  def retRef(v: IR): Unit
-  def fret(v: FR, w: AsmWidth): Unit
-  def initConstString(ts: StackSlot.Typed, stringId: Symbol): Unit
-  def bfx(dst: IR, src: IR, resW: AsmWidth, argW: AsmWidth, sx: Boolean, offset: Int, size: Int): Unit
-}
-
-trait NewIsaParts extends MeaningfulNewIsaParts {
-  def callDirect(rd: IR, methodId: Symbol): Unit
-  def callVirt(rd: IR, methodId: Symbol): Unit
-  def callInterf(rd: IR, sig_id: Symbol, methodId: Symbol): Unit
-  def aliveReference(data: Symbol): Unit
-  def unmovableReference(data: Symbol): Unit
-  def aliveRefDifference(data: Symbol): Unit
-  def aliveUnmovableDifference(data: Symbol): Unit
-  def aliveRefCheck(data: Symbol): Unit
-  def movVST(dst: IR, src: IR): Unit
-}
-
 // TODO: Merge with forked part
 object Assembler {
   val BYTECODE_VERSION: Byte = 1
