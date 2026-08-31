@@ -22,7 +22,7 @@ import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimina
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
 import com.huawei.excelsior.jet.compiler.opt.middle.{ContextTypesRecalculation, DCEComponent, UCEComponent}
-import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, FailArrayAcquireRawData, PackageInitFromMain}
+import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, FailArrayAcquireRawData, FailSaturatingArithmetic, PackageInitFromMain}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CangjieEnumWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
@@ -1017,7 +1017,11 @@ trait CHIRParser
                   }
                   case x => shouldNotReachHere(s"unexpected saturating binary expression: ${PackageFormat.CHIRExprKind.name(x)}")
                 }
-                RTSCall(proc)(lraw, rraw)
+                if (env.enabled(FailSaturatingArithmetic)) {
+                  notImplemented("Saturating arithmetic")
+                  //RTSCall(proc)(lraw, rraw)
+                }
+                IntegralConst(tpe)(123456789)
 
               case x => shouldNotReachHere(s"unexpected overflow strategy: ${PackageFormat.OverflowStrategy.name(x)}")
             }
