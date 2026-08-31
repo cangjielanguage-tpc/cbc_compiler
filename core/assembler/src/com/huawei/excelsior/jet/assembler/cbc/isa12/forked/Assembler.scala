@@ -18,7 +18,6 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Checked, Comm
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.{LD_F32, LD_F64, LD_REC, LD_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.{ST_F32, ST_F64, ST_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.Opcode.{Ld, Ld_Static, St, St_Static}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.RegGroup.{DivCheck, NullCheck}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.{LivenessAnalyzer, LivenessInfoCollector, Assembler as OldAssembler}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{FloatOperations, Opcode, RegGroup, RegSymGroup, low4, scut4}
@@ -835,7 +834,7 @@ trait ForkedAssembler {
 
   def ld(dst: Rg, base: IR, fr: FieldReference): Unit = instr {
     stream
-      .opc8(Ld)
+      .opc8(Opcode.Ld)
       .bits(_.w4(dst).w4(base))
       .sym16(fr)
     markMemBase(base, fr)
@@ -844,9 +843,41 @@ trait ForkedAssembler {
 
   def ld(dst: Rg, fr: FieldReference): Unit = instr {
     stream
-      .opc8(Ld_Static)
+      .opc8(Opcode.Ld_Static)
       .bits(_.w4(dst).w4(dst))
       .sym16(fr)
+    markLoadStoreValue(dst, fr, load = true)
+  }
+
+  def ld(dst: Rg, ts: StackSlot.Typed, fr: FieldReference) = instr {
+    stream
+      .opc8(Opcode.Ld_Typed)
+      .bits(_.w4(dst).w4(dst))
+      .ts16(ts)
+      .sym16(fr)
+    markLoadStoreValue(dst, fr, load = true)
+  }
+
+  def ld(dst: Rg, base: IR, derived: IR, fr: FieldReference) = instr {
+    stream
+      .opc8(Opcode.Ld_Derived)
+      .bits(_.w4(dst).w4(dst))
+      .bits(_.w4(base).w4(derived))
+      .sym16(fr)
+    markMemBase(base, fr)
+    analyzer.usePrim(derived)
+    markLoadStoreValue(dst, fr, load = true)
+  }
+
+  def ld(dst: Rg, base: IR, derived: IR, ti: IR, fr: FieldReference) = instr {
+    stream
+      .opc8(Opcode.Ld_Generic)
+      .bits(_.w4(dst).w4(base))
+      .bits(_.w4(derived).w4(ti))
+      .sym16(fr)
+    markMemBase(base, fr)
+    analyzer.usePrim(derived)
+    analyzer.usePrim(ti)
     markLoadStoreValue(dst, fr, load = true)
   }
 
@@ -859,21 +890,24 @@ trait ForkedAssembler {
     analyzer.prim(dst)
   }
 
-  def st(src: Rg, base: IR, fr: FieldReference): Unit = instr {
+  def leaStatic(dst: IR, baseDst: IR, fr: FieldReference): Unit = {
     stream
-      .opc8(St)
-      .bits(_.w4(src).w4(base))
+      .opc8(Opcode.Lea_Static)
+      .bits(_.w4(dst).w4(baseDst))
       .sym16(fr)
-    markMemBase(base, fr)
-    markLoadStoreValue(src, fr, load = false)
+    analyzer.prim(dst)
+    analyzer.ref(baseDst)
   }
 
-  def st(src: Rg, fr: FieldReference): Unit = instr {
+  def leaGeneric(dst: IR, base: IR, ti: IR, fr: FieldReference): Unit = instr {
     stream
-      .opc8(St_Static)
-      .bits(_.w4(src).w4(src))
+      .opc8(Opcode.Lea_Generic)
+      .bits(_.w4(dst).w4(dst))
+      .bits(_.w4(base).w4(ti))
       .sym16(fr)
-    markLoadStoreValue(src, fr, load = false)
+    markMemBase(base, fr)
+    analyzer.usePrim(ti)
+    analyzer.prim(dst)
   }
 
   def leaBox(dst: IR, base: IR): Unit = {
@@ -882,6 +916,55 @@ trait ForkedAssembler {
       .bits(_.w4(dst).w4(base))
     analyzer.useRef(base)
     analyzer.prim(dst)
+  }
+
+  def st(src: Rg, base: IR, fr: FieldReference): Unit = instr {
+    stream
+      .opc8(Opcode.St)
+      .bits(_.w4(src).w4(base))
+      .sym16(fr)
+    markMemBase(base, fr)
+    markLoadStoreValue(src, fr, load = false)
+  }
+
+  def st(src: Rg, fr: FieldReference): Unit = instr {
+    stream
+      .opc8(Opcode.St_Static)
+      .bits(_.w4(src).w4(src))
+      .sym16(fr)
+    markLoadStoreValue(src, fr, load = false)
+  }
+
+  def st(dst: Rg, ts: StackSlot.Typed, fr: FieldReference) = instr {
+    stream
+      .opc8(Opcode.St_Typed)
+      .bits(_.w4(dst).w4(dst))
+      .ts16(ts)
+      .sym16(fr)
+    markLoadStoreValue(dst, fr, load = false)
+  }
+
+  def st(dst: Rg, base: IR, derived: IR, fr: FieldReference) = instr {
+    stream
+      .opc8(Opcode.St_Derived)
+      .bits(_.w4(dst).w4(dst))
+      .bits(_.w4(base).w4(derived))
+      .sym16(fr)
+    markMemBase(base, fr)
+    analyzer.usePrim(derived)
+    markLoadStoreValue(dst, fr, load = false)
+  }
+
+  def st(dst: Rg, base: IR, derived: IR, ti: IR, fr: FieldReference) = instr {
+    stream
+      .opc8(Opcode.St_Generic)
+      .bits(_.w4(dst).w4(base))
+      .bits(_.w4(derived).w4(ti))
+      .sym16(fr)
+    markMemBase(base, fr)
+    analyzer.usePrim(derived)
+    analyzer.usePrim(ti)
+    markLoadStoreValue(dst, fr, load = false)
   }
 
   // endregion
@@ -965,7 +1048,6 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
 
   def callIndirect(targetReg: IR, sig_id: Symbol): Unit = notImplemented("todo")
 
-  def lea_static(dst: IR, field_id: Symbol): Unit = shouldNotReachHere("gc unsafe operation")
   def lea_us(dst: IR, us: StackSlot.Untyped): Unit = shouldNotReachHere("rec tracing unsafe operation. TODO: special tail instruction")
   def lea_cforeign(dst: IR, method_id: Symbol): Unit = notImplemented("todo")
 }
@@ -1109,10 +1191,18 @@ object Assembler {
     case CBinaryImm64
     case Ld
     case Ld_Static
+    case Ld_Typed
+    case Ld_Derived
+    case Ld_Generic
     case Lea
+    case Lea_Static
+    case Lea_Generic
+    case LeaBox
     case St
     case St_Static
-    case LeaBox
+    case St_Typed
+    case St_Derived
+    case St_Generic
   }
 
   enum MemOpcode extends Ordinal {
