@@ -892,9 +892,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val adapter = fasm.adapter
 
       (c.dstBase, c.dst, c.srcBase, c.src) match
-        case (IReg(dstBase), IReg(dst), IReg(srcBase), IReg(src))  =>
+        case (IReg(dstBase), IReg(dst), IReg(srcBase), IReg(src)) =>
           fasm.copy(dstBase, dst, srcBase, src, adapter.sigType(CodeSigSymbol(c.structureType)))
-          if(valueOf(c.dstBase).producer.isInstanceOf[DerivedPtr.Local]) {
+          if (valueOf(c.dstBase).producer.isInstanceOf[DerivedPtr.Local]) {
             mark(dst, LocalType.CLEARED)
           }
         case _ => shouldNotReachHere(c)
@@ -1776,11 +1776,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           val IReg(dst) = x
           val IReg(obj) = x.obj
           asm.loadTypeInfoObj(dst, obj)
-
-        case x: DerivedPtr =>
-          val IReg(dst) = x
-          val IReg(src) = x.derived
-          asm.mov(dst, src, reference = false)
 
         case x: AtomicOps.AtomicNode =>
           genAtomic(x)

@@ -120,12 +120,11 @@ trait NodeSpells { self: Universe with Nodes =>
       case MUT_FUNC_ARG
       case BOUND_MOV_ARG
       case RECORD_ARRAY_GET
-      case DERIVED_PTR
       case COPY_STRUCTURE
 
       def isArg = this match {
         case INLINE_ADDR_MODE | COND_BRANCH_ARG | COND_BRANCH_ARG_CAS | IMPLICIT_CHECK_ARG |
-             CALL_TARGET_ARG | INSTANCE_OF_BRANCH | BOUND_MOV_ARG | MUT_FUNC_ARG | RECORD_ARRAY_GET | DERIVED_PTR | COPY_STRUCTURE => true
+             CALL_TARGET_ARG | INSTANCE_OF_BRANCH | BOUND_MOV_ARG | MUT_FUNC_ARG | RECORD_ARRAY_GET | COPY_STRUCTURE => true
         case _ => false
       }
 
