@@ -13,15 +13,15 @@ object CHIR {
 
   trait Package {
     def name(): String
-    def typeDefs(): Seq[CustomTypeDef]
-    def values(): Seq[Value]
+    def typeDefs(): Iterator[CustomTypeDef]
+    def values(): Iterator[Value]
     def function(idx: Int): Func
     def packageInitFunc(): Func
     def packageInitLiteralFunc(): Func
   }
 
   trait HasAnnotations {
-    def annotations(): Seq[Annotation]
+    def annotations: Seq[Annotation]
   }
 
   trait Annotation {
@@ -40,17 +40,17 @@ object CHIR {
   }
 
   trait HasDeclaringDef {
-    def declaringDef(): Option[CustomTypeDef]
+    def declaringDef: Option[CustomTypeDef]
   }
 
   trait HasAttributes {
-    def attributes(): Seq[Attribute]
+    def attributes: Seq[Attribute]
   }
 
   trait Value {
   }
 
-  trait Func extends Value with HasDeclaringDef with HasAttributes {
+  trait Func extends Value with HasDeclaringDef with HasAnnotations with HasAttributes {
     def tpe(): FuncType
     def id(): Long
     def identifier(): String
@@ -60,7 +60,6 @@ object CHIR {
     def genericTypeParams(): Seq[GenericType]
     def body(): Option[BlockGroup]
     def params(): Seq[Parameter]
-    def annotations(): Seq[Annotation]
     def retVal(): Option[LocalVar]
   }
 
@@ -97,14 +96,13 @@ object CHIR {
   }
 
   // static field or global var
-  trait GlobalVar extends Value with HasDeclaringDef with HasAttributes {
-    def id(): Long
+  trait GlobalVar extends Value with HasDeclaringDef with HasAnnotations with HasAttributes {
+    def id: Long
     def identifier(): String
     def srcCodeIdentifier(): String
     def packageName(): String
-    def tpe(): Type
+    def tpe: Type
     def initializer(): Option[Value]
-    def annotations(): Seq[Annotation]
   }
 
   trait LocalVar extends Value {
@@ -224,8 +222,8 @@ object CHIR {
     def packageName(): String
     def identifier(): String
     def srcCodeIdentifier(): String
-    def instanceVars(): Seq[InstanceVar]
-    def staticVars(): Seq[GlobalVar]
+    def instanceVars: Seq[InstanceVar]
+    def staticVars: Seq[GlobalVar]
     def methods(): Seq[Func]
     def vTables(): Seq[VTable]
     def implementedInterfaces(): Seq[ClassType]
@@ -289,27 +287,21 @@ object CHIR {
   }
 
   trait StaticCast extends Cast {
-
   }
 
   trait UnBoxToRef extends Cast {
-
   }
 
   trait UnboxToValue extends Cast {
-
   }
 
   trait Box extends Cast {
-
   }
 
   trait CastToConcrete extends Cast {
-
   }
 
   trait CastToGeneric extends Cast {
-
   }
 
   trait HasResultVar {
@@ -384,11 +376,9 @@ object CHIR {
   }
 
   trait GetRTTIStatic extends Expression with HasResultVar {
-
   }
 
   trait GetRTTI extends Expression with HasResultVar {
-
   }
 
   trait InstanceOf extends Expression with HasResultVar {

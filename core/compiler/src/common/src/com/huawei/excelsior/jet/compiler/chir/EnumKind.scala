@@ -8,8 +8,6 @@
 
 package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType
-
 sealed abstract class EnumKind
 object EnumKind {
   case object ZeroSized extends EnumKind
