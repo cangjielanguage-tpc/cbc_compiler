@@ -91,7 +91,7 @@ trait CHIRParser
   private def loadMutWrapper(method: Method, args: Seq[Node]): Return = {
     val Some(source, idx) = method.getCHIRDef
     implicit val resolver: CHIRResolver = CHIRLoader.getCHIRResolver(source.toString)(env)
-    implicit val pkg: ParsedCHIRPackage = resolver.pkg
+    implicit val pkg: CHIR.Package = resolver.pkg
 
     // Mut wrapper C.foo is a wrapper around method C.foo$withoutTI
     // but with boxed receiver argument instead of mut pair or single record
@@ -1591,13 +1591,13 @@ trait CHIRParser
             }
             state(e) = LConst(123456789)
 
-          case PackageFormat.IntrinsicKind.ARRAY_RELEASE_RAW_DATA =>
+          case CHIR.Intrinsic.Kind.ArrayReleaseRawData =>
             if (env.enabled(FailArrayAcquireRawData)) {
               notImplemented("ARRAY_RELEASE_RAW_DATA intrinsic")
             }
 
-          case PackageFormat.IntrinsicKind.OBJECT_ZERO_VALUE =>
-            val sig = resolver.typeSig(e.base.base.resultTy)
+          case CHIR.Intrinsic.Kind.ObjectZeroValue =>
+            val sig = resolver.typeSig(e.resultTpe())
             val res = if (sig.isZST) {
               Void()
             } else if (sig.isRecord) {

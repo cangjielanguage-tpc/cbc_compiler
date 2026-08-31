@@ -295,7 +295,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
   def isImported(t: CHIR.CustomTypeDef | CHIR.Func | CHIR.GlobalVar): Boolean = {
     val (attrs, isFunctionalTypeBase) = t match {
-      case t: CHIR.CustomTypeDef => (t.attributes(), isFunctionalType(t) && !isLambda(t.tpe())
+      case t: CHIR.CustomTypeDef => (t.attributes(), isFunctionalType(t) && !isLambda(t.tpe()))
       case t: (CHIR.Func | CHIR.GlobalVar)  => (t.attributes(), false)
     }
     attrs.contains(CHIR.Attribute.Imported) || isFunctionalTypeBase
