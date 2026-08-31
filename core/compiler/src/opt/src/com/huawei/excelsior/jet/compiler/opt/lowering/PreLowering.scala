@@ -444,7 +444,7 @@ trait PreLowering extends CompileTimeComputations with LiveRangesOptimization wi
         case ZeroValueNode() =>
           eliminate(arrayFill, StatsKind.ArrayZeroingElimination, "explicit array zeroing eliminated")
 
-        case value @ StackAlloc(FrameSlot.Local(t, cangjieZeroValue)) if t.isRecord =>
+        case value @ StackAlloc(FrameSlot.Local(t, cangjieZeroValue)) if t.isRecord && !isStandalone =>
           // Ensure that value is not modified and is still zeroed stack alloc memory.
           // Note: Only Cangjie zeroValue can be removed without any checks.
           // TODO: add more precise check if needed
