@@ -3,7 +3,7 @@ target/
 .bsp/
 .bloop/
 .metals/
-project/metals.sbt
+**/metals.sbt
 
 *.iws
 **/.idea/workspace.xml

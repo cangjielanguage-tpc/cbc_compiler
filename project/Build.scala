@@ -88,7 +88,7 @@ object Build {
   lazy val javaTestSettings = Def.settings(
     libraryDependencies ++= Seq(
       "junit" % "junit" % "4.12" % Test,
-      "org.easymock" % "easymock" % "3.0" % Test,
+      "org.easymock" % "easymock" % "5.1.0" % Test,
     ),
   )
 
@@ -298,16 +298,16 @@ object Build {
 
           if (!src.exists) {
             println(s"Invalid xscala path '${env.xscala}'")
-            sys.exit(1)
+            Seq.empty
+          } else {
+            val log = streams.value.log
+            if (!dst.exists() || (directorySize(src.toPath) != directorySize(dst.toPath))) {
+              log.info(s"copying $src to $dst")
+              IO.copyDirectory(source = src, target = dst)
+            }
+            val excludeDir = s"xscala-library-${hostVM.opposite}"
+            showAllFiles(dst.toPath) filterNot (_.absolutePath.contains(excludeDir))
           }
-
-          val log = streams.value.log
-          if (!dst.exists() || (directorySize(src.toPath) != directorySize(dst.toPath))) {
-            log.info(s"copying $src to $dst")
-            IO.copyDirectory(source = src, target = dst)
-          }
-          val excludeDir = s"xscala-library-${hostVM.opposite}"
-          showAllFiles(dst.toPath) filterNot (_.absolutePath.contains(excludeDir))
         }
       )
       .disablePlugins(JUnitXmlReportPlugin)
