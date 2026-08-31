@@ -322,6 +322,9 @@ object CHIRBuilder {
         }
 
         for (symMethod <- symMethods) {
+          if (!symType.isCHIRDef && m.body != 0) {
+            builder.markAsCHIRDef(symType)
+          }
           if (symType.isCHIRDef && !resolver.isImported(m.base)) {
             builder.markAsCHIRDef(symMethod, id.toInt)
           }
