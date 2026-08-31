@@ -15,10 +15,8 @@ import com.huawei.excelsior.jet.compiler.{PreparationRequired, RTSProc, Stage, S
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
 import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
-import com.huawei.excelsior.jet.compiler.chir.CHIR.TryUnaryExpression
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.*
-import com.huawei.excelsior.jet.compiler.chir.{Attribute, CHIR, CHIRLoader, CHIRResolver, PackageFormat}
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.{BlockGroup, CHIRExprKind, CHIRTypeKind, Expression, Function}
+import com.huawei.excelsior.jet.compiler.chir.CHIR.Attribute
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, CHIRLoader, CHIRResolver}
 import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimination, Universe}
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
@@ -641,7 +639,7 @@ trait CHIRParser
         // TODO: consider moving it under @has_invoked_pkg_init_literal check
         for (v <- pkg.values()) v match {
           case g: CHIR.GlobalVar if !resolver.isImported(g) =>
-            val declType = g.declaringDef().flatMap(resolver.symType).getOrElse(resolver.findClass(pkg.name()).get)
+            val declType = g.declaringDef.flatMap(resolver.symType).getOrElse(resolver.findClass(pkg.name()).get)
             val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
             assert(field.isStatic, field)
             val value = g.initializer().map {
@@ -682,7 +680,7 @@ trait CHIRParser
 
     object ValueSig {
       def unapply(v: CHIR.Value): Option[SignatureType] = Some(resolver.typeSig(v match {
-          case v: CHIR.GlobalVar => v.tpe()
+          case v: CHIR.GlobalVar => v.tpe
           case v: CHIR.LocalVar => v.tpe()
           case v: CHIR.Parameter => v.tpe()
       }))
@@ -1103,7 +1101,7 @@ trait CHIRParser
             refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
         }
 
-        val declClass = func.declaringDef()
+        val declClass = func.declaringDef
           .flatMap(resolver.symType)
           .map(asClassType)
           .getOrElse(resolver.findClass(func.packageName()).get)
@@ -2003,13 +2001,13 @@ trait CHIRParser
     }
 
     private def staticFieldRef(globalVar: CHIR.GlobalVar): CangjieFieldReference = {
-      val symRefType  = globalVar.declaringDef()
+      val symRefType  = globalVar.declaringDef
         .map(d => asClassType(resolver.symType(d).get))
         .getOrElse(resolver.findClass(globalVar.packageName()).get)
 
       val refType = fromSymType(symRefType)
       val name = resolver.symName(globalVar)
-      val sig = resolver.typeSig(globalVar.tpe())
+      val sig = resolver.typeSig(globalVar.tpe)
       val f = symRefType.findDeclaredFieldOrNull(xstr(name), sig) ensuring
         (_ != null, s"cannot find field '$name' with signature '${sig.toJETSignature}' in class '${symRefType.getName}'")
 
@@ -2017,7 +2015,7 @@ trait CHIRParser
     }
 
     private def calcMethodRef(declType: SymClassType, refType: SignatureType, _name: String, func: CHIR.Func): MethodReference = {
-      val isStatic = declType.isCangjiePackage || func.attributes().contains(Attribute.STATIC)
+      val isStatic = declType.isCangjiePackage || func.attributes.contains(Attribute.Static)
       val (sig, _, isCFunc, vararg) = resolver.functionSig(func, hasReceiver = !isStatic)
 
       // TODO: explain

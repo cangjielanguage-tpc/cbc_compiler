@@ -6,10 +6,10 @@
  * See https://cangjie-lang.cn/pages/LICENSE for license information.
  */
 
-package com.huawei.excelsior.jet.compiler.chir
+package com.huawei.excelsior.jet.compiler.chir.v1_0
 
-import com.google.flatbuffers.{IntVector, LongVector}
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.{EnumCtorInfo, MemberVarInfo, VTableInType, VirtualMethodInfo}
+import com.google.flatbuffers.{IntVector, LongVector, UnionVector}
+import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.{EnumCtorInfo, MemberVarInfo, VTableInType, VirtualMethodInfo}
 
 object CHIRUtils {
 
@@ -42,5 +42,4 @@ object CHIRUtils {
     def toSeq: Seq[VirtualMethodInfo] = xs.iterator.toSeq
     def iterator: Iterator[VirtualMethodInfo] = if (xs == null) Iterator.empty else Iterator.tabulate(xs.length)(xs.get)
   }
-
 }

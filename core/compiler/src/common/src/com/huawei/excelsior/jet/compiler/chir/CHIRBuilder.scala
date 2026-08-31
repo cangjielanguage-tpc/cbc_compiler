@@ -8,21 +8,16 @@
 
 package com.huawei.excelsior.jet.compiler.chir
 
-import com.google.flatbuffers.Table
-import com.huawei.excelsior.common.CodeHelpers.notImplemented
-import com.huawei.excelsior.jet.common.XString.xstr
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker.NO_LLVM_INDEX
 import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
 import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTable, CangjieEnumInfo, UMLWriter}
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.*
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.{ABSTRACT, PUBLIC, STATIC}
 import com.huawei.excelsior.jet.compiler.options.BoolOption
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
-import com.huawei.excelsior.jet.compiler.symlevel.{GenericInfo, Method, SignatureType, ClassType as SymClassType, Type as SymType}
+import com.huawei.excelsior.jet.compiler.symlevel.{Method, SignatureType, ClassType as SymClassType, Type as SymType}
 import com.huawei.excelsior.jet.compiler.types.CompiledType
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.{ReferenceType, ClassType as RefClassType, InterfaceType as RefInterfaceType}
 
@@ -114,7 +109,7 @@ object CHIRBuilder {
         }
       }
 
-      for (v <- d.instanceVars()) {
+      for (v <- d.instanceVars) {
         val name = v.name()
         val sig = resolver.typeSig(v.tpe())
         val modifiers = resolver.symModifiers(v)
@@ -125,15 +120,15 @@ object CHIRBuilder {
         }
       }
 
-      for (v <- d.staticVars()) {
+      for (v <- d.staticVars) {
         val name = resolver.symName(v)
-        val sig = resolver.typeSig(v.tpe())
+        val sig = resolver.typeSig(v.tpe)
         val modifiers = resolver.symModifiers(v)
         assert(modifiers contains STATIC)
         val linkageName = resolver.linkageName(v)
         val sym = builder.addField(symType, name, sig, linkageName, modifiers.value)
         if (symType.isCHIRDef) {
-          builder.markAsCHIRDef(sym, v.id().toInt)
+          builder.markAsCHIRDef(sym, v.id.toInt)
         }
       }
     }
@@ -331,7 +326,7 @@ object CHIRBuilder {
 
     object GlobalAbstractFunc {
       def unapply(f: CHIR.Func): Option[CHIR.Type] = {
-        if (f.declaringDef().isEmpty && f.attributes().contains(CHIR.Attribute.Abstract)) {
+        if (f.declaringDef.isEmpty && f.attributes.contains(CHIR.Attribute.Abstract)) {
           val funcType = f.tpe()
           Some(funcType.receiverType())
         } else {
@@ -392,7 +387,7 @@ object CHIRBuilder {
               } else {
                 val implParent = impl match {
                   case GlobalAbstractFunc(t) => t
-                  case impl => impl.declaringDef().get
+                  case impl => impl.declaringDef.get
                 }
                 assert(implParent != null, symType)
                 val lparams = m.genericTypeParams()
@@ -424,19 +419,19 @@ object CHIRBuilder {
     // -----------------------------------------------
 
     for (v <- pkg.values()) v match {
-      case m: CHIR.GlobalVar if m.declaringDef().isEmpty =>
+      case m: CHIR.GlobalVar if m.declaringDef.isEmpty =>
         // package global var
         val symPkg = makePackage(m.packageName())
         val name = resolver.symName(m)
-        val sig = resolver.typeSig(m.tpe())
+        val sig = resolver.typeSig(m.tpe)
         val modifiers = (resolver.symModifiers(m) + Modifier.STATIC).value
         val linkageName = resolver.linkageName(m)
         val symField = builder.addField(symPkg, name, sig, linkageName, modifiers)
         if (!resolver.isImported(m)) {
-          builder.markAsCHIRDef(symField, m.id().toInt)
+          builder.markAsCHIRDef(symField, m.id.toInt)
         }
 
-      case m: CHIR.Func if m.declaringDef().isEmpty && !resolver.isDeadFunction(m) =>
+      case m: CHIR.Func if m.declaringDef.isEmpty && !resolver.isDeadFunction(m) =>
         // package global func
         val symPkg = makePackage(m.packageName())
         val name = resolver.symName(m)

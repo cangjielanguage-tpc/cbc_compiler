@@ -8,15 +8,10 @@
 
 package com.huawei.excelsior.jet.compiler.chir
 
-import com.google.flatbuffers.{IntVector, Table}
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.common.XString.xstr
-import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
-import com.huawei.excelsior.jet.compiler.chir.CHIR.{CustomTypeDef, GenericType, HasAnnotations}
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.*
-import com.huawei.excelsior.jet.compiler.chir.EnumKind
+import com.huawei.excelsior.jet.compiler.chir.CHIR.{Attribute, CustomTypeDef, GenericType}
 import com.huawei.excelsior.jet.compiler.chir.EnumKind.ZeroSized
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.*
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.LocalTypeVariable
@@ -27,7 +22,6 @@ import com.huawei.excelsior.jet.util.ScalaCollections
 import scala.PartialFunction.cond
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.reflect.ClassTag
 
 /** Provides resolving utilities to/from [[PackageFormat]] entities.
   *
@@ -60,13 +54,13 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
     def globalName(_v: CHIR.Func | CHIR.GlobalVar): String = {
       val (id, identifier, srcName, annotations) = _v match {
-        case v: CHIR.Func => (v.id(), v.identifier(), v.srcCodeIdentifier(), v.annotations())
-        case v: CHIR.GlobalVar => (v.id(), v.identifier(), v.srcCodeIdentifier(), v.annotations())
+        case v: CHIR.Func => (v.id(), v.identifier(), v.srcCodeIdentifier(), v.annotations)
+        case v: CHIR.GlobalVar => (v.id, v.identifier(), v.srcCodeIdentifier(), v.annotations)
       }
       val wrappedMethod = annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod() }
       val v = wrappedMethod.getOrElse(_v)
-      val isPrivate = v.attributes().contains(CHIR.Attribute.Private)
-      val isPackageGlobal = v.declaringDef().isEmpty
+      val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
+      val isPackageGlobal = v.declaringDef.isEmpty
       val suffix = if (isGenericInstantiated(v)) {
         // TODO another way without id usage?
         assert(id > 0)
@@ -271,11 +265,11 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   def symModifiers(a: CHIR.HasAttributes): Modifiers = {
     var mods = Modifiers.EMPTY
 
-    a.attributes().foreach {
+    a.attributes.foreach {
       case CHIR.Attribute.Public => mods += PUBLIC
       case CHIR.Attribute.Protected => mods += PROTECTED
       case CHIR.Attribute.Private => mods += PRIVATE
-      //      case CHIR.Attribute.VIRTUAL => // TODO: support
+//      case CHIR.Attribute.Virtual => // TODO: support
       case CHIR.Attribute.Sealed => mods += CJ_SEALED
       case CHIR.Attribute.Abstract => mods += ABSTRACT
       case CHIR.Attribute.Readonly => mods += FINAL
@@ -290,13 +284,13 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def isGenericInstantiated(t: CHIR.HasAttributes): Boolean = {
-    t.attributes().contains(CHIR.Attribute.GenericInstantiated)
+    t.attributes.contains(CHIR.Attribute.GenericInstantiated)
   }
 
   def isImported(t: CHIR.CustomTypeDef | CHIR.Func | CHIR.GlobalVar): Boolean = {
     val (attrs, isFunctionalTypeBase) = t match {
-      case t: CHIR.CustomTypeDef => (t.attributes(), isFunctionalType(t) && !isLambda(t.tpe()))
-      case t: (CHIR.Func | CHIR.GlobalVar)  => (t.attributes(), false)
+      case t: CHIR.CustomTypeDef => (t.attributes, isFunctionalType(t) && !isLambda(t.tpe()))
+      case t: (CHIR.Func | CHIR.GlobalVar)  => (t.attributes, false)
     }
     attrs.contains(CHIR.Attribute.Imported) || isFunctionalTypeBase
   }
@@ -306,11 +300,11 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
    * For example, the global functions are referenced from vtable.
    */
   def isDeadFunction(f: CHIR.Func): Boolean = {
-    f.attributes().contains(Attribute.UNREACHABLE)
+    f.attributes.contains(Attribute.Unreachable)
   }
 
   private def isFunctionalType(t: CHIR.CustomTypeDef): Boolean = {
-    t.annotations() exists isAutoEnv
+    t.annotations exists isAutoEnv
   }
 
   private def isLambda(t: CHIR.CustomType): Boolean = {
@@ -325,7 +319,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     case CHIR.BuiltinType.Void | CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => true
     case t: CHIR.TupleType => t.fieldTypes().forall(isZST)
     case t: CHIR.VArrayType => isZST(t.elementType())
-    case t: CHIR.StructType => t.typeDef().instanceVars().forall(i => isZST(i.tpe()))
+    case t: CHIR.StructType => t.typeDef().instanceVars.forall(i => isZST(i.tpe()))
     case t: CHIR.EnumType => enumKind(t.typeDef()) == EnumKind.ZeroSized
     case _ => false
   }
@@ -347,7 +341,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   private def isTraceableStruct(t: CHIR.Type): Boolean = t match {
     case t: CHIR.TupleType => t.fieldTypes().exists(p => isReferenceType(p) || isTraceableStruct(p))
     case t: CHIR.VArrayType => isReferenceType(t.elementType()) || isTraceableStruct(t.elementType())
-    case t: CHIR.StructType => t.typeDef().instanceVars().exists(i => isReferenceType(i.tpe()) || isTraceableStruct(i.tpe()))
+    case t: CHIR.StructType => t.typeDef().instanceVars.exists(i => isReferenceType(i.tpe()) || isTraceableStruct(i.tpe()))
     case t: CHIR.EnumType => enumKind(t.typeDef()) match {
       case EnumKind.OptionLike(base) => isTraceableStruct(base)
       case _ => false
@@ -402,7 +396,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def getOverrideSrcFuncType(f: CHIR.Func): Option[CHIR.OverrideSrcFuncType] = {
-    f.annotations().collectFirst {
+    f.annotations.collectFirst {
       case a: CHIR.OverrideSrcFuncType => a
     }
   }

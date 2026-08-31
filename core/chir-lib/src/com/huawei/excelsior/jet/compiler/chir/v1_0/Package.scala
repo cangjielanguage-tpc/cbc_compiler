@@ -6,42 +6,50 @@
  * See https://cangjie-lang.cn/pages/LICENSE for license information.
  */
 
-package com.huawei.excelsior.jet.compiler.chir
+package com.huawei.excelsior.jet.compiler.chir.v1_0
 
-import com.google.flatbuffers.Table
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
-import xscala.io.{Files, Path}
+import com.huawei.excelsior.jet.compiler.chir.CHIR
+import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.*
 
 import java.nio.ByteBuffer
 import scala.reflect.ClassTag
 
-/** [[CHIRPackage]] with caching of core indexed entities:
-  *  - Types
-  *  - Values
-  *  - Exprs
-  *  - Defs
-  */
-class ParsedCHIRPackage(source: String) {
+trait CHIRItemProvider {
+  def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): T
+  def getValue[T >: Null <: CHIR.Value : ClassTag](id: Long): Option[T]
+  def getExpr[T >: Null <: CHIR.Expression : ClassTag](id: Long): T
+  def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): T
+}
 
-  val pkg: CHIRPackage = {
+/** [[CHIRPackage]] with caching of core indexed entities:
+ *  - Types
+ *  - Values
+ *  - Exprs
+ *  - Defs
+ */
+final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvider {
+
+  private lazy val pkg: CHIRPackage = {
     // TODO: fix performance regression of XScala IO compared to JDK IO
     val bytes = java.nio.file.Files.readAllBytes(java.io.File(source).toPath)
     val buf = ByteBuffer.wrap(bytes)
     CHIRPackage.getRootAsCHIRPackage(buf)
   }
-
-  private val types  = Array.fill[Table](pkg.typesLength)(null)
-  private val values = Array.fill[Table](pkg.valuesLength)(null)
-  private val exprs  = Array.fill[Table](pkg.exprsLength)(null)
-  private val defs   = Array.fill[Table](pkg.defsLength)(null)
+  private lazy val _types = Array.fill[CHIR.Type](pkg.typesLength)(null)
+  private lazy val _values = Array.fill[CHIR.Value](pkg.valuesLength)(null)
+  private lazy val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
+  private lazy val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
+  private lazy val _pkgInit = getValue[CHIR.Func](pkg.packageInitFunc()).get
+  private lazy val _pkgLiteralInit = getValue[CHIR.Func](pkg.packageLiteralInitFunc()).get
 
   /** Returns cached Type or null if id is zero or negative. */
-  def getType[T >: Null <: Table : ClassTag](id: Long): T = {
+  override def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): T = {
     if (id <= 0) {
       null
     } else {
       val i = id.toInt - 1
-      if (types(i) == null) {
+      if (_types(i) == null) {
         val obj = pkg.typesType(i) match {
           case TypeElem.Type => new Type
           case TypeElem.RawArrayType => new RawArrayType
@@ -50,19 +58,26 @@ class ParsedCHIRPackage(source: String) {
           case TypeElem.CustomType => new CustomType
           case TypeElem.GenericType => new GenericType
         }
-        types(i) = pkg.types(obj, i)
+        val t = pkg.types(obj, i)
+        t match {
+          case t: Type =>
+
+
+        }
+
+//        _types(i) =
       }
-      types(i).asInstanceOf[T]
+      _types(i).asInstanceOf[T]
     }
   }
 
   /** Returns cached Value or null if id is zero or negative. */
-  def getValue[T >: Null <: Table : ClassTag](id: Long): T = {
+  override def getValue[T >: Null <: CHIR.Value : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
-      null
+      None
     } else {
       val i = id.toInt - 1
-      if (values(i) == null) {
+      if (_values(i) == null) {
         val obj = pkg.valuesType(i) match {
           case ValueElem.BoolLiteral => new BoolLiteral
           case ValueElem.RuneLiteral => new RuneLiteral
@@ -78,23 +93,21 @@ class ParsedCHIRPackage(source: String) {
           case ValueElem.Block => new Block
           case ValueElem.BlockGroup => new BlockGroup
         }
-        values(i) = pkg.values(obj, i)
+//        _values(i) = pkg.values(obj, i)
       }
-      values(i).asInstanceOf[T]
+      Some(_values(i)).collect {
+        case t: T => t
+      }
     }
   }
 
-  def getValueID(x: Table): Long = {
-    values.indexOf(x) + 1
-  }
-
   /** Returns cached Expr or null if id is zero or negative. */
-  def getExpr[T >: Null <: Table : ClassTag](id: Long): T = {
+  override def getExpr[T >: Null <: CHIR.Expression : ClassTag](id: Long): T = {
     if (id <= 0) {
       null
     } else {
       val i = id.toInt - 1
-      if (exprs(i) == null) {
+      if (_exprs(i) == null) {
         val obj = pkg.exprsType(i) match {
           case ExpressionElem.Expression => new Expression
           case ExpressionElem.AllocateBase => new AllocateBase
@@ -120,28 +133,59 @@ class ParsedCHIRPackage(source: String) {
           case ExpressionElem.StoreElementRef => new StoreElementRef
           case ExpressionElem.UnaryExpressionBase => new UnaryExpressionBase
         }
-        exprs(i) = pkg.exprs(obj, i)
+//        _exprs(i) = pkg.exprs(obj, i)
       }
-      exprs(i).asInstanceOf[T]
+      _exprs(i).asInstanceOf[T]
     }
   }
 
   /** Returns cached Def or null if id is zero or negative. */
-  def getDef[T >: Null <: Table : ClassTag](id: Long): T = {
+  override def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): T = {
     if (id <= 0) {
       null
     } else {
       val i = id.toInt - 1
-      if (defs(i) == null) {
+      if (_customDefs(i) == null) {
         val obj = pkg.defsType(i) match {
           case CustomTypeDefElem.EnumDef => new EnumDef
           case CustomTypeDefElem.StructDef => new StructDef
           case CustomTypeDefElem.ClassDef => new ClassDef
           case CustomTypeDefElem.ExtendDef => new ExtendDef
         }
-        defs(i) = pkg.defs(obj, i)
+        val d = pkg.defs(obj, i)
+        given provider: CHIRItemProvider = this
+        val chirDef = obj match {
+          case t: EnumDef => EnumDefImpl(t)
+          case t: ClassDef => ClassDefImpl(t)
+          case t: StructDef => StructDefImpl(t)
+          case t: ExtendDef => ExtendDefImpl(t)
+        }
+        _customDefs(i) = chirDef
       }
-      defs(i).asInstanceOf[T]
+      _customDefs(i).asInstanceOf[T]
     }
   }
+
+  override def typeDefs(): Iterator[CHIR.CustomTypeDef] = {
+    (1 to pkg.defsLength()).iterator.map { id =>
+      getDef[CHIR.CustomTypeDef](id)
+    }
+  }
+
+  override def name(): String = pkg.name()
+
+  override def packageInitFunc(): CHIR.Func = _pkgInit
+
+  override def packageInitLiteralFunc(): CHIR.Func = _pkgLiteralInit
+
+  override def values(): Iterator[CHIR.Value] = {
+    (1 to pkg.valuesLength()).iterator.map { id =>
+      getValue[CHIR.Value](id).get
+    }
+  }
+
+  override def function(idx: Int): CHIR.Func = {
+    getValue[CHIR.Func](idx).get
+  }
 }
+
