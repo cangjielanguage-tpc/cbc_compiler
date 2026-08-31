@@ -953,6 +953,34 @@ trait ForkedAssembler {
     analyzer.prim(dst)
   }
 
+  def leaStatic(dst: IR, baseDst: IR, fr: FieldReference): Unit = {
+    stream
+      .opc8(Opcode.Lea_Static)
+      .bits(_.w4(dst).w4(baseDst))
+      .sym16(fr)
+    analyzer.prim(dst)
+    analyzer.ref(baseDst)
+  }
+
+  def leaGeneric(dst: IR, base: IR, ti: IR, fr: FieldReference): Unit = instr {
+    stream
+      .opc8(Opcode.Lea_Generic)
+      .bits(_.w4(dst).w4(dst))
+      .bits(_.w4(base).w4(ti))
+      .sym16(fr)
+    markMemBase(base, fr)
+    analyzer.usePrim(ti)
+    analyzer.prim(dst)
+  }
+
+  def leaBox(dst: IR, base: IR): Unit = {
+    stream
+      .opc8(Opcode.LeaBox)
+      .bits(_.w4(dst).w4(base))
+    analyzer.useRef(base)
+    analyzer.prim(dst)
+  }
+
   def st(src: Rg, base: IR, fr: FieldReference): Unit = instr {
     stream
       .opc8(Opcode.St)
