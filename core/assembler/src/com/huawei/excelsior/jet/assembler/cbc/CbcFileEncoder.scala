@@ -396,6 +396,7 @@ private enum FieldRefTag(val tag: Byte) {
   case ConstIndex extends FieldRefTag(0x01)
   case Multi extends FieldRefTag(0x02)
   case None extends FieldRefTag(0x03)
+  case NoneWithSig extends FieldRefTag(0x04) // TODO: do we need it?
 }
 
 /**
@@ -716,8 +717,13 @@ private class FieldReferencePool extends Pool[FieldReference] { self: RawPool wi
       output.putULEB(multi.subRefs.length)
       multi.subRefs.map(fieldRefs.add).foreach(output.putULEB)
     case none: NoneFieldReference =>
-      output.putByte(FieldRefTag.None.tag)
-      output.putULEB(signatures.add(none.sig))
+      none.sig match {
+        case None =>
+          output.putByte(FieldRefTag.None.tag)
+        case Some(sig) =>
+          output.putByte(FieldRefTag.NoneWithSig.tag)
+          output.putULEB(signatures.add(sig))
+      }
     }
   }
 }
