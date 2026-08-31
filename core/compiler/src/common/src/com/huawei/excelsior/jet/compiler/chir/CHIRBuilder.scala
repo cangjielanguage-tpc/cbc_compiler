@@ -163,7 +163,7 @@ object CHIRBuilder {
           if (!resolver.isImported(d)) {
             builder.markAsCHIRDef(symType)
           }
-          if (!resolver.isGenericInstantiated(d.base)) {
+          if (!resolver.isGenericInstantiated(d)) {
             val isInterface = symType.isInterface
             val superinterfaces = d.implementedInterfaces().flatMap(resolveSuperinterface(_, d)).toArray
             
@@ -183,7 +183,7 @@ object CHIRBuilder {
             builder.markAsCHIRDef(symType)
           }
 
-          if (!resolver.isGenericInstantiated(d.base)) {
+          if (!resolver.isGenericInstantiated(d)) {
             val superinterfaces = d.implementedInterfaces().flatMap(resolveSuperinterface(_, d)).toArray
             builder.setSuperinterfaces(symType, superinterfaces)
           }

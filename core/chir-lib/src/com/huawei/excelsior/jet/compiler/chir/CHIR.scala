@@ -409,6 +409,7 @@ object CHIR {
       ArrayGetUnchecked,
       ArrayGetRefUnchecked,
       ArrayGet,
+      ArrayReleaseRawData,
       ArraySetUnchecked,
       ArraySet,
       ArraySize,
@@ -426,6 +427,7 @@ object CHIR {
       Preinitialize,
       CPointerRead,
       CPointerWrite,
+      ObjectZeroValue,
       Sqrt,
     }
   }
