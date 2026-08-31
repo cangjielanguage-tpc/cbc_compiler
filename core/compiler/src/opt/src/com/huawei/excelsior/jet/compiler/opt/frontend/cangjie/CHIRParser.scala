@@ -1860,7 +1860,7 @@ trait CHIRParser
                 case SignatureType.Address =>
                   // Type variable
                   val value = state(r)
-                  val memType = SignatureType.Box(retType)
+                  val memType = if (retType.isInstanceOf[SignatureType.Box]) retType else SignatureType.Box(retType)
                   StoreMemory(memType.toAsm, memType, atomic = false)(retByVal, value)
                   value
 
