@@ -375,25 +375,25 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       n match {
         case n: GetFieldSeqRef if !n.isInstanceOf[HasFrameSlot] =>
           val IReg(dst) = n
-          val base = getBaseLocation(n.obj)
+          val base = getBaseLocation(n.base)
           asm.lea(dst, base, constrFieldRef(fieldRefs))
         case n: LoadFieldSeq if !n.isInstanceOf[HasFrameSlot] =>
           val Reg(dst) = n
-          val base = getBaseLocation(n.obj)
+          val base = getBaseLocation(n.base)
           asm.ld(dst, base, constrFieldRef(fieldRefs))
         case n: (GetFieldSeqRef | LoadFieldSeq) =>
           val Reg(dst) = n
-          memExprHead(n.base, n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs)
           builder.load(dst).gen(asm)
         case n: GetFieldSeqRefGeneric =>
           val Reg(dst) = n
-          memExprHead(n.base, n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs, n.typeInfos)
           builder.load(dst).gen(asm)
         case n: LoadFieldSeqGeneric =>
           val Reg(dst) = n
-          memExprHead(n.base, n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs, n.typeInfos)
           if (n.resType.isVariableSizeType) {
             val IReg(ti) = n.typeInfos.last
@@ -419,16 +419,16 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case Some(_) => shouldNotReachHere("Field seq stores with imm are not supported")
             case None =>
               val Reg(src) = n.inValue
-              val base = getBaseLocation(n.obj)
+              val base = getBaseLocation(n.base)
               asm.st(src, base, constrFieldRef(fieldRefs))
           }
         case n: StoreFieldSeq =>
-          memExprHead(n.base, n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs)
           store(n.inValue)
         case n: StoreFieldSeqGeneric =>
           addXSite(n)
-          memExprHead(n.base, n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs, n.typeInfos)
           if (n.resType.isVariableSizeType) {
             val IReg(ti) = n.typeInfos.last
@@ -729,12 +729,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case (IReg(dst), n) => {
           n match {
             case g: GetFieldSeqRef =>
-              head(Some(g.base), g.obj, g.fields)
+              head(Some(g.baseRef), g.base, g.fields)
               fields(g.fields)
             case g: GetStaticFieldSeqRef =>
               builder.static(adapter.field(g.fields.head))
               fields(g.fields.tail)
-            case n: FieldSeqOperation => head(Some(n.base), n, Seq.empty)
+            case n: FieldSeqOperation => head(Some(n.baseRef), n, Seq.empty)
             case n => head(None, n, Seq.empty)
           }
           builder.copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
@@ -744,12 +744,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           assert(check(src, LocalType.CLEARED))
           n match {
             case g: GetFieldSeqRef =>
-              head(Some(g.base), g.obj, g.fields)
+              head(Some(g.baseRef), g.base, g.fields)
               fields(g.fields)
             case g: GetStaticFieldSeqRef =>
               builder.static(adapter.field(g.fields.head))
               fields(g.fields.tail)
-            case n: FieldSeqOperation => head(Some(n.base), n, Seq.empty)
+            case n: FieldSeqOperation => head(Some(n.baseRef), n, Seq.empty)
             case n => head(None, n, Seq.empty)
           }
           builder.copyRegFrom(src, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)

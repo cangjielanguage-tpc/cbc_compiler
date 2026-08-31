@@ -19,8 +19,8 @@ trait StackPtrsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
       (rootMethod.hasRetByValParameter && p.num == rootMethod.getRetByValArgIdx && !rootMethod.getReturnType.isTypeVariable) 
       || p.formalType.isRecord
     case _: StackAlloc => !n.isInstanceOf[StackAlloc] // producer is StackAlloc but not the node itself
-    case n: GetFieldSeqRef => valueOf(n.base).producer.isInstanceOf[DerivedPtr.Local]
-    case n: GetFieldSeqRefGeneric => valueOf(n.base).producer.isInstanceOf[DerivedPtr.Local]
+    case n: GetFieldSeqRef => valueOf(n.baseRef).producer.isInstanceOf[DerivedPtr.Local]
+    case n: GetFieldSeqRefGeneric => valueOf(n.baseRef).producer.isInstanceOf[DerivedPtr.Local]
     case _ => false
   }) && !n.resource.isInstanceOf[TailSlot]
 

@@ -21,7 +21,9 @@ trait CangjieNodes { self: Universe =>
     def refType: SignatureType = FieldSeqOperation.refType(fields)
     def resType: SignatureType = FieldSeqOperation.resType(fields)
 
-    def base: Node
+    // Object reference of derived pointer or Global/Local base handle
+    // (see DerivedPtr.BaseHandle).
+    def baseRef: Node
   }
 
   object FieldSeqOperation {
@@ -51,7 +53,9 @@ trait CangjieNodes { self: Universe =>
   }
 
   sealed trait InstanceFieldSeqOperation extends FieldSeqOperation {
-    def obj: Node
+    // Potentially derived pointer inside of baseRef.
+    // Field sequence is traversed starting from this pointer.
+    def base: Node
   }
 
   sealed trait GenericFieldSeqOperation extends FieldSeqOperation {
@@ -63,8 +67,8 @@ trait CangjieNodes { self: Universe =>
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
-    def base = arg(1)
-    def obj = arg(2)
+    def baseRef = arg(1)
+    def base = arg(2)
   }
 
   object GetFieldSeqRef {
@@ -79,10 +83,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(base: Node, obj: Node): Node =
-      proto(fields)(base, obj)
+    def apply(fields: Seq[CangjieFieldReference])(baseRef: Node, base: Node): Node =
+      proto(fields)(baseRef, base)
 
-    def unapply(x: GetFieldSeqRef) = Some(x.fields, x.base, x.obj)
+    def unapply(x: GetFieldSeqRef) = Some(x.fields, x.baseRef, x.base)
   }
 
   class GetFieldSeqRefGeneric private(proto: GetFieldSeqRefGeneric.Proto)
@@ -90,8 +94,8 @@ trait CangjieNodes { self: Universe =>
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
-    def base = arg(1)
-    def obj = arg(2)
+    def baseRef = arg(1)
+    def base = arg(2)
     def typeInfos = argsTail(3)
   }
 
@@ -109,10 +113,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(base: Node, obj: Node, typeInfos: Seq[Node]): Node =
-      proto(fields)(base +: obj +: typeInfos: _*)
+    def apply(fields: Seq[CangjieFieldReference])(baseRef: Node, base: Node, typeInfos: Seq[Node]): Node =
+      proto(fields)(baseRef +: base +: typeInfos: _*)
 
-    def unapply(x: GetFieldSeqRefGeneric) = Some(x.fields, x.base, x.obj, x.typeInfos)
+    def unapply(x: GetFieldSeqRefGeneric) = Some(x.fields, x.baseRef, x.base, x.typeInfos)
   }
 
   class GetStaticFieldSeqRef private(proto: GetStaticFieldSeqRef.Proto)
@@ -120,7 +124,7 @@ trait CangjieNodes { self: Universe =>
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
-    def base = arg(1)
+    def baseRef = arg(1)
   }
 
   object GetStaticFieldSeqRef {
@@ -147,8 +151,8 @@ trait CangjieNodes { self: Universe =>
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
-    def base = arg(2)
-    def obj = arg(3)
+    def baseRef = arg(2)
+    def base = arg(3)
   }
 
   object LoadFieldSeq {
@@ -165,10 +169,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(base: Node, obj: Node): Node =
-      proto(fields)(base, obj)
+    def apply(fields: Seq[CangjieFieldReference])(baseRef: Node, base: Node): Node =
+      proto(fields)(baseRef, base)
 
-    def unapply(x: LoadFieldSeq) = Some(x.fields, x.base, x.obj)
+    def unapply(x: LoadFieldSeq) = Some(x.fields, x.baseRef, x.base)
   }
 
   class LoadFieldSeqGeneric private(proto: LoadFieldSeqGeneric.Proto)
@@ -177,8 +181,8 @@ trait CangjieNodes { self: Universe =>
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
-    def base = arg(2)
-    def obj = arg(3)
+    def baseRef = arg(2)
+    def base = arg(3)
     def typeInfos = argsTail(4)
   }
 
@@ -196,10 +200,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(base: Node, obj: Node, typeInfos: Seq[Node]): Node =
-      proto(fields)(base +: obj +: typeInfos: _*)
+    def apply(fields: Seq[CangjieFieldReference])(baseRef: Node, base: Node, typeInfos: Seq[Node]): Node =
+      proto(fields)(baseRef +: base +: typeInfos: _*)
 
-    def unapply(x: LoadFieldSeqGeneric) = Some(x.fields, x.base, x.obj, x.typeInfos)
+    def unapply(x: LoadFieldSeqGeneric) = Some(x.fields, x.baseRef, x.base, x.typeInfos)
   }
 
   class LoadStaticFieldSeq private(proto: LoadStaticFieldSeq.Proto)
@@ -207,7 +211,7 @@ trait CangjieNodes { self: Universe =>
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
-    def base = arg(2)
+    def baseRef = arg(2)
   }
 
   object LoadStaticFieldSeq {
@@ -228,7 +232,7 @@ trait CangjieNodes { self: Universe =>
     def apply(fields: Seq[CangjieFieldReference])(base: Node): Node =
       proto(fields)(base)
 
-    def unapply(x: LoadStaticFieldSeq) = Some(x.fields, x.base)
+    def unapply(x: LoadStaticFieldSeq) = Some(x.fields, x.baseRef)
   }
 
   class StoreFieldSeq private(proto: StoreFieldSeq.Proto)
@@ -236,8 +240,8 @@ trait CangjieNodes { self: Universe =>
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
-    def base = arg(2)
-    def obj = arg(3)
+    def baseRef = arg(2)
+    def base = arg(3)
     def inValue = arg(4)
   }
 
@@ -256,10 +260,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(base: Node, obj: Node, value: Node): Node =
-      proto(fields)(base, obj, value)
+    def apply(fields: Seq[CangjieFieldReference])(baseRef: Node, base: Node, value: Node): Node =
+      proto(fields)(baseRef, base, value)
 
-    def unapply(x: StoreFieldSeq) = Some(x.fields, x.base, x.obj, x.inValue)
+    def unapply(x: StoreFieldSeq) = Some(x.fields, x.baseRef, x.base, x.inValue)
   }
 
   class StoreFieldSeqGeneric private(proto: StoreFieldSeqGeneric.Proto)
@@ -268,8 +272,8 @@ trait CangjieNodes { self: Universe =>
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
-    def base = arg(2)
-    def obj = arg(3)
+    def baseRef = arg(2)
+    def base = arg(3)
     def inValue = arg(4)
     def typeInfos = argsTail(5)
   }
@@ -288,10 +292,10 @@ trait CangjieNodes { self: Universe =>
       Prototype.intern(Proto(fields))
     }
 
-    def apply(fields: Seq[CangjieFieldReference])(base: Node, obj: Node, value: Node, typeInfos: Seq[Node]): Node =
-      proto(fields)(base +: obj +: value +: typeInfos: _*)
+    def apply(fields: Seq[CangjieFieldReference])(baseRef: Node, base: Node, value: Node, typeInfos: Seq[Node]): Node =
+      proto(fields)(baseRef +: base +: value +: typeInfos: _*)
 
-    def unapply(x: StoreFieldSeqGeneric) = Some(x.fields, x.base, x.obj, x.inValue, x.typeInfos)
+    def unapply(x: StoreFieldSeqGeneric) = Some(x.fields, x.baseRef, x.base, x.inValue, x.typeInfos)
   }
 
   class StoreStaticFieldSeq private(proto: StoreStaticFieldSeq.Proto)
@@ -299,7 +303,7 @@ trait CangjieNodes { self: Universe =>
 
     override def fields: Seq[CangjieFieldReference] = proto.fields
 
-    def base = arg(2)
+    def baseRef = arg(2)
     def inValue = arg(3)
   }
 
@@ -322,7 +326,7 @@ trait CangjieNodes { self: Universe =>
     def apply(fields: Seq[CangjieFieldReference])(base: Node, value: Node): Node =
       proto(fields)(base, value)
 
-    def unapply(x: StoreStaticFieldSeq) = Some(x.fields, x.base, x.inValue)
+    def unapply(x: StoreStaticFieldSeq) = Some(x.fields, x.baseRef, x.inValue)
   }
 
   object DerivedPtr {

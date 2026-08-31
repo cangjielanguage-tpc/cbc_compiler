@@ -2459,7 +2459,7 @@ trait CHIRParser
     case rcv if rcv.tpe.isTraceableRefType => rcv
     case rcv: Param if rootMethod.hasMutRecordParameter && rcv.num == rootMethod.getMutRecordArgIdx =>
       rootMethodParam(rootMethod.getMutObjectArgIdx)
-    case rcv: FieldSeqOperation => rcv.base
+    case rcv: FieldSeqOperation => rcv.baseRef
     case rcv: Phi =>
       val args = Phi.transitiveValueArgs(rcv).filterNot(_.isInstanceOf[NoValue])
       singleton(args) match {
@@ -2472,7 +2472,7 @@ trait CHIRParser
   private def resolveProxiesInArgs(): Unit = {
     for (n <- all[SMutObjectArg]) {
       val actual = n.recArg.receiver match {
-        case rcv: InstanceFieldSeqOperation => rcv.obj
+        case rcv: InstanceFieldSeqOperation => rcv.base
         case rcv: FieldSeqOperation => DerivedPtr.Global()
         case rcv: StackAlloc => DerivedPtr.Local()
         case rcv: Param =>
