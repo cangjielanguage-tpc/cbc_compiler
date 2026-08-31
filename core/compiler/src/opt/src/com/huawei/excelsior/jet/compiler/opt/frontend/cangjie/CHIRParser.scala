@@ -712,10 +712,10 @@ trait CHIRParser
                 // nothing to do
               case StackAlloc.Local(allocType) =>
                 // string
-                val mem = GetStaticFieldSeqRef(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))
+                val mem = GetStaticFieldSeqRef(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global())
                 copy(allocType, mem, value)
               case _ =>
-                StoreStaticFieldSeq(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(value)
+                StoreStaticFieldSeq(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global(), value)
             }
           case _ =>
         }
@@ -1105,11 +1105,11 @@ trait CHIRParser
           staticField match {
             case None =>
               if (host.isVariableLayoutType || fields.exists(_.fieldType.isVariableSizeType))  {
-                GetFieldSeqRefGeneric(fields)(mem, typeInfos(fields))
+                GetFieldSeqRefGeneric(fields)(maybeDerivedPtrBase(mem), mem, typeInfos(fields))
               } else {
-                GetFieldSeqRef(fields)(mem)
+                GetFieldSeqRef(fields)(maybeDerivedPtrBase(mem), mem)
               }
-            case Some(sf) => GetStaticFieldSeqRef(sf +: fields)
+            case Some(sf) => GetStaticFieldSeqRef(sf +: fields)(DerivedPtr.Global())
           }
         }
         state(e) = n
@@ -1150,19 +1150,19 @@ trait CHIRParser
             staticField match {
               case None =>
                 if (host.isVariableLayoutType || fields.exists(_.fieldType.isVariableSizeType)) {
-                  StoreFieldSeqGeneric(fields)(maybeDerivedPtr(mem), arg, typeInfos(fields))
+                  StoreFieldSeqGeneric(fields)(maybeDerivedPtrBase(mem), mem, arg, typeInfos(fields))
                 } else if (needsCopy(lastField.fieldType)) {
-                  val addr = GetFieldSeqRef(fields)(maybeDerivedPtr(mem))
+                  val addr = GetFieldSeqRef(fields)(maybeDerivedPtrBase(mem), mem)
                   copy(lastField.fieldType, addr, arg)
                 } else {
-                  StoreFieldSeq(fields)(maybeDerivedPtr(mem), arg)
+                  StoreFieldSeq(fields)(maybeDerivedPtrBase(mem), mem, arg)
                 }
               case Some(sf) =>
                 if (needsCopy(lastField.fieldType)) {
-                  val addr = GetStaticFieldSeqRef(fields)
+                  val addr = GetStaticFieldSeqRef(fields)(DerivedPtr.Global())
                   copy(lastField.fieldType, addr, arg)
                 } else {
-                  StoreStaticFieldSeq(sf +: fields)(arg)
+                  StoreStaticFieldSeq(sf +: fields)(DerivedPtr.Global(), arg)
                 }
             }
           }
@@ -1207,6 +1207,7 @@ trait CHIRParser
               case Seq(0) =>
                 val tupleType = SignatureType.Tuple(Seq(SignatureType.UInt32))
                 LoadFieldSeq(Seq(CangjieFieldReference(0, None, tupleType, SignatureType.UInt32)))(
+                  maybeDerivedPtrBase(mem),
                   ReinterpretCast(ValueType(host), ValueType(tupleType))(mem)
                 )
             }
@@ -1236,22 +1237,22 @@ trait CHIRParser
                   if (host.isVariableLayoutType || fields.exists(_.fieldType.isVariableSizeType)) {
                     val tis = typeInfos(fields)
                     if (shouldCopy) {
-                      GetFieldSeqRefGeneric(fields)(mem, tis)
+                      GetFieldSeqRefGeneric(fields)(maybeDerivedPtrBase(mem), mem, tis)
                     } else {
-                      LoadFieldSeqGeneric(fields)(mem, tis)
+                      LoadFieldSeqGeneric(fields)(maybeDerivedPtrBase(mem), mem, tis)
                     }
                   } else {
                     if (shouldCopy) {
-                      GetFieldSeqRef(fields)(mem)
+                      GetFieldSeqRef(fields)(maybeDerivedPtrBase(mem), mem)
                     } else {
-                      LoadFieldSeq(fields)(mem)
+                      LoadFieldSeq(fields)(maybeDerivedPtrBase(mem), mem)
                     }
                   }
                 case Some(sf) =>
                   if (shouldCopy) {
-                    GetStaticFieldSeqRef(sf +: fields)
+                    GetStaticFieldSeqRef(sf +: fields)(DerivedPtr.Global())
                   } else {
-                    LoadStaticFieldSeq(sf +: fields)
+                    LoadStaticFieldSeq(sf +: fields)(DerivedPtr.Global())
                   }
               }
               if (shouldCopy) {
@@ -1312,7 +1313,7 @@ trait CHIRParser
 
         val args = argVals match {
           case Seq(gv: PackageFormat.GlobalVar, rest: _*) =>
-            GetStaticFieldSeqRef(Seq(staticFieldRef(gv))) +: rest.map(state.apply)
+            GetStaticFieldSeqRef(Seq(staticFieldRef(gv)))(DerivedPtr.Global()) +: rest.map(state.apply)
           case _ =>
             argVals.map(state.apply)
         }
@@ -1728,17 +1729,17 @@ trait CHIRParser
 
               } else {
                 val n = state(localVar) match {
-                  case mem @ GetFieldSeqRef(fields, base) =>
+                  case mem @ GetFieldSeqRef(fields, _, base) =>
                     if (needsCopy(mem.resType)) {
                       val res = StackAlloc.Local(mem.resType)
                       copy(mem.resType, res, mem)
                       res
                     } else {
-                      LoadFieldSeq(fields)(maybeDerivedPtr(base))
+                      LoadFieldSeq(fields)(maybeDerivedPtrBase(mem), base)
                     }
-                  case mem @ GetFieldSeqRefGeneric(fields, base, tis) =>
+                  case mem @ GetFieldSeqRefGeneric(fields, _, base, tis) =>
                     if (mem.resType.isVariableSizeType || !needsCopy(mem.resType)) {
-                      LoadFieldSeqGeneric(fields)(maybeDerivedPtr(base), tis)
+                      LoadFieldSeqGeneric(fields)(maybeDerivedPtrBase(mem), base, tis)
                     } else {
                       val res = StackAlloc.Local(mem.resType)
                       copy(mem.resType, res, mem)
@@ -1750,7 +1751,7 @@ trait CHIRParser
                       copy(mem.resType, res, mem)
                       res
                     } else {
-                      LoadStaticFieldSeq(fields)
+                      LoadStaticFieldSeq(fields)(DerivedPtr.Global())
                     }
                   case mem =>
                     if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive) {
@@ -1767,11 +1768,11 @@ trait CHIRParser
                 Void()
               } else if (needsCopy(field.fieldType)) {
                 val local = StackAlloc.Local(field.fieldType)
-                val addr = GetStaticFieldSeqRef(Seq(field))
+                val addr = GetStaticFieldSeqRef(Seq(field))(DerivedPtr.Global())
                 copy(field.fieldType, local, addr)
                 local
               } else {
-                LoadStaticFieldSeq(Seq(field))
+                LoadStaticFieldSeq(Seq(field))(DerivedPtr.Global())
               }
               state(e) = n
           }
@@ -1797,12 +1798,12 @@ trait CHIRParser
 
                 } else {
                   mem match {
-                    case GetFieldSeqRef(fields, base) =>
-                      StoreFieldSeq(fields)(maybeDerivedPtr(base), value)
-                    case GetFieldSeqRefGeneric(fields, base, tis) =>
-                      StoreFieldSeqGeneric(fields)(maybeDerivedPtr(base), value, tis)
+                    case GetFieldSeqRef(fields, _, base) =>
+                      StoreFieldSeq(fields)(maybeDerivedPtrBase(mem), base, value)
+                    case GetFieldSeqRefGeneric(fields, _, base, tis) =>
+                      StoreFieldSeqGeneric(fields)(maybeDerivedPtrBase(mem), base, value, tis)
                     case GetStaticFieldSeqRef(fields) =>
-                      StoreStaticFieldSeq(fields)(value)
+                      StoreStaticFieldSeq(fields)(DerivedPtr.Global(), value)
                     case mem =>
                       if (sig.isTraceableReference || sig.isPrimitive || sig.isVariableSizeType) {
                         state(localVar) = value
@@ -1826,11 +1827,11 @@ trait CHIRParser
 
                 val value = state(valueVar)
                 if (needsCopy(staticField.fieldType)) {
-                  val addr = GetStaticFieldSeqRef(Seq(staticField))
+                  val addr = GetStaticFieldSeqRef(Seq(staticField))(DerivedPtr.Global())
                   copy(sig, addr, value)
                 } else {
                   writeBarrier()
-                  StoreStaticFieldSeq(Seq(staticField))(value)
+                  StoreStaticFieldSeq(Seq(staticField))(DerivedPtr.Global(), value)
                 }
               }
           }
@@ -1963,31 +1964,31 @@ trait CHIRParser
                           case Seq(IConst(c)) =>
                             assert(c == 0 || c == 1, c)
                             if (enumType.isVariableLayoutType) {
-                              StoreFieldSeqGeneric(tagChain)(mem, IConst(c), typeInfos(tagChain) )
+                              StoreFieldSeqGeneric(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c), typeInfos(tagChain) )
                             } else {
-                              StoreFieldSeq(tagChain)(mem, IConst(c))
+                              StoreFieldSeq(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c))
                             }
 
                           case Seq(IConst(c), x) =>
                             assert(c == 0 || c == 1, c)
                             if (enumType.isVariableLayoutType) {
-                              StoreFieldSeqGeneric(tagChain)(mem, IConst(c), typeInfos(tagChain) )
+                              StoreFieldSeqGeneric(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c), typeInfos(tagChain) )
                             } else {
-                              StoreFieldSeq(tagChain)(mem, IConst(c))
+                              StoreFieldSeq(tagChain)(maybeDerivedPtrBase(mem), mem, IConst(c))
                             }
                             val payloadChain = fieldChain(enumType, Seq(1))
                             if (payloadType.isZST) {
                               // nothing to do
 
                             } else if (enumType.isVariableLayoutType || payloadChain.exists(_.fieldType.isVariableSizeType)) {
-                              StoreFieldSeqGeneric(payloadChain)(mem, x, typeInfos(payloadChain))
+                              StoreFieldSeqGeneric(payloadChain)(maybeDerivedPtrBase(mem), mem, x, typeInfos(payloadChain))
 
                             } else if (needsCopy(payloadType)) {
-                              val addr = GetFieldSeqRef(payloadChain)(mem)
+                              val addr = GetFieldSeqRef(payloadChain)(maybeDerivedPtrBase(mem), mem)
                               copy(payloadType, addr, x)
 
                             } else {
-                              StoreFieldSeq(payloadChain)(mem, x)
+                              StoreFieldSeq(payloadChain)(maybeDerivedPtrBase(mem), mem, x)
                             }
                         }
                         state(e) = mem
@@ -2395,11 +2396,11 @@ trait CHIRParser
           // Nothing to do
 
         } else if (needsCopy(sig)) {
-          val mem = GetFieldSeqRef(Seq(fieldRef))(obj)
+          val mem = GetFieldSeqRef(Seq(fieldRef))(maybeDerivedPtrBase(obj), obj)
           copy(sig, mem, arg)
 
         } else {
-          StoreFieldSeq(Seq(fieldRef))(obj, arg)
+          StoreFieldSeq(Seq(fieldRef))(maybeDerivedPtrBase(obj), obj, arg)
         }
       }
       obj
@@ -2413,11 +2414,11 @@ trait CHIRParser
           // Nothing to do
 
         } else if (needsCopy(sig)) {
-          val tupleField = GetFieldSeqRef(Seq(fieldRef))(mem)
+          val tupleField = GetFieldSeqRef(Seq(fieldRef))(maybeDerivedPtrBase(mem), mem)
           copy(sig, tupleField, arg)
 
         } else {
-          StoreFieldSeq(Seq(fieldRef))(mem, arg)
+          StoreFieldSeq(Seq(fieldRef))(maybeDerivedPtrBase(mem), mem, arg)
         }
       }
       mem
@@ -2454,16 +2455,24 @@ trait CHIRParser
     }
   }
 
-  private def maybeDerivedPtr(rcv: Node): Node = rcv match {
+  private def maybeDerivedPtrBase(rcv: Node): Node = rcv match {
+    case rcv if rcv.tpe.isTraceableRefType => rcv
     case rcv: Param if rootMethod.hasMutRecordParameter && rcv.num == rootMethod.getMutRecordArgIdx =>
-      DerivedPtr(rootMethod.getMutRecordType)(rootMethodParam(rootMethod.getMutObjectArgIdx), rcv)
-    case rcv => rcv
+      rootMethodParam(rootMethod.getMutObjectArgIdx)
+    case rcv: FieldSeqOperation => rcv.baseRef
+    case rcv: Phi =>
+      val args = Phi.transitiveValueArgs(rcv).filterNot(_.isInstanceOf[NoValue])
+      singleton(args) match {
+        case Some(arg) => maybeDerivedPtrBase(arg)
+        case None => notImplemented(s"non-trivial phi function: $rcv, leaf args: $args")
+      }
+    case rcv => DerivedPtr.Local()
   }
 
   private def resolveProxiesInArgs(): Unit = {
     for (n <- all[SMutObjectArg]) {
       val actual = n.recArg.receiver match {
-        case rcv: InstanceFieldSeqOperation => rcv.obj
+        case rcv: InstanceFieldSeqOperation => rcv.base
         case rcv: FieldSeqOperation => DerivedPtr.Global()
         case rcv: StackAlloc => DerivedPtr.Local()
         case rcv: Param =>
