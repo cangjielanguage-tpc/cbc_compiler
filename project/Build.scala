@@ -88,7 +88,7 @@ object Build {
   lazy val javaTestSettings = Def.settings(
     libraryDependencies ++= Seq(
       "junit" % "junit" % "4.12" % Test,
-      "org.easymock" % "easymock" % "3.0" % Test,
+      "org.easymock" % "easymock" % "5.1.0" % Test,
     ),
   )
 
