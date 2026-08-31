@@ -393,7 +393,7 @@ trait IOBase {
     }
 
     def cangjieFieldReference(): CangjieFieldReference = {
-      CangjieFieldReference(field(), sigType(), sigType())
+      CangjieFieldReference(longNumber(), field(), sigType(), sigType())
     }
 
     def option[T](f: () => T): Option[T] = {

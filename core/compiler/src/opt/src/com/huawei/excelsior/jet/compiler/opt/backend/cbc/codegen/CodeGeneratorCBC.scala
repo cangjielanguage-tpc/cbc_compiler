@@ -308,7 +308,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       // TODO remove
       def fields(fields: Seq[Node]): Unit = {
-        for ((f, i) <- fields.zipWithIndex) f match {
+        for (f <- fields) f match {
           case f: FieldReferenceNode =>
             assert(!f.field.refType.isVariableLayoutType)
             builder.field(adapter.field(f.field))
@@ -366,19 +366,18 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case Reg(r) => None
       }
 
-      def constrFieldRef(frs: Seq[CangjieFieldReference]): CbcFileFormat.FieldReference = {
-        val adaptedRefs = frs.map { fr =>
-          fr.field match {
-            case Some(name) => fr
-            case None =>
-              val refType = fr.refType match {
-                case t: SignatureType.OptionLikeEnum =>
-                  require(!t.isNullableOption)
-                  SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
-                case t => t
-              }
-              CangjieFieldReference(fr.idx, None, refType, fr.fieldType)
-          }
+      def constrFieldRef(frs: Seq[Node]): CbcFileFormat.FieldReference = {
+        val adaptedRefs = frs.map {
+          case fr: FieldReferenceNode => fr.field
+          case fr: ConstIndexFieldReference =>
+            val refType = fr.refType match {
+              case t: SignatureType.OptionLikeEnum =>
+                require(!t.isNullableOption)
+                SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
+              case t => t
+            }
+            CangjieIndexReference(fr.idx, refType, fr.fieldType)
+          case _ => shouldNotReachHere("not const field")
         }.map(adapter.field)
 
         adaptedRefs match {
@@ -388,11 +387,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       n match {
-        case n: GetFieldSeqRef if !n.isInstanceOf[HasFrameSlot] =>
+        case n: GetFieldSeqRef if !n.isInstanceOf[HasFrameSlot] && FieldSeqOperation.isConstOffset(fieldRefs) =>
           val IReg(dst) = n
           val base = getBaseLocation(n.base)
           asm.lea(dst, base, constrFieldRef(fieldRefs))
-        case n: LoadFieldSeq if !n.isInstanceOf[HasFrameSlot] =>
+        case n: LoadFieldSeq if !n.isInstanceOf[HasFrameSlot] && FieldSeqOperation.isConstOffset(fieldRefs) =>
           val Reg(dst) = n
           val base = getBaseLocation(n.base)
           asm.ld(dst, base, constrFieldRef(fieldRefs))
@@ -400,7 +399,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           val Reg(dst) = n
           memExprHead(n.baseRef, n.base)
           fields(fieldRefs)
-          builder.load(dst).gen(fasm)
+          builder.load(dst).gen(asm)
         case n: LoadFieldSeq =>
           val Reg(dst) = n
           memExprHead(n.baseRef, n.base)
@@ -408,11 +407,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           if (n.resType.isVariableSizeType) {
             assert(!fieldRefs.last.isInstanceOf[CangjieReferenceNode])
             val IReg(ti) = fieldRefs.last
-            builder.loadGeneric(dst.asInstanceOf[IR], ti).gen(fasm)
+            builder.loadGeneric(dst.asInstanceOf[IR], ti).gen(asm)
             addXSite(n)
             saveGCState(n)
           } else {
-            builder.load(dst).gen(fasm)
+            builder.load(dst).gen(asm)
           }
         case n: GetStaticFieldSeqRef =>
           val Reg(dst) = n
@@ -424,7 +423,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           val Reg(dst) = n
           assert(fieldRefs.size == 1 || !fieldRefs.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fieldRefs)
           asm.ld(dst, constrFieldRef(fieldRefs))
-        case n: StoreFieldSeq if !n.isInstanceOf[HasFrameSlot] =>
+        case n: StoreFieldSeq if !n.isInstanceOf[HasFrameSlot] && FieldSeqOperation.isConstOffset(fieldRefs) =>
           addXSite(n)
           maybeImmValue(n.inValue) match {
             case Some(_) => shouldNotReachHere("Field seq stores with imm are not supported")

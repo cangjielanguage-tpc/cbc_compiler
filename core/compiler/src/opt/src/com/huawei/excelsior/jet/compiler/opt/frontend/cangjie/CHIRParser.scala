@@ -2325,7 +2325,7 @@ trait CHIRParser
       val hostClass = asClassType(host)
       val baseIdx = hostClass.getSuperClasses.map(_.getDeclaredFields.size).sum
       hostClass.getDeclaredFields.toSeq map { f =>
-        CangjieFieldReference(baseIdx + f.getFieldIndex, Some(f), host, f.getType.instantiate(genericParams(host), Seq.empty))
+        CangjieFieldReference(baseIdx + f.getFieldIndex, f, host, f.getType.instantiate(genericParams(host), Seq.empty))
       }
     }
 

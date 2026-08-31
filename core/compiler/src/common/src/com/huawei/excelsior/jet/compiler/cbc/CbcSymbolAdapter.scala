@@ -72,10 +72,8 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       if (mt.hasRecordReceiver)         flags += MethodRefFlag.REC_RECEIVER
       if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT // TODO: is it correct?
       CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData)
-    case symbol: CangjieFieldReference =>
-      symbol.field match {
-        case Some(field) => // Field reference
-          val field = symbol.field.get
+    case symbol: CangjieFieldReference => // Field reference
+          val field = symbol.field
           val aot = Option.when(field.getCHIRDef.isEmpty) {
             if (field.isStatic) {
               StaticFieldAotData(field.getExportedName.toString)
@@ -96,12 +94,11 @@ trait CbcSymbolAdapter extends SymbolAdapter {
           }
           CbcFileFormat.SingleFieldReference(name = field.getName,
             refType = refType, fieldType = symbol.fieldType.toCbc, aotData = aot)
-        case None => // Indexed element reference
+    case symbol: CangjieIndexReference => // Indexed element reference
           val refType = symbol.refType.toCbc
           val fieldType = symbol.fieldType.toCbc
           CbcFileFormat.ConstIndexFieldReference(idx = symbol.idx.toInt,
             refType = refType, fieldType = fieldType)
-      }
     case symbol: ConstStringSymbol => StringLiteral(symbol.value.toString)
     case symbol: RawData => CbcFileFormat.RawData(ArraySeq.from(symbol.data))
   }

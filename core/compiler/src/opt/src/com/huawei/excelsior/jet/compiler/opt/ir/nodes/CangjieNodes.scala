@@ -45,6 +45,9 @@ trait CangjieNodes { self: Universe =>
         case _ => if (res.isRecord) ValueType.fromSig(res) else AddrType
       }
     }
+    def hasGeneric(fields: Seq[Node]): Boolean = !fields.last.isInstanceOf[CangjieReferenceNode] || fields.exists(_.isInstanceOf[CangjieReferenceNodeGeneric])
+    
+    def isConstOffset(fields: Seq[Node]): Boolean = !hasGeneric(fields) && !fields.exists(_.isInstanceOf[IndexFieldReference])
   }
 
   sealed trait InstanceFieldSeqOperation extends FieldSeqOperation {
