@@ -75,6 +75,46 @@ Building compiler requires
 - [sbt](https://www.scala-sbt.org)
 - [flatc](https://flatbuffers.dev/flatc/) v25.2.10 or higher
 
+<details>
+<summary>Installing prerequisites on Ubuntu</summary>
+
+Java 21
+
+```bash
+sudo apt install openjdk-21-jdk
+```
+
+Latest sbt [instructions](https://www.scala-sbt.org/download/)
+
+```bash
+curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo gpg --dearmor -o /etc/apt/keyrings/scalasbt.gpg
+echo "deb [signed-by=/etc/apt/keyrings/scalasbt.gpg] https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+sudo apt-get update
+sudo apt-get install sbt
+```
+
+Flatbuffers v25.2.10 [building from source](https://flatbuffers.dev/building/)
+
+```bash
+git clone --branch v25.2.10 https://github.com/google/flatbuffers.git
+cd flatbuffers/
+cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+make
+mkdir -p ~/.local/bin
+cp ./flatc ~/.local/bin
+```
+
+coursier
+
+```bash
+mkdir -p ~/.local/bin
+curl -fL "https://github.com/coursier/launchers/raw/master/cs-x86_64-pc-linux.gz" | gzip -d > ~/.local/bin/cs
+chmod +x ~/.local/bin/cs
+cs setup
+```
+
+</details>
+
 For ease of development, it is advised to copy [env.properties.sample](/env.properties.sample)
 to `env.properties`, uncomment and modify corresponding properties for configuration:
 
