@@ -858,24 +858,24 @@ trait ForkedAssembler {
     markLoadStoreValue(dst, fr, load = true)
   }
 
-  def ld(dst: Rg, base: IR, derived: IR, fr: FieldReference) = instr {
+  def ld(dst: Rg, baseRef: IR, derived: IR, fr: FieldReference) = instr {
     stream
       .opc8(Opcode.Ld_Derived)
       .bits(_.w4(dst).w4(dst))
-      .bits(_.w4(base).w4(derived))
+      .bits(_.w4(baseRef).w4(derived))
       .sym16(fr)
-    markMemBase(base, fr)
+    markMemBase(baseRef, fr)
     analyzer.usePrim(derived)
     markLoadStoreValue(dst, fr, load = true)
   }
 
-  def ld(dst: Rg, base: IR, derived: IR, ti: IR, fr: FieldReference) = instr {
+  def ld(dst: Rg, baseRef: IR, derived: IR, ti: IR, fr: FieldReference) = instr {
     stream
       .opc8(Opcode.Ld_Generic)
-      .bits(_.w4(dst).w4(base))
+      .bits(_.w4(dst).w4(baseRef))
       .bits(_.w4(derived).w4(ti))
       .sym16(fr)
-    markMemBase(base, fr)
+    markMemBase(baseRef, fr)
     analyzer.usePrim(derived)
     analyzer.usePrim(ti)
     markLoadStoreValue(dst, fr, load = true)
@@ -890,13 +890,13 @@ trait ForkedAssembler {
     analyzer.prim(dst)
   }
 
-  def leaStatic(dst: IR, baseDst: IR, fr: FieldReference): Unit = {
+  def leaStatic(dst: IR, dstRefBase: IR, fr: FieldReference): Unit = {
     stream
       .opc8(Opcode.Lea_Static)
-      .bits(_.w4(dst).w4(baseDst))
+      .bits(_.w4(dst).w4(dstRefBase))
       .sym16(fr)
     analyzer.prim(dst)
-    analyzer.ref(baseDst)
+    analyzer.ref(dstRefBase)
   }
 
   def leaGeneric(dst: IR, base: IR, ti: IR, fr: FieldReference): Unit = instr {
@@ -935,36 +935,36 @@ trait ForkedAssembler {
     markLoadStoreValue(src, fr, load = false)
   }
 
-  def st(dst: Rg, ts: StackSlot.Typed, fr: FieldReference) = instr {
+  def st(src: Rg, ts: StackSlot.Typed, fr: FieldReference) = instr {
     stream
       .opc8(Opcode.St_Typed)
-      .bits(_.w4(dst).w4(dst))
+      .bits(_.w4(src).w4(src))
       .ts16(ts)
       .sym16(fr)
-    markLoadStoreValue(dst, fr, load = false)
+    markLoadStoreValue(src, fr, load = false)
   }
 
-  def st(dst: Rg, base: IR, derived: IR, fr: FieldReference) = instr {
+  def st(src: Rg, base: IR, derived: IR, fr: FieldReference) = instr {
     stream
       .opc8(Opcode.St_Derived)
-      .bits(_.w4(dst).w4(dst))
+      .bits(_.w4(src).w4(src))
       .bits(_.w4(base).w4(derived))
       .sym16(fr)
     markMemBase(base, fr)
     analyzer.usePrim(derived)
-    markLoadStoreValue(dst, fr, load = false)
+    markLoadStoreValue(src, fr, load = false)
   }
 
-  def st(dst: Rg, base: IR, derived: IR, ti: IR, fr: FieldReference) = instr {
+  def st(src: Rg, base: IR, derived: IR, ti: IR, fr: FieldReference) = instr {
     stream
       .opc8(Opcode.St_Generic)
-      .bits(_.w4(dst).w4(base))
+      .bits(_.w4(src).w4(base))
       .bits(_.w4(derived).w4(ti))
       .sym16(fr)
     markMemBase(base, fr)
     analyzer.usePrim(derived)
     analyzer.usePrim(ti)
-    markLoadStoreValue(dst, fr, load = false)
+    markLoadStoreValue(src, fr, load = false)
   }
 
   // endregion
