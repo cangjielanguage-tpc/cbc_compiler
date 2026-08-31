@@ -122,7 +122,6 @@ trait IOComponent extends BinaryIO { self: Universe =>
     StoreFieldSeq.Proto,
     StoreFieldSeqGeneric.Proto,
     StoreStaticFieldSeq.Proto,
-    DerivedPtr.Proto,
     DerivedPtr.Local,
     DerivedPtr.Global,
     LoadTypeInfo.Proto,

@@ -281,13 +281,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val builder = MemSpace.Builder()
 
       // TODO remove
-      def memExprHead(n: Node): Unit = n match {
+      def memExprHead(base: Node, n: Node): Unit = n match {
         case sa: HasFrameSlot => sa.slot match {
           case slot: TypedFrameSlotCBC => builder.typed(slot.typedSlot)
           case _ => shouldNotReachHere(sa)
         }
-        case n @ DerivedPtr(IReg(base), IReg(derived)) =>
-          builder.handle(base, derived)
 
         case n @ ArrayGet(_, _, IReg(obj), IReg(idx)) =>
           assert(n.arrayType.isRecordArray)
@@ -298,7 +296,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           if (fieldRefs.head.refType.isTraceableReference) {
             builder.obj(r)
           } else {
-            builder.rec(r)
+            valueOf(base).producer match {
+              case base: DerivedPtr.BaseHandle =>
+                builder.rec(r)
+              case _ =>
+                val IReg(b) = base
+                builder.handle(b, r)
+            }
           }
       }
 
@@ -337,7 +341,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       def getBaseLocation(n: Node) = n match {
         case IReg(r) => r
-        case DerivedPtr(IReg(_), IReg(derived)) => derived
       }
 
       def maybeImmValue(value: Node): Option[Long] = value match {
@@ -372,25 +375,25 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       n match {
         case n: GetFieldSeqRef if !n.isInstanceOf[HasFrameSlot] =>
           val IReg(dst) = n
-          val base = getBaseLocation(n.obj)
+          val base = getBaseLocation(n.base)
           asm.lea(dst, base, constrFieldRef(fieldRefs))
         case n: LoadFieldSeq if !n.isInstanceOf[HasFrameSlot] =>
           val Reg(dst) = n
-          val base = getBaseLocation(n.obj)
+          val base = getBaseLocation(n.base)
           asm.ld(dst, base, constrFieldRef(fieldRefs))
         case n: (GetFieldSeqRef | LoadFieldSeq) =>
           val Reg(dst) = n
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs)
           builder.load(dst).gen(asm)
         case n: GetFieldSeqRefGeneric =>
           val Reg(dst) = n
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs, n.typeInfos)
           builder.load(dst).gen(asm)
         case n: LoadFieldSeqGeneric =>
           val Reg(dst) = n
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs, n.typeInfos)
           if (n.resType.isVariableSizeType) {
             val IReg(ti) = n.typeInfos.last
@@ -416,16 +419,16 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case Some(_) => shouldNotReachHere("Field seq stores with imm are not supported")
             case None =>
               val Reg(src) = n.inValue
-              val base = getBaseLocation(n.obj)
+              val base = getBaseLocation(n.base)
               asm.st(src, base, constrFieldRef(fieldRefs))
           }
         case n: StoreFieldSeq =>
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs)
           store(n.inValue)
         case n: StoreFieldSeqGeneric =>
           addXSite(n)
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs, n.typeInfos)
           if (n.resType.isVariableSizeType) {
             val IReg(ti) = n.typeInfos.last
@@ -676,13 +679,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val adapter = asm.adapter
       val builder = MemSpace.Builder()
 
-      def head(n: Node, fields: Seq[CangjieFieldReference]): Unit = n match {
+      def head(base: Option[Node], n: Node, fields: Seq[CangjieFieldReference]): Unit = n match {
         case stack: HasFrameSlot => stack.slot match {
           case slot: TypedFrameSlotCBC => builder.typed(slot.typedSlot)
           case _ => shouldNotReachHere(stack)
         }
-        case DerivedPtr(IReg(base), IReg(derived)) =>
-          builder.handle(base, derived)
         case n @ ArrayGet(_, _, IReg(obj), IReg(idx)) =>
           assert(n.arrayType.isRecordArray)
           builder.obj(obj)
@@ -691,7 +692,18 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           if (fields.head.refType.isTraceableReference) {
             builder.obj(r)
           } else {
-            builder.rec(r)
+            base match {
+              case Some(base) =>
+                valueOf(base).producer match {
+                  case base: DerivedPtr.BaseHandle =>
+                    builder.rec(r)
+                  case _ =>
+                    val IReg(b) = base
+                    builder.handle(b, r)
+                }
+              case None =>
+                builder.rec(r)
+            }
           }
       }
 
@@ -715,28 +727,30 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           builder.rec(src).copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
           mark(dst, LocalType.CLEARED)
         case (IReg(dst), n) => {
-          val obj = n match {
+          n match {
             case g: GetFieldSeqRef =>
-              head(g.obj, g.fields)
+              head(Some(g.baseRef), g.base, g.fields)
               fields(g.fields)
             case g: GetStaticFieldSeqRef =>
               builder.static(adapter.field(g.fields.head))
               fields(g.fields.tail)
-            case n => head(n, Seq.empty)
+            case n: FieldSeqOperation => head(Some(n.baseRef), n, Seq.empty)
+            case n => head(None, n, Seq.empty)
           }
           builder.copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
           mark(dst, LocalType.CLEARED)
         }
         case (n, IReg(src)) => {
           assert(check(src, LocalType.CLEARED))
-          val obj: Unit = n match {
+          n match {
             case g: GetFieldSeqRef =>
-              head(g.obj, g.fields)
+              head(Some(g.baseRef), g.base, g.fields)
               fields(g.fields)
             case g: GetStaticFieldSeqRef =>
               builder.static(adapter.field(g.fields.head))
               fields(g.fields.tail)
-            case n => head(n, Seq.empty)
+            case n: FieldSeqOperation => head(Some(n.baseRef), n, Seq.empty)
+            case n => head(None, n, Seq.empty)
           }
           builder.copyRegFrom(src, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
         }
@@ -1332,11 +1346,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           val IReg(dst) = x
           val IReg(obj) = x.obj
           asm.loadTypeInfoObj(dst, obj)
-
-        case x: DerivedPtr =>
-          val IReg(dst) = x
-          val IReg(src) = x.derived
-          asm.mov(dst, src, reference = false)
 
         case x: AtomicOps.AtomicNode =>
           genAtomic(x)

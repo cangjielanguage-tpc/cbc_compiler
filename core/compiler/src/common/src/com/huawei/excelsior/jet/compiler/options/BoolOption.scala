@@ -342,6 +342,7 @@ enum BoolOption(override val isAlias: Boolean,
   case IgnoreDelayedIntrinsics extends BoolOption(false)
   
   case FailArrayAcquireRawData extends BoolOption(false)
+  case FailSaturatingArithmetic extends BoolOption(false)
 
   case HLIRExplicitAccessModifiers extends BoolOption(true)
 

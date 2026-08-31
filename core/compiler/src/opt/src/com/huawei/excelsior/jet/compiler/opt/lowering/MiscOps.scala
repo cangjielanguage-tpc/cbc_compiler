@@ -456,8 +456,8 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
     assert(isStandalone)
 
     def isCopyable(dst: Node, src: Node): Boolean =  (dst, src) match {
-      case (_: StackAlloc | _: DerivedPtr, _) => true
-      case (_, _: StackAlloc | _: DerivedPtr) => true
+      case (_: StackAlloc, _) => true
+      case (_, _: StackAlloc) => true
       case _ => false
     }
 

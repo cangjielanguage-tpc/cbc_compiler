@@ -867,9 +867,6 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case StoreStaticFieldSeq.Proto =>
           StoreStaticFieldSeq.proto(read.seq(read.cangjieFieldReference))
 
-        case DerivedPtr.Proto =>
-          DerivedPtr.proto(read.sigType())
-
         case LoadTypeInfo.Proto =>
           LoadTypeInfo.proto(read.sigType())
 

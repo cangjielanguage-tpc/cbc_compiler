@@ -74,7 +74,23 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
       } else {
         ""
       }
-      if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) v.base.identifier.tail else srcName + suffix
+      getOverrideSrcFuncType(v) match {
+        case Some(funcType) =>
+          val f = t.asInstanceOf[Function]
+          val d = pkg.getDef[Table](v.declaredParent) match {
+            case d: ClassDef => d.base
+            case d: StructDef => d.base
+            case d: EnumDef => d.base
+            case d: ExtendDef => d.base
+          }
+          val vtableFuncs = d.vtableVector.toSeq.flatMap(_.virtualMethodsVector.toSeq)
+          vtableFuncs.find(m => pkg.getValue[Function](m.instance) == f) match {
+            case Some(m) => m.funcName
+            case None => shouldNotReachHere(v.base.identifier)
+          }
+        case None =>
+          if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) v.base.identifier.tail else srcName + suffix
+      }
     }
 
     ((v: @unchecked) match {
@@ -445,7 +461,11 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
   }
 
   def getOverrideSrcFuncType(f: Function): Option[OverrideSrcFuncType] = {
-    annotations(f.base.base.base).collectFirst {
+    getOverrideSrcFuncType(f.base)
+  }
+
+  def getOverrideSrcFuncType(f: GlobalValue): Option[OverrideSrcFuncType] = {
+    annotations(f.base.base).collectFirst {
       case a: OverrideSrcFuncType => a
     }
   }
