@@ -817,6 +817,7 @@ object SignatureType {
   }
 
   case class Box(base: SignatureType) extends SignatureType.Proper {
+    assert(!base.isInstanceOf[Box])
     override def calcSymType(implicit typeProvider: TypeProvider): Type = shouldNotReachHere("symType for Box")
   }
 
