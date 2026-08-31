@@ -2291,7 +2291,7 @@ trait CHIRParser
           val allClassFields = (refClass +: refClass.getSuperClasses.toArray).reverse.flatMap(_.getDeclaredFields)
           val next = allClassFields.filterNot(_.isStatic).apply(idx.toInt)
           val fieldType = next.getType.instantiate(genericParams(refType), Seq.empty)
-          createFieldReferenceNode(next, refType, fieldType)
+          createFieldReferenceNode(next, refType, fieldType, Some(idx))
         }
 
         refType match {
@@ -2425,11 +2425,13 @@ trait CHIRParser
       sa
     }
 
-    private def createFieldReferenceNode(field: Field, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
+    private def createFieldReferenceNode(field: Field, refType: SignatureType, fieldType: SignatureType, idx: Option[Long] = None): CangjieReferenceNode = {
       if (refType.isVariableLayoutType) {
         FieldReferenceNodeGeneric(CangjieFieldReference(field, refType, fieldType))(loadTypeInfo(refType))
       } else {
-        FieldReferenceNode(CangjieFieldReference(field, refType, fieldType))
+        idx match
+          case Some(i) => FieldReferenceNode(CangjieFieldReference(i, field, refType, fieldType))
+          case None => FieldReferenceNode(CangjieFieldReference(field, refType, fieldType))
       }
     }
 
