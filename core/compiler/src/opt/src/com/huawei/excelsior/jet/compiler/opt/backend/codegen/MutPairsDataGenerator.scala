@@ -15,7 +15,8 @@ trait MutPairsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
 
   /** Returns true iff `node` resource contains base or derived pointer. */
   def hasMutValueProducer(n: Node): Boolean = (valueOf(n).producer match {
-    case p: GetFieldSeqRef => p.tpe.isTraceableRefType
+    case p: GetFieldSeqRef => !valueOf(p.base).producer.isInstanceOf[DerivedPtr.BaseHandle]
+    case p: GetFieldSeqRefGeneric => !valueOf(p.base).producer.isInstanceOf[DerivedPtr.BaseHandle]
     case p: Param => p.num match {
       case _ if !rootMethod.isCangjieMut => false // no mut parameters in non-mut-function
       case _ if p.num == rootMethod.getMutRecordArgIdx => true
@@ -82,8 +83,9 @@ trait MutPairsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
 
       for (value <- valueNodes) {
         valueOf(value).producer match {
-          case GetFieldSeqRef(_, base) => pairs += base -> value
-          case p: Param => 
+          case GetFieldSeqRef(_, base, _) => pairs += base -> value
+          case GetFieldSeqRefGeneric(_, base, _, _) => pairs += base -> value
+          case p: Param =>
             if (p.num == rootMethod.getMutRecordArgIdx)
               derivedParams ::= value
             else if (p.num == rootMethod.getMutObjectArgIdx && baseParam == null)

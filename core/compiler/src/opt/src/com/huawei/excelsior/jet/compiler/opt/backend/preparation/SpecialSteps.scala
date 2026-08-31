@@ -70,8 +70,6 @@ trait SpecialSteps { self: Universe with BackEnd =>
     }
   }
 
-  protected def prepareDerivedPtr(): Unit = {}
-
   protected def prepareRecordArrayGet(): Unit = {}
 
   protected def prepareCopyStructure(): Unit = {}

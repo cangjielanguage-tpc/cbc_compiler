@@ -583,18 +583,20 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
   private def optimizeFieldSeq(n: InstanceFieldSeqOperation): Boolean = {
     cond(ReinterpretCast.skip(n.obj)) {
       case g: GetFieldSeqRef =>
+        assert(g.base == n.base)
         n match {
-          case n: GetFieldSeqRef => replaceTransitively(n, GetFieldSeqRef.proto(g.fields ++ n.fields)(n.inCtrl, g.obj))
-          case n: LoadFieldSeq => replaceTransitively(n, LoadFieldSeq.proto(g.fields ++ n.fields).exact(n.inCtrl, n.inMemory, g.obj))
-          case n: StoreFieldSeq => replaceByCode(n) { StoreFieldSeq(g.fields ++ n.fields)(g.obj, n.inValue) }
+          case n: GetFieldSeqRef => replaceTransitively(n, GetFieldSeqRef.proto(g.fields ++ n.fields)(n.inCtrl, n.base, g.obj))
+          case n: LoadFieldSeq => replaceTransitively(n, LoadFieldSeq.proto(g.fields ++ n.fields).exact(n.inCtrl, n.inMemory, n.base, g.obj))
+          case n: StoreFieldSeq => replaceByCode(n) { StoreFieldSeq(g.fields ++ n.fields)(n.base, g.obj, n.inValue) }
           case _ => notImplemented(n)
         }
         true
       case g: GetStaticFieldSeqRef =>
+        assert(g.base == n.base)
         n match {
-          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(g.fields ++ n.fields)(n.inCtrl))
-          case n: LoadFieldSeq => replaceTransitively(n, LoadStaticFieldSeq(g.fields ++ n.fields))
-          case n: StoreFieldSeq => replaceByCode(n) { StoreStaticFieldSeq(g.fields ++ n.fields)(n.inValue) }
+          case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(g.fields ++ n.fields)(n.inCtrl, n.base))
+          case n: LoadFieldSeq => replaceTransitively(n, LoadStaticFieldSeq(g.fields ++ n.fields)(n.base))
+          case n: StoreFieldSeq => replaceByCode(n) { StoreStaticFieldSeq(g.fields ++ n.fields)(n.base, n.inValue) }
           case _ => notImplemented(n)
         }
         true

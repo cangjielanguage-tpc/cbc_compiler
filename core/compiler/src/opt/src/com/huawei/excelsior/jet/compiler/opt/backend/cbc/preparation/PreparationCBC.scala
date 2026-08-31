@@ -155,32 +155,6 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
     }
   }
 
-  override def prepareDerivedPtr(): Unit = {
-    if (isStandalone) {
-      for {
-        n <- all[DerivedPtr].toList
-        m <- Node.rematerializeCompletely(n)
-      } {
-        m.singleUse match {
-          case use: InstanceFieldSeqOperation => m.attachToGroup(use, Group.AttachReason.DERIVED_PTR)
-          case use: Call =>
-          case use => shouldNotReachHere(use)
-        }
-      }
-      for {
-        n <- (all[GetFieldSeqRef] ++ all[GetFieldSeqRefGeneric]).toList
-        m <- Node.rematerializeCompletely(n)
-      } {
-        m.singleUse match {
-          case use: Call =>
-          case use: Box =>
-          case use: CopyStructure =>
-          case use => shouldNotReachHere(use)
-        }
-      }
-    }
-  }
-
   override def prepareRecordArrayGet(): Unit = {
     if (isStandalone) {
       for {
