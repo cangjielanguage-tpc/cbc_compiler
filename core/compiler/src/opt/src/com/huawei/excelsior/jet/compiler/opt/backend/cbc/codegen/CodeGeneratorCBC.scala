@@ -339,6 +339,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case Reg(r)           => builder.store(r)
       }).gen(asm)
 
+      def getBaseLocation(n: Node) = n match {
+        case IReg(r) => r
+      }
+
       def maybeImmValue(value: Node): Option[Long] = value match {
         case _: AnyNull => Some(0L)
         case IntegralConst(c) => Some(c)
@@ -371,11 +375,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       n match {
         case n: GetFieldSeqRef if !n.isInstanceOf[HasFrameSlot] =>
           val IReg(dst) = n
-          val IReg(base) = n.obj
+          val base = getBaseLocation(n.obj)
           asm.lea(dst, base, constrFieldRef(fieldRefs))
         case n: LoadFieldSeq if !n.isInstanceOf[HasFrameSlot] =>
           val Reg(dst) = n
-          val IReg(base) = n.obj
+          val base = getBaseLocation(n.obj)
           asm.ld(dst, base, constrFieldRef(fieldRefs))
         case n: (GetFieldSeqRef | LoadFieldSeq) =>
           val Reg(dst) = n
@@ -415,7 +419,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case Some(_) => shouldNotReachHere("Field seq stores with imm are not supported")
             case None =>
               val Reg(src) = n.inValue
-              val IReg(base) = n.obj
+              val base = getBaseLocation(n.obj)
               asm.st(src, base, constrFieldRef(fieldRefs))
           }
         case n: StoreFieldSeq =>
