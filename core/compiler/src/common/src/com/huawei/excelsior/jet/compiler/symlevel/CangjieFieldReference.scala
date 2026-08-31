@@ -17,7 +17,7 @@ object CangjieFieldReference {
     new CangjieFieldReference(idx, field, refType, fieldType)
 
   def apply(field: Field, refType: SignatureType, fieldType: SignatureType): CangjieFieldReference =
-    new CangjieFieldReference(0, field, refType, fieldType)
+    new CangjieFieldReference(field.getFieldIndex.toLong, field, refType, fieldType)
 }
 
 case class CangjieIndexReference(idx: Long, refType: SignatureType, fieldType: SignatureType) extends Symbol

@@ -73,32 +73,32 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT // TODO: is it correct?
       CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData)
     case symbol: CangjieFieldReference => // Field reference
-          val field = symbol.field
-          val aot = Option.when(field.getCHIRDef.isEmpty) {
-            if (field.isStatic) {
-              StaticFieldAotData(field.getExportedName.toString)
-            } else {
-              InstanceFieldAotData(symbol.idx.toInt)
-            }
-          }
-          val declaringClass = field.getDeclaringClass
-          val refType = if (declaringClass.isCangjiePackage) {
-            if (field.getCHIRDef.nonEmpty) {
-              // Force reference to alt definition (see CbcFileEncoderAdapter.TypeWrapper)
-              CbcFileFormat.TypeSignature.ref(CbcFileEncoderAdapter.cbcPackageName(declaringClass.getName))
-            } else {
-              CbcFileFormat.AotTypeSignature.ref(declaringClass.getName)
-            }
-          } else {
-            symbol.refType.toCbc
-          }
-          CbcFileFormat.SingleFieldReference(name = field.getName,
-            refType = refType, fieldType = symbol.fieldType.toCbc, aotData = aot)
+      val field = symbol.field
+      val aot = Option.when(field.getCHIRDef.isEmpty) {
+        if (field.isStatic) {
+          StaticFieldAotData(field.getExportedName.toString)
+        } else {
+          InstanceFieldAotData(symbol.idx.toInt)
+        }
+      }
+      val declaringClass = field.getDeclaringClass
+      val refType = if (declaringClass.isCangjiePackage) {
+        if (field.getCHIRDef.nonEmpty) {
+          // Force reference to alt definition (see CbcFileEncoderAdapter.TypeWrapper)
+          CbcFileFormat.TypeSignature.ref(CbcFileEncoderAdapter.cbcPackageName(declaringClass.getName))
+        } else {
+          CbcFileFormat.AotTypeSignature.ref(declaringClass.getName)
+        }
+      } else {
+        symbol.refType.toCbc
+      }
+      CbcFileFormat.SingleFieldReference(name = field.getName,
+        refType = refType, fieldType = symbol.fieldType.toCbc, aotData = aot)
     case symbol: CangjieIndexReference => // Indexed element reference
-          val refType = symbol.refType.toCbc
-          val fieldType = symbol.fieldType.toCbc
-          CbcFileFormat.ConstIndexFieldReference(idx = symbol.idx.toInt,
-            refType = refType, fieldType = fieldType)
+      val refType = symbol.refType.toCbc
+      val fieldType = symbol.fieldType.toCbc
+      CbcFileFormat.ConstIndexFieldReference(idx = symbol.idx.toInt,
+        refType = refType, fieldType = fieldType)
     case symbol: ConstStringSymbol => StringLiteral(symbol.value.toString)
     case symbol: RawData => CbcFileFormat.RawData(ArraySeq.from(symbol.data))
   }
