@@ -302,7 +302,7 @@ object CHIRBuilder {
         }
 
         for (symMethod <- symMethods) {
-          if (!symType.isCHIRDef && m.body != 0) {
+          if (!symType.isCHIRDef && m.body.nonEmpty) {
             builder.markAsCHIRDef(symType)
           }
           if (symType.isCHIRDef && !resolver.isImported(m)) {

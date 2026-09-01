@@ -18,6 +18,5 @@
     <orderEntry type="module" module-name="xscala-vm-dependent" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
     <orderEntry type="module" module-name="chir-lib" />
-    <orderEntry type="library" name="flatbuffers-java" level="project" />
   </component>
 </module>

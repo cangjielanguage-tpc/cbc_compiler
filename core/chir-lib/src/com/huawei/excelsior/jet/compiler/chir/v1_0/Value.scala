@@ -2,8 +2,8 @@ package com.huawei.excelsior.jet.compiler.chir.v1_0
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
-import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.{iterator, toSeq}
-import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.{Block, BlockGroup, BoolLiteral, FloatLiteral, FuncKind, Function, GlobalValue, GlobalVar, IntLiteral, LiteralValue, LocalVar, MemberVarInfo, NullLiteral, Parameter, RuneLiteral, StringLiteral, Value}
+import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.toSeq
+import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.{Block, BlockGroup, BoolLiteral, FloatLiteral, FuncKind, Function, GlobalVar, IntLiteral, LiteralValue, LocalVar, NullLiteral, Parameter, RuneLiteral, StringLiteral}
 
 final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider) extends CHIR.Func
   with HasAnnotationsImpl(f.base.base.base) with HasAttributesImpl(f.base.base.base.attributes) with HasDeclaringDefImpl(f.base) {
@@ -57,7 +57,7 @@ class BlockGroupImpl(b: BlockGroup)(using provider: CHIRItemProvider) extends CH
 }
 
 final class BlockImpl(b: Block)(using provider: CHIRItemProvider) extends CHIR.Block {
-  override val expressions: Seq[CHIR.Expression] = {
+  override lazy val expressions: Seq[CHIR.Expression] = {
     for (idx <- b.exprsVector.toSeq) yield {
       provider.getExpr[CHIR.Expression](idx)
     }

@@ -70,17 +70,12 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       }
       getOverrideSrcFuncType(v) match {
         case Some(funcType) =>
-          val f = t.asInstanceOf[Function]
-          val d = pkg.getDef[Table](v.declaredParent) match {
-            case d: ClassDef => d.base
-            case d: StructDef => d.base
-            case d: EnumDef => d.base
-            case d: ExtendDef => d.base
-          }
-          val vtableFuncs = d.vtableVector.toSeq.flatMap(_.virtualMethodsVector.toSeq)
-          vtableFuncs.find(m => pkg.getValue[Function](m.instance) == f) match {
-            case Some(m) => m.funcName
-            case None => shouldNotReachHere(v.base.identifier)
+          val f = _v.asInstanceOf[CHIR.Func]
+          val d = v.declaringDef.get
+          val vtableFuncs = d.vTables.flatMap(_.vMethods)
+          vtableFuncs.find(_.instance == f) match {
+            case Some(m) => m.name
+            case None => shouldNotReachHere(f.identifier)
           }
         case None =>
           if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
@@ -395,7 +390,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     s"$name:$idx"
   }
 
-  def getOverrideSrcFuncType(f: CHIR.Func): Option[CHIR.OverrideSrcFuncType] = {
+  def getOverrideSrcFuncType(f: CHIR.HasAnnotations): Option[CHIR.OverrideSrcFuncType] = {
     f.annotations.collectFirst {
       case a: CHIR.OverrideSrcFuncType => a
     }
