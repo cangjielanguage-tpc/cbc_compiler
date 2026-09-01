@@ -629,6 +629,7 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
   private def optimizeCopyStructure(n: CopyStructure): Boolean = {
     cond(n.inMemory) {
       case m: CopyStructure if m.dst == n.src =>
+        n.srcBase = m.srcBase
         n.src = m.src
         true
     }

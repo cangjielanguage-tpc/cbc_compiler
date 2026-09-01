@@ -981,6 +981,22 @@ trait ForkedAssembler {
     markLoadStoreValue(src, fr, load = false)
   }
 
+  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = {
+    stream
+      .opc8(Opcode.Copy)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .sym16(sig)
+  }
+
+  def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = {
+    stream
+      .opc8(Opcode.Index)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(idx).w4(idx))
+      .sym16(sig)
+  }
+
   // endregion
 }
 
@@ -1218,6 +1234,8 @@ object Assembler {
     case St_Derived
     case St_Generic
     case LoadTailParam
+    case Copy
+    case Index
   }
 
   enum MemOpcode extends Ordinal {

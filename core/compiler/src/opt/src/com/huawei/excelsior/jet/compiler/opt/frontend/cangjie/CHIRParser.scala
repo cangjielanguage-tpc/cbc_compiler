@@ -215,7 +215,7 @@ trait CHIRParser
         if (arrayType.getArrayElemType.isRecord) {
           val srcMem = ArrayGet(arrayType)(n.src, srcIdx)
           val dstMem = ArrayGet(arrayType)(n.dst, dstIdx)
-          CopyStructure(arrayType.getArrayElemType)(srcMem, dstMem)
+          CopyStructure(arrayType.getArrayElemType)(maybeDerivedPtrBase(dstMem), dstMem, maybeDerivedPtrBase(srcMem), srcMem)
         } else {
           val value = ArrayGet(arrayType)(n.src, srcIdx)
           ArrayPut(arrayType)(n.dst, dstIdx, value)
@@ -2339,7 +2339,7 @@ trait CHIRParser
 
     private def copy(sig: SignatureType, to: Node, from: Node): Node = {
       assert(sig.isRecord, sig)
-      CopyStructure(sig)(to, from)
+      CopyStructure(sig)(maybeDerivedPtrBase(to), to, maybeDerivedPtrBase(from), from)
     }
 
     private def typeInfoSigs(fields: Seq[CangjieFieldReference]): Seq[SignatureType] = {
@@ -2368,6 +2368,8 @@ trait CHIRParser
     case rcv if rcv.tpe.isTraceableRefType => rcv
     case rcv: Param if rootMethod.hasMutRecordParameter && rcv.num == rootMethod.getMutRecordArgIdx =>
       rootMethodParam(rootMethod.getMutObjectArgIdx)
+    case rcv: ArrayGet if rcv.arrayType.isRecordArray => rcv.array
+    case rcv: RecordArrayGet => rcv.array
     case rcv: FieldSeqOperation => rcv.baseRef
     case rcv: Phi =>
       val args = Phi.transitiveValueArgs(rcv).filterNot(_.isInstanceOf[NoValue])

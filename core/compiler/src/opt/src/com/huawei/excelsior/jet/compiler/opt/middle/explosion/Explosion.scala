@@ -463,7 +463,7 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
                     def assignFlat(valueAddr: Node) = {
                       val dstAddr = readScalarOrAddr(_.dst)
                       insertCodeBefore(copy) {
-                        CopyStructure(field.getType)(dstAddr, valueAddr)
+                        CopyStructure(field.getType)(DerivedPtr.Local(), dstAddr, DerivedPtr.Local(), valueAddr)
                       }
                     }
 

@@ -462,12 +462,28 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
     }
 
     if (isCopyable(dst, src)) {
-      CopyStructure.primitive(refType)(dst, src)
+      CopyStructure.primitive(refType)(maybeDerivedPtrBase(dst), dst, maybeDerivedPtrBase(src), src)
     } else {
       val temp = StackAlloc.Local(refType)
-      CopyStructure.primitive(refType)(temp, src)
-      CopyStructure.primitive(refType)(dst, temp)
+      CopyStructure.primitive(refType)(DerivedPtr.Local(), temp, DerivedPtr.Local(), maybeDerivedPtrBase(src))
+      CopyStructure.primitive(refType)(maybeDerivedPtrBase(dst), dst, DerivedPtr.Local(), temp)
     }
+  }
+
+  private def maybeDerivedPtrBase(rcv: Node): Node = rcv match {
+    case rcv if rcv.tpe.isTraceableRefType => rcv
+    case rcv: Param if rootMethod.hasMutRecordParameter && rcv.num == rootMethod.getMutRecordArgIdx =>
+      rootMethodParam(rootMethod.getMutObjectArgIdx)
+    case rcv: ArrayGet if rcv.arrayType.isRecordArray => rcv.array
+    case rcv: RecordArrayGet => rcv.array
+    case rcv: FieldSeqOperation => rcv.baseRef
+    case rcv: Phi =>
+      val args = Phi.transitiveValueArgs(rcv).filterNot(_.isInstanceOf[NoValue])
+      ScalaCollections.singleton(args) match {
+        case Some(arg) => maybeDerivedPtrBase(arg)
+        case None => notImplemented(s"non-trivial phi function: $rcv, leaf args: $args")
+      }
+    case rcv => DerivedPtr.Local()
   }
 
   /** Splits ArrayFill to a series of ArrayPut operations. */
