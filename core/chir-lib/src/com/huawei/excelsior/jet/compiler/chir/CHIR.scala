@@ -181,7 +181,7 @@ object CHIR {
   trait StructType extends CustomType {
     def typeDef: StructDef
   }
-  
+
   trait CPointerType extends Type {
     def elementType: Type
   }
@@ -218,59 +218,59 @@ object CHIR {
   }
 
   trait CustomTypeDef extends HasAttributes with HasAnnotations {
-    def tpe(): CustomType
-    def packageName(): String
-    def identifier(): String
-    def srcCodeIdentifier(): String
+    def tpe: CustomType
+    def packageName: String
+    def identifier: String
+    def srcCodeIdentifier: String
     def instanceVars: Seq[InstanceVar]
     def staticVars: Seq[GlobalVar]
-    def methods(): Seq[Func]
-    def vTables(): Seq[VTable]
-    def implementedInterfaces(): Seq[ClassType]
+    def methods: Seq[Func]
+    def vTables: Seq[VTable]
+    def implementedInterfaces: Seq[ClassType]
   }
 
   trait EnumDef extends CustomTypeDef {
-    def nonExhaustive(): Boolean
-    def tpe(): EnumType
-    def ctors(): Seq[EnumCtor]
+    def nonExhaustive: Boolean
+    def tpe: EnumType
+    def ctors: Seq[EnumCtor]
   }
 
   trait ClassDef extends CustomTypeDef {
-    def isClass(): Boolean
-    def tpe(): ClassType
-    def superClass(): Option[ClassType]
+    def isClass: Boolean
+    def tpe: ClassType
+    def superClass: Option[ClassType]
   }
 
   trait StructDef extends CustomTypeDef {
-    def tpe(): StructType
+    def tpe: StructType
   }
 
   trait ExtendDef extends CustomTypeDef {
-    def genericTypeParams(): Seq[GenericType]
+    def genericTypeParams: Seq[GenericType]
   }
 
   trait FuncSig {
-    def name(): String
-    def genericTypeParams(): Seq[Type]
+    def name: String
+    def genericTypeParams: Seq[Type]
   }
 
   trait VTable {
-    def srcParentType(): ClassType
-    def vMethods(): Seq[VMethod]
+    def srcParentType: ClassType
+    def vMethods: Seq[VMethod]
   }
 
   trait VMethod extends HasAttributes {
-    def name(): String
-    def sig(): FuncType
-    def instance(): Func
-    def genericTypeParams(): Seq[Type]
-    def originalType(): FuncType
-    def parentType(): Type
-    def returnType(): Type
+    def name: String
+    def sig: FuncType
+    def instance: Func
+    def genericTypeParams: Seq[Type]
+    def originalType: FuncType
+    def parentType: Type
+    def returnType: Type
   }
 
   trait EnumCtor {
-    def tpe(): FuncType
+    def tpe: FuncType
   }
 
   trait Expression {

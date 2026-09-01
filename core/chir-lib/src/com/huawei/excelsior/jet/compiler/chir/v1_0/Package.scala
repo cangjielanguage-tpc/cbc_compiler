@@ -16,7 +16,7 @@ import java.nio.ByteBuffer
 import scala.reflect.ClassTag
 
 trait CHIRItemProvider {
-  def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): T
+  def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T]
   def getValue[T >: Null <: CHIR.Value : ClassTag](id: Long): Option[T]
   def getExpr[T >: Null <: CHIR.Expression : ClassTag](id: Long): T
   def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): Option[T]
@@ -42,9 +42,9 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   private val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
 
   /** Returns cached Type or null if id is zero or negative. */
-  override def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): T = {
+  override def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
-      null
+      None
     } else {
       val i = id.toInt - 1
       if (_types(i) == null) {
@@ -93,7 +93,9 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           }
         }
       }
-      _types(i).asInstanceOf[T]
+      Some(_types(i)).collect {
+        case t: T => t
+      }
     }
   }
 

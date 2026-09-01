@@ -2,6 +2,7 @@ package com.huawei.excelsior.jet.compiler.chir.v1_0
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
+import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.{iterator, toSeq}
 import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.{Block, BlockGroup, BoolLiteral, FloatLiteral, FuncKind, Function, GlobalValue, GlobalVar, IntLiteral, LiteralValue, LocalVar, MemberVarInfo, NullLiteral, Parameter, RuneLiteral, StringLiteral, Value}
 
 final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider) extends CHIR.Func
@@ -10,7 +11,7 @@ final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider
   private val gv = f.base
   private val v = gv.base
 
-  override def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.`type`())
+  override def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.`type`).get
   override def identifier: String = v.identifier
   override def srcCodeIdentifier: String = gv.srcCodeIdentifier
   override def packageName: String = gv.packageName
@@ -32,13 +33,13 @@ final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider
     case FuncKind.INSTANCEVAR_INIT => Func.Kind.InstanceVarInit
   }
   override def genericTypeParams: Seq[CHIR.GenericType] = {
-    for (idx <- 1 to f.genericTypeParamsLength()) yield {
-      provider.getType[CHIR.GenericType](idx)
+    for (idx <- f.genericTypeParamsVector.toSeq) yield {
+      provider.getType[CHIR.GenericType](idx).get
     }
   }
   override def body: Option[CHIR.BlockGroup] = provider.getValue[CHIR.BlockGroup](f.body)
   override def params: Seq[CHIR.Parameter] = {
-    for (idx <- 1 to f.paramsLength()) yield {
+    for (idx <- f.paramsVector.toSeq) yield {
       provider.getValue[CHIR.Parameter](idx).get
     }
   }
@@ -47,7 +48,7 @@ final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider
 
 class BlockGroupImpl(b: BlockGroup)(using provider: CHIRItemProvider) extends CHIR.BlockGroup {
   override def blocks: Seq[CHIR.Block] = {
-    for (idx <- 1 to b.blocksLength) yield {
+    for (idx <- b.blocksVector.toSeq) yield {
       block(idx)
     }
   }
@@ -56,8 +57,8 @@ class BlockGroupImpl(b: BlockGroup)(using provider: CHIRItemProvider) extends CH
 }
 
 final class BlockImpl(b: Block)(using provider: CHIRItemProvider) extends CHIR.Block {
-  override lazy val expressions: Seq[CHIR.Expression] = {
-    for (idx <- 1 to b.exprsLength) yield {
+  override val expressions: Seq[CHIR.Expression] = {
+    for (idx <- b.exprsVector.toSeq) yield {
       provider.getExpr[CHIR.Expression](idx)
     }
   }
@@ -76,21 +77,21 @@ final class GlobalVarImpl(g: GlobalVar, val id: Long)(using provider: CHIRItemPr
   override def identifier: String = v.identifier
   override def srcCodeIdentifier: String = gv.srcCodeIdentifier
   override def packageName: String = gv.packageName
-  override def tpe: CHIR.Type = provider.getType[CHIR.Type](v.`type`)
+  override def tpe: CHIR.Type = provider.getType[CHIR.Type](v.`type`).get
   override def initializer: Option[CHIR.Value] = provider.getValue[CHIR.Value](g.initializer)
 }
 
 final class LocalVarImpl(l: LocalVar)(using provider: CHIRItemProvider) extends CHIR.LocalVar {
-  override def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`)
+  override def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`).get
   override def associatedExpr: CHIR.Expression = provider.getExpr[CHIR.Expression](l.associatedExpr)
 }
 
 final class ParameterImpl(p: Parameter)(using provider: CHIRItemProvider) extends CHIR.Parameter {
-  override def tpe: CHIR.Type = provider.getType[CHIR.Type](p.base.`type`)
+  override def tpe: CHIR.Type = provider.getType[CHIR.Type](p.base.`type`).get
 }
 
 trait LiteralImpl(l: LiteralValue)(using provider: CHIRItemProvider) extends CHIR.Literal {
-  override def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`)
+  override def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`).get
 }
 
 final class NullLiteralImpl(n: NullLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.NullLiteral {

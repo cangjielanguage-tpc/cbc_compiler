@@ -47,13 +47,13 @@ object CHIRBuilder {
     val symTypeDefs = mutable.ArrayBuffer.empty[SymClassType]
 
     def makeSymType(d: CHIR.CustomTypeDef): SymClassType = {
-      makePackage(d.packageName())
+      makePackage(d.packageName)
 
       val name = resolver.symName(d)
 
       val genericInfo = resolver.genericInfo(d)
       val isInterface = d match {
-        case d: CHIR.ClassDef => !d.isClass()
+        case d: CHIR.ClassDef => !d.isClass
         case _ => false
       }
       asClassType(resolver.symType(d).getOrElse {
@@ -75,7 +75,7 @@ object CHIRBuilder {
             resolver.enumKind(d) match {
               case EnumKind.ClassBased =>
                 // Create constructors
-                for (i <- d.ctors().indices) {
+                for (i <- d.ctors.indices) {
                   builder.addClass(symPackage, resolver.classBasedEnumConstructorName(name, i), modifiers, isCangjie = true, isCangjieLambda = false, genericInfo)
                 }
               case _ =>
@@ -149,7 +149,7 @@ object CHIRBuilder {
             builder.markAsCHIRDef(symType)
           }
           if (!resolver.isGenericInstantiated(d)) {
-            val superinterfaces = d.implementedInterfaces().flatMap(resolveSuperinterface(_, d)).toArray
+            val superinterfaces = d.implementedInterfaces.flatMap(resolveSuperinterface(_, d)).toArray
             builder.setSuperinterfaces(symType, superinterfaces)
           }
           fillFields(symType, d)
@@ -160,11 +160,11 @@ object CHIRBuilder {
           }
           if (!resolver.isGenericInstantiated(d)) {
             val isInterface = symType.isInterface
-            val superinterfaces = d.implementedInterfaces().flatMap(resolveSuperinterface(_, d)).toArray
+            val superinterfaces = d.implementedInterfaces.flatMap(resolveSuperinterface(_, d)).toArray
             
             builder.setSuperinterfaces(symType, superinterfaces)
             if (!isInterface) {
-              d.superClass().foreach { sc =>
+              d.superClass.foreach { sc =>
                 val superclass = referenceType(RefClassType)(sc)
                 builder.setSuperclass(symType, superclass)
               }
@@ -179,11 +179,11 @@ object CHIRBuilder {
           }
 
           if (!resolver.isGenericInstantiated(d)) {
-            val superinterfaces = d.implementedInterfaces().flatMap(resolveSuperinterface(_, d)).toArray
+            val superinterfaces = d.implementedInterfaces.flatMap(resolveSuperinterface(_, d)).toArray
             builder.setSuperinterfaces(symType, superinterfaces)
           }
 
-          val ctorSigs = d.ctors().map(_.tpe())
+          val ctorSigs = d.ctors.map(_.tpe)
           val ctors = ctorSigs.map(_.paramTypes).map(_.map(resolver.typeSig))
 
           builder.setEnumInfo(symType, CangjieEnumInfo(ctors.map(CangjieEnumInfo.Constructor.apply)))
@@ -217,8 +217,8 @@ object CHIRBuilder {
           if (!resolver.isImported(d)) {
             builder.markAsCHIRDef(symType)
           }
-          builder.setExtendInfo(symType, resolver.typeSig(d.tpe()))
-          val superinterfaces = d.implementedInterfaces().iterator.flatMap(resolveSuperinterface(_, d)).toArray
+          builder.setExtendInfo(symType, resolver.typeSig(d.tpe))
+          val superinterfaces = d.implementedInterfaces.iterator.flatMap(resolveSuperinterface(_, d)).toArray
           builder.setSuperinterfaces(symType, superinterfaces)
           fillFields(symType, d)
 
@@ -238,7 +238,7 @@ object CHIRBuilder {
         case typeSig: SignatureType.OptionLikeEnum if typeSig.someType.isTypeVariable => SignatureType.Box(typeSig)
         case _ => typeSig
       }
-      for (m <- d.methods()) {
+      for (m <- d.methods) {
         val name = resolver.symName(m)
         val mutModifiers = m.kind match {
           case CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>
@@ -319,7 +319,7 @@ object CHIRBuilder {
     }
 
     for ((d, symType) <- pkg.typeDefs zip symTypeDefs if symType != null) {
-      fillMethods(symType, d, resolver.typeSig(d.tpe()))
+      fillMethods(symType, d, resolver.typeSig(d.tpe))
     }
 
     // Restore abstract methods that FE changed to global (still abstract) functions
@@ -377,11 +377,11 @@ object CHIRBuilder {
         Seq.empty
       ))
       CHIRVTable(
-        objectExtDef.toSeq ++ d.vTables().map { e =>
+        objectExtDef.toSeq ++ d.vTables.map { e =>
           CHIRVTable.ExtDef(
-            resolver.typeSig(e.srcParentType()),
-            e.vMethods() flatMap { m =>
-              val impl = m.instance()
+            resolver.typeSig(e.srcParentType),
+            e.vMethods flatMap { m =>
+              val impl = m.instance
               if (resolver.isDeadFunction(impl)) {
                 Seq.empty
               } else {
@@ -390,18 +390,18 @@ object CHIRBuilder {
                   case impl => impl.declaringDef.get
                 }
                 assert(implParent != null, symType)
-                val lparams = m.genericTypeParams()
+                val lparams = m.genericTypeParams
                 val mods = resolver.symModifiers(m)
                 val isStatic = mods.contains(STATIC)
                 Seq(CHIRVTable.Entry(
-                  m.name(),
-                  resolver.functionSig(m.sig(), hasReceiver = false)._1, // This signature does not ever contain receiver (TODO: verify it)
+                  m.name,
+                  resolver.functionSig(m.sig, hasReceiver = false)._1, // This signature does not ever contain receiver (TODO: verify it)
                   lparams.map(resolver.typeSig),
-                  Option(virtMethods(m.instance())),
+                  Option(virtMethods(m.instance)),
                   mods,
-                  resolver.functionSig(m.originalType(), hasReceiver = !isStatic)._1,
-                  resolver.typeSig(m.parentType()),
-                  resolver.typeSig(m.returnType()),
+                  resolver.functionSig(m.originalType, hasReceiver = !isStatic)._1,
+                  resolver.typeSig(m.parentType),
+                  resolver.typeSig(m.returnType),
                 ))
               }
             }
