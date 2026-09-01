@@ -370,9 +370,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case n: GetStaticFieldSeqRef =>
           // lea dst, base, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
           val IReg(dst) = n
-          val IReg(dstRefBase) = n.baseRef
-          assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
-          asm.leaStatic(dst, dstRefBase, constrFieldRef(fieldRefs))
+          val IReg(dstBaseRef) = n.baseRef
+          require(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
+          asm.leaStatic(dst, dstBaseRef, constrFieldRef(fieldRefs))
         case n: GetFieldSeqRefGeneric =>
           // lea.g dst, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
           // ...
