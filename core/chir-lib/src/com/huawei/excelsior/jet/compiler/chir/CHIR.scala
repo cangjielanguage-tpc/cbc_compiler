@@ -150,7 +150,7 @@ object CHIR {
   }
 
   trait BoxType extends Type {
-    def baseType(): Type
+    def baseType: Type
   }
 
   enum BuiltinType extends Type {
@@ -165,56 +165,56 @@ object CHIR {
     This
   }
 
-  trait ClassType extends CustomType {
-    def typeDef(): ClassDef
-  }
-
   trait CustomType extends Type {
-    def typeDef(): CustomTypeDef
-    def genericTypeParams(): Seq[Type]
+    def typeDef: CustomTypeDef
+    def genericTypeParams: Seq[Type]
   }
 
-  trait CPointerType extends Type {
-    def elementType(): Type
+  trait ClassType extends CustomType {
+    def typeDef: ClassDef
   }
 
   trait EnumType extends CustomType {
-    def typeDef(): EnumDef
+    def typeDef: EnumDef
+  }
+
+  trait StructType extends CustomType {
+    def typeDef: StructDef
+  }
+  
+  trait CPointerType extends Type {
+    def elementType: Type
   }
 
   trait FuncType extends Type {
-    def paramTypes(): Seq[Type]
-    def receiverType(): Type
-    def returnType(): Type
+    def paramTypes: Seq[Type]
+    def receiverType: Type
+    def returnType: Type
     def isC: Boolean
     def hasVarArg: Boolean
   }
 
   trait GenericType extends Type {
-    def identifier(): String
-    def upperBounds(): Seq[Type]
+    def identifier: String
+    def upperBounds: Seq[Type]
   }
 
   trait RefType extends Type {
-    def baseType(): Type
+    def baseType: Type
   }
 
   trait RawArrayType extends Type {
-    def elementType(): Type
-    def dimension(): Long
-  }
-
-  trait StructType extends CustomType {
-    def typeDef(): StructDef
+    def elementType: Type
+    def dimension: Long
   }
 
   trait TupleType extends Type {
-    def fieldTypes(): Seq[Type]
+    def fieldTypes: Seq[Type]
   }
 
   trait VArrayType extends Type {
-    def elementType(): Type
-    def size(): Long
+    def elementType: Type
+    def size: Long
   }
 
   trait CustomTypeDef extends HasAttributes with HasAnnotations {

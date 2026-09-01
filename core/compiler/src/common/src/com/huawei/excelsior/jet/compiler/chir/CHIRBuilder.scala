@@ -41,7 +41,7 @@ object CHIRBuilder {
       })
     }
 
-    val symPackage = makePackage(pkg.name())
+    val symPackage = makePackage(pkg.name)
     builder.markAsCHIRDef(symPackage)
 
     val symTypeDefs = mutable.ArrayBuffer.empty[SymClassType]
@@ -92,7 +92,7 @@ object CHIRBuilder {
       })
     }
 
-    for (d <- pkg.typeDefs()) symTypeDefs += makeSymType(d)
+    for (d <- pkg.typeDefs) symTypeDefs += makeSymType(d)
 
     // -----------------------------------------------
     // Fill symlevel type fields
@@ -142,7 +142,7 @@ object CHIRBuilder {
       Option.when(interf.symType.getName != "std.core:Any")(interf)
     }
 
-    for ((d, symType) <- pkg.typeDefs() zip symTypeDefs if symType != null) {
+    for ((d, symType) <- pkg.typeDefs zip symTypeDefs if symType != null) {
       d match {
         case d: CHIR.StructDef =>
           if (!resolver.isImported(d)) {
@@ -184,7 +184,7 @@ object CHIRBuilder {
           }
 
           val ctorSigs = d.ctors().map(_.tpe())
-          val ctors = ctorSigs.map(_.paramTypes()).map(_.map(resolver.typeSig))
+          val ctors = ctorSigs.map(_.paramTypes).map(_.map(resolver.typeSig))
 
           builder.setEnumInfo(symType, CangjieEnumInfo(ctors.map(CangjieEnumInfo.Constructor.apply)))
 
@@ -318,7 +318,7 @@ object CHIRBuilder {
       }
     }
 
-    for ((d, symType) <- pkg.typeDefs() zip symTypeDefs if symType != null) {
+    for ((d, symType) <- pkg.typeDefs zip symTypeDefs if symType != null) {
       fillMethods(symType, d, resolver.typeSig(d.tpe()))
     }
 
@@ -328,14 +328,14 @@ object CHIRBuilder {
       def unapply(f: CHIR.Func): Option[CHIR.Type] = {
         if (f.declaringDef.isEmpty && f.attributes.contains(CHIR.Attribute.Abstract)) {
           val funcType = f.tpe
-          Some(funcType.receiverType())
+          Some(funcType.receiverType)
         } else {
           None
         }
       }
     }
 
-    for (v <- pkg.values()) v match {
+    for (v <- pkg.values) v match {
       case m @ GlobalAbstractFunc(declType) if !resolver.isDeadFunction(m) =>
         val symType = asClassType(resolver.symType(declType).get)
         val name = resolver.symName(m)
@@ -410,7 +410,7 @@ object CHIRBuilder {
       )
     }
 
-    for ((d, symType) <- pkg.typeDefs() zip symTypeDefs if symType != null) {
+    for ((d, symType) <- pkg.typeDefs zip symTypeDefs if symType != null) {
       builder.setVTable(symType, getVTable(symType, d))
     }
 
@@ -418,7 +418,7 @@ object CHIRBuilder {
     // Add global vars and funcs
     // -----------------------------------------------
 
-    for (v <- pkg.values()) v match {
+    for (v <- pkg.values) v match {
       case m: CHIR.GlobalVar if m.declaringDef.isEmpty =>
         // package global var
         val symPkg = makePackage(m.packageName)
@@ -443,10 +443,10 @@ object CHIRBuilder {
         val symMethod = builder.addMethod(symPkg, name, sig, linkageName, modifiers, genericInfo,
           ABI.Description(None, hasMutParam = false, hasThisTypeInfoParam = false,
           isCFunc, hasOuterTypeInfo = false, hasRetByVal = false, genericFuncParamsCount))
-        if (pkg.packageInitFunc() == m) {
+        if (pkg.packageInitFunc == m) {
           builder.markAsPackageInit(symMethod)
         }
-        if (pkg.packageInitLiteralFunc() == m) {
+        if (pkg.packageInitLiteralFunc == m) {
           builder.markAsPackageLiteralInit(symMethod)
         }
         if (!resolver.isImported(m) || m.body.nonEmpty) {
