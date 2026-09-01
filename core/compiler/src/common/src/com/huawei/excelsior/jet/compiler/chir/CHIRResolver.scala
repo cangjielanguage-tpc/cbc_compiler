@@ -54,10 +54,10 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
     def globalName(_v: CHIR.Func | CHIR.GlobalVar): String = {
       val (id, identifier, srcName, annotations) = _v match {
-        case v: CHIR.Func => (v.id(), v.identifier(), v.srcCodeIdentifier(), v.annotations)
-        case v: CHIR.GlobalVar => (v.id, v.identifier(), v.srcCodeIdentifier(), v.annotations)
+        case v: CHIR.Func => (v.id, v.identifier, v.srcCodeIdentifier, v.annotations)
+        case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier, v.annotations)
       }
-      val wrappedMethod = annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod() }
+      val wrappedMethod = annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
       val v = wrappedMethod.getOrElse(_v)
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
       val isPackageGlobal = v.declaringDef.isEmpty
@@ -100,8 +100,8 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def linkageName(v: CHIR.Func | CHIR.GlobalVar | CHIR.InstanceVar): String = v match {
-    case v: CHIR.Func => v.identifier()
-    case v: CHIR.GlobalVar => v.identifier()
+    case v: CHIR.Func => v.identifier
+    case v: CHIR.GlobalVar => v.identifier
     case v: CHIR.InstanceVar => null
   }
 
@@ -110,9 +110,9 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def functionSig(m: CHIR.Func, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
-    val (sig, rcv, isCFunc, hasVarArg) = functionSig(m.tpe(), hasReceiver)
-    if (m.srcCodeIdentifier() == "$lambda") {
-      val cparams = Seq.tabulate(m.genericTypeParams().size)(SignatureType.LocalTypeVariable.apply)
+    val (sig, rcv, isCFunc, hasVarArg) = functionSig(m.tpe, hasReceiver)
+    if (m.srcCodeIdentifier == "$lambda") {
+      val cparams = Seq.tabulate(m.genericTypeParams.size)(SignatureType.LocalTypeVariable.apply)
       val lparams = Seq.empty
       val lsig = sig.instantiate(cparams, lparams)
       (lsig, rcv, isCFunc, hasVarArg)
@@ -200,7 +200,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     case v: CHIR.CustomType => withGenericParams(v.typeDef())(action)
     case v: CHIR.RefType => withGenericParams(v.baseType())(action)
     case CHIR.BuiltinType.This => action(Seq.empty)
-    case v: CHIR.Func => action(v.genericTypeParams())
+    case v: CHIR.Func => action(v.genericTypeParams)
     case v: CHIR.FuncSig => action(v.genericTypeParams())
     case v: CHIR.VMethod => action(v.genericTypeParams())
   }
@@ -245,7 +245,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       fillTypeVars(gTypes, local = false)
     }
     pkg.values() foreach {
-      case d: CHIR.Func if d.srcCodeIdentifier() != "$lambda" => fillTypeVars(d.genericTypeParams(), local = true)
+      case d: CHIR.Func if d.srcCodeIdentifier != "$lambda" => fillTypeVars(d.genericTypeParams, local = true)
       case _ =>
     }
   }
@@ -312,14 +312,14 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   private def isAutoEnv(x: CHIR.Annotation): Boolean = cond(x) {
-    case x: CHIR.IsAutoEnvClass => x.value()
+    case x: CHIR.IsAutoEnvClass => x.value
   }
 
   private def isZST(t: CHIR.Type): Boolean = t match {
     case CHIR.BuiltinType.Void | CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => true
     case t: CHIR.TupleType => t.fieldTypes().forall(isZST)
     case t: CHIR.VArrayType => isZST(t.elementType())
-    case t: CHIR.StructType => t.typeDef().instanceVars.forall(i => isZST(i.tpe()))
+    case t: CHIR.StructType => t.typeDef().instanceVars.forall(i => isZST(i.tpe))
     case t: CHIR.EnumType => enumKind(t.typeDef()) == EnumKind.ZeroSized
     case _ => false
   }
@@ -341,7 +341,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   private def isTraceableStruct(t: CHIR.Type): Boolean = t match {
     case t: CHIR.TupleType => t.fieldTypes().exists(p => isReferenceType(p) || isTraceableStruct(p))
     case t: CHIR.VArrayType => isReferenceType(t.elementType()) || isTraceableStruct(t.elementType())
-    case t: CHIR.StructType => t.typeDef().instanceVars.exists(i => isReferenceType(i.tpe()) || isTraceableStruct(i.tpe()))
+    case t: CHIR.StructType => t.typeDef().instanceVars.exists(i => isReferenceType(i.tpe) || isTraceableStruct(i.tpe))
     case t: CHIR.EnumType => enumKind(t.typeDef()) match {
       case EnumKind.OptionLike(base) => isTraceableStruct(base)
       case _ => false

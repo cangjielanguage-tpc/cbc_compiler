@@ -6,16 +6,16 @@ import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.{ClassDef, Cust
 abstract class CustomTypeDefImpl(d: CustomTypeDef)(using provider: CHIRItemProvider) extends CHIR.CustomTypeDef
   with HasAnnotationsImpl(d.base) with HasAttributesImpl(d.base.attributes) {
 
-  override def packageName(): String = d.packageName()
-  override def identifier(): String = d.identifier()
-  override def srcCodeIdentifier(): String = d.srcCodeIdentifier()
-  override lazy val instanceVars: Seq[CHIR.InstanceVar] = {
-    for (idx <- 1 to d.instanceMemberVarsLength()) yield {
+  override def packageName(): String = d.packageName
+  override def identifier(): String = d.identifier
+  override def srcCodeIdentifier(): String = d.srcCodeIdentifier
+  override def instanceVars: Seq[CHIR.InstanceVar] = {
+    for (idx <- 0 until d.instanceMemberVarsLength) yield {
       InstanceVarImpl(d.instanceMemberVars(idx))
     }
   }
-  override lazy val staticVars: Seq[CHIR.GlobalVar] = {
-    for (idx <- 1 to d.staticMemberVarsLength()) yield {
+  override def staticVars: Seq[CHIR.GlobalVar] = {
+    for (idx <- 1 to d.staticMemberVarsLength) yield {
       provider.getValue[CHIR.GlobalVar](idx).get
     }
   }
