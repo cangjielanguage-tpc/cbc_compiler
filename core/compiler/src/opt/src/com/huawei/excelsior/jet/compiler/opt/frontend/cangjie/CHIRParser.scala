@@ -1145,10 +1145,10 @@ trait CHIRParser
             staticField match {
               case None =>
                 if (needsCopy(lastField.fieldType)) {
-                  val addr = GetFieldSeqRef(maybeDerivedPtr(mem), mem, fields*)
+                  val addr = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
-                  StoreFieldSeq(maybeDerivedPtr(mem), mem, arg, fields*)
+                  StoreFieldSeq(maybeDerivedPtrBase(mem), mem, arg, fields*)
                 }
               case Some(sf) =>
                 if (needsCopy(lastField.fieldType)) {
@@ -1775,7 +1775,7 @@ trait CHIRParser
 
                 } else {
                   mem match {
-                    case GetFieldSeqRef(fields, base) =>
+                    case GetFieldSeqRef(fields, _, base) =>
                       StoreFieldSeq(maybeDerivedPtrBase(mem), base, value, fields*)
                     case GetStaticFieldSeqRef(fields) =>
                       StoreStaticFieldSeq(DerivedPtr.Global(), value, fields*)

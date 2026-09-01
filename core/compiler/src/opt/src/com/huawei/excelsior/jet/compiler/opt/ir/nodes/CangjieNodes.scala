@@ -16,7 +16,6 @@ import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field,
 trait CangjieNodes { self: Universe =>
 
   sealed trait FieldSeqOperation extends Node {
-    require(!resType.isZST)
     def fields: Seq[Node]
     def refType: SignatureType = FieldSeqOperation.refType(fields)
     def resType: SignatureType = FieldSeqOperation.resType(fields)
@@ -59,7 +58,7 @@ trait CangjieNodes { self: Universe =>
   class GetFieldSeqRef private(proto: GetFieldSeqRef.Proto)
     extends FloatingNodeWithVarArgs(proto) with InstanceFieldSeqOperation with ControlledNode {
 
-    override def fields: Seq[Node] = argsTail(2)
+    override def fields: Seq[Node] = argsTail(3)
 
     def baseRef = arg(1)
     def base = arg(2)
@@ -210,7 +209,7 @@ trait CangjieNodes { self: Universe =>
   class StoreStaticFieldSeq private(proto: StoreStaticFieldSeq.Proto)
     extends NodeWithVarArgs(proto) with FieldSeqOperation with SpinalMemoryNode with NotProducesValue {
 
-    override def fields: Seq[Node] = argsTail(3)
+    override def fields: Seq[Node] = argsTail(4)
 
     def baseRef = arg(2)
     def inValue = arg(3)

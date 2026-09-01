@@ -594,7 +594,6 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
           case n: StoreFieldSeq => replaceByCode(n) {
             StoreFieldSeq(n.baseRef, g.base, n.inValue, fields*)
           }
-          case _ => notImplemented(n)
         }
         true
       case g: GetStaticFieldSeqRef =>
@@ -608,7 +607,6 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
           case n: StoreFieldSeq => replaceByCode(n) {
             StoreStaticFieldSeq(n.baseRef, n.inValue, fields*)
           }
-          case _ => notImplemented(n)
         }
         true
     }
