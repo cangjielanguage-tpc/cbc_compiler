@@ -8,7 +8,6 @@
 
 package com.huawei.excelsior.jet.compiler.opt.frontend.cangjie
 
-import com.google.flatbuffers.Table
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.{PreparationRequired, RTSProc, Stage, StatsKind}
@@ -43,8 +42,6 @@ trait CHIRParser
      with HLIRNodes
      with ContextTypesRecalculation
      with Arrays { self: Universe =>
-
-  implicit object TableSetsAndMaps extends Sets.Default[Table] with Maps.Default[Table]
 
   def loadCHIRMethod(method: Method, args0: Seq[Node]): RTPartsInfo = stage(Stage.LoadCHIR) {
     val args = args0
@@ -292,7 +289,7 @@ trait CHIRParser
     for ((bv, b) <- blockMap.iterator) {
 
       def succBlocks(t: CHIR.HasSuccessors): Seq[Block] = {
-        t.successors().map(blockMap.apply)
+        t.successors.map(blockMap.apply)
       }
 
       def goto(t: CHIR.Goto): Unit = {
@@ -308,7 +305,7 @@ trait CHIRParser
       }
 
       def multiBranch(v: CHIR.MultiBranch): Unit = {
-        val end = Switch(v.caseValues().map(_.toInt))(b, b, Proxy(IntType)(b))
+        val end = Switch(v.caseValues.map(_.toInt))(b, b, Proxy(IntType)(b))
         for ((exit, target) <- end.exits zip succBlocks(v)) {
           target addArg exit
         }
@@ -345,13 +342,12 @@ trait CHIRParser
         case t: (CHIR.TryApply |
           CHIR.TryInvoke |
           CHIR.TryIntrinsic |
-          CHIR.TryInvokeStatic |
           CHIR.TrySpawn |
           CHIR.TryNumericCast |
           CHIR.TryAllocate |
           CHIR.TryRawArrayAllocate |
-          CHIR.TryUnaryExpression |
-          CHIR.TryBinaryExpression) => exceptGoto(t)
+          CHIR.TryUnary |
+          CHIR.TryBinary) => exceptGoto(t)
         case t: CHIR.Branch => branch(t)
         case t: CHIR.MultiBranch => multiBranch(t)
       }
@@ -686,10 +682,10 @@ trait CHIRParser
     }
 
     private def parseExpression(e: CHIR.Expression, block: Block, state: State): Unit = e match {
-      case e: CHIR.UnaryExpression =>
+      case e: CHIR.Unary =>
         import SignatureType.*
-        val arg = state(e.operand())
-        val sig = resolver.typeSig(e.resultTpe())
+        val arg = state(e.operand)
+        val sig = resolver.typeSig(e.resultTpe)
         val tpe = if (sig == Float16) FloatType else arg.tpe
         assert(tpe != ValueType, arg)
 
@@ -697,21 +693,21 @@ trait CHIRParser
           BitFieldExtract.BFX(tpe, 0, sig.toAsm.sizeInBits, signExtension = false, n)
         }
 
-        val n = e.kind() match {
-          case CHIR.UnaryExpression.Kind.Neg => Neg(tpe)(arg)
-          case CHIR.UnaryExpression.Kind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
-          case CHIR.UnaryExpression.Kind.BitNot => Xor(arg, IntegralConst(tpe)(-1))
+        val n = e.kind match {
+          case CHIR.Unary.Kind.Neg => Neg(tpe)(arg)
+          case CHIR.Unary.Kind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
+          case CHIR.Unary.Kind.BitNot => Xor(arg, IntegralConst(tpe)(-1))
         }
         state(e) = n
 
-      case e: CHIR.BinaryExpression =>
+      case e: CHIR.Binary =>
         import SignatureType.*
 
-        val ValueSig(sig) = e.leftOperand()
-        val lraw = state(e.leftOperand())
-        val rraw = state(e.rightOperand())
+        val ValueSig(sig) = e.leftOperand
+        val lraw = state(e.leftOperand)
+        val rraw = state(e.rightOperand)
 
-        val resSig = resolver.typeSig(e.resultTpe())
+        val resSig = resolver.typeSig(e.resultTpe)
 
         def adjustRes(n: Node) = if (resSig == Float16) ValueConvert(AsmType.F32, AsmType.F16)(n) else n
 
@@ -736,24 +732,24 @@ trait CHIRParser
               case _ => false
             }
             // Note: Cangjie does not have "unordered" floating point comparisons
-            val op = e.kind() match {
-              case CHIR.BinaryExpression.Kind.Lt => if (unsigned) Condition.ULT else Condition.LT
-              case CHIR.BinaryExpression.Kind.Gt => if (unsigned) Condition.UGT else Condition.GT
-              case CHIR.BinaryExpression.Kind.Le => if (unsigned) Condition.ULE else Condition.LE
-              case CHIR.BinaryExpression.Kind.Ge => if (unsigned) Condition.UGE else Condition.GE
-              case CHIR.BinaryExpression.Kind.Eq => Condition.EQ
-              case CHIR.BinaryExpression.Kind.NotEq => Condition.NE
-              case x => shouldNotReachHere(s"unexpected boolean binary expression: ${e.kind()}")
+            val op = e.kind match {
+              case CHIR.Binary.Kind.Lt => if (unsigned) Condition.ULT else Condition.LT
+              case CHIR.Binary.Kind.Gt => if (unsigned) Condition.UGT else Condition.GT
+              case CHIR.Binary.Kind.Le => if (unsigned) Condition.ULE else Condition.LE
+              case CHIR.Binary.Kind.Ge => if (unsigned) Condition.UGE else Condition.GE
+              case CHIR.Binary.Kind.Eq => Condition.EQ
+              case CHIR.Binary.Kind.NotEq => Condition.NE
+              case x => shouldNotReachHere(s"unexpected boolean binary expression: ${e.kind}")
             }
             CondVal(Cmp(tpe, op)(l, r))
 
           case resSig: FloatingPoint =>
-            e.kind() match {
-              case CHIR.BinaryExpression.Kind.Add => Add(l, r)
-              case CHIR.BinaryExpression.Kind.Sub => Sub(l, r)
-              case CHIR.BinaryExpression.Kind.Mul => Mul(l, r)
-              case CHIR.BinaryExpression.Kind.Div => FDiv(tpe)(l, r)
-              case x => shouldNotReachHere(s"unexpected floating point binary expression: ${e.kind()}")
+            e.kind match {
+              case CHIR.Binary.Kind.Add => Add(l, r)
+              case CHIR.Binary.Kind.Sub => Sub(l, r)
+              case CHIR.Binary.Kind.Mul => Mul(l, r)
+              case CHIR.Binary.Kind.Div => FDiv(tpe)(l, r)
+              case x => shouldNotReachHere(s"unexpected floating point binary expression: ${e.kind}")
             }
 
           case resSig: Integral =>
@@ -761,87 +757,85 @@ trait CHIRParser
             val size = resSig.bits
             val signed = resSig.signed
 
-            e.overflowStrategy() match {
+            e.overflowStrategy match {
               case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na =>
-                e.kind() match {
-                  case CHIR.BinaryExpression.Kind.Add => Add(l, r)
-                  case CHIR.BinaryExpression.Kind.Sub => Sub(l, r)
-                  case CHIR.BinaryExpression.Kind.Mul => Mul(l, r)
-                  case CHIR.BinaryExpression.Kind.Div => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = true)(l, r)
-                  case CHIR.BinaryExpression.Kind.Mod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(l, r)
-                  case CHIR.BinaryExpression.Kind.LShift => Shift(ArithOp.LSL, l, BitFieldExtract.Truncate(r)) // TODO explicit overshift check in compiler or runtime
-                  case CHIR.BinaryExpression.Kind.RShift =>
+                e.kind match {
+                  case CHIR.Binary.Kind.Add => Add(l, r)
+                  case CHIR.Binary.Kind.Sub => Sub(l, r)
+                  case CHIR.Binary.Kind.Mul => Mul(l, r)
+                  case CHIR.Binary.Kind.Div => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = true)(l, r)
+                  case CHIR.Binary.Kind.Mod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(l, r)
+                  case CHIR.Binary.Kind.LShift => Shift(ArithOp.LSL, l, BitFieldExtract.Truncate(r)) // TODO explicit overshift check in compiler or runtime
+                  case CHIR.Binary.Kind.RShift =>
                     val op = if (sig.toAsm.isSigned) ArithOp.ASR else ArithOp.LSR // Cangjie has arithmetic shift in case of signed left operand
                     Shift(op, l, BitFieldExtract.Truncate(r)) // TODO explicit overshift check in compiler or runtime
-                  case CHIR.BinaryExpression.Kind.And => And(l, r)
-                  case CHIR.BinaryExpression.Kind.Or => Or(l, r)
-                  case CHIR.BinaryExpression.Kind.Xor => Xor(l, r)
-                  case CHIR.BinaryExpression.Kind.Exp => Pow(l, r)
-                  case x => shouldNotReachHere(s"unexpected wrapping binary expression: ${e.kind()}")
+                  case CHIR.Binary.Kind.And => And(l, r)
+                  case CHIR.Binary.Kind.Or => Or(l, r)
+                  case CHIR.Binary.Kind.Xor => Xor(l, r)
+                  case CHIR.Binary.Kind.Exp => Pow(l, r)
+                  case x => shouldNotReachHere(s"unexpected wrapping binary expression: ${e.kind}")
                 }
               case CHIR.OverflowStrategy.Throwing =>
                 val width = sig.toAsm.width
                 val normalizedArgs = Seq(l, r) map { n =>
                   CheckedOp.normalizeArg(n.tpe, width, signed, n)
                 }
-                e.kind() match {
-                  case CHIR.BinaryExpression.Kind.Add => CheckedOp(tpe, width, CheckedOp.Kind.ADD, signed, method.isManaged)(normalizedArgs: _*)
-                  case CHIR.BinaryExpression.Kind.Sub => CheckedOp(tpe, width, CheckedOp.Kind.SUB, signed, method.isManaged)(normalizedArgs: _*)
-                  case CHIR.BinaryExpression.Kind.Mul => CheckedOp(tpe, width, CheckedOp.Kind.MUL, signed, method.isManaged)(normalizedArgs: _*)
-                  case CHIR.BinaryExpression.Kind.Div => CheckedOp(tpe, width, CheckedOp.Kind.DIV, signed, method.isManaged)(normalizedArgs: _*)
-                  case CHIR.BinaryExpression.Kind.Mod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(normalizedArgs: _*)
-                  case CHIR.BinaryExpression.Kind.Exp => CheckedOp(tpe, width, CheckedOp.Kind.POW, signed, method.isManaged)(normalizedArgs: _*)
-                  case x => shouldNotReachHere(s"unexpected throwing binary expression: ${e.kind()}")
+                e.kind match {
+                  case CHIR.Binary.Kind.Add => CheckedOp(tpe, width, CheckedOp.Kind.ADD, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.Binary.Kind.Sub => CheckedOp(tpe, width, CheckedOp.Kind.SUB, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.Binary.Kind.Mul => CheckedOp(tpe, width, CheckedOp.Kind.MUL, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.Binary.Kind.Div => CheckedOp(tpe, width, CheckedOp.Kind.DIV, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.Binary.Kind.Mod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(normalizedArgs: _*)
+                  case CHIR.Binary.Kind.Exp => CheckedOp(tpe, width, CheckedOp.Kind.POW, signed, method.isManaged)(normalizedArgs: _*)
+                  case x => shouldNotReachHere(s"unexpected throwing binary expression: ${e.kind}")
                 }
 
               case CHIR.OverflowStrategy.Saturating =>
-                val proc = e.kind() match {
-                  case CHIR.BinaryExpression.Kind.Exp => assert(size == 64); RTSProc.CJ_saturatingPowI64
-                  case CHIR.BinaryExpression.Kind.Add => size match {
+                val proc = e.kind match {
+                  case CHIR.Binary.Kind.Exp => assert(size == 64); RTSProc.CJ_saturatingPowI64
+                  case CHIR.Binary.Kind.Add => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingAddI8  else RTSProc.CJ_saturatingAddU8
                     case 16 => if (signed) RTSProc.CJ_saturatingAddI16 else RTSProc.CJ_saturatingAddU16
                     case 32 => if (signed) RTSProc.CJ_saturatingAddI32 else RTSProc.CJ_saturatingAddU32
                     case 64 => if (signed) RTSProc.CJ_saturatingAddI64 else RTSProc.CJ_saturatingAddU64
                   }
-                  case CHIR.BinaryExpression.Kind.Sub => size match {
+                  case CHIR.Binary.Kind.Sub => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingSubI8  else RTSProc.CJ_saturatingSubU8
                     case 16 => if (signed) RTSProc.CJ_saturatingSubI16 else RTSProc.CJ_saturatingSubU16
                     case 32 => if (signed) RTSProc.CJ_saturatingSubI32 else RTSProc.CJ_saturatingSubU32
                     case 64 => if (signed) RTSProc.CJ_saturatingSubI64 else RTSProc.CJ_saturatingSubU64
                   }
-                  case CHIR.BinaryExpression.Kind.Mul => size match {
+                  case CHIR.Binary.Kind.Mul => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingMulI8  else RTSProc.CJ_saturatingMulU8
                     case 16 => if (signed) RTSProc.CJ_saturatingMulI16 else RTSProc.CJ_saturatingMulU16
                     case 32 => if (signed) RTSProc.CJ_saturatingMulI32 else RTSProc.CJ_saturatingMulU32
                     case 64 => if (signed) RTSProc.CJ_saturatingMulI64 else RTSProc.CJ_saturatingMulU64
                   }
-                  case CHIR.BinaryExpression.Kind.Div => size match {
+                  case CHIR.Binary.Kind.Div => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingDivI8  else RTSProc.CJ_saturatingDivU8
                     case 16 => if (signed) RTSProc.CJ_saturatingDivI16 else RTSProc.CJ_saturatingDivU16
                     case 32 => if (signed) RTSProc.CJ_saturatingDivI32 else RTSProc.CJ_saturatingDivU32
                     case 64 => if (signed) RTSProc.CJ_saturatingDivI64 else RTSProc.CJ_saturatingDivU64
                   }
-                  case CHIR.BinaryExpression.Kind.Mod => size match {
+                  case CHIR.Binary.Kind.Mod => size match {
                     case 8  => if (signed) RTSProc.CJ_saturatingModI8  else RTSProc.CJ_saturatingModU8
                     case 16 => if (signed) RTSProc.CJ_saturatingModI16 else RTSProc.CJ_saturatingModU16
                     case 32 => if (signed) RTSProc.CJ_saturatingModI32 else RTSProc.CJ_saturatingModU32
                     case 64 => if (signed) RTSProc.CJ_saturatingModI64 else RTSProc.CJ_saturatingModU64
                   }
-                  case x => shouldNotReachHere(s"unexpected saturating binary expression: ${e.kind()}")
+                  case x => shouldNotReachHere(s"unexpected saturating binary expression: ${e.kind}")
                 }
                 if (env.enabled(FailSaturatingArithmetic)) {
                   notImplemented("Saturating arithmetic")
                   //RTSCall(proc)(lraw, rraw)
                 }
                 IntegralConst(tpe)(123456789)
-
-              case x => shouldNotReachHere(s"unexpected overflow strategy: ${PackageFormat.OverflowStrategy.name(x)}")
             }
         }
         state(e) = adjustRes(n)
 
-      case e: CHIR.AllocateExpression =>
-        val allocType = e.allocatedType()
+      case e: CHIR.Allocate =>
+        val allocType = e.allocatedType
         val sig = resolver.typeSig(allocType)
         val n = if (sig.isTraceableReference) {
           allocType match {
@@ -882,13 +876,13 @@ trait CHIRParser
         state(e) = n
 
       case e: CHIR.RawArrayAllocate =>
-        val len = state(e.size())
-        val elemType = resolver.typeSig(e.elementType())
+        val len = state(e.size)
+        val elemType = resolver.typeSig(e.elementType)
         val arrayType = SignatureType.CangjieArray(elemType)
         state(e) = NewArray(arrayType)(len)
 
       case e: CHIR.GetElementRef =>
-        val memBase = e.base()
+        val memBase = e.base
         val mem = state(memBase)
         val staticField = memBase match {
           case v: CHIR.GlobalVar => Some(staticFieldRef(v))
@@ -906,7 +900,7 @@ trait CHIRParser
 
         val ValueSig(host) = memBase
 
-        val fields = fieldChain(host, e.path())
+        val fields = fieldChain(host, e.path)
 
         val lastField = fields.last
         val n = if (lastField.fieldType.isZST) {
@@ -927,9 +921,9 @@ trait CHIRParser
         state(e) = n
 
       case e: CHIR.StoreElementRef =>
-        val memBase = e.location()
+        val memBase = e.location
         val mem = state(memBase)
-        val arg = state(e.value())
+        val arg = state(e.value)
         val staticField = memBase match {
           case v: CHIR.GlobalVar => Some(staticFieldRef(v))
           case _ => None
@@ -947,12 +941,12 @@ trait CHIRParser
         val ValueSig(host) = memBase
 
         if (host.isArray) {
-          assert(e.path().size == 1)
-          val idx = e.path().head
+          assert(e.path.size == 1)
+          val idx = e.path.head
           arrayPut(host, mem, LConst(idx), arg)
 
         } else {
-          val fields = fieldChain(host, e.path())
+          val fields = fieldChain(host, e.path)
 
           val lastField = fields.last
           if (lastField.fieldType.isZST) {
@@ -983,7 +977,7 @@ trait CHIRParser
         }
 
       case e: CHIR.Field =>
-        val memBase = e.base()
+        val memBase = e.base
         val _mem = state(memBase)
         val staticField = memBase match {
           case v: CHIR.GlobalVar => Some(staticFieldRef(v))
@@ -997,7 +991,7 @@ trait CHIRParser
             (x, host)
         }
 
-        val chirPath = e.path()
+        val chirPath = e.path
 
         host match {
           case _: SignatureType.ZeroSizedEnum | _: SignatureType.PrimitiveBasedEnum => shouldNotReachHere(host)
@@ -1084,9 +1078,9 @@ trait CHIRParser
         }
 
       case e: CHIR.Apply =>
-        val func = e.callee()
+        val func = e.callee
 
-        val thisType = e.thisType().map(resolver.typeSig)
+        val thisType = e.thisType.map(resolver.typeSig)
 
         def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
           val cparams = refType match {
@@ -1113,13 +1107,13 @@ trait CHIRParser
         val _target = calcMethodRef(declClass, declType, name, func)
 
         // TODO: add instantiated type parameters to base MethodReference
-        val lparams = e.instantiatedTypeArgs().map(resolver.typeSig)
+        val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
         val target = if (lparams.nonEmpty) {
           _target.toInstantiatedMethodReference(lparams, declType)
         } else {
           _target
         }
-        val argVals = e.args()
+        val argVals = e.args
         val outerType = if (asClassType(declType).isCangjieExtend) thisType else Some(declType)
 
         val args = argVals match {
@@ -1132,15 +1126,15 @@ trait CHIRParser
           val ValueSig(sig) = v
           sig
         }
-        val retType = resolver.typeSig(e.resultTpe())
+        val retType = resolver.typeSig(e.resultTpe)
         val call = callMethod(target, outerType, thisType, retType, paramTypes, args, None)
         state(e) = call
 
       case e: CHIR.Invoke =>
-        val methodArgVal = e.callee()
-        val argVals = e.args()
+        val methodArgVal = e.callee
+        val argVals = e.args
 
-        val isStatic = e.thisArg() match {
+        val isStatic = e.thisArg match {
           case x: CHIR.LocalVar =>
             x.associatedExpr match {
               case _: (CHIR.GetRTTI | CHIR.GetRTTIStatic) => true
@@ -1156,7 +1150,7 @@ trait CHIRParser
         }
         val thisTypeInfo = thisTypeArgVal.map(state.apply)
 
-        val thisType = resolver.typeSig(e.thisType()) match {
+        val thisType = resolver.typeSig(e.thisType) match {
           // FIXME
           case SignatureType.ThisTypeInfo => SignatureType.fromSymType(rootMethod.getDeclaringClass)
           case _: SignatureType.TypeVariable =>
@@ -1166,7 +1160,7 @@ trait CHIRParser
           case t => t
         }
 
-        val retType = resolver.typeSig(e.resultTpe())
+        val retType = resolver.typeSig(e.resultTpe)
         val isigParams = sourceArgVals map { v =>
           val ValueSig(sig) = v
           sig
@@ -1183,7 +1177,7 @@ trait CHIRParser
         val isig = MethodSignature(retType, isigParams.drop(if (isStatic) 0 else 1))
         val sig = MethodSignature(boxTypeVar(gsig.returnType, isig.returnType), gsig.parameterTypes.zip(isig.parameterTypes).map(boxTypeVar.tupled))
 
-        val lparams = e.instantiatedTypeArgs().map(resolver.typeSig)
+        val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
 
         val vtable = asClassType(thisType).getCHIRVTable
         assert(vtable != null, thisType)
@@ -1217,8 +1211,8 @@ trait CHIRParser
         state(e) = call
 
       case e: CHIR.InstanceOf =>
-        val tpe = resolver.typeSig(e.testType())
-        val obj = state(e.obj())
+        val tpe = resolver.typeSig(e.testType)
+        val obj = state(e.obj)
         val refTpe = if (tpe.isTraceableReference) tpe else SignatureType.Box(tpe)
         state(e) = if (tpe.containsTypeVariables) {
           InstanceOfGeneric(refTpe)(obj, loadTypeInfo(tpe))
@@ -1231,9 +1225,9 @@ trait CHIRParser
         import SignatureType.*
         import AsmType.*
 
-        val from = resolver.typeSig(e.from())
-        val value = state(e.value())
-        val to = resolver.typeSig(e.to())
+        val ValueSig(from) = e.value
+        val value = state(e.value)
+        val to = resolver.typeSig(e.targetTpe)
 
         val fromAsm = from.toAsm
         val toAsm = to.toAsm
@@ -1243,7 +1237,7 @@ trait CHIRParser
         def toTpe = ValueType.fromSig(to)
 
         e match {
-          case e: CHIR.NumericCast => e.overflowStategy() match {
+          case e: CHIR.NumericCast => e.overflowStrategy match {
             case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na => // ok
             case CHIR.OverflowStrategy.Throwing => // TODO: do we need to support it?
             case CHIR.OverflowStrategy.Saturating => notImplemented("saturating type cast")
@@ -1372,7 +1366,7 @@ trait CHIRParser
         state(e) = n
 
       case e: CHIR.Branch =>
-        val selectorVar = e.condition()
+        val selectorVar = e.condition
         val ValueSig(sig) = selectorVar
         val selectorValue = state(selectorVar)
 
@@ -1387,15 +1381,15 @@ trait CHIRParser
         val branch = block.blockEnd.asInstanceOf[Switch]
         val proxy = branch.selector
         assert(proxy.isInstanceOf[Proxy] && proxy.singleUse == branch)
-        proxy.replaceBy(BitFieldExtract.Truncate(state(e.condition())))
+        proxy.replaceBy(BitFieldExtract.Truncate(state(e.condition)))
 
       case e: CHIR.Intrinsic =>
-        e.kind() match {
+        e.kind match {
           case CHIR.Intrinsic.Kind.Preinitialize =>
           // no-op
 
           case CHIR.Intrinsic.Kind.BeginCatch =>
-            e.args() match {
+            e.args match {
               case Seq(ex: CHIR.LocalVar) =>
                 state(e) = state(ex)
             }
@@ -1404,7 +1398,7 @@ trait CHIRParser
                CHIR.Intrinsic.Kind.ArrayGetRefUnchecked |
                CHIR.Intrinsic.Kind.ArrayGet =>
             // TODO: ArrayIndexCheck
-            val args = e.args()
+            val args = e.args
             val ValueSig(arrayType) = args.head
             val (obj, idx) = args match {
               case Seq(_, obj, idx) => (state(obj), state(idx))
@@ -1427,7 +1421,7 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.ArraySetUnchecked |
                CHIR.Intrinsic.Kind.ArraySet =>
             // TODO: ArrayIndexCheck
-            val args = e.args()
+            val args = e.args
             val ValueSig(arrayType) = args.head
             val (obj, idx, value) = args match {
               case Seq(_, obj, idx, value) => (state(obj), state(idx), state(value))
@@ -1435,11 +1429,11 @@ trait CHIRParser
             arrayPut(arrayType, obj, idx, value)
 
           case CHIR.Intrinsic.Kind.ArraySize =>
-            val obj = state(e.args().head)
+            val obj = state(e.args.head)
             state(e) = CangjieArrayLength(obj)
 
           case CHIR.Intrinsic.Kind.ArrayBuiltinCopyTo =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(arrayType) = args.head
             val (src, dst, srcStart, dstStart, len) = args match {
               case Seq(_, src, dst, srcStart, dstStart, len) => (state(src), state(dst), state(srcStart), state(dstStart), state(len))
@@ -1447,7 +1441,7 @@ trait CHIRParser
             ArrayBuiltInCopyTo(arrayType)(src, dst, srcStart, dstStart, len)
 
           case CHIR.Intrinsic.Kind.AtomicLoad =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(refType) = args.head
             val obj = args match {
               case Seq(obj, _) => state(obj)
@@ -1456,7 +1450,7 @@ trait CHIRParser
             state(e) = AtomicOps.Load(obj.tpe, field)(obj)
 
           case CHIR.Intrinsic.Kind.AtomicStore =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(refType) = args.head
             val (obj, value) = args match {
               case Seq(obj, value, _) => (state(obj), state(value))
@@ -1465,7 +1459,7 @@ trait CHIRParser
             AtomicOps.Store(obj.tpe, field)(obj, PutMemoryOperation.adjustValue(field.fieldType.toAsm, value))
 
           case CHIR.Intrinsic.Kind.AtomicCAS =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(refType) = args.head
             val (obj, compareVal, swapVal) = args match {
               case Seq(obj, compareVal, swapVal, _, _) => (state(obj), state(compareVal), state(swapVal))
@@ -1474,7 +1468,7 @@ trait CHIRParser
             state(e) = AtomicOps.CAS(obj.tpe, field)(obj, compareVal, swapVal)
 
           case CHIR.Intrinsic.Kind.AtomicSwap =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(refType) = args.head
             val (obj, value) = args match {
               case Seq(obj, value, _) => (state(obj), state(value))
@@ -1483,7 +1477,7 @@ trait CHIRParser
             AtomicOps.Simple.swap(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchAdd =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(refType) = args.head
             val (obj, value) = args match {
               case Seq(obj, value, _) => (state(obj), state(value))
@@ -1492,7 +1486,7 @@ trait CHIRParser
             AtomicOps.Simple.fetchAdd(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchSub =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(refType) = args.head
             val (obj, value) = args match {
               case Seq(obj, value, _) => (state(obj), state(value))
@@ -1501,7 +1495,7 @@ trait CHIRParser
             AtomicOps.Simple.fetchSub(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchAnd =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(refType) = args.head
             val (obj, value) = args match {
               case Seq(obj, value, _) => (state(obj), state(value))
@@ -1510,7 +1504,7 @@ trait CHIRParser
             AtomicOps.Simple.fetchAnd(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchOr =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(refType) = args.head
             val (obj, value) = args match {
               case Seq(obj, value, _) => (state(obj), state(value))
@@ -1519,7 +1513,7 @@ trait CHIRParser
             AtomicOps.Simple.fetchOr(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchXor =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(refType) = args.head
             val (obj, value) = args match {
               case Seq(obj, value, _) => (state(obj), state(value))
@@ -1528,21 +1522,21 @@ trait CHIRParser
             AtomicOps.Simple.fetchXor(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.Sqrt =>
-            e.args().map(state.apply) match {
+            e.args.map(state.apply) match {
               case Seq(x) =>
                 val kind = if (x.tpe == DoubleType) Java.Lang.MathIntrinsic.D_SQRT else Java.Lang.MathIntrinsic.F_SQRT
                 state(e) = MathIntrinsic(kind)(x)
             }
 
           case CHIR.Intrinsic.Kind.Abs =>
-            e.args().map(state.apply) match {
+            e.args.map(state.apply) match {
               case Seq(x) =>
                 state(e) = Abs(x)
             }
 
           // TODO write cangjie tests (use -cbcaotdeps)
           case CHIR.Intrinsic.Kind.CPointerRead =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(cpointerType: SignatureType.CPointer) = args.head
             val (base, idx) = args match {
               case Seq(base, idx) => (state(base), state(idx))
@@ -1563,7 +1557,7 @@ trait CHIRParser
 
           // TODO write cangjie tests (use -cbcaotdeps)
           case CHIR.Intrinsic.Kind.CPointerWrite =>
-            val args = e.args()
+            val args = e.args
             val ValueSig(cpointerType: SignatureType.CPointer) = args.head
             val (base, idx, value) = args match {
               case Seq(base, idx, value) => (state(base), state(idx), state(value))
@@ -1594,7 +1588,7 @@ trait CHIRParser
             }
 
           case CHIR.Intrinsic.Kind.ObjectZeroValue =>
-            val sig = resolver.typeSig(e.resultTpe())
+            val sig = resolver.typeSig(e.resultTpe)
             val res = if (sig.isZST) {
               Void()
             } else if (sig.isRecord) {
@@ -1606,12 +1600,12 @@ trait CHIRParser
         }
 
       case e: CHIR.Spawn =>
-        val objVar = e.obj()
+        val objVar = e.obj
         val obj = state(objVar)
         val ValueSig(objSig) = objVar
-        e.executeClosure() match {
+        e.executeClosure match {
           case None =>
-            val retType = resolver.typeSig(e.resultTpe())
+            val retType = resolver.typeSig(e.resultTpe)
             state(e) = SpawnFuture(retType)(obj)
           case Some(_) =>
             SpawnClosure(objSig)(obj)
@@ -1638,11 +1632,11 @@ trait CHIRParser
             case t: CHIR.CustomType => IntegralConst(AddrType)(v)
           }
         }
-        val value = e.literal() match {
+        val value = e.literal match {
           case v: CHIR.BoolLiteral => IConst(if (v.value) 1 else 0)
           case CHIR.UnitLiteral => Void()
           case v: CHIR.RuneLiteral => IConst(v.value.toInt)
-          case v: CHIR.NullLiteral => if (resolver.typeSig(e.resultTpe()).isTraceableReference) Null() else intConst(0, v)
+          case v: CHIR.NullLiteral => if (resolver.typeSig(e.resultTpe).isTraceableReference) Null() else intConst(0, v)
           case v: CHIR.IntLiteral => intConst(v.value, v)
           case v: CHIR.FloatLiteral => v.tpe match {
             case CHIR.BuiltinType.Float16 => notImplemented(s"FLOAT16: ${v.value}")
@@ -1654,7 +1648,7 @@ trait CHIRParser
         state(e) = value
 
       case e: CHIR.Load =>
-        e.location() match {
+        e.location match {
           case Seq(localVar: CHIR.LocalVar) =>
             val sig = resolver.typeSig(localVar.tpe)
             if (sig.isZST) {
@@ -1712,10 +1706,10 @@ trait CHIRParser
         }
 
       case e: CHIR.Store =>
-        val valueVar = e.value()
+        val valueVar = e.value
         val ValueSig(sig) = valueVar
         val value = state(valueVar)
-        e.location() match {
+        e.location match {
           case localVar: CHIR.LocalVar =>
             if (sig.isZST) {
               // nothing to do
@@ -1828,14 +1822,14 @@ trait CHIRParser
 
       case e: CHIR.RaiseException =>
         assert(block.blockEnd.isInstanceOf[Halt])
-        Throw(state(e.exceptionValue()))
+        Throw(state(e.exceptionValue))
 
       case e: CHIR.Tuple =>
-        val resTpe = e.resultTpe()
+        val resTpe = e.resultTpe
         resTpe match {
           case t: CHIR.TupleType =>
             val tupleType = resolver.typeSig(resTpe).asInstanceOf[SignatureType.Tuple]
-            state(e) = allocTuple(tupleType, e.elementValues().map(state.apply))
+            state(e) = allocTuple(tupleType, e.elementValues.map(state.apply))
 
           case t: CHIR.EnumType =>
             import SignatureType.*
@@ -1844,12 +1838,12 @@ trait CHIRParser
               // nothing to do
 
               case _: PrimitiveBasedEnum =>
-                state(e) = e.elementValues().map(state.apply) match {
+                state(e) = e.elementValues.map(state.apply) match {
                   case Seq(c: IConst) => c
                 }
 
               case enumType: ClassBasedEnum =>
-                e.elementValues().map(state.apply) match {
+                e.elementValues.map(state.apply) match {
                   case args@Seq(IConst(c), _*) =>
                     assert(c >= 0, c)
                     val constrName = resolver.classBasedEnumConstructorName(resolver.symName(t), c)
@@ -1858,7 +1852,7 @@ trait CHIRParser
                 }
 
               case enumType: UnionBasedEnum =>
-                e.elementValues().map(state.apply) match {
+                e.elementValues.map(state.apply) match {
                   case args@Seq(IConst(c), _*) =>
                     assert(c >= 0, c)
                     val constrTypes = enumType.info.constructors(c).params
@@ -1868,14 +1862,14 @@ trait CHIRParser
 
               case enumType: OptionLikeEnum =>
                 if (enumType.isNullableOption) {
-                  state(e) = e.elementValues().map(state.apply) match {
+                  state(e) = e.elementValues.map(state.apply) match {
                     case Seq(IConst(c)) => assert(c == 0 || c == 1, c); Null()
                     case Seq(IConst(c), x) => assert(c == 0 || c == 1, c); x
                   }
                 } else if (enumType.someType.isTypeVariable) {
                   val baseTypeInfo = loadTypeInfo(enumType.someType)
                   val optionTypeInfo = loadTypeInfo(enumType)
-                  state(e) = e.elementValues().map(state.apply) match {
+                  state(e) = e.elementValues.map(state.apply) match {
                     case Seq(IConst(c)) =>
                       assert(c == 0 || c == 1, c)
                       NewNoneOptionGeneric(enumType)(baseTypeInfo, optionTypeInfo)
@@ -1888,7 +1882,7 @@ trait CHIRParser
                   val payloadType = enumType.someType
                   val tupleType = Tuple(Seq(Boolean, payloadType))
                   val tagChain = fieldChain(enumType, Seq(0))
-                  e.elementValues().map(state.apply) match {
+                  e.elementValues.map(state.apply) match {
                     case Seq(IConst(c)) =>
                       assert(c == 0 || c == 1, c)
                       if (enumType.isVariableLayoutType) {
@@ -1925,7 +1919,7 @@ trait CHIRParser
         }
 
       case e: CHIR.Box =>
-        val v = e.value()
+        val v = e.value
         val ValueSig(baseType) = v
         val base = state(v)
         val res = baseType match {
@@ -1941,8 +1935,8 @@ trait CHIRParser
         state(e) = res
 
       case e: (CHIR.UnboxToValue | CHIR.CastToConcrete) =>
-        val base = state(e.value())
-        val baseType = resolver.typeSig(e.resultTpe())
+        val base = state(e.value)
+        val baseType = resolver.typeSig(e.targetTpe)
         val value = if (baseType.isRecord) {
           baseType match {
             case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
@@ -1969,9 +1963,9 @@ trait CHIRParser
         state(e) = state(catchProxy)
 
       case e: CHIR.RawArrayInitByValue =>
-        val array = state(e.array()).asInstanceOf[NewArray]
-        val len = state(e.size())
-        val value = state(e.initValue())
+        val array = state(e.array).asInstanceOf[NewArray]
+        val len = state(e.size)
+        val value = state(e.initValue)
         assert(array.lengths == Seq(len), s"RawArrayInitByValue($array, $len, $value)")
         val arrayType = array.allocType
         if (arrayType.getArrayElemType.isZST) {
@@ -1981,8 +1975,8 @@ trait CHIRParser
         }
 
       case e: CHIR.RawArrayLiteralInit =>
-        val array = state(e.array()).asInstanceOf[NewArray]
-        val values = e.elementValues().map(state.apply)
+        val array = state(e.array).asInstanceOf[NewArray]
+        val values = e.elementValues.map(state.apply)
         assert(array.lengths == Seq(LConst(values.size)), s"RawArrayLiteralInit($array, $values)")
         val arrayType = array.allocType
         if (arrayType.getArrayElemType.isZST) {

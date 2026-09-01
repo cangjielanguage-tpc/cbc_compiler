@@ -8,9 +8,10 @@
 
 package com.huawei.excelsior.jet.compiler.chir.v1_0
 
+import com.google.flatbuffers.IntVector
 import com.huawei.excelsior.jet.compiler.chir.CHIR
-import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.*
+import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.*
 
 import java.nio.ByteBuffer
 import scala.reflect.ClassTag
@@ -58,13 +59,13 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
         }
         given provider: CHIRItemProvider = this
         _types(i) = pkg.types(obj, i) match {
-          case t: GenericType => new GenericTypeImpl(t)
-          case t: FuncType => new FuncTypeImpl(t)
-          case t: RawArrayType => new RawArrayTypeImpl(t)
+          case t: GenericType => GenericTypeImpl(t)
+          case t: FuncType => FuncTypeImpl(t)
+          case t: RawArrayType => RawArrayTypeImpl(t)
           case t: CustomType => t.base.kind match {
-            case CHIRTypeKind.CLASS => new ClassTypeImpl(t)
-            case CHIRTypeKind.STRUCT => new StructTypeImpl(t)
-            case CHIRTypeKind.ENUM => new EnumTypeImpl(t)
+            case CHIRTypeKind.CLASS => ClassTypeImpl(t)
+            case CHIRTypeKind.STRUCT => StructTypeImpl(t)
+            case CHIRTypeKind.ENUM => EnumTypeImpl(t)
           }
           case t: Type => t.kind match {
             case CHIRTypeKind.INT8 => CHIR.BuiltinType.Int8
@@ -176,7 +177,56 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case ExpressionElem.StoreElementRef => new StoreElementRef
           case ExpressionElem.UnaryExpressionBase => new UnaryExpressionBase
         }
-//        _exprs(i) = pkg.exprs(obj, i)
+
+        def hasBlockOperand(operandsVector: IntVector): Boolean = {
+          operandsVector.iterator.exists(getValue[CHIR.Block](_).nonEmpty)
+        }
+
+        given provider: CHIRItemProvider = this
+        _exprs(i) = pkg.exprs(obj, i) match {
+          case e: AllocateBase if hasBlockOperand(e.base.operandsVector) => new TryAllocateImpl(e)
+          case e: AllocateBase => new AllocateImpl(e)
+          case e: ApplyBase if hasBlockOperand(e.base.base.operandsVector) => new TryApplyImpl(e)
+          case e: ApplyBase => new ApplyImpl(e)
+          case e: BinaryExpressionBase if hasBlockOperand(e.base.operandsVector) => new TryBinaryImpl(e)
+          case e: BinaryExpressionBase => new BinaryImpl(e)
+          case e: Branch => new BranchImpl(e)
+          case e: Debug => new DebugImpl(e)
+          case e: Field => new FieldImpl(e)
+          case e: GetElementRef => new GetElementRefImpl(e)
+          case e: GetRTTIStatic => new GetRTTIStaticImpl(e)
+          case e: InstanceOf => new InstanceOfImpl(e)
+          case e: IntrinsicBase if hasBlockOperand(e.base.base.operandsVector) => new TryIntrinsicImpl(e)
+          case e: IntrinsicBase => new IntrinsicImpl(e)
+          case e: InvokeBase if hasBlockOperand(e.base.base.operandsVector) => new TryInvokeImpl(e)
+          case e: InvokeBase => new InvokeImpl(e)
+          case e: MultiBranch => new MultiBranchImpl(e)
+          case e: NumericCastBase if hasBlockOperand(e.base.operandsVector) => new TryNumericCastImpl(e)
+          case e: NumericCastBase => new NumericCastImpl(e)
+          case e: RawArrayAllocateBase if hasBlockOperand(e.base.operandsVector) => new TryRawArrayAllocateImpl(e)
+          case e: RawArrayAllocateBase => new RawArrayAllocateImpl(e)
+          case e: SpawnBase if hasBlockOperand(e.base.operandsVector) => new TrySpawnImpl(e)
+          case e: SpawnBase => new SpawnImpl(e)
+          case e: StoreElementRef => new StoreElementRefImpl(e)
+          case e: UnaryExpressionBase if hasBlockOperand(e.base.operandsVector) => new TryUnaryImpl(e)
+          case e: UnaryExpressionBase => new UnaryImpl(e)
+          case e: Expression => e.kind match {
+            case CHIRExprKind.Goto => new GotoImpl(e)
+            case CHIRExprKind.Exit => new ExitImpl(e)
+            case CHIRExprKind.RaiseException => new RaiseExceptionImpl(e)
+            case CHIRExprKind.StaticCast => new StaticCastImpl(e)
+            case CHIRExprKind.Box => new BoxImpl(e)
+            case CHIRExprKind.UnboxToValue => new UnboxToValueImpl(e)
+            case CHIRExprKind.CastToConcrete => new CastToConcreteImpl(e)
+            case CHIRExprKind.CastToGeneric => new CastToGenericImpl(e)
+            case CHIRExprKind.Load => new LoadImpl(e)
+            case CHIRExprKind.Store => new StoreImpl(e)
+            case CHIRExprKind.RawArrayLiteralInit => new RawArrayLiteralInitImpl(e)
+            case CHIRExprKind.RawArrayInitByValue => new RawArrayInitByValueImpl(e)
+            case CHIRExprKind.Constant => new ConstantImpl(e)
+            case CHIRExprKind.Tuple => new TupleImpl(e)
+          }
+        }
       }
       _exprs(i).asInstanceOf[T]
     }

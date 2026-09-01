@@ -1,6 +1,5 @@
 package com.huawei.excelsior.jet.compiler.chir
 
-
 object CHIR {
 
   enum Version {
@@ -276,14 +275,13 @@ object CHIR {
   trait Expression {
   }
 
-  trait Cast extends Expression with HasResultVar {
-    def value(): Value
-    def from(): Type
-    def to(): Type
+  trait Cast extends Expression {
+    def value: Value
+    def targetTpe: Type
   }
 
   trait NumericCast extends Cast {
-    def overflowStategy(): OverflowStrategy
+    def overflowStrategy: OverflowStrategy
   }
 
   trait StaticCast extends Cast {
@@ -305,28 +303,28 @@ object CHIR {
   }
 
   trait HasResultVar {
-    def resultTpe(): CHIR.Type
+    def resultTpe: CHIR.Type
   }
 
-  trait UnaryExpression extends Expression with HasResultVar {
-    def operand(): Value
-    def kind(): UnaryExpression.Kind
+  trait Unary extends Expression with HasResultVar {
+    def operand: Value
+    def kind: Unary.Kind
   }
 
-  object UnaryExpression {
+  object Unary {
     enum Kind {
       case Neg, Not, BitNot
     }
   }
 
-  trait BinaryExpression extends Expression with HasResultVar {
-    def kind(): BinaryExpression.Kind
-    def overflowStrategy(): OverflowStrategy
-    def leftOperand(): Value
-    def rightOperand(): Value
+  trait Binary extends Expression with HasResultVar {
+    def kind: Binary.Kind
+    def overflowStrategy: OverflowStrategy
+    def leftOperand: Value
+    def rightOperand: Value
   }
 
-  object BinaryExpression {
+  object Binary {
     enum Kind {
       case Add, Sub, Mul, Div,
       Mod, Exp,
@@ -335,60 +333,60 @@ object CHIR {
     }
   }
 
-  trait AllocateExpression extends Expression with HasResultVar {
-    def allocatedType(): Type
+  trait Allocate extends Expression {
+    def allocatedType: Type
   }
 
-  trait RawArrayAllocate extends Expression with HasResultVar {
-    def elementType(): Type
-    def size(): Value
+  trait RawArrayAllocate extends Expression {
+    def elementType: Type
+    def size: Value
   }
 
-  trait GetElementRef extends Expression with HasResultVar {
-    def base(): Value
-    def path(): Seq[Long]
+  trait GetElementRef extends Expression {
+    def base: Value
+    def path: Seq[Long]
   }
 
-  trait StoreElementRef extends Expression with HasResultVar {
-    def value(): Value
-    def location(): Value
-    def path(): Seq[Long]
+  trait StoreElementRef extends Expression {
+    def value: Value
+    def location: Value
+    def path: Seq[Long]
   }
 
-  trait Field extends Expression with HasResultVar {
-    def base(): Value
-    def path(): Seq[Long]
+  trait Field extends Expression {
+    def base: Value
+    def path: Seq[Long]
   }
 
   trait Apply extends Expression with HasResultVar {
-    def callee(): Func
-    def thisType(): Option[Type]
-    def instantiatedTypeArgs(): Seq[Type]
-    def args(): Seq[Value]
+    def callee: Func
+    def thisType: Option[Type]
+    def instantiatedTypeArgs: Seq[Type]
+    def args: Seq[Value]
   }
 
   trait Invoke extends Expression with HasResultVar {
-    def callee(): Func
-    def thisType(): Type
-    def thisArg(): Value
-    def instantiatedTypeArgs(): Seq[Type]
-    def args(): Seq[Value]
+    def callee: Func
+    def thisType: Type
+    def thisArg: Value
+    def instantiatedTypeArgs: Seq[Type]
+    def args: Seq[Value]
   }
 
-  trait GetRTTIStatic extends Expression with HasResultVar {
+  trait GetRTTIStatic extends Expression {
   }
 
-  trait GetRTTI extends Expression with HasResultVar {
+  trait GetRTTI extends Expression {
   }
 
-  trait InstanceOf extends Expression with HasResultVar {
-    def obj(): Value
-    def testType(): Type
+  trait InstanceOf extends Expression {
+    def obj: Value
+    def testType: Type
   }
 
   trait Intrinsic extends Expression with HasResultVar {
-    def kind(): Intrinsic.Kind
-    def args(): Seq[Value]
+    def kind: Intrinsic.Kind
+    def args: Seq[Value]
   }
 
   object Intrinsic {
@@ -423,8 +421,8 @@ object CHIR {
   }
 
   trait Spawn extends Expression with HasResultVar {
-    def obj(): Value
-    def executeClosure(): Option[Func]
+    def obj: Value
+    def executeClosure: Option[Func]
   }
 
   trait Debug extends Expression {}
@@ -434,129 +432,92 @@ object CHIR {
   }
 
   trait Constant extends Expression with HasResultVar {
-    def literal(): Value
+    def literal: Value
   }
 
   trait Load extends Expression {
-    def location(): Value
+    def location: Value
   }
 
   trait Store extends Expression {
-    def value(): Value
-    def location(): Value
+    def value: Value
+    def location: Value
   }
 
   trait Tuple extends Expression with HasResultVar {
-    def elementValues(): Seq[Value]
+    def elementValues: Seq[Value]
   }
 
   object GetException extends Expression {
   }
 
   trait RawArrayInitByValue extends Expression {
-    def array(): Value
-    def size(): Value
-    def initValue(): Value
+    def array: Value
+    def size: Value
+    def initValue: Value
   }
 
   trait RawArrayLiteralInit extends Expression {
-    def array(): Value
-    def elementValues(): Seq[Value]
+    def array: Value
+    def elementValues: Seq[Value]
   }
 
   trait Terminator extends Expression {}
 
   trait HasSuccessors {
-    def successors(): Seq[Block]
+    def successors: Seq[Block]
   }
 
   trait Branch extends Expression with Terminator with HasSuccessors {
-    def condition(): Value
-    def trueBlock(): Block
-    def falseBlock(): Block
-    def successors(): Seq[Block] = Seq(trueBlock(), falseBlock())
+    def condition: Value
+    def trueBlock: Block
+    def falseBlock: Block
   }
 
   trait Exit extends Expression with Terminator {
   }
 
   trait Goto extends Expression with Terminator with HasSuccessors {
-    def destination(): Block
-    def successors(): Seq[Block] = Seq(destination())
+    def destination: Block
   }
 
   trait MultiBranch extends Expression with Terminator with HasSuccessors {
-    def condition(): Block
-    def defaultBlock(): Block
-    def normalBlocks(): Seq[Block]
-    def caseValues(): Seq[Long]
-    def successors(): Seq[Block] = defaultBlock() +: normalBlocks()
+    def condition: Value
+    def defaultBlock: Block
+    def normalBlocks: Seq[Block]
+    def caseValues: Seq[Long]
   }
 
   trait RaiseException extends Expression with Terminator with HasSuccessors {
-    def exceptionValue(): Value
-    def exceptionBlock(): Option[Block]
-    def successors(): Seq[Block] = exceptionBlock().toSeq
+    def exceptionValue: Value
+    def exceptionBlock: Option[Block]
   }
 
-  trait TryAllocate extends AllocateExpression with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
+  trait TryAllocate extends Allocate with Terminator with HasSuccessors {
   }
 
   trait TryApply extends Apply with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
   }
 
-  trait TryBinaryExpression extends BinaryExpression with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
+  trait TryBinary extends Binary with Terminator with HasSuccessors {
   }
 
   trait TryIntrinsic extends Intrinsic with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
   }
 
   trait TryInvoke extends Invoke with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
-  }
-
-  trait TryInvokeStatic extends Expression with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
   }
 
   trait TryNumericCast extends NumericCast with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
   }
 
   trait TryRawArrayAllocate extends RawArrayAllocate with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
   }
 
   trait TrySpawn extends Spawn with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
   }
 
-  trait TryUnaryExpression extends UnaryExpression with Terminator with HasSuccessors {
-    def succBlock(): Block
-    def errBlock(): Block
-    def successors(): Seq[Block] = Seq(succBlock(), errBlock())
+  trait TryUnary extends Unary with Terminator with HasSuccessors {
   }
 
   enum Attribute {

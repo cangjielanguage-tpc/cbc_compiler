@@ -51,4 +51,17 @@ object CHIRUtils {
 
   def notImplemented[T](feature: Any): T = throw new NotImplementedException(feature)
   def notImplemented[T](feature: Any, extraInfo: Any): T = throw new NotImplementedException(feature, extraInfo.toString)
+
+  def shouldNotReachHere[T](): T = shouldNot("reach here", null)
+
+  /** $shouldNotReachHereDoc */
+  def shouldNotReachHere[T](extraInformation: => Any): T = shouldNot("reach here", extraInformation)
+
+  /** $shouldNotReachHereDoc */
+  def shouldNotReachHere[T](extraInformation: String): T = shouldNotReachHere(extraInformation.asInstanceOf[Any])
+
+  private def shouldNot(what: String, extraInformation: Any) = throw new AssertionError(s"should not $what${
+    if (extraInformation != null) s" (extra information: $extraInformation)"
+    else ""
+  }")
 }
