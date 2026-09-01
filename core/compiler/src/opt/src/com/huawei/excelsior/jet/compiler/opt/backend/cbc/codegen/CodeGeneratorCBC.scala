@@ -280,7 +280,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       def getBaseLocation(n: Node): IR | StackSlot.Typed = n match {
         case IReg(r) => r
-        case DerivedPtr(IReg(_), IReg(derived)) => derived
         case n: HasFrameSlot => n.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot
       }
 
@@ -332,7 +331,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case n: LoadFieldSeq =>
           // ld dst, [base | slot], [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
           val Reg(dst) = n
-          getBaseLocation(n.obj) match {
+          getBaseLocation(n.base) match {
             case base: IR              => asm.ld(dst, base, constrFieldRef(fieldRefs))
             case slot: StackSlot.Typed => asm.ld(dst, slot, constrFieldRef(fieldRefs))
           }
@@ -347,12 +346,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           // lea.g IR1, IR1,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
           // ld.g  dst, baseRef, IR1, tiN, None()                 (or non-generic ld)
           val Reg(dst) = n
-          getBaseLocation(n.obj) match {
+          getBaseLocation(n.base) match {
             case slot: StackSlot.Typed => notImplemented("lea for typed slots")
             case base: IR =>
               genLeaChain(IR1, base, fieldRefs, n.typeInfos)
               if (n.resType.isVariableSizeType) {
-                val IReg(baseRef) = n.obj // TODO: use baseRef after liontiger derived ptrs changes
+                val IReg(baseRef) = n.baseRef
                 val IReg(ti) = n.typeInfos.last
                 asm.ld(dst, baseRef, IR1, ti, NoneFieldReference())
               } else {
@@ -364,14 +363,14 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case n: GetFieldSeqRef =>
           // lea dst, base, [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
           val IReg(dst) = n
-          getBaseLocation(n.obj) match {
+          getBaseLocation(n.base) match {
             case slot: StackSlot.Typed => notImplemented("lea for typed slots")
             case base: IR              => asm.lea(dst, base, constrFieldRef(fieldRefs))
           }
         case n: GetStaticFieldSeqRef =>
           // lea dst, base, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
           val IReg(dst) = n
-          val IReg(dstRefBase) = n.obj // TODO: use baseRef after liontiger derived ptrs changes
+          val IReg(dstRefBase) = n.baseRef
           assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
           asm.leaStatic(dst, dstRefBase, constrFieldRef(fieldRefs))
         case n: GetFieldSeqRefGeneric =>
@@ -379,7 +378,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           // ...
           // lea.g dst, dst,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
           val IReg(dst) = n
-          getBaseLocation(n.obj) match {
+          getBaseLocation(n.base) match {
             case _: StackSlot.Typed => notImplemented("lea for typed slots")
             case base: IR => genLeaChain(dst, base, fieldRefs, n.typeInfos)
           }
@@ -389,7 +388,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case Some(x) => shouldNotReachHere(s"Field seq stores with imm are not supported: $x")
             case None =>
               val Reg(src) = n.inValue
-              getBaseLocation(n.obj) match {
+              getBaseLocation(n.base) match {
                 case base: IR => asm.st(src, base, constrFieldRef(fieldRefs))
                 case slot: StackSlot.Typed => asm.st(src, slot, constrFieldRef(fieldRefs))
               }
@@ -410,12 +409,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           // lea.g IR1, IR1,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
           // st.g  src, baseRef, IR1, tiN, None()                 (or non-generic ld)
           val Reg(src) = n.inValue
-          getBaseLocation(n.obj) match {
+          getBaseLocation(n.base) match {
             case slot: StackSlot.Typed => notImplemented("lea for typed slots")
             case base: IR =>
               genLeaChain(IR1, base, fieldRefs, n.typeInfos)
               if (n.resType.isVariableSizeType) {
-                val IReg(baseRef) = n.obj // TODO: use baseRef after liontiger derived ptrs changes
+                val IReg(baseRef) = n.baseRef
                 val IReg(ti) = n.typeInfos.last
                 asm.st(src, baseRef, IR1, ti, NoneFieldReference())
               } else {
