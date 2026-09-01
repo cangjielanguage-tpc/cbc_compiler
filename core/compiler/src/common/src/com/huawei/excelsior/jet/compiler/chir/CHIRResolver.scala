@@ -34,8 +34,8 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   def symType(v: CHIR.Type | CHIR.CustomTypeDef): Option[SymType] = symTypeByTable.get(v) orElse {
     val res = (v: @unchecked) match {
       case v: CHIR.CustomTypeDef => findClass(symName(v))
-      case v: CHIR.CustomType => symType(v.typeDef())
-      case v: CHIR.RefType => symType(v.baseType())
+      case v: CHIR.CustomType => symType(v.typeDef)
+      case v: CHIR.RefType => symType(v.baseType)
     }
 
     for (t <- res) {
@@ -64,7 +64,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       val suffix = if (isGenericInstantiated(v)) {
         // TODO another way without id usage?
         assert(id > 0)
-        s"$$instantiated$$${pkg.name()}$$$id"
+        s"$$instantiated$$${pkg.name}$$$id"
       } else {
         ""
       }
@@ -89,7 +89,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
     ((v: @unchecked) match {
       case v: CHIR.StructDef => typeDefName(v)
-      case v: CHIR.CustomType => symName(v.typeDef())
+      case v: CHIR.CustomType => symName(v.typeDef)
       case v: CHIR.ClassDef => typeDefName(v)
       case v: CHIR.EnumDef => typeDefName(v) // TODO: support proper Enum
       case v: CHIR.ExtendDef => typeDefName(v)
@@ -122,7 +122,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def functionSig(funcType: CHIR.FuncType, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
-    val params = (funcType.paramTypes() :+ funcType.returnType()).map(typeSig)
+    val params = (funcType.paramTypes :+ funcType.returnType).map(typeSig)
     val startIdx = if (hasReceiver) 1 else 0
     val paramsWithoutRcv = params.drop(startIdx)
     (MethodSignature(paramsWithoutRcv.last, paramsWithoutRcv.init), Option.when(hasReceiver)(params.head), funcType.isC, funcType.hasVarArg)
@@ -133,7 +133,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
     tpe match {
       case t: CHIR.BoxType =>
-        val base = typeSig(t.baseType())
+        val base = typeSig(t.baseType)
         if (base.isTraceableReference && !base.isInstanceOf[OptionLikeEnum]) base else Box(base)
 
       case CHIR.BuiltinType.Rune => UnicodeChar32
@@ -158,47 +158,47 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       case CHIR.BuiltinType.This => ThisTypeInfo
 
       case t: CHIR.ClassType =>
-        val params = t.genericTypeParams().map(typeSig)
+        val params = t.genericTypeParams.map(typeSig)
         if (params.nonEmpty) InstantiatedReference(symName(t), params) else Reference(symName(t), jbc = false)
       case t: CHIR.CPointerType =>
-        CPointer(typeSig(t.elementType()))
+        CPointer(typeSig(t.elementType))
       case t: CHIR.EnumType =>
-        enumKind(t.typeDef()) match {
+        enumKind(t.typeDef) match {
           case EnumKind.ZeroSized =>
-            ZeroSizedEnum(symName(t), t.genericTypeParams().map(typeSig))
+            ZeroSizedEnum(symName(t), t.genericTypeParams.map(typeSig))
           case EnumKind.PrimitiveBased =>
-            PrimitiveBasedEnum(symName(t), t.genericTypeParams().map(typeSig))
+            PrimitiveBasedEnum(symName(t), t.genericTypeParams.map(typeSig))
           case EnumKind.OptionLike(base) =>
-            val params = t.genericTypeParams().map(typeSig)
+            val params = t.genericTypeParams.map(typeSig)
             val baseSig = typeSig(base).instantiate(params, Seq.empty)
             OptionLikeEnum(symName(t), params, baseSig)
           case EnumKind.UnionBased =>
-            UnionBasedEnum(symName(t), t.genericTypeParams().map(typeSig))
+            UnionBasedEnum(symName(t), t.genericTypeParams.map(typeSig))
           case EnumKind.ClassBased =>
-            ClassBasedEnum(symName(t), t.genericTypeParams().map(typeSig))
+            ClassBasedEnum(symName(t), t.genericTypeParams.map(typeSig))
         }
       case t: CHIR.FuncType =>
         notImplemented("FuncType")
       case t: CHIR.GenericType =>
         typeVariableSig(t)
       case t: CHIR.RefType =>
-        typeSig(t.baseType()) // TODO: do we need to distinguish?
+        typeSig(t.baseType) // TODO: do we need to distinguish?
       case t: CHIR.RawArrayType =>
-        Seq.iterate(typeSig(t.elementType()), t.dimension().toInt + 1)(CangjieArray.apply).last
+        Seq.iterate(typeSig(t.elementType), t.dimension.toInt + 1)(CangjieArray.apply).last
       case t: CHIR.StructType =>
-        val params = t.genericTypeParams().map(typeSig)
+        val params = t.genericTypeParams.map(typeSig)
         if (params.nonEmpty) InstantiatedRecord(symName(t), params) else Record(symName(t))
       case t: CHIR.VArrayType =>
-        VArray(typeSig(t.elementType()), t.size())
+        VArray(typeSig(t.elementType), t.size)
     }
   }
 
   @tailrec
   private def withGenericParams[T](v: CHIR.CustomTypeDef | CHIR.Type | CHIR.Func | CHIR.FuncSig | CHIR.VMethod)(action: Seq[CHIR.Type] => T): T = (v: @unchecked) match {
     case v: CHIR.ExtendDef => action(v.genericTypeParams())
-    case v: CHIR.CustomTypeDef => action(v.tpe().genericTypeParams())
-    case v: CHIR.CustomType => withGenericParams(v.typeDef())(action)
-    case v: CHIR.RefType => withGenericParams(v.baseType())(action)
+    case v: CHIR.CustomTypeDef => action(v.tpe().genericTypeParams)
+    case v: CHIR.CustomType => withGenericParams(v.typeDef)(action)
+    case v: CHIR.RefType => withGenericParams(v.baseType)(action)
     case CHIR.BuiltinType.This => action(Seq.empty)
     case v: CHIR.Func => action(v.genericTypeParams)
     case v: CHIR.FuncSig => action(v.genericTypeParams())
@@ -208,7 +208,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   def genericInfo(v: CHIR.CustomTypeDef | CHIR.Func): GenericInfo = withGenericParams(v) { params =>
     val constraints = for ((t, i) <- params.zipWithIndex) yield {
       val upperBounds = t match {
-        case t: CHIR.GenericType => t.upperBounds().map(typeSig)
+        case t: CHIR.GenericType => t.upperBounds.map(typeSig)
         case _ => Seq.empty
       }
       GenericInfo.Constraint(LocalTypeVariable(i), upperBounds)
@@ -228,23 +228,23 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     def fillTypeVars(gTypes: Seq[CHIR.GenericType], local: Boolean): Unit = {
       for ((genericType, i) <- gTypes.zipWithIndex) {
         val typeVar = if (local) SignatureType.LocalTypeVariable(i) else SignatureType.ClassTypeVariable(i)
-        assert(!typeVarCache.contains(genericType) || typeVarCache(genericType) == typeVar, genericType.identifier())
+        assert(!typeVarCache.contains(genericType) || typeVarCache(genericType) == typeVar, genericType.identifier)
         typeVarCache(genericType) = typeVar
       }
     }
 
-    for (d <- pkg.typeDefs()) {
+    for (d <- pkg.typeDefs) {
       val gTypes = d match {
         case d: CHIR.ExtendDef => d.genericTypeParams()
         case d: CHIR.CustomTypeDef if isGenericInstantiated(d) => Seq.empty
         // TODO are generic type params generic a;ways here?
-        case d: CHIR.CustomTypeDef => d.tpe().genericTypeParams() collect {
+        case d: CHIR.CustomTypeDef => d.tpe().genericTypeParams collect {
           case t: CHIR.GenericType => t
         }
       }
       fillTypeVars(gTypes, local = false)
     }
-    pkg.values() foreach {
+    pkg.values foreach {
       case d: CHIR.Func if d.srcCodeIdentifier != "$lambda" => fillTypeVars(d.genericTypeParams, local = true)
       case _ =>
     }
@@ -255,7 +255,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       initTypeVars()
       typeVarCacheInitialized = true
     }
-    typeVarCache.getOrElse(t, shouldNotReachHere(t.identifier()))
+    typeVarCache.getOrElse(t, shouldNotReachHere(t.identifier))
   }
 
   def findClass(className: String): Option[SymClassType] = {
@@ -317,10 +317,10 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
   private def isZST(t: CHIR.Type): Boolean = t match {
     case CHIR.BuiltinType.Void | CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => true
-    case t: CHIR.TupleType => t.fieldTypes().forall(isZST)
-    case t: CHIR.VArrayType => isZST(t.elementType())
-    case t: CHIR.StructType => t.typeDef().instanceVars.forall(i => isZST(i.tpe))
-    case t: CHIR.EnumType => enumKind(t.typeDef()) == EnumKind.ZeroSized
+    case t: CHIR.TupleType => t.fieldTypes.forall(isZST)
+    case t: CHIR.VArrayType => isZST(t.elementType)
+    case t: CHIR.StructType => t.typeDef.instanceVars.forall(i => isZST(i.tpe))
+    case t: CHIR.EnumType => enumKind(t.typeDef) == EnumKind.ZeroSized
     case _ => false
   }
 
@@ -328,9 +328,9 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   private def isReferenceType(t: CHIR.Type): Boolean = t match {
     case CHIR.BuiltinType.This => true
     case _: (CHIR.BoxType | CHIR.RawArrayType | CHIR.ClassType) => true
-    case t: CHIR.RefType => isReferenceType(t.baseType())
+    case t: CHIR.RefType => isReferenceType(t.baseType)
     case t: CHIR.EnumType =>
-      enumKind(t.typeDef()) match {
+      enumKind(t.typeDef) match {
         case EnumKind.OptionLike(base) => isReferenceType(base)
         case EnumKind.ClassBased => true
         case _ => false
@@ -339,10 +339,10 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   private def isTraceableStruct(t: CHIR.Type): Boolean = t match {
-    case t: CHIR.TupleType => t.fieldTypes().exists(p => isReferenceType(p) || isTraceableStruct(p))
-    case t: CHIR.VArrayType => isReferenceType(t.elementType()) || isTraceableStruct(t.elementType())
-    case t: CHIR.StructType => t.typeDef().instanceVars.exists(i => isReferenceType(i.tpe) || isTraceableStruct(i.tpe))
-    case t: CHIR.EnumType => enumKind(t.typeDef()) match {
+    case t: CHIR.TupleType => t.fieldTypes.exists(p => isReferenceType(p) || isTraceableStruct(p))
+    case t: CHIR.VArrayType => isReferenceType(t.elementType) || isTraceableStruct(t.elementType)
+    case t: CHIR.StructType => t.typeDef.instanceVars.exists(i => isReferenceType(i.tpe) || isTraceableStruct(i.tpe))
+    case t: CHIR.EnumType => enumKind(t.typeDef) match {
       case EnumKind.OptionLike(base) => isTraceableStruct(base)
       case _ => false
     }
@@ -352,7 +352,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   private val enumKindByEnumDef = mutable.HashMap.empty[CHIR.EnumDef, EnumKind]
   def enumKind(enumDef: CHIR.EnumDef): EnumKind = enumKindByEnumDef.getOrElseUpdate(enumDef, {
     val ctorSigs = enumDef.ctors().map(_.tpe())
-    val ctors = ctorSigs.map(_.paramTypes())
+    val ctors = ctorSigs.map(_.paramTypes)
     val noParams = ctors.forall(c => c.isEmpty)
 
     def zstParams = ctors.forall(c => c.forall(isZST))
@@ -361,7 +361,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
     lazy val optionLikeParam = ScalaCollections.singleton(ctors.flatten)
 
-    def nonGenericEnum = enumDef.tpe().genericTypeParams().isEmpty
+    def nonGenericEnum = enumDef.tpe().genericTypeParams.isEmpty
 
     if (enumDef.nonExhaustive()) {
       if (noParams) {

@@ -36,12 +36,10 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
     val buf = ByteBuffer.wrap(bytes)
     CHIRPackage.getRootAsCHIRPackage(buf)
   }
-  private lazy val _types = Array.fill[CHIR.Type](pkg.typesLength)(null)
-  private lazy val _values = Array.fill[CHIR.Value](pkg.valuesLength)(null)
-  private lazy val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
-  private lazy val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
-  private lazy val _pkgInit = getValue[CHIR.Func](pkg.packageInitFunc()).get
-  private lazy val _pkgLiteralInit = getValue[CHIR.Func](pkg.packageLiteralInitFunc()).get
+  private val _types = Array.fill[CHIR.Type](pkg.typesLength)(null)
+  private val _values = Array.fill[CHIR.Value](pkg.valuesLength)(null)
+  private val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
+  private val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
 
   /** Returns cached Type or null if id is zero or negative. */
   override def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): T = {
@@ -58,14 +56,42 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case TypeElem.CustomType => new CustomType
           case TypeElem.GenericType => new GenericType
         }
-        val t = pkg.types(obj, i)
-        t match {
-          case t: Type =>
-
-
+        given provider: CHIRItemProvider = this
+        _types(i) = pkg.types(obj, i) match {
+          case t: GenericType => new GenericTypeImpl(t)
+          case t: FuncType => new FuncTypeImpl(t)
+          case t: RawArrayType => new RawArrayTypeImpl(t)
+          case t: CustomType => t.base.kind match {
+            case CHIRTypeKind.CLASS => new ClassTypeImpl(t)
+            case CHIRTypeKind.STRUCT => new StructTypeImpl(t)
+            case CHIRTypeKind.ENUM => new EnumTypeImpl(t)
+          }
+          case t: Type => t.kind match {
+            case CHIRTypeKind.INT8 => CHIR.BuiltinType.Int8
+            case CHIRTypeKind.INT16 => CHIR.BuiltinType.Int16
+            case CHIRTypeKind.INT32 => CHIR.BuiltinType.Int32
+            case CHIRTypeKind.INT64 => CHIR.BuiltinType.Int64
+            case CHIRTypeKind.INT_NATIVE => CHIR.BuiltinType.IntNative
+            case CHIRTypeKind.UINT8 => CHIR.BuiltinType.UInt8
+            case CHIRTypeKind.UINT16 => CHIR.BuiltinType.UInt16
+            case CHIRTypeKind.UINT32 => CHIR.BuiltinType.UInt32
+            case CHIRTypeKind.UINT64 => CHIR.BuiltinType.UInt64
+            case CHIRTypeKind.UINT_NATIVE => CHIR.BuiltinType.UIntNative
+            case CHIRTypeKind.FLOAT16 => CHIR.BuiltinType.Float16
+            case CHIRTypeKind.FLOAT32 => CHIR.BuiltinType.Float32
+            case CHIRTypeKind.FLOAT64 => CHIR.BuiltinType.Float64
+            case CHIRTypeKind.RUNE => CHIR.BuiltinType.Rune
+            case CHIRTypeKind.BOOLEAN => CHIR.BuiltinType.Boolean
+            case CHIRTypeKind.UNIT => CHIR.BuiltinType.Unit
+            case CHIRTypeKind.NOTHING => CHIR.BuiltinType.Nothing
+            case CHIRTypeKind.VOID => CHIR.BuiltinType.Void
+            case CHIRTypeKind.C_POINTER => new CPointerTypeImpl(t)
+            case CHIRTypeKind.C_STRING => CHIR.BuiltinType.CString
+            case CHIRTypeKind.REFTYPE => new RefTypeImpl(t)
+            case CHIRTypeKind.BOXTYPE => new BoxTypeImpl(t)
+            case CHIRTypeKind.THIS => new BoxTypeImpl(t)
+          }
         }
-
-//        _types(i) =
       }
       _types(i).asInstanceOf[T]
     }
@@ -189,9 +215,9 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
 
   override def name: String = pkg.name
 
-  override def packageInitFunc: CHIR.Func = _pkgInit
+  override def packageInitFunc: CHIR.Func = getValue[CHIR.Func](pkg.packageInitFunc).get
 
-  override def packageInitLiteralFunc: CHIR.Func = _pkgLiteralInit
+  override def packageInitLiteralFunc: CHIR.Func = getValue[CHIR.Func](pkg.packageLiteralInitFunc).get
 
   override def values: Iterator[CHIR.Value] = {
     (1 to pkg.valuesLength()).iterator.map { id =>

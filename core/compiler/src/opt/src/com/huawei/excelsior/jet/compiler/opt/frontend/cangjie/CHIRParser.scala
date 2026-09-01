@@ -624,7 +624,7 @@ trait CHIRParser
       }
 
       if (env.enabled(PackageInitFromMain) && method.isMain) {
-        for (func <- Seq(pkg.packageInitLiteralFunc(), pkg.packageInitFunc())) {
+        for (func <- Seq(pkg.packageInitLiteralFunc, pkg.packageInitFunc)) {
           val refType = resolver.findClass(func.packageName).get
 
           val name = resolver.symName(func)
@@ -634,11 +634,11 @@ trait CHIRParser
         }
       }
 
-      if (pkg.packageInitLiteralFunc() == func) {
+      if (pkg.packageInitLiteralFunc == func) {
         // TODO: consider moving it under @has_invoked_pkg_init_literal check
-        for (v <- pkg.values()) v match {
+        for (v <- pkg.values) v match {
           case g: CHIR.GlobalVar if !resolver.isImported(g) =>
-            val declType = g.declaringDef.flatMap(resolver.symType).getOrElse(resolver.findClass(pkg.name()).get)
+            val declType = g.declaringDef.flatMap(resolver.symType).getOrElse(resolver.findClass(pkg.name).get)
             val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
             assert(field.isStatic, field)
             val value = g.initializer.map {
