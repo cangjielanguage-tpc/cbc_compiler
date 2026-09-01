@@ -12,12 +12,12 @@ object CHIR {
   }
 
   trait Package {
-    def name(): String
-    def typeDefs(): Iterator[CustomTypeDef]
-    def values(): Iterator[Value]
+    def name: String
+    def typeDefs: Iterator[CustomTypeDef]
+    def values: Iterator[Value]
     def function(idx: Int): Func
-    def packageInitFunc(): Func
-    def packageInitLiteralFunc(): Func
+    def packageInitFunc: Func
+    def packageInitLiteralFunc: Func
   }
 
   trait HasAnnotations {
@@ -28,15 +28,15 @@ object CHIR {
   }
 
   trait IsAutoEnvClass extends Annotation {
-    def value(): Boolean
+    def value: Boolean
   }
 
   trait OverrideSrcFuncType extends Annotation {
-    def tpe(): FuncType
+    def tpe: FuncType
   }
 
   trait WrappedRawMethod extends Annotation {
-    def rawMethod(): Func
+    def rawMethod: Func
   }
 
   trait HasDeclaringDef {
@@ -51,16 +51,16 @@ object CHIR {
   }
 
   trait Func extends Value with HasDeclaringDef with HasAnnotations with HasAttributes {
-    def tpe(): FuncType
-    def id(): Long
-    def identifier(): String
-    def srcCodeIdentifier(): String
-    def packageName(): String
-    def kind(): Func.Kind
-    def genericTypeParams(): Seq[GenericType]
-    def body(): Option[BlockGroup]
-    def params(): Seq[Parameter]
-    def retVal(): Option[LocalVar]
+    def tpe: FuncType
+    def id: Long
+    def identifier: String
+    def srcCodeIdentifier: String
+    def packageName: String
+    def kind: Func.Kind
+    def genericTypeParams: Seq[GenericType]
+    def body: Option[BlockGroup]
+    def params: Seq[Parameter]
+    def retVal: Option[LocalVar]
   }
 
   object Func {
@@ -84,66 +84,66 @@ object CHIR {
   }
 
   trait BlockGroup extends Value {
-    def blocks(): Seq[Block]
-    def entryBlock(): Block = blocks().head
+    def blocks: Seq[Block]
+    def entryBlock: Block
   }
 
   trait Block extends Value {
-    def nonTerminatorExpressions(): Seq[Expression]
-    def terminator(): Terminator
-    def expressions(): Seq[Expression] = nonTerminatorExpressions() :+ terminator()
-    def isLandingPadBlock(): Boolean
+    def expressions: Seq[Expression]
+    def nonTerminatorExpressions: Seq[Expression]
+    def terminator: Terminator
+    def isLandingPadBlock: Boolean
   }
 
   // static field or global var
   trait GlobalVar extends Value with HasDeclaringDef with HasAnnotations with HasAttributes {
     def id: Long
-    def identifier(): String
-    def srcCodeIdentifier(): String
-    def packageName(): String
+    def identifier: String
+    def srcCodeIdentifier: String
+    def packageName: String
     def tpe: Type
-    def initializer(): Option[Value]
+    def initializer: Option[Value]
   }
 
   trait LocalVar extends Value {
-    def tpe(): Type
-    def associatedExpr(): Expression
+    def tpe: Type
+    def associatedExpr: Expression
   }
 
   trait Parameter extends Value {
-    def tpe(): Type
+    def tpe: Type
   }
 
   object UnitLiteral extends Literal {
-    def tpe(): Type = BuiltinType.Unit
+    def tpe: Type = BuiltinType.Unit
   }
 
   trait NullLiteral extends Literal {
   }
 
   trait IntLiteral extends Literal {
-    def value(): Long
+    def value: Long
   }
 
   trait FloatLiteral extends Literal {
-    def value(): Double
+    def value: Double
   }
 
   trait BoolLiteral extends Literal {
-    def value(): Boolean
+    def value: Boolean
   }
 
   trait RuneLiteral extends Literal {
-    def value(): Long
+    def value: Long
   }
 
   trait StringLiteral extends Literal {
-    def value(): String
+    def value: String
   }
 
   trait InstanceVar extends HasAttributes {
-    def tpe(): Type
-    def name(): String
+    def tpe: Type
+    def name: String
   }
 
   trait Type {
@@ -430,7 +430,7 @@ object CHIR {
   trait Debug extends Expression {}
 
   trait Literal extends Value {
-    def tpe(): Type
+    def tpe: Type
   }
 
   trait Constant extends Expression with HasResultVar {

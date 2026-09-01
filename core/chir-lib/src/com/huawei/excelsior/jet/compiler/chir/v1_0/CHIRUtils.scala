@@ -42,4 +42,13 @@ object CHIRUtils {
     def toSeq: Seq[VirtualMethodInfo] = xs.iterator.toSeq
     def iterator: Iterator[VirtualMethodInfo] = if (xs == null) Iterator.empty else Iterator.tabulate(xs.length)(xs.get)
   }
+
+  /** Exceptions thrown on attempts to use not yet implemented compilers features. */
+  class NotImplementedException private(featureInfo: String) extends RuntimeException(s"not implemented: $featureInfo") {
+    private[CHIRUtils] def this(feature: Any) = this(feature.toString)
+    private[CHIRUtils] def this(feature: Any, details: String) = this(s"$feature ($details)")
+  }
+
+  def notImplemented[T](feature: Any): T = throw new NotImplementedException(feature)
+  def notImplemented[T](feature: Any, extraInfo: Any): T = throw new NotImplementedException(feature, extraInfo.toString)
 }

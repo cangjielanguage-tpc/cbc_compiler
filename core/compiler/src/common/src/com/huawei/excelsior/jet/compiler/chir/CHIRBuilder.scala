@@ -110,8 +110,8 @@ object CHIRBuilder {
       }
 
       for (v <- d.instanceVars) {
-        val name = v.name()
-        val sig = resolver.typeSig(v.tpe())
+        val name = v.name
+        val sig = resolver.typeSig(v.tpe)
         val modifiers = resolver.symModifiers(v)
         val linkageName = resolver.linkageName(v)
         val sym = builder.addField(symType, name, sig, linkageName, modifiers.value)
@@ -240,7 +240,7 @@ object CHIRBuilder {
       }
       for (m <- d.methods()) {
         val name = resolver.symName(m)
-        val mutModifiers = m.kind() match {
+        val mutModifiers = m.kind match {
           case CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>
             Modifiers(Modifier.CJ_MUT)
           case _ => Modifiers.EMPTY
@@ -248,7 +248,7 @@ object CHIRBuilder {
         val modifiers = resolver.symModifiers(m) | mutModifiers
         val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
         val genericInfo = resolver.genericInfo(m)
-        val genericFuncParamsCount = m.genericTypeParams().size
+        val genericFuncParamsCount = m.genericTypeParams.size
         val hasOuterTypeInfo = true // All member functions have outer type info parameter
         val hasThisTypeInfoParam = modifiers.contains(STATIC)
         val linkageName = resolver.linkageName(m)
@@ -289,7 +289,7 @@ object CHIRBuilder {
           Seq(mutMethod, mutWrapper)
 
         } else {
-          val overrideSig = resolver.getOverrideSrcFuncType(m).map(s => resolver.functionSig(s.tpe(), hasReceiver = !modifiers.contains(STATIC))._1)
+          val overrideSig = resolver.getOverrideSrcFuncType(m).map(s => resolver.functionSig(s.tpe, hasReceiver = !modifiers.contains(STATIC))._1)
           val hasRetByVal = overrideSig.exists(_.returnType.isTypeVariable)
           val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
             ABI.Description(rcvParam,
@@ -306,9 +306,9 @@ object CHIRBuilder {
             builder.markAsCHIRDef(symType)
           }
           if (symType.isCHIRDef && !resolver.isImported(m)) {
-            builder.markAsCHIRDef(symMethod, m.id().toInt)
+            builder.markAsCHIRDef(symMethod, m.id.toInt)
           }
-          m.kind() match {
+          m.kind match {
             case CHIR.Func.Kind.ClassCtor | CHIR.Func.Kind.PrimalClassCtor |
                  CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>
               builder.markAsConstructor(symMethod)
@@ -327,7 +327,7 @@ object CHIRBuilder {
     object GlobalAbstractFunc {
       def unapply(f: CHIR.Func): Option[CHIR.Type] = {
         if (f.declaringDef.isEmpty && f.attributes.contains(CHIR.Attribute.Abstract)) {
-          val funcType = f.tpe()
+          val funcType = f.tpe
           Some(funcType.receiverType())
         } else {
           None
@@ -344,7 +344,7 @@ object CHIRBuilder {
         assert(modifiers.contains(ABSTRACT), name)
         val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
         val genericInfo = resolver.genericInfo(m)
-        val genericFuncParamsCount = m.genericTypeParams().size
+        val genericFuncParamsCount = m.genericTypeParams.size
         val hasOuterTypeInfo = true // All member functions have outer type info parameter
         val hasThisTypeInfoParam = modifiers.contains(STATIC)
         val linkageName = resolver.linkageName(m)
@@ -355,9 +355,9 @@ object CHIRBuilder {
         virtMethods(m) = symMethod
 
         if (symType.isCHIRDef) {
-          builder.markAsCHIRDef(symMethod, m.id().toInt)
+          builder.markAsCHIRDef(symMethod, m.id.toInt)
         }
-        m.kind() match {
+        m.kind match {
           case CHIR.Func.Kind.ClassCtor | CHIR.Func.Kind.PrimalClassCtor |
                CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>
             builder.markAsConstructor(symMethod)
@@ -421,7 +421,7 @@ object CHIRBuilder {
     for (v <- pkg.values()) v match {
       case m: CHIR.GlobalVar if m.declaringDef.isEmpty =>
         // package global var
-        val symPkg = makePackage(m.packageName())
+        val symPkg = makePackage(m.packageName)
         val name = resolver.symName(m)
         val sig = resolver.typeSig(m.tpe)
         val modifiers = (resolver.symModifiers(m) + Modifier.STATIC).value
@@ -433,12 +433,12 @@ object CHIRBuilder {
 
       case m: CHIR.Func if m.declaringDef.isEmpty && !resolver.isDeadFunction(m) =>
         // package global func
-        val symPkg = makePackage(m.packageName())
+        val symPkg = makePackage(m.packageName)
         val name = resolver.symName(m)
         val (sig, None, isCFunc, vararg) = resolver.functionSig(m, hasReceiver = false)
         val modifiers = (resolver.symModifiers(m) + Modifier.STATIC).value
         val genericInfo = resolver.genericInfo(m)
-        val genericFuncParamsCount = m.genericTypeParams().size
+        val genericFuncParamsCount = m.genericTypeParams.size
         val linkageName = resolver.linkageName(m)
         val symMethod = builder.addMethod(symPkg, name, sig, linkageName, modifiers, genericInfo,
           ABI.Description(None, hasMutParam = false, hasThisTypeInfoParam = false,
@@ -449,8 +449,8 @@ object CHIRBuilder {
         if (pkg.packageInitLiteralFunc() == m) {
           builder.markAsPackageLiteralInit(symMethod)
         }
-        if (!resolver.isImported(m) || m.body().nonEmpty) {
-          builder.markAsCHIRDef(symMethod, m.id().toInt)
+        if (!resolver.isImported(m) || m.body.nonEmpty) {
+          builder.markAsCHIRDef(symMethod, m.id.toInt)
         }
 
       case _ =>

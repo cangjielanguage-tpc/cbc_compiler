@@ -19,7 +19,7 @@ trait CHIRItemProvider {
   def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): T
   def getValue[T >: Null <: CHIR.Value : ClassTag](id: Long): Option[T]
   def getExpr[T >: Null <: CHIR.Expression : ClassTag](id: Long): T
-  def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): T
+  def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): Option[T]
 }
 
 /** [[CHIRPackage]] with caching of core indexed entities:
@@ -93,7 +93,22 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case ValueElem.Block => new Block
           case ValueElem.BlockGroup => new BlockGroup
         }
-//        _values(i) = pkg.values(obj, i)
+        given provider: CHIRItemProvider = this
+        _values(i) = pkg.values(obj, i) match {
+          case v: BoolLiteral => BoolLiteralImpl(v)
+          case v: RuneLiteral => RuneLiteralImpl(v)
+          case v: StringLiteral => StringLiteralImpl(v)
+          case v: IntLiteral => IntLiteralImpl(v)
+          case v: FloatLiteral => FloatLiteralImpl(v)
+          case _: UnitLiteral => CHIR.UnitLiteral
+          case v: NullLiteral => NullLiteralImpl(v)
+          case v: Parameter => ParameterImpl(v)
+          case v: LocalVar => LocalVarImpl(v)
+          case v: GlobalVar => GlobalVarImpl(v, id)
+          case v: Function => FuncImpl(v, id)
+          case v: Block => BlockImpl(v)
+          case v: BlockGroup => BlockGroupImpl(v)
+        }
       }
       Some(_values(i)).collect {
         case t: T => t
@@ -140,9 +155,9 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   }
 
   /** Returns cached Def or null if id is zero or negative. */
-  override def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): T = {
+  override def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
-      null
+      None
     } else {
       val i = id.toInt - 1
       if (_customDefs(i) == null) {
@@ -152,33 +167,33 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case CustomTypeDefElem.ClassDef => new ClassDef
           case CustomTypeDefElem.ExtendDef => new ExtendDef
         }
-        val d = pkg.defs(obj, i)
         given provider: CHIRItemProvider = this
-        val chirDef = obj match {
+        _customDefs(i) = pkg.defs(obj, i) match {
           case t: EnumDef => EnumDefImpl(t)
           case t: ClassDef => ClassDefImpl(t)
           case t: StructDef => StructDefImpl(t)
           case t: ExtendDef => ExtendDefImpl(t)
         }
-        _customDefs(i) = chirDef
       }
-      _customDefs(i).asInstanceOf[T]
+      Some(_customDefs(i)).collect {
+        case t: T => t
+      }
     }
   }
 
-  override def typeDefs(): Iterator[CHIR.CustomTypeDef] = {
+  override def typeDefs: Iterator[CHIR.CustomTypeDef] = {
     (1 to pkg.defsLength()).iterator.map { id =>
-      getDef[CHIR.CustomTypeDef](id)
+      getDef[CHIR.CustomTypeDef](id).get
     }
   }
 
-  override def name(): String = pkg.name()
+  override def name: String = pkg.name
 
-  override def packageInitFunc(): CHIR.Func = _pkgInit
+  override def packageInitFunc: CHIR.Func = _pkgInit
 
-  override def packageInitLiteralFunc(): CHIR.Func = _pkgLiteralInit
+  override def packageInitLiteralFunc: CHIR.Func = _pkgLiteralInit
 
-  override def values(): Iterator[CHIR.Value] = {
+  override def values: Iterator[CHIR.Value] = {
     (1 to pkg.valuesLength()).iterator.map { id =>
       getValue[CHIR.Value](id).get
     }

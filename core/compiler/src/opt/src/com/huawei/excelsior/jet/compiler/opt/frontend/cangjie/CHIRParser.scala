@@ -30,7 +30,6 @@ import com.huawei.excelsior.jet.util.ScalaCollections.*
 import com.huawei.excelsior.jet.compiler.util.{Maps, Sets}
 import com.huawei.excelsior.jet.util.{Closure, Numbering, ScalaCollections}
 
-import scala.PartialFunction.cond
 import scala.collection.mutable
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter.GenericFuncParams
 import com.huawei.excelsior.jet.compiler.types.CompiledType
@@ -274,12 +273,12 @@ trait CHIRParser
   }
 
   private def makeCFG(method: Method, func: CHIR.Func)(implicit pkg: CHIR.Package): BlockMap = {
-    val bg = func.body().get
+    val bg = func.body.get
 
     // Create blocks
     val blockMap = new BlockMap
-    for (v <- bg.blocks()) {
-      val b = if (v.isLandingPadBlock()) {
+    for (v <- bg.blocks) {
+      val b = if (v.isLandingPadBlock) {
         val handler = XBlock()
         Catch(handler)
         handler
@@ -339,7 +338,7 @@ trait CHIRParser
         Halt.empty()(ctrl, b)
       }
 
-      bv.terminator() match {
+      bv.terminator match {
         case t: CHIR.Goto => goto(t)
         case _: CHIR.Exit => exit()
         case t: CHIR.RaiseException => throwOp(t)
@@ -359,7 +358,7 @@ trait CHIRParser
     }
 
     // Link prologue with entry block
-    val chirEntryBlock = blockMap(bg.entryBlock())
+    val chirEntryBlock = blockMap(bg.entryBlock)
     chirEntryBlock addArg Goto(entryBlock, entryBlock)
 
     blockMap
@@ -371,13 +370,13 @@ trait CHIRParser
     case class CatchProxy()
     private type StateValue = CHIR.Expression | CHIR.Parameter | CHIR.Value | CatchProxy
 
-    private val entryBlockVal = func.body().get.entryBlock()
+    private val entryBlockVal = func.body.get.entryBlock
 
-    private val params = func.params()
+    private val params = func.params
 
     private val catchProxy = CatchProxy()
 
-    private val localValues = Numbering[StateValue](catchProxy +: (params ++ blockMap.blockVals.flatMap(_.expressions())))
+    private val localValues = Numbering[StateValue](catchProxy +: (params ++ blockMap.blockVals.flatMap(_.expressions)))
 
     class State(private var locals: Array[NodeRef], _memory: NodeRef, _contextTypes: ContextTypesMap)
       extends Scope.State(null, _memory, _contextTypes) {
@@ -392,7 +391,7 @@ trait CHIRParser
 
       def apply(x: StateValue): Node = {
         val v = x match {
-          case x: CHIR.LocalVar => x.associatedExpr()
+          case x: CHIR.LocalVar => x.associatedExpr
           case x => x
         }
         val i = localValues.number(v)
@@ -401,7 +400,7 @@ trait CHIRParser
 
       def update(x: StateValue, value: Node): Unit = {
         val v = x match {
-          case x: CHIR.LocalVar => x.associatedExpr()
+          case x: CHIR.LocalVar => x.associatedExpr
           case x => x
         }
         assert(value != null)
@@ -545,8 +544,8 @@ trait CHIRParser
 
       } else if (anchor != null) { // Block with handler
         val b = blockMap(block)
-        val spine = b.nonTerminatorExpressions()
-        val terminator = b.terminator()
+        val spine = b.nonTerminatorExpressions
+        val terminator = b.terminator
 
         // In CHIR only terminator can throw exception and requires handler,
         // all expressions before it must not go to the same handler even if they can throw
@@ -579,7 +578,7 @@ trait CHIRParser
 
       } else { // Regular block
         processBlock(block) {
-          for (e <- blockMap(block).expressions()) {
+          for (e <- blockMap(block).expressions) {
             parseExpression(e, block, state)
           }
         }
@@ -626,7 +625,7 @@ trait CHIRParser
 
       if (env.enabled(PackageInitFromMain) && method.isMain) {
         for (func <- Seq(pkg.packageInitLiteralFunc(), pkg.packageInitFunc())) {
-          val refType = resolver.findClass(func.packageName()).get
+          val refType = resolver.findClass(func.packageName).get
 
           val name = resolver.symName(func)
           val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, func)
@@ -642,20 +641,20 @@ trait CHIRParser
             val declType = g.declaringDef.flatMap(resolver.symType).getOrElse(resolver.findClass(pkg.name()).get)
             val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
             assert(field.isStatic, field)
-            val value = g.initializer().map {
+            val value = g.initializer.map {
               case CHIR.UnitLiteral => null
               case _: CHIR.NullLiteral => IntegralConst(ValueType.fromSig(field.getType))(0)
-              case v: CHIR.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.value())
+              case v: CHIR.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.value)
               case v: CHIR.FloatLiteral => field.getType match {
-                case SignatureType.Float32 => FConst(v.value().toFloat)
-                case SignatureType.Float64 => DConst(v.value())
+                case SignatureType.Float32 => FConst(v.value.toFloat)
+                case SignatureType.Float64 => DConst(v.value)
                 case t => notImplemented(s"unexpected static field type ${t.toJETSignature} of field $field")
               }
-              case v: CHIR.BoolLiteral => IConst(if (v.value()) 1 else 0)
-              case v: CHIR.RuneLiteral => IConst(v.value().toInt)
-              case v: CHIR.StringLiteral => constString(v.value())
+              case v: CHIR.BoolLiteral => IConst(if (v.value) 1 else 0)
+              case v: CHIR.RuneLiteral => IConst(v.value.toInt)
+              case v: CHIR.StringLiteral => constString(v.value)
               case v: CHIR.Func =>
-                val refType = resolver.findClass(v.packageName()).get
+                val refType = resolver.findClass(v.packageName).get
 
                 val name = resolver.symName(v)
                 val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, v)
@@ -681,8 +680,8 @@ trait CHIRParser
     object ValueSig {
       def unapply(v: CHIR.Value): Option[SignatureType] = Some(resolver.typeSig(v match {
           case v: CHIR.GlobalVar => v.tpe
-          case v: CHIR.LocalVar => v.tpe()
-          case v: CHIR.Parameter => v.tpe()
+          case v: CHIR.LocalVar => v.tpe
+          case v: CHIR.Parameter => v.tpe
       }))
     }
 
@@ -1104,7 +1103,7 @@ trait CHIRParser
         val declClass = func.declaringDef
           .flatMap(resolver.symType)
           .map(asClassType)
-          .getOrElse(resolver.findClass(func.packageName()).get)
+          .getOrElse(resolver.findClass(func.packageName).get)
 
         val thisTypeForRefining = thisType.filter(t => t.isRecord || t.isReference)
         val declType = Closure(thisTypeForRefining)(refineSuperTypes).find(asClassType(_) == declClass)
@@ -1143,7 +1142,7 @@ trait CHIRParser
 
         val isStatic = e.thisArg() match {
           case x: CHIR.LocalVar =>
-            x.associatedExpr() match {
+            x.associatedExpr match {
               case _: (CHIR.GetRTTI | CHIR.GetRTTIStatic) => true
               case _ => false
             }
@@ -1175,7 +1174,7 @@ trait CHIRParser
 
         val func = methodArgVal
         val name = resolver.symName(func)
-        val (gsig, _, _, _) = resolver.functionSig(func.tpe(), hasReceiver = !isStatic)
+        val (gsig, _, _, _) = resolver.functionSig(func.tpe, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
           if (g.isTypeVariable && !i.isTypeVariable && !i.isInstanceOf[SignatureType.Box]) SignatureType.Box(i) else i
@@ -1627,7 +1626,7 @@ trait CHIRParser
 
       case e: CHIR.Constant =>
         def intConst(v: Long, l: CHIR.Literal): Node = {
-          l.tpe() match {
+          l.tpe match {
             case CHIR.BuiltinType.Int8 | CHIR.BuiltinType.Int16 | CHIR.BuiltinType.Int32 |
                  CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 | CHIR.BuiltinType.Boolean => IConst(v.toInt)
             case CHIR.BuiltinType.Int64 | CHIR.BuiltinType.IntNative |
@@ -1640,24 +1639,24 @@ trait CHIRParser
           }
         }
         val value = e.literal() match {
-          case v: CHIR.BoolLiteral => IConst(if (v.value()) 1 else 0)
+          case v: CHIR.BoolLiteral => IConst(if (v.value) 1 else 0)
           case CHIR.UnitLiteral => Void()
-          case v: CHIR.RuneLiteral => IConst(v.value().toInt)
+          case v: CHIR.RuneLiteral => IConst(v.value.toInt)
           case v: CHIR.NullLiteral => if (resolver.typeSig(e.resultTpe()).isTraceableReference) Null() else intConst(0, v)
-          case v: CHIR.IntLiteral => intConst(v.value(), v)
-          case v: CHIR.FloatLiteral => v.tpe() match {
-            case CHIR.BuiltinType.Float16 => notImplemented(s"FLOAT16: ${v.value()}")
-            case CHIR.BuiltinType.Float32 => FConst(v.value().toFloat)
-            case CHIR.BuiltinType.Float64 => DConst(v.value())
+          case v: CHIR.IntLiteral => intConst(v.value, v)
+          case v: CHIR.FloatLiteral => v.tpe match {
+            case CHIR.BuiltinType.Float16 => notImplemented(s"FLOAT16: ${v.value}")
+            case CHIR.BuiltinType.Float32 => FConst(v.value.toFloat)
+            case CHIR.BuiltinType.Float64 => DConst(v.value)
           }
-          case v: CHIR.StringLiteral => constString(v.value())
+          case v: CHIR.StringLiteral => constString(v.value)
         }
         state(e) = value
 
       case e: CHIR.Load =>
         e.location() match {
           case Seq(localVar: CHIR.LocalVar) =>
-            val sig = resolver.typeSig(localVar.tpe())
+            val sig = resolver.typeSig(localVar.tpe)
             if (sig.isZST) {
               // nothing to do
               state(e) = Void()
@@ -1779,7 +1778,7 @@ trait CHIRParser
         val retVal = if (retType.isZST) {
           Void()
         } else {
-          val r = func.retVal()
+          val r = func.retVal
           if (r.isEmpty) {
             Void()
           } else if (rootMethod.hasRetByValParameter) {
@@ -1812,7 +1811,7 @@ trait CHIRParser
           } else {
             r.get match {
               case r: CHIR.LocalVar =>
-                val t = resolver.typeSig(r.tpe())
+                val t = resolver.typeSig(r.tpe)
                 if (t.isTraceableReference || t.isPrimitive) {
                   state(r)
                 } else {
@@ -2003,7 +2002,7 @@ trait CHIRParser
     private def staticFieldRef(globalVar: CHIR.GlobalVar): CangjieFieldReference = {
       val symRefType  = globalVar.declaringDef
         .map(d => asClassType(resolver.symType(d).get))
-        .getOrElse(resolver.findClass(globalVar.packageName()).get)
+        .getOrElse(resolver.findClass(globalVar.packageName).get)
 
       val refType = fromSymType(symRefType)
       val name = resolver.symName(globalVar)
