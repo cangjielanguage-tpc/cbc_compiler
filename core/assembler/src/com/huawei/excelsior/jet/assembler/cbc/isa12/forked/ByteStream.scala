@@ -12,7 +12,7 @@ import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BytecodeReferenceSy
 import com.huawei.excelsior.jet.assembler.cbc.{Register, StackSlot}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.CC
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{MemOpcode, Opcode, Ordinal}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{Opcode, Ordinal}
 import com.huawei.excelsior.jet.assembler.fixups.Relocation
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.{CBC_ID16, CBC_ID32}
 import com.huawei.excelsior.jet.assembler.{AsmType, Segment, Symbol}
@@ -49,7 +49,6 @@ trait ByteStream {
   final def ts16(ts: StackSlot.Typed): ByteStream = write16(ts.idx)
   final def us16(us: StackSlot.Untyped): ByteStream = write16(us.slot)
   final def opc8(x: Opcode): ByteStream = write8(x.ordinal)
-  final def mem8(x: MemOpcode): ByteStream = write8(x.ordinal)
 
   def sym16(x: FieldReference | MethodReference | Signature)(implicit asm: ForkedAssembler): ByteStream = {
     asm.fixup(Fixups.Reference(BytecodeReferenceSymbol(x)))
