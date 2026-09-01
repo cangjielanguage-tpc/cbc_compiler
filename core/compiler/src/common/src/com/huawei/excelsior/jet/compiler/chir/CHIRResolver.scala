@@ -48,8 +48,8 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
   def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.Func | CHIR.GlobalVar | CHIR.FuncSig): String = {
     def typeDefName(v: CHIR.CustomTypeDef): String = {
-      val srcName = v.srcCodeIdentifier()
-      if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier().tail else s"${v.packageName()}:$srcName"
+      val srcName = v.srcCodeIdentifier
+      if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
     }
 
     def globalName(_v: CHIR.Func | CHIR.GlobalVar): String = {
@@ -95,7 +95,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       case v: CHIR.ExtendDef => typeDefName(v)
       case v: CHIR.Func => globalName(v)
       case v: CHIR.GlobalVar => globalName(v)
-      case v: CHIR.FuncSig => v.name()
+      case v: CHIR.FuncSig => v.name
     }) ensuring (_.nonEmpty)
   }
 
@@ -195,14 +195,14 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
   @tailrec
   private def withGenericParams[T](v: CHIR.CustomTypeDef | CHIR.Type | CHIR.Func | CHIR.FuncSig | CHIR.VMethod)(action: Seq[CHIR.Type] => T): T = (v: @unchecked) match {
-    case v: CHIR.ExtendDef => action(v.genericTypeParams())
-    case v: CHIR.CustomTypeDef => action(v.tpe().genericTypeParams)
+    case v: CHIR.ExtendDef => action(v.genericTypeParams)
+    case v: CHIR.CustomTypeDef => action(v.tpe.genericTypeParams)
     case v: CHIR.CustomType => withGenericParams(v.typeDef)(action)
     case v: CHIR.RefType => withGenericParams(v.baseType)(action)
     case CHIR.BuiltinType.This => action(Seq.empty)
     case v: CHIR.Func => action(v.genericTypeParams)
-    case v: CHIR.FuncSig => action(v.genericTypeParams())
-    case v: CHIR.VMethod => action(v.genericTypeParams())
+    case v: CHIR.FuncSig => action(v.genericTypeParams)
+    case v: CHIR.VMethod => action(v.genericTypeParams)
   }
 
   def genericInfo(v: CHIR.CustomTypeDef | CHIR.Func): GenericInfo = withGenericParams(v) { params =>
@@ -235,10 +235,10 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
     for (d <- pkg.typeDefs) {
       val gTypes = d match {
-        case d: CHIR.ExtendDef => d.genericTypeParams()
+        case d: CHIR.ExtendDef => d.genericTypeParams
         case d: CHIR.CustomTypeDef if isGenericInstantiated(d) => Seq.empty
-        // TODO are generic type params generic a;ways here?
-        case d: CHIR.CustomTypeDef => d.tpe().genericTypeParams collect {
+        // TODO are generic type params generic always here?
+        case d: CHIR.CustomTypeDef => d.tpe.genericTypeParams collect {
           case t: CHIR.GenericType => t
         }
       }
@@ -289,7 +289,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
   def isImported(t: CHIR.CustomTypeDef | CHIR.Func | CHIR.GlobalVar): Boolean = {
     val (attrs, isFunctionalTypeBase) = t match {
-      case t: CHIR.CustomTypeDef => (t.attributes, isFunctionalType(t) && !isLambda(t.tpe()))
+      case t: CHIR.CustomTypeDef => (t.attributes, isFunctionalType(t) && !isLambda(t.tpe))
       case t: (CHIR.Func | CHIR.GlobalVar)  => (t.attributes, false)
     }
     attrs.contains(CHIR.Attribute.Imported) || isFunctionalTypeBase
@@ -351,7 +351,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
   private val enumKindByEnumDef = mutable.HashMap.empty[CHIR.EnumDef, EnumKind]
   def enumKind(enumDef: CHIR.EnumDef): EnumKind = enumKindByEnumDef.getOrElseUpdate(enumDef, {
-    val ctorSigs = enumDef.ctors().map(_.tpe())
+    val ctorSigs = enumDef.ctors.map(_.tpe)
     val ctors = ctorSigs.map(_.paramTypes)
     val noParams = ctors.forall(c => c.isEmpty)
 
@@ -361,9 +361,9 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
     lazy val optionLikeParam = ScalaCollections.singleton(ctors.flatten)
 
-    def nonGenericEnum = enumDef.tpe().genericTypeParams.isEmpty
+    def nonGenericEnum = enumDef.tpe.genericTypeParams.isEmpty
 
-    if (enumDef.nonExhaustive()) {
+    if (enumDef.nonExhaustive) {
       if (noParams) {
         EnumKind.PrimitiveBased
 
