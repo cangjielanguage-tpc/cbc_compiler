@@ -12,7 +12,7 @@ import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHe
 import com.huawei.excelsior.jet.assembler.AsmType.*
 import com.huawei.excelsior.jet.assembler.Width.{W32, W64}
 import com.huawei.excelsior.jet.assembler.cbc.*
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.MultiFieldReference
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{MultiFieldReference, NoneFieldReference}
 import com.huawei.excelsior.jet.assembler.cbc.Local.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
@@ -724,7 +724,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
         case (IReg(dst), IReg(src)) =>
           assert(check(src, LocalType.CLEARED))
-          builder.rec(src).copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
+          asm.copy(dst, src, NoneFieldReference(adapter.sigType(CodeSigSymbol(c.structureType))))
+          //builder.rec(src).copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
           mark(dst, LocalType.CLEARED)
         case (IReg(dst), n) => {
           n match {

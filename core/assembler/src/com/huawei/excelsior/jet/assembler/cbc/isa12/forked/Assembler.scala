@@ -883,6 +883,14 @@ trait ForkedAssembler {
     analyzer.useRef(base)
     analyzer.prim(dst)
   }
+  
+  def copy(dst: IR, src: IR, fr: FieldReference): Unit = {
+    stream
+      .opc8(Opcode.Copy)
+      .bits(_.w4(dst).w4(src))
+      .sym16(fr)
+    markMemBase(src, fr)
+  }
 
   // endregion
 }
@@ -1113,6 +1121,7 @@ object Assembler {
     case St
     case St_Static
     case LeaBox
+    case Copy
   }
 
   enum MemOpcode extends Ordinal {
