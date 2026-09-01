@@ -18,6 +18,10 @@ trait CangjieNodes { self: Universe =>
   sealed trait FieldSeqOperation extends Node {
     require(!resType.isZST)
     def fields: Seq[CangjieFieldReference]
+    def baseRef: Node = this match {
+      case n: InstanceFieldSeqOperation => DerivedPtr.baseOf(n.obj)
+      case _ => DerivedPtr.Global()
+    }
     def refType: SignatureType = FieldSeqOperation.refType(fields)
     def resType: SignatureType = FieldSeqOperation.resType(fields)
   }
@@ -323,6 +327,22 @@ trait CangjieNodes { self: Universe =>
   }
 
   object DerivedPtr {
+    /** Recover the GC base from the field/derived-pointer representation of this ISA. */
+    def baseOf(n: Node): Node = n match {
+      case p: DerivedPtr => p.base
+      case p: FieldSeqOperation => p.baseRef
+      case p: ArrayGet if p.arrayType.isRecordArray => p.array
+      case p: RecordArrayGet => p.array
+      case p: Param if rootMethod.hasMutRecordParameter && p.num == rootMethod.getMutRecordArgIdx =>
+        rootMethodParam(rootMethod.getMutObjectArgIdx)
+      case p if p.tpe.isTraceableRefType => p
+      case p: Phi =>
+        val args = Phi.transitiveValueArgs(p).filterNot(_.isInstanceOf[NoValue])
+        if (args.size == 1) baseOf(args.head)
+        else notImplemented(s"non-trivial phi function: $p, leaf args: $args")
+      case _ => Local()
+    }
+
     case class Proto private[DerivedPtr](recordType: SignatureType)
       extends FixedArgs[DerivedPtr](TRefType, AddrType)(ValueType.fromSig(recordType)) {
       require(recordType.isRecord)

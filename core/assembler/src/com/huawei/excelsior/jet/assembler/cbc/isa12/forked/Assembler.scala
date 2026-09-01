@@ -805,6 +805,23 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       .bits(_.w1(resW.nbits == 64).w1(argW.nbits == 64).write(offset, 6))
       .bits(_.w1(sx).write(size, 7))
   }
+
+  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = {
+    stream
+      .opc8(Opcode.Copy)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .sym16(sig)
+  }
+
+  def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = {
+    stream
+      .opc8(Opcode.Index)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(idx).w4(idx))
+      .sym16(sig)
+  }
+
 }
 
 class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler with NewIsaParts with CbcAssembler { self: SymbolAdapter =>
@@ -1107,6 +1124,23 @@ object Assembler {
     case CBinaryImm16
     case CBinaryImm32
     case CBinaryImm64
+    case Ld
+    case Ld_Static
+    case Ld_Typed
+    case Ld_Derived
+    case Ld_Generic
+    case Lea
+    case Lea_Static
+    case Lea_Generic
+    case LeaBox
+    case St
+    case St_Static
+    case St_Typed
+    case St_Derived
+    case St_Generic
+    case LoadTailParam
+    case Copy
+    case Index
   }
 
   enum MemOpcode extends Ordinal {

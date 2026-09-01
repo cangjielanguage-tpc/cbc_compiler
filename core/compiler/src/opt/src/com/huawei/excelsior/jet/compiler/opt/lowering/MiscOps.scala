@@ -462,13 +462,15 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
     }
 
     if (isCopyable(dst, src)) {
-      CopyStructure.primitive(refType)(dst, src)
+      CopyStructure.primitive(refType)(maybeDerivedPtrBase(dst), dst, maybeDerivedPtrBase(src), src)
     } else {
       val temp = StackAlloc.Local(refType)
-      CopyStructure.primitive(refType)(temp, src)
-      CopyStructure.primitive(refType)(dst, temp)
+      CopyStructure.primitive(refType)(DerivedPtr.Local(), temp, DerivedPtr.Local(), maybeDerivedPtrBase(src))
+      CopyStructure.primitive(refType)(maybeDerivedPtrBase(dst), dst, DerivedPtr.Local(), temp)
     }
   }
+
+  private def maybeDerivedPtrBase(rcv: Node): Node = DerivedPtr.baseOf(rcv)
 
   /** Splits ArrayFill to a series of ArrayPut operations. */
   private[lowering] def lowerAJArrayFill(arrayFill: AJArrayFill): Unit = {

@@ -163,7 +163,7 @@ trait CHIRParser
         if (arrayType.getArrayElemType.isRecord) {
           val srcMem = ArrayGet(arrayType)(n.src, srcIdx)
           val dstMem = ArrayGet(arrayType)(n.dst, dstIdx)
-          CopyStructure(arrayType.getArrayElemType)(srcMem, dstMem)
+          CopyStructure(arrayType.getArrayElemType)(maybeDerivedPtrBase(dstMem), dstMem, maybeDerivedPtrBase(srcMem), srcMem)
         } else {
           val value = ArrayGet(arrayType)(n.src, srcIdx)
           ArrayPut(arrayType)(n.dst, dstIdx, value)
@@ -2317,7 +2317,7 @@ trait CHIRParser
 
     private def copy(sig: SignatureType, to: Node, from: Node): Node = {
       assert(sig.isRecord, sig)
-      CopyStructure(sig)(to, from)
+      CopyStructure(sig)(maybeDerivedPtrBase(to), to, maybeDerivedPtrBase(from), from)
     }
 
     private def typeInfoSigs(fields: Seq[CangjieFieldReference]): Seq[SignatureType] = {
@@ -2370,6 +2370,8 @@ trait CHIRParser
       sa
     }
   }
+
+  private def maybeDerivedPtrBase(rcv: Node): Node = DerivedPtr.baseOf(rcv)
 
   private def maybeDerivedPtr(rcv: Node): Node = rcv match {
     case rcv: Param if rootMethod.hasMutRecordParameter && rcv.num == rootMethod.getMutRecordArgIdx =>

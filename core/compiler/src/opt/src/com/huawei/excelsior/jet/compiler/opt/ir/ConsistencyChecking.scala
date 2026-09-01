@@ -133,6 +133,24 @@ trait ConsistencyChecking extends SynchronizationOptimization with UCEComponent 
             assert(sn.isInstanceOf[SpinalMemoryNode])
           }
 
+          sn match {
+            case cs: CopyStructure =>
+              cs.src match {
+                case f: FieldSeqOperation =>
+                  assert(cs.srcBase == f.baseRef)
+                case _ =>
+              }
+              cs.dst match {
+                case f: FieldSeqOperation =>
+                  val a = cs.dstBase
+                  val b = f.baseRef
+                  val c = cs.srcBase
+                  assert(cs.dstBase == f.baseRef)
+                case _ =>
+              }
+            case _ =>
+          }
+
         case be: BlockEnd =>
           assert(be.block.blockEnd == be)
           if (be.block.reachable) {

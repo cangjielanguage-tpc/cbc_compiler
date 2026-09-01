@@ -703,8 +703,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    // TODO replace ArrayGet with FieldSeq operations
     private def genArrayGet(arrGet: ArrayGet): Unit = {
       addXSite(arrGet)
+      val adapter = asm.adapter
 
       val arrayType = arrGet.arrayType
       val elemType = arrayType.getArrayElemType
@@ -717,7 +719,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           } else {
             if (elemType.isRecord) {
               val arrayOrElemSig = if (isStandalone) elemType else arrayType
-              asm.ldarrRecord(dst.asInstanceOf[IR], arr, idx, CodeSigSymbol(arrayOrElemSig))
+              fasm.index(dst.asInstanceOf[IR], arr, idx, fasm.adapter.sigType(CodeSigSymbol(arrayOrElemSig)))
             } else if (elemType.isTraceableReference) {
               asm.ldarrObj(dst, arr, idx)
             } else {
@@ -885,75 +887,15 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     private def genCopyStructure(c: CopyStructure): Unit = {
       addXSite(c)
 
-      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
       val adapter = fasm.adapter
-      val builder = MemSpace.Builder()
 
-      def head(n: Node, fields: Seq[CangjieFieldReference]): Unit = n match {
-        case stack: HasFrameSlot => stack.slot match {
-          case slot: TypedFrameSlotCBC => builder.typed(slot.typedSlot)
-          case _ => shouldNotReachHere(stack)
-        }
-        case DerivedPtr(IReg(base), IReg(derived)) =>
-          builder.handle(base, derived)
-        case n @ ArrayGet(_, _, IReg(obj), IReg(idx)) =>
-          assert(n.arrayType.isRecordArray)
-          builder.obj(obj)
-            .index(idx, n.arrayType.getArrayElemType.toCbc, checked = false)
-        case IReg(r) =>
-          if (fields.head.refType.isTraceableReference) {
-            builder.obj(r)
-          } else {
-            builder.rec(r)
+      (c.dstBase, c.dst, c.srcBase, c.src) match
+        case (IReg(dstBase), IReg(dst), IReg(srcBase), IReg(src))  =>
+          fasm.copy(dstBase, dst, srcBase, src, adapter.sigType(CodeSigSymbol(c.structureType)))
+          if(valueOf(c.dstBase).producer.isInstanceOf[DerivedPtr.Local]) {
+            mark(dst, LocalType.CLEARED)
           }
-      }
-
-      def fields(fields: Seq[CangjieFieldReference], typeInfos: Seq[Node] = Seq.empty): Unit = {
-        for ((f, i) <- fields.zipWithIndex) f.field match {
-          case Some(field) =>
-            builder.field(adapter.field(f))
-          case None =>
-            val refType = f.refType match {
-              case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
-              case t => t
-            }
-            builder.constIndex(f.idx.toInt, refType.toCbc)
-        }
-      }
-
-      (c.dst, c.src) match {
-
-        case (IReg(dst), IReg(src)) =>
-          assert(check(src, LocalType.CLEARED))
-          builder.rec(src).copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(fasm)
-          mark(dst, LocalType.CLEARED)
-        case (IReg(dst), n) => {
-          val obj = n match {
-            case g: GetFieldSeqRef =>
-              head(g.obj, g.fields)
-              fields(g.fields)
-            case g: GetStaticFieldSeqRef =>
-              builder.static(adapter.field(g.fields.head))
-              fields(g.fields.tail)
-            case n => head(n, Seq.empty)
-          }
-          builder.copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(fasm)
-          mark(dst, LocalType.CLEARED)
-        }
-        case (n, IReg(src)) => {
-          assert(check(src, LocalType.CLEARED))
-          val obj: Unit = n match {
-            case g: GetFieldSeqRef =>
-              head(g.obj, g.fields)
-              fields(g.fields)
-            case g: GetStaticFieldSeqRef =>
-              builder.static(adapter.field(g.fields.head))
-              fields(g.fields.tail)
-            case n => head(n, Seq.empty)
-          }
-          builder.copyRegFrom(src, adapter.sigType(CodeSigSymbol(c.structureType))).gen(fasm)
-        }
-      }
+        case _ => shouldNotReachHere(c)
     }
 
     private def genCopyStructureCBC(c: CopyStructureCBC): Unit = {
