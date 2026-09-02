@@ -57,7 +57,7 @@ object Environment {
   }
 
   /** Flag indicating whether jc should run independently of JET toolchain. */
-  val JC_STANDALONE = JETConfig.jcStandalone
+  val JC_STANDALONE = true // TODO: propagate
 
   // Version could also be set by properties but it is inconvenient for
   // JET developers to remember to change this value on every JET version change.

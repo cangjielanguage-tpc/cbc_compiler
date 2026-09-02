@@ -21,7 +21,6 @@ class Env(props: Properties) {
   val arch               = apply("arch",                None,                "amd64", "arm64")
   val mode               = apply("mode",                None,                "work", "enduser")
   val languagePack       = apply("language.pack",       Some("cangjie"),     "none", "java", "cangjie", "cangjie-java", "scala")
-  val jcStandalone       = apply("jc.standalone",       Some("true"),        "true", "false")
   val flatc              = apply("flatc",               Some("flatc"))
 
   def apply(name: String, default: Option[String], variants: String*): String = {

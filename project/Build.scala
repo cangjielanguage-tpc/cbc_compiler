@@ -210,7 +210,6 @@ object Build {
              |  val targetCPU = "${env.arch}"
              |  val buildMode = "${env.mode}"
              |  val languagePack = "${env.languagePack}"
-             |  val jcStandalone = true
              |}
              |""".stripMargin
 
