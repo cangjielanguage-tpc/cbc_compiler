@@ -8,8 +8,6 @@
       <module fileurl="file://$PROJECT_DIR$/../../core/common-java-lib/common-java-lib.iml" filepath="$PROJECT_DIR$/../../core/common-java-lib/common-java-lib.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../core/common-rt-compiler/common-rt-compiler.iml" filepath="$PROJECT_DIR$/../../core/common-rt-compiler/common-rt-compiler.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../core/jit-bridge/jit-bridge.iml" filepath="$PROJECT_DIR$/../../core/jit-bridge/jit-bridge.iml" />
-      <module fileurl="file://$PROJECT_DIR$/src/lazy-jit-stubs-generator/lazy-jit-stubs-generator.iml" filepath="$PROJECT_DIR$/src/lazy-jit-stubs-generator/lazy-jit-stubs-generator.iml" />
-      <module fileurl="file://$PROJECT_DIR$/src/newbaseline/newbaseline.iml" filepath="$PROJECT_DIR$/src/newbaseline/newbaseline.iml" />
       <module fileurl="file://$PROJECT_DIR$/src/newbaseline-code-generator/newbaseline-code-generator.iml" filepath="$PROJECT_DIR$/src/newbaseline-code-generator/newbaseline-code-generator.iml" />
       <module fileurl="file://$PROJECT_DIR$/src/o2-lib/o2-lib.iml" filepath="$PROJECT_DIR$/src/o2-lib/o2-lib.iml" />
       <module fileurl="file://$PROJECT_DIR$/src/opt/opt.iml" filepath="$PROJECT_DIR$/src/opt/opt.iml" />

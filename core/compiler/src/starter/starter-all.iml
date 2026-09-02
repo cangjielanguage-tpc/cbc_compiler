@@ -11,16 +11,8 @@
       <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/java/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/cangjie/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/cangjie-java/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/jit/amd64/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/jit/arm64/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/jit/share/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/jit/language-pack/none/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/jit/language-pack/java/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/jit/language-pack/cangjie/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/jit/language-pack/cangjie-java/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/scala/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/aot/target" />
-      <excludeFolder url="file://$MODULE_DIR$/jit/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
@@ -28,13 +20,11 @@
     <orderEntry type="module" module-name="common-java-lib" />
     <orderEntry type="module" module-name="common-rt-compiler" />
     <orderEntry type="module" module-name="assembler" />
-    <orderEntry type="module" module-name="newbaseline" />
     <orderEntry type="module" module-name="newbaseline-code-generator" />
     <orderEntry type="module" module-name="wrapper-compiler" />
     <orderEntry type="module" module-name="o2-lib-all" />
     <orderEntry type="module" module-name="opt" />
     <orderEntry type="module" module-name="symlevel-light-all" />
-    <orderEntry type="module" module-name="lazy-jit-stubs-generator" />
     <orderEntry type="module" module-name="cangjie-java-class-gen-impl" />
     <orderEntry type="module" module-name="lambda-type-gen-impl" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />

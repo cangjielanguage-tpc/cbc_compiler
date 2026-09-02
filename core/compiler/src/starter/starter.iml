@@ -19,7 +19,6 @@
     <orderEntry type="module" module-name="opt" />
     <orderEntry type="module" module-name="newbaseline-code-generator" />
     <orderEntry type="module" module-name="wrapper-compiler" />
-    <orderEntry type="module" module-name="lazy-jit-stubs-generator" />
     <orderEntry type="module" module-name="cangjie-java-class-gen-impl" />
     <orderEntry type="module" module-name="lambda-type-gen-impl" />
     <orderEntry type="module" module-name="xpackii" />

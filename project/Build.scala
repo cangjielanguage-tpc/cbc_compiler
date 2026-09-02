@@ -99,7 +99,6 @@ object Build {
       addCommandAlias("jar", "compiler/assembly"),
       addCommandAlias("compile", "compiler/compile"),
       addCommandAlias("clean", "all/clean;all/cleanAll"),
-      addCommandAlias("jit-test-jar", "testCompilerJIT/assembly"),
 
       TaskKey[Unit]("cleanAll") := Def.task {
         val log = streams.value.log
@@ -115,11 +114,10 @@ object Build {
     )
 
   lazy val tests = (project in (projectRoot / "target/tests"))
-    .aggregate(assembler, commonJavaLib, commonRtCompiler, compilerCommon, newbaseline, opt, cbcAsm)
+    .aggregate(assembler, commonJavaLib, commonRtCompiler, compilerCommon, opt, cbcAsm)
 
   lazy val compiler = (project in file("core/compiler"))
     .aggregate(compilerAOT)
-    .aggregateWhen(env.languagePack.contains("java"))(compilerJIT)
     .disablePlugins(AssemblyPlugin) // Leave JAR generation only for aggregated projects
 
   private def compilerAssemblySettings(alwaysExcludeScalaStdLib: Boolean = false, keepTasty: Boolean = false) =
@@ -164,23 +162,6 @@ object Build {
       compilerAssemblySettings(keepTasty = false),
       target := baseDirectory.value / s"target/aot-jdk",
       assembly / assemblyOutputPath := target.value / s"aot-jdk.jar",
-    )
-
-  lazy val compilerJIT = (project in file("core/compiler"))
-    .dependsOn(starterJIT, xscalaVMDependent)
-    .settings(
-      compilerAssemblySettings(),
-      target := baseDirectory.value / "target/jit",
-      assembly / assemblyOutputPath := target.value / "jit.jar",
-    )
-
-  lazy val testCompilerJIT = (project in file("core/compiler"))
-    .dependsOn(starterJIT % "test->test", xscalaVMDependent % "test->test", assembler % "test->test", commonJavaLib % "test->test", commonRtCompiler % "test->test", compilerCommon % "test->test")
-    .settings(
-      compilerAssemblySettings(),
-      target := baseDirectory.value / "target/jit-test",
-      assembly / assemblyOutputPath := target.value / "jit-test.jar",
-      assembly / fullClasspath := (assembly / fullClasspath).value ++ (Test / fullClasspath).value
     )
 
   lazy val xscalaVMDependent = xscalaVMDependentJDK
@@ -300,17 +281,6 @@ object Build {
     .dependsOn(compilerCommon, commonJavaLib, commonRtCompiler, assembler, o2Lib, xscalaVMDependentProvided)
     .settings(commonSourceLayout)
 
-  lazy val lazyJitStubsGenerator = (project in file("core/compiler/src/lazy-jit-stubs-generator"))
-    .dependsOn(assembler, compilerCommon, commonJavaLib, newbaselineCodeGenerator, commonRtCompiler, xscalaVMDependentProvided)
-    .settings(commonSourceLayout)
-
-  lazy val newbaseline = (project in file("core/compiler/src/newbaseline"))
-    .dependsOn(
-      assembler, compilerCommon % "test->test;compile->compile", commonJavaLib,
-      newbaselineCodeGenerator, commonRtCompiler, xscalaVMDependentProvided, lazyJitStubsGenerator)
-    .settings(commonSourceTestLayout, commonTestSettings)
-    .disablePlugins(JUnitXmlReportPlugin)
-
   lazy val newbaselineCodeGenerator = (project in file("core/compiler/src/newbaseline-code-generator"))
     .dependsOn(assembler, compilerCommon, commonRtCompiler, commonJavaLib, xscalaVMDependentProvided)
     .settings(commonSourceLayout)
@@ -318,7 +288,7 @@ object Build {
   lazy val o2Lib = (project in file("core/compiler/src/o2-lib"))
     .dependsOn(
       assembler, compilerCommon, commonRtCompiler, commonJavaLib, xscalaVMDependentProvided,
-      lazyJitStubsGenerator, xpackii, xminizip, chirLib)
+      xpackii, xminizip, chirLib)
     .settings(
       Compile / unmanagedSourceDirectories := Seq(
         baseDirectory.value / "src",
@@ -332,7 +302,7 @@ object Build {
     .disablePlugins(JUnitXmlReportPlugin)
 
   private def starter(component: String) = {
-    require(component == "aot" || component == "jit")
+    require(component == "aot")
 
     Project(s"starter${component.toUpperCase}", file("core/compiler/src/starter") / component)
       .dependsOnWhen(component == "aot" && env.languagePack == "cangjie-java")(cangjieJavaClassGenImpl)
@@ -341,11 +311,8 @@ object Build {
       .dependsOnWhen(component == "aot")(
         o2Lib, opt, xpackii, xminizip
       )
-      .dependsOnWhen(component == "jit")(
-        newbaseline, lazyJitStubsGenerator
-      )
       .dependsOn(
-        compilerCommon, commonJavaLib, commonRtCompiler, assembler, newbaselineCodeGenerator,
+        compilerCommon, commonJavaLib, commonRtCompiler, assembler,
         wrapperCompiler, xscalaVMDependentProvided
       )
       .settings(
@@ -358,10 +325,9 @@ object Build {
   }
 
   lazy val starterAOT = starter("aot")
-  lazy val starterJIT = starter("jit")
 
   lazy val symlevelLight = (project in file("core/compiler/src/symlevel-light"))
-    .dependsOn(assembler, commonRtCompiler, compilerCommon, commonJavaLib, o2Lib, lazyJitStubsGenerator)
+    .dependsOn(assembler, commonRtCompiler, compilerCommon, commonJavaLib, o2Lib)
     .settings(commonSourceLayout)
 
   lazy val verifier = (project in file("core/compiler/src/verifier"))
