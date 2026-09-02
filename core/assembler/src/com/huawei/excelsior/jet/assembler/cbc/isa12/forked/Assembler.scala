@@ -587,7 +587,7 @@ trait ForkedAssembler {
       .ts16(ts)
   }
 
-  def loadRawMemory(dst: Rg, base: IR, ldk: LoadAccessKind, offset: Long): Unit = {
+  def loadTailParam(dst: Rg, tailReg: IR, ldk: LoadAccessKind, offset: Long): Unit = {
     lazy val idst = dst.asInstanceOf[IR]
     lazy val fdst = dst.asInstanceOf[FR]
 
@@ -602,22 +602,8 @@ trait ForkedAssembler {
     // TODO: optimize VLE encoding, so next `sleb` will be present only if low4 `offset` is too big.
     stream
       .opc8(Opcode.LoadRawMemory)
-      .bits(_.w4(dst).w4(analyzer.useAny(base)))
+      .bits(_.w4(dst).w4(analyzer.useAny(tailReg)))
       .bits(_.w4(ldk).w4(low4(offset)))
-      .sleb(scut4(offset))
-  }
-
-  def storeRawMemory(src: IR | FR, base: IR, stk: StoreAccessKind, offset: Long): Unit = {
-    src match {
-      case x: IR => analyzer.useAny(x)
-      case _ =>
-    }
-
-    // TODO: optimize VLE encoding, so next `sleb` will be present only if low4 `offset` is too big.
-    stream
-      .opc8(Opcode.StoreRawMemory)
-      .bits(_.w4(src).w4(analyzer.useAny(base)))
-      .bits(_.w4(stk).w4(low4(offset)))
       .sleb(scut4(offset))
   }
 
@@ -1168,7 +1154,6 @@ object Assembler {
     case NewNoneGeneric
     case NewSomeGeneric
     case LoadRawMemory
-    case StoreRawMemory
     case CallInterfGeneric
     case AssignGeneric
     case InstanceOfGeneric
