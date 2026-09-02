@@ -63,14 +63,6 @@ object Build {
     Test / parallelExecution := false,
   )
 
-  lazy val asmSettings = Def.settings(
-    libraryDependencies ++= Seq(
-      "org.ow2.asm" % "asm" % "9.7",
-      "org.ow2.asm" % "asm-commons" % "9.7",
-      "org.ow2.asm" % "asm-tree" % "9.7"
-    )
-  )
-
   lazy val flatbuffersVersion: String = {
     val versionLine = s"${env.flatc} --version".!!.trim
     val version = versionLine.stripPrefix("flatc version ").trim
@@ -226,10 +218,6 @@ object Build {
     .settings(commonSourceTestLayout, commonTestSettings)
     .disablePlugins(JUnitXmlReportPlugin)
 
-  lazy val cangjieJavaClassGenImpl = (project in file("core/compiler/src/cangjie-java-class-gen-impl"))
-    .dependsOn(commonJavaLib, compilerCommon, xscalaVMDependentProvided)
-    .settings(asmSettings, commonSourceLayout)
-
   lazy val compilerCommon = (project in file("core/compiler/src/common"))
     .dependsOn(
       assembler % "test->test;compile->compile", commonRtCompiler,
@@ -264,7 +252,6 @@ object Build {
     require(component == "aot")
 
     Project(s"starter${component.toUpperCase}", file("core/compiler/src/starter") / component)
-      .dependsOnWhen(component == "aot" && env.languagePack == "cangjie-java")(cangjieJavaClassGenImpl)
       .dependsOnWhen(component == "aot" && (env.languagePack.contains("java") || env.languagePack == "scala"))(lambdaTypeGenImpl)
       .dependsOnWhen(component == "aot")(
         o2Lib, opt, xpackii, xminizip

@@ -20,7 +20,7 @@ class Env(props: Properties) {
   val os                 = apply("os",                  Some("linux"),       "linux", "windows")
   val arch               = apply("arch",                None,                "amd64", "arm64")
   val mode               = apply("mode",                None,                "work", "enduser")
-  val languagePack       = apply("language.pack",       Some("cangjie"),     "none", "java", "cangjie", "cangjie-java", "scala")
+  val languagePack       = apply("language.pack",       Some("cangjie"),     "none", "java", "cangjie", "scala")
   val flatc              = apply("flatc",               Some("flatc"))
 
   def apply(name: String, default: Option[String], variants: String*): String = {

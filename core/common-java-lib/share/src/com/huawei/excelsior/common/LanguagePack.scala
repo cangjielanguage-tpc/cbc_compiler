@@ -15,7 +15,6 @@ enum LanguagePack(private val name: String, languages: Language*) {
   case NONE extends LanguagePack("none", Language.AJ)
   case JAVA extends LanguagePack("java", Language.AJ, Language.JAVA)
   case CANGJIE extends LanguagePack("cangjie", Language.AJ, Language.CANGJIE)
-  case CANGJIE_JAVA extends LanguagePack("cangjie-java", Language.AJ, Language.CANGJIE, Language.JAVA)
   case SCALA extends LanguagePack("scala", Language.AJ, Language.SCALA)
 
   /** Returns whether a given language is supported by this language pack. */

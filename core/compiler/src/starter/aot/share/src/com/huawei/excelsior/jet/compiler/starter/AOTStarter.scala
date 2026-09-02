@@ -12,7 +12,6 @@ import com.huawei.excelsior.common
 import com.huawei.excelsior.common.Environment.{JC_STANDALONE, LANGUAGE_PACK}
 import com.huawei.excelsior.common.JetDirs.jetHome
 import com.huawei.excelsior.common.Language.JAVA
-import com.huawei.excelsior.common.LanguagePack.CANGJIE_JAVA
 import com.huawei.excelsior.common.ProcessUtils.sanitizeCommand
 import com.huawei.excelsior.common.{DynamicBundle, JetDirs, Mode, XProcess}
 import com.huawei.excelsior.jet.assembler.Location
@@ -372,8 +371,6 @@ object AOTStarter {
           return failed(s"copy Cangjie VM launcher")
         }
 
-        copyCangjieJavaLib()
-
         if (!checkONoCodeForCJStdLib(args)) {
           if (checkNoGenCJStack(args)) {
             // skip building of cjstack
@@ -486,16 +483,6 @@ object AOTStarter {
       }
     }
     true
-  }
-
-  private def copyCangjieJavaLib(): Unit = {
-    if (LANGUAGE_PACK == CANGJIE_JAVA) {
-      val sourceJarPath = jetHome/"lib/cangjie-java-lib.jar"
-      val targetJarPath = JetDirs.cjcBin/"../lib/cangjie-java-lib.jar"
-      if (!targetJarPath.exists) {
-        Files.copy(sourceJarPath, targetJarPath)
-      }
-    }
   }
 
   private def copyCangjieStaticPdb(): Unit = {

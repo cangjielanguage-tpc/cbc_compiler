@@ -16,7 +16,6 @@ lazy val assembler                 = Build.assembler
 lazy val commonJavaLib             = Build.commonJavaLib
 lazy val commonRtCompiler          = Build.commonRtCompiler
 lazy val compilerCommon            = Build.compilerCommon
-lazy val cangjieJavaClassGenImpl   = Build.cangjieJavaClassGenImpl
 lazy val lambdaTypeGenImpl         = Build.lambdaTypeGenImpl
 lazy val newbaselineCodeGenerator  = Build.newbaselineCodeGenerator
 lazy val o2Lib                     = Build.o2Lib

@@ -141,8 +141,6 @@ object ProjectLogic {
 
   /////////////////////////////////////////////////////////////////////////////
   // Other oberon options
-
-  lazy val ForceMainMethodIndex: Boolean = languagePack == LanguagePack.CANGJIE_JAVA
   
   lazy val multiapp: Boolean = env.enabled(Multiapp) || (env.valueOfOrNull(AppType) != null && env.valueOfOrNull(AppType).equalsIgnoreCase("TOMCAT"))
   

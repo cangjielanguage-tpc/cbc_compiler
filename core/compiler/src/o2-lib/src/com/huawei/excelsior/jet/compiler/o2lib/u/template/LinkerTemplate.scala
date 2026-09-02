@@ -10,7 +10,7 @@ package com.huawei.excelsior.jet.compiler.o2lib.u.template
 
 import com.huawei.excelsior.common.Arch.{AMD64, ARM64}
 import com.huawei.excelsior.common.Language
-import com.huawei.excelsior.common.LanguagePack.{CANGJIE, CANGJIE_JAVA, JAVA, NONE, SCALA}
+import com.huawei.excelsior.common.LanguagePack.{CANGJIE, JAVA, NONE, SCALA}
 import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.Env.{addressSize, languagePack, targetArch, targetOS}
 import com.huawei.excelsior.jet.compiler.driver.ProjectLogic
@@ -220,10 +220,6 @@ object LinkerTemplate {
     if (equation("MainMethodIndex") != null && !equation("MainMethodIndex").isEmpty) {
       addLine(s"-config=MainMethodIndex:${equation("MainMethodIndex")}")
     }
-    
-    if (ProjectLogic.ForceMainMethodIndex) {
-      addLine(s"-config=ForceMainMethodIndex:1")
-    }
 
     if (option("gendll")) {
       addLine(s"-name=${fileName(equation("outputname"), equation("dllext_target"), true)}")
@@ -250,16 +246,6 @@ object LinkerTemplate {
         addLine("-exp=CangjieRT_attachCurrentThreadAsDaemon.3")
         addLine("-exp=CangjieRT_detachCurrentThread.4")
         addLine("-exp=CangjieRT_exit.5")
-      } else if (languagePack == CANGJIE_JAVA) {
-        addLine("-exp=JNI_GetDefaultJavaVMInitArgs.2")
-        addLine("-exp=JNI_CreateJavaVM.3")
-        addLine("-exp=JNI_GetCreatedJavaVMs.4")
-        addLine("-exp=JVMI_InitJVMInterface.5")
-        addLine("-exp=CangjieRT_init.6")
-        addLine("-exp=CangjieRT_attachCurrentThread.7")
-        addLine("-exp=CangjieRT_attachCurrentThreadAsDaemon.8")
-        addLine("-exp=CangjieRT_detachCurrentThread.9")
-        addLine("-exp=CangjieRT_exit.10")
       }
     } else if (O2Env.env.enabled(GenMegaObj)) {
       addLine(s"-name=${fileName(equation("outputname"), equation("mobjext"), true)}")
@@ -405,9 +391,6 @@ object LinkerTemplate {
         }
         if (languagePack == CANGJIE) {
           addLine(fileName(XString("aj-cangjie-lp-rt-lowlevel"), XString("zip"), false).toString)
-        }
-        if (languagePack == CANGJIE_JAVA) {
-          addLine(fileName(XString("aj-cangjie-java-lp-rt-lowlevel"), XString("zip"), false).toString)
         }
         if (languagePack == SCALA) {
           addLine(fileName(XString("aj-scala-lp-rt-lowlevel"), XString("zip"), false).toString)

@@ -10,7 +10,6 @@
       <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/none/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/java/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/cangjie/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/cangjie-java/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/aot/language-pack/scala/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/aot/target" />
     </content>

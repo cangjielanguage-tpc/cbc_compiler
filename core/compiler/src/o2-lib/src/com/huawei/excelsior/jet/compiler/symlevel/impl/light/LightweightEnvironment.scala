@@ -260,7 +260,7 @@ object LightweightEnvironment {
     languagePack match {
       case SCALA =>
         checkInstanceSize(ClassID.XScalaString, RTConst.ScalaString.SIZE.intValue)
-      case JAVA | CANGJIE_JAVA =>
+      case JAVA =>
         checkInstanceSize(ClassID.String, RTConst.JavaString.SIZE.intValue)
       case NONE | CANGJIE =>
         // no checks yet
