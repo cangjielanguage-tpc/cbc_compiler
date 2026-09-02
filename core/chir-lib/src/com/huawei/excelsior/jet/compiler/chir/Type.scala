@@ -75,3 +75,6 @@ final class FuncTypeImpl(f: FuncType)(using provider: CHIRItemProvider) extends 
   override def isC: Boolean = f.isCfuncType
   override def hasVarArg: Boolean = f.hasVarArg
 }
+
+// TODO now it's unused in parser
+final class ThisTypeImpl(t: Type) extends CHIR.Type {}
