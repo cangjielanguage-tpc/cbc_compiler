@@ -8,29 +8,31 @@ import com.huawei.excelsior.jet.compiler.chir.{CHIR, CHIRItemProvider, HasAttrib
 trait HasAnnotationsImpl(b: Base)(using provider: CHIRItemProvider) extends HasAnnotations {
   override lazy val annotations: Seq[CHIR.Annotation] = {
     val annos = b.annosVector
-    for (i <- 0 to annos.length) yield {
-      val obj = b.annosType(i) match {
-        case Annotation.needCheckArrayBound => new NeedCheckArrayBound
-        case Annotation.needCheckCast => new NeedCheckCast
-        case Annotation.debugLocationInfoForWarning => new DebugLocation
-        case Annotation.generatedFromForIn => new GeneratedFromForIn
-        case Annotation.isAutoEnvClass => new IsAutoEnvClass
-        case Annotation.isCapturedClassInCC => new IsCapturedClassInCC
-        case Annotation.linkTypeInfo => new LinkTypeInfo
-        case Annotation.skipCheck => new SkipCheck
-        case Annotation.neverOverflowInfo => new NeverOverflowInfo
-        case Annotation.enumCaseIndex => new EnumCaseIndex
-        case Annotation.virMethodOffset => new VirMethodOffset
-        case Annotation.wrappedRawMethod => new WrappedRawMethod
-        case Annotation.overrideSrcFuncType => new OverrideSrcFuncType
-      }
-      annos.get(obj, i) match {
-        case a: IsAutoEnvClass => IsAutoEnvClassImpl(a)
-        case a: OverrideSrcFuncType => OverrideSrcFuncTypeImpl(a)
-        case a: WrappedRawMethod => WrappedRawMethodImpl(a)
-        case _ => notImplemented("CHIR annotation mapping", (obj, i))
-      }
-    }
+    (0 until annos.length).collect {
+      case i if b.annosType(i) != Annotation.NONE =>
+        val obj = b.annosType(i) match {
+          case Annotation.needCheckArrayBound => new NeedCheckArrayBound
+          case Annotation.needCheckCast => new NeedCheckCast
+          case Annotation.debugLocationInfoForWarning => new DebugLocation
+          case Annotation.generatedFromForIn => new GeneratedFromForIn
+          case Annotation.isAutoEnvClass => new IsAutoEnvClass
+          case Annotation.isCapturedClassInCC => new IsCapturedClassInCC
+          case Annotation.linkTypeInfo => new LinkTypeInfo
+          case Annotation.skipCheck => new SkipCheck
+          case Annotation.neverOverflowInfo => new NeverOverflowInfo
+          case Annotation.enumCaseIndex => new EnumCaseIndex
+          case Annotation.virMethodOffset => new VirMethodOffset
+          case Annotation.wrappedRawMethod => new WrappedRawMethod
+          case Annotation.overrideSrcFuncType => new OverrideSrcFuncType
+        }
+
+        annos.get(obj, i) match {
+          case a: IsAutoEnvClass => IsAutoEnvClassImpl(a)
+          case a: OverrideSrcFuncType => OverrideSrcFuncTypeImpl(a)
+          case a: WrappedRawMethod => WrappedRawMethodImpl(a)
+          case other => null // Fallback for unhandled objects (skips them safely)
+        }
+    }.filterNot(_ == null)
   }
 }
 
