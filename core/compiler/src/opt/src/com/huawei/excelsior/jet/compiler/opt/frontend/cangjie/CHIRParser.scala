@@ -883,10 +883,9 @@ trait CHIRParser
 
       case e: CHIR.GetElementRef =>
         val memBase = e.base
-        val mem = state(memBase)
-        val staticField = memBase match {
-          case v: CHIR.GlobalVar => Some(staticFieldRef(v))
-          case _ => None
+        val (mem, staticField) = memBase match {
+          case v: CHIR.GlobalVar => (NoValue(), Some(staticFieldRef(v)))
+          case _ => (state(memBase), None)
         }
 
         staticField match {
@@ -922,11 +921,10 @@ trait CHIRParser
 
       case e: CHIR.StoreElementRef =>
         val memBase = e.location
-        val mem = state(memBase)
         val arg = state(e.value)
-        val staticField = memBase match {
-          case v: CHIR.GlobalVar => Some(staticFieldRef(v))
-          case _ => None
+        val (mem, staticField) = memBase match {
+          case v: CHIR.GlobalVar => (NoValue(), Some(staticFieldRef(v)))
+          case _ => (state(memBase), None)
         }
 
         staticField match {
