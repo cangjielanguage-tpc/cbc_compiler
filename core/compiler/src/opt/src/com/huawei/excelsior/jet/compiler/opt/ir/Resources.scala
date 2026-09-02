@@ -516,7 +516,7 @@ object Resources extends ImplicitSetsAndMaps {
 
     // PS: conwor said chances I will fail here 1 in a 100000000 and it shouldn't happen more than 1 time per 10 years,
     // thus we don't need assert anywhere near this code.
-    // Current counter of fails, starting from October 2024: 9 (including still open JET-15742)
+    // Current counter of fails, starting from October 2024: 10 (including still open JET-15742)
     def head = findOrNull(constTrue).nn
     def headOption = find(constTrue)
 
