@@ -35,7 +35,7 @@ trait CangjieNodes { self: Universe =>
       val res = resType(fields)
       res match {
         case res: SignatureType.OptionLikeEnum if res.someType.isTypeVariable => TRefType
-        case _ => if (res.isTypeVariable) TRefType else ValueType.fromSig(res)
+        case _ => if (res.isVariableSizeType) TRefType else ValueType.fromSig(res)
       }
     }
     def resAddrTpe(fields: Seq[CangjieFieldReference]): Type = {
@@ -55,6 +55,7 @@ trait CangjieNodes { self: Universe =>
   sealed trait InstanceFieldSeqOperation extends FieldSeqOperation {
     // Potentially derived pointer inside of baseRef.
     // Field sequence is traversed starting from this pointer.
+    def baseRef: Node
     def base: Node
   }
 
