@@ -228,6 +228,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
             case CHIRExprKind.Constant => new ConstantImpl(e)
             case CHIRExprKind.Tuple => new TupleImpl(e)
             case CHIRExprKind.GetException => GetException
+            case CHIRExprKind.GetRtti => new GetRTTIImpl(e)
           }
         }
       }
