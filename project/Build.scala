@@ -23,21 +23,6 @@ object Build {
 
   lazy val env = Env.load(projectRoot / "env.properties")
 
-  /** Describes whether Scala library be bootstrapped or not.
-    *
-    * Important for testing, since test couldn't be run in bootstrapped mode.
-    */
-  lazy val bootstrapped = env.xscalaBootstrapped match {
-    case "true"  => true
-    case "false" => false
-  }
-
-  /** Describes virtual machine that will execute compiler code. */
-  lazy val hostVM = env.xscalaVM match {
-    case "jet" => HostVM.JET
-    case "jdk" => HostVM.JDK
-  }
-
   /** Describes whether compiler is built independent from JET runtime or not. */
   lazy val jcStandalone = env.jcStandalone match {
     case "true"  => true
@@ -69,20 +54,6 @@ object Build {
 
     // Setup `env` setting to observe environment settings from SBT REPL session
     Env.settingKey.withRank(KeyRanks.Invisible) := env,
-
-    // Setup `bootstrapped` setting to observe it from SBT REPL session
-    SettingKey[Boolean]("bootstrapped", "Describes should Scala library be bootstrapped or not.", KeyRanks.Invisible) := bootstrapped,
-
-    // Do not add dependency to stdlib when we compile it by ourselves
-    autoScalaLibrary := !bootstrapped,
-
-    Global / onLoad := (Global / onLoad).value andThen { state =>
-      if (!bootstrapped && hostVM == HostVM.JET) {
-        System.err.println(s"[error] Compiler cannot be compiled with hostVM=$hostVM and bootstrapped=$bootstrapped")
-        sys.exit(1)
-      }
-      state
-    }
   )
 
   lazy val javaTestSettings = Def.settings(
@@ -125,7 +96,7 @@ object Build {
 
   lazy val all = (project in projectRoot)
     .settings(
-      addCommandAlias("test", "javaFriendlyEnums/assembly;" + (if (bootstrapped) "tests/testBootstrappedStub" else "tests/test")),
+      addCommandAlias("test", "javaFriendlyEnums/assembly;tests/test"),
       addCommandAlias("jar", "javaFriendlyEnums/assembly;compiler/assembly"),
       addCommandAlias("compile", "javaFriendlyEnums/assembly;compiler/compile"),
       addCommandAlias("clean", "all/clean;all/cleanAll"),
@@ -146,13 +117,6 @@ object Build {
 
   lazy val tests = (project in (projectRoot / "target/tests"))
     .aggregate(assembler, commonJavaLib, commonRtCompiler, compilerCommon, newbaseline, opt, cbcAsm)
-    .aggregateWhen(hostVM == HostVM.JET)(xscalaJET)
-    .settings(
-      TaskKey[Unit]("testBootstrappedStub") := Def.task {
-        streams.value.log.info("Tests can only be run with bootstrapped=false.")
-        sys.exit(1)
-      }.value,
-    )
 
   lazy val compiler = (project in file("core/compiler"))
     .aggregate(compilerAOT)
@@ -164,7 +128,7 @@ object Build {
       Compile / packageBin / packageOptions := Seq(),
       assembly / assemblyExcludedJars := {
         val classpath = (assembly / fullClasspath).value
-        val excludeList = Seq("jdk8_rt") ++ (if (bootstrapped || alwaysExcludeScalaStdLib) Seq("scala-library", "scala3-library") else Seq.empty)
+        val excludeList = Seq("jdk8_rt") ++ (if (alwaysExcludeScalaStdLib) Seq("scala-library", "scala3-library") else Seq.empty)
         classpath.filter { entry =>
           val absolutePath = entry.data.absolutePath
           excludeList exists (absolutePath.contains(_))
@@ -198,9 +162,9 @@ object Build {
   lazy val compilerAOTVMDependent = (project in file("core/compiler"))
     .dependsOn(xscalaVMDependent)
     .settings(
-      compilerAssemblySettings(keepTasty = (hostVM == HostVM.JET)),
-      target := baseDirectory.value / s"target/aot-$hostVM",
-      assembly / assemblyOutputPath := target.value / s"aot-$hostVM.jar",
+      compilerAssemblySettings(keepTasty = false),
+      target := baseDirectory.value / s"target/aot-jdk",
+      assembly / assemblyOutputPath := target.value / s"aot-jdk.jar",
     )
 
   lazy val compilerJIT = (project in file("core/compiler"))
@@ -220,10 +184,7 @@ object Build {
       assembly / fullClasspath := (assembly / fullClasspath).value ++ (Test / fullClasspath).value
     )
 
-  lazy val xscalaVMDependent = hostVM match {
-    case HostVM.JDK => xscalaVMDependentJDK
-    case HostVM.JET => xscalaVMDependentJET
-  }
+  lazy val xscalaVMDependent = xscalaVMDependentJDK
 
   // Provided dependency won't be included in target JARs
   lazy val xscalaVMDependentProvided = xscalaVMDependent % "provided"
@@ -235,20 +196,6 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(
         baseDirectory.value / "src" / "share"
       ),
-      // Depend on standard library, since bootstrapped is not yet available
-      autoScalaLibrary := true,
-    )
-
-  lazy val xscalaVMDependentShareBootstrapped = (project in file("core/xscala-vm-dependent"))
-    .dependsOn(xscalaVMDependentStub % "provided")
-    .dependsOn(xscala)
-    .settings(
-      target := baseDirectory.value / "target/share-bootstrapped",
-      Compile / unmanagedSourceDirectories := Seq(
-        baseDirectory.value / "src" / "share"
-      ),
-      // Now bootstrapped is available, so use it
-      autoScalaLibrary := false,
     )
 
   lazy val xscalaVMDependentStub = (project in file("core/xscala-vm-dependent"))
@@ -257,76 +204,14 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(
         baseDirectory.value / "src" / "stub"
       ),
-      // Depend on standard library, since bootstrapped is not yet available
-      autoScalaLibrary := true,
-    )
-
-  lazy val xscalaVMDependentJET = (project in file("core/xscala-vm-dependent"))
-    .dependsOn(
-      if (bootstrapped) xscalaVMDependentShareBootstrapped
-      else xscalaVMDependentShare
-    )
-    .settings(
-      target := baseDirectory.value / "target/jet",
-      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "jet"),
     )
 
   lazy val xscalaVMDependentJDK = (project in file("core/xscala-vm-dependent"))
-    .dependsOn(
-      if (bootstrapped) xscalaVMDependentShareBootstrapped
-      else xscalaVMDependentShare
-    )
+    .dependsOn(xscalaVMDependentShare)
     .settings(
       target := baseDirectory.value / "target/jdk",
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "jdk")
     )
-
-  lazy val xscala = hostVM match {
-    case HostVM.JDK => xscalaJDK
-    case HostVM.JET => xscalaJET
-  }
-
-  private def xscalaImpl(hostVM: HostVM, suffix: String) = {
-    Project(s"xscala${hostVM.toString.toUpperCase}$suffix", file("target/xscala"))
-      .dependsOn(xscalaVMDependentShare % "provided")
-      .settings(
-        target := baseDirectory.value / s"target/$hostVM$suffix",
-        Compile / sourceGenerators += Def.task {
-          val dir = "src"
-          val src = file(env.xscala) / dir
-          val dst = baseDirectory.value / dir
-
-          if (!src.exists) {
-            println(s"Invalid xscala path '${env.xscala}'")
-            Seq.empty
-          } else {
-            val log = streams.value.log
-            if (!dst.exists() || (directorySize(src.toPath) != directorySize(dst.toPath))) {
-              log.info(s"copying $src to $dst")
-              IO.copyDirectory(source = src, target = dst)
-            }
-            val excludeDir = s"xscala-library-${hostVM.opposite}"
-            showAllFiles(dst.toPath) filterNot (_.absolutePath.contains(excludeDir))
-          }
-        }
-      )
-      .disablePlugins(JUnitXmlReportPlugin)
-  }
-
-  lazy val xscalaJDK = xscalaImpl(HostVM.JDK, suffix = "")
-
-  // Bootstrapped xscala-library
-  // which uses non-bootstrapped xscala-library
-  lazy val xscalaJET = xscalaImpl(HostVM.JET, suffix = "")
-    .dependsOn(xscalaJET0 % "provided")
-    .settings(
-      // Manually strip out transitively included regular scala-library jars
-      Compile / managedClasspath := Seq()
-    )
-
-  // Non-bootstrapped (phase zero) xscala-library
-  // which uses regular scala-library
-  lazy val xscalaJET0 = xscalaImpl(HostVM.JET, suffix = "0")
 
   lazy val chirLib = (project in file("core/chir-lib"))
     .settings(flatbuffersSettings)
