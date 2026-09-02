@@ -1401,7 +1401,7 @@ trait CHIRParser
             val args = e.args
             val ValueSig(arrayType) = args.head
             val (obj, idx) = args match {
-              case Seq(_, obj, idx) => (state(obj), state(idx))
+              case Seq(obj, idx) => (state(obj), state(idx))
             }
             val elemType = arrayType.getArrayElemType
             val n = if (elemType.isZST) {
@@ -1424,7 +1424,7 @@ trait CHIRParser
             val args = e.args
             val ValueSig(arrayType) = args.head
             val (obj, idx, value) = args match {
-              case Seq(_, obj, idx, value) => (state(obj), state(idx), state(value))
+              case Seq(obj, idx, value) => (state(obj), state(idx), state(value))
             }
             arrayPut(arrayType, obj, idx, value)
 
@@ -1436,7 +1436,7 @@ trait CHIRParser
             val args = e.args
             val ValueSig(arrayType) = args.head
             val (src, dst, srcStart, dstStart, len) = args match {
-              case Seq(_, src, dst, srcStart, dstStart, len) => (state(src), state(dst), state(srcStart), state(dstStart), state(len))
+              case Seq(src, dst, srcStart, dstStart, len) => (state(src), state(dst), state(srcStart), state(dstStart), state(len))
             }
             ArrayBuiltInCopyTo(arrayType)(src, dst, srcStart, dstStart, len)
 
