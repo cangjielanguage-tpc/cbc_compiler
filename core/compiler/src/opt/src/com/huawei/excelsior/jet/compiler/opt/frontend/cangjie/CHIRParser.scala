@@ -2472,7 +2472,14 @@ trait CHIRParser
   private def resolveProxiesInArgs(): Unit = {
     for (n <- all[SMutObjectArg]) {
       val actual = n.recArg.receiver match {
-        case rcv: InstanceFieldSeqOperation => rcv.base
+        case rcv: InstanceFieldSeqOperation =>
+          if (rootMethod.isCangjieMut) {
+            // If mut-function calls another mut-function of this's struct field
+            // then base ref should be forwarded from outer mut-function to inner
+            rootMethodParam(rootMethod.getMutObjectArgIdx)
+          } else {
+            rcv.baseRef
+          }
         case rcv: FieldSeqOperation => DerivedPtr.Global()
         case rcv: StackAlloc => DerivedPtr.Local()
         case rcv: Param =>
