@@ -9,7 +9,7 @@
 package com.huawei.excelsior.jet.assembler.cbc.isa12.forked
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, FieldReference, FieldReferenceWithType, MethodReference, Signature, SingleFieldReference, StringLiteral}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, FieldReference, FieldReferenceWithType, MethodReference, NoneFieldReference, Signature, SingleFieldReference, StringLiteral}
 import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, CbcTypeKind, StackSlot, Register as Rg}
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IRZ}
@@ -856,6 +856,8 @@ trait ForkedAssembler {
   }
 
   def ld(dst: Rg, baseRef: IR, derived: IR, ti: IR, fr: FieldReference) = instr {
+    require(fr.isInstanceOf[NoneFieldReference]) // currently fr is ignored
+
     stream
       .opc8(Opcode.Ld_Generic)
       .bits(_.w4(dst).w4(baseRef))
@@ -942,6 +944,8 @@ trait ForkedAssembler {
   }
 
   def st(src: Rg, base: IR, derived: IR, ti: IR, fr: FieldReference) = instr {
+    require(fr.isInstanceOf[NoneFieldReference]) // currently fr is ignored
+
     stream
       .opc8(Opcode.St_Generic)
       .bits(_.w4(src).w4(base))
