@@ -113,6 +113,7 @@ class IntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) exten
   override def kind: Intrinsic.Kind = e.intrinsicKind match {
     case IntrinsicKind.ABS => Intrinsic.Kind.Abs
     case IntrinsicKind.ARRAY_ACQUIRE_RAW_DATA => Intrinsic.Kind.ArrayAcquireRawData
+    case IntrinsicKind.ARRAY_BUILT_IN_COPY_TO => Intrinsic.Kind.ArrayBuiltinCopyTo
     case IntrinsicKind.ARRAY_GET_UNCHECKED => Intrinsic.Kind.ArrayGetUnchecked
     case IntrinsicKind.ARRAY_GET_REF_UNCHECKED => Intrinsic.Kind.ArrayGetRefUnchecked
     case IntrinsicKind.ARRAY_GET => Intrinsic.Kind.ArrayGet
