@@ -1148,8 +1148,7 @@ private object InstructionParser {
   instr("st.tslot.imm") { (a, s) => val src = s.int;  MemSpace.Builder().typed(s.ts).field(s.field).storeImm(src).gen(a) }
 
   // memory access - raw
-  instr("ld.raw") { (a, s) => a.loadRawMemory(ldk = s.ldk, dst = s.ireg, base = s.ireg, offset = s.int) }
-  instr("st.raw") { (a, s) => a.storeRawMemory(stk = s.stk, src = s.ireg, base = s.ireg, offset = s.int) }
+  instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, offset = s.int) }
 
   // calls
   instr("call.direct")    { (a, s) => a.callDirect(s.ireg, s.method) }
