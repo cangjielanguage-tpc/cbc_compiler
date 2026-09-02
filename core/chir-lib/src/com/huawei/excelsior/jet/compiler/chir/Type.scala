@@ -70,7 +70,7 @@ final class FuncTypeImpl(f: FuncType)(using provider: CHIRItemProvider) extends 
       provider.getType[CHIR.Type](idx).get
     }
   }
-  override def paramTypes: Seq[CHIR.Type] = argsTypes.init.tail
+  override def paramTypes: Seq[CHIR.Type] = argsTypes.slice(1, argsTypes.length - 1)
   override def receiverType: CHIR.Type = argsTypes.head
   override def returnType: CHIR.Type = argsTypes.last
   override def isC: Boolean = f.isCfuncType
