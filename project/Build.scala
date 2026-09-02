@@ -23,12 +23,6 @@ object Build {
 
   lazy val env = Env.load(projectRoot / "env.properties")
 
-  /** Describes whether compiler is built independent from JET runtime or not. */
-  lazy val jcStandalone = env.jcStandalone match {
-    case "true"  => true
-    case "false" => false
-  }
-
   lazy val thisBuildSettings = Def.settings(
     scalaVersion := "3.3.3",
     organization := "com.huawei.excelsior",
@@ -116,10 +110,6 @@ object Build {
   lazy val tests = (project in (projectRoot / "target/tests"))
     .aggregate(assembler, commonJavaLib, commonRtCompiler, compilerCommon, opt, cbcAsm)
 
-  lazy val compiler = (project in file("core/compiler"))
-    .aggregate(compilerAOT)
-    .disablePlugins(AssemblyPlugin) // Leave JAR generation only for aggregated projects
-
   private def compilerAssemblySettings(alwaysExcludeScalaStdLib: Boolean = false, keepTasty: Boolean = false) =
     Def.settings(
       Compile / packageBin / packageOptions := Seq(),
@@ -145,52 +135,22 @@ object Build {
       },
     )
 
-  lazy val compilerAOT = (project in file("core/compiler"))
-    .aggregate(compilerAOTVMDependent)
+  lazy val compiler = (project in file("core/compiler"))
     .dependsOn(starterAOT)
-    .dependsOnWhen(jcStandalone)(xscalaVMDependent)
+    .dependsOn(xscalaVMDependent)
     .settings(
-      compilerAssemblySettings(alwaysExcludeScalaStdLib = !jcStandalone),
+      compilerAssemblySettings(),
       target := baseDirectory.value / "target/aot",
       assembly / mainClass := Some("com.huawei.excelsior.jet.compiler.starter.AOTStarter"),
       assembly / assemblyOutputPath := target.value / "aot.jar",
     )
 
-  lazy val compilerAOTVMDependent = (project in file("core/compiler"))
-    .dependsOn(xscalaVMDependent)
+  lazy val xscalaVMDependent = (project in file("core/xscala-vm-dependent"))
     .settings(
-      compilerAssemblySettings(keepTasty = false),
-      target := baseDirectory.value / s"target/aot-jdk",
-      assembly / assemblyOutputPath := target.value / s"aot-jdk.jar",
-    )
-
-  lazy val xscalaVMDependent = xscalaVMDependentJDK
-
-  // Provided dependency won't be included in target JARs
-  lazy val xscalaVMDependentProvided = xscalaVMDependent % "provided"
-
-  lazy val xscalaVMDependentShare = (project in file("core/xscala-vm-dependent"))
-    .dependsOn(xscalaVMDependentStub % "provided")
-    .settings(
-      target := baseDirectory.value / "target/share",
       Compile / unmanagedSourceDirectories := Seq(
-        baseDirectory.value / "src" / "share"
-      ),
-    )
-
-  lazy val xscalaVMDependentStub = (project in file("core/xscala-vm-dependent"))
-    .settings(
-      target := baseDirectory.value / "target/stub",
-      Compile / unmanagedSourceDirectories := Seq(
-        baseDirectory.value / "src" / "stub"
-      ),
-    )
-
-  lazy val xscalaVMDependentJDK = (project in file("core/xscala-vm-dependent"))
-    .dependsOn(xscalaVMDependentShare)
-    .settings(
-      target := baseDirectory.value / "target/jdk",
-      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "jdk")
+        baseDirectory.value / "src" / "jdk",
+        baseDirectory.value / "src" / "share",
+      )
     )
 
   lazy val chirLib = (project in file("core/chir-lib"))
@@ -217,7 +177,7 @@ object Build {
     )
 
   lazy val assembler = (project in file("core/assembler"))
-    .dependsOn(xscalaVMDependentProvided, commonJavaLib)
+    .dependsOn(xscalaVMDependent, commonJavaLib)
     .settings(commonSourceTestLayout, commonTestSettings)
     .disablePlugins(JUnitXmlReportPlugin)
 
@@ -232,7 +192,7 @@ object Build {
     .disablePlugins(JUnitXmlReportPlugin)
 
   lazy val commonJavaLib = (project in file("core/common-java-lib"))
-    .dependsOn(xscalaVMDependentProvided)
+    .dependsOn(xscalaVMDependent)
     .settings(commonTestSettings)
     .settings(
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "share" / "src"),
@@ -249,7 +209,7 @@ object Build {
              |  val targetCPU = "${env.arch}"
              |  val buildMode = "${env.mode}"
              |  val languagePack = "${env.languagePack}"
-             |  val jcStandalone = $jcStandalone
+             |  val jcStandalone = true
              |}
              |""".stripMargin
 
@@ -262,7 +222,7 @@ object Build {
     .disablePlugins(JUnitXmlReportPlugin)
 
   lazy val commonRtCompiler = (project in file("core/common-rt-compiler"))
-    .dependsOn(commonJavaLib, xscalaVMDependent % "test->test;provided")
+    .dependsOn(commonJavaLib, xscalaVMDependent)
     .settings(commonSourceTestLayout, commonTestSettings)
     .disablePlugins(JUnitXmlReportPlugin)
 
@@ -273,21 +233,21 @@ object Build {
   lazy val compilerCommon = (project in file("core/compiler/src/common"))
     .dependsOn(
       assembler % "test->test;compile->compile", commonRtCompiler,
-      commonJavaLib % "test->test;compile->compile", xscalaVMDependentProvided, chirLib)
+      commonJavaLib % "test->test;compile->compile", xscalaVMDependent, chirLib)
     .settings(commonSourceTestLayout, commonTestSettings, javaTestSettings)
     .disablePlugins(JUnitXmlReportPlugin)
 
   lazy val lambdaTypeGenImpl = (project in file("core/compiler/src/lambda-type-gen-impl"))
-    .dependsOn(compilerCommon, commonJavaLib, commonRtCompiler, assembler, o2Lib, xscalaVMDependentProvided)
+    .dependsOn(compilerCommon, commonJavaLib, commonRtCompiler, assembler, o2Lib, xscalaVMDependent)
     .settings(commonSourceLayout)
 
   lazy val newbaselineCodeGenerator = (project in file("core/compiler/src/newbaseline-code-generator"))
-    .dependsOn(assembler, compilerCommon, commonRtCompiler, commonJavaLib, xscalaVMDependentProvided)
+    .dependsOn(assembler, compilerCommon, commonRtCompiler, commonJavaLib, xscalaVMDependent)
     .settings(commonSourceLayout)
 
   lazy val o2Lib = (project in file("core/compiler/src/o2-lib"))
     .dependsOn(
-      assembler, compilerCommon, commonRtCompiler, commonJavaLib, xscalaVMDependentProvided,
+      assembler, compilerCommon, commonRtCompiler, commonJavaLib, xscalaVMDependent,
       xpackii, xminizip, chirLib)
     .settings(
       Compile / unmanagedSourceDirectories := Seq(
@@ -297,7 +257,7 @@ object Build {
     )
 
   lazy val opt = (project in file("core/compiler/src/opt"))
-    .dependsOn(compilerCommon % "test->test;compile->compile", assembler, commonRtCompiler, commonJavaLib, xscalaVMDependentProvided, xminizip)
+    .dependsOn(compilerCommon % "test->test;compile->compile", assembler, commonRtCompiler, commonJavaLib, xscalaVMDependent, xminizip)
     .settings(commonSourceTestLayout, commonTestSettings, javaTestSettings)
     .disablePlugins(JUnitXmlReportPlugin)
 
@@ -312,7 +272,7 @@ object Build {
       )
       .dependsOn(
         compilerCommon, commonJavaLib, commonRtCompiler, assembler,
-        wrapperCompiler, xscalaVMDependentProvided
+        wrapperCompiler, xscalaVMDependent
       )
       .settings(
         Compile / unmanagedSourceDirectories := Seq(
@@ -330,15 +290,15 @@ object Build {
     .settings(commonSourceLayout)
 
   lazy val wrapperCompiler = (project in file("core/compiler/src/wrapper-compiler"))
-    .dependsOn(assembler, commonRtCompiler, compilerCommon, commonJavaLib, newbaselineCodeGenerator, xscalaVMDependentProvided)
+    .dependsOn(assembler, commonRtCompiler, compilerCommon, commonJavaLib, newbaselineCodeGenerator, xscalaVMDependent)
     .settings(commonSourceLayout)
 
   lazy val xminizip = (project in file("core/compiler/src/xminizip"))
-    .dependsOn(commonJavaLib, xscalaVMDependentProvided)
+    .dependsOn(commonJavaLib, xscalaVMDependent)
     .settings(commonSourceLayout)
 
   lazy val xpackii = (project in file("core/compiler/src/xpackii"))
-    .dependsOn(commonJavaLib, commonRtCompiler, compilerCommon, xminizip, xscalaVMDependentProvided)
+    .dependsOn(commonJavaLib, commonRtCompiler, compilerCommon, xminizip, xscalaVMDependent)
     .settings(commonSourceLayout)
 
 }

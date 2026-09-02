@@ -11,8 +11,7 @@
     <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" scope="TEST" name="ScalaTest" level="project" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-share" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-jdk" scope="TEST" />
+    <orderEntry type="module" module-name="xscala-vm-dependent" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
   </component>
 </module>

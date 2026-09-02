@@ -13,7 +13,6 @@
     <orderEntry type="module" module-name="common-java-lib" />
     <orderEntry type="module" module-name="assembler" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-share" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-jdk" />
+    <orderEntry type="module" module-name="xscala-vm-dependent" />
   </component>
 </module>

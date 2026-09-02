@@ -21,7 +21,7 @@
     <orderEntry type="module" module-name="aj-common-util" />
     <orderEntry type="module" module-name="lazy-jit-stubs-generator" />
     <orderEntry type="module" module-name="xminizip" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-share" />
+    <orderEntry type="module" module-name="xscala-vm-dependent" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
     <orderEntry type="library" name="ScalaTest" level="project" />
   </component>

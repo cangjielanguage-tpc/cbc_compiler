@@ -15,8 +15,7 @@
     <orderEntry type="library" scope="TEST" name="JUnit" level="project" />
     <orderEntry type="library" scope="TEST" name="EasyMock" level="project" />
     <orderEntry type="library" scope="TEST" name="ScalaTest" level="project" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-jdk" scope="TEST" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-share" />
+    <orderEntry type="module" module-name="xscala-vm-dependent" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
     <orderEntry type="module" module-name="chir-lib" />
     <orderEntry type="library" name="flatbuffers-java" level="project" />

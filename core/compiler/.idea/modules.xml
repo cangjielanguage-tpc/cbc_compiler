@@ -17,9 +17,7 @@
       <module fileurl="file://$PROJECT_DIR$/src/xpackii/xpackii.iml" filepath="$PROJECT_DIR$/src/xpackii/xpackii.iml" />
       <module fileurl="file://$PROJECT_DIR$/src/cangjie-java-class-gen-impl/cangjie-java-class-gen-impl.iml" filepath="$PROJECT_DIR$/src/cangjie-java-class-gen-impl/cangjie-java-class-gen-impl.iml" />
       <module fileurl="file://$PROJECT_DIR$/src/lambda-type-gen-impl/lambda-type-gen-impl.iml" filepath="$PROJECT_DIR$/src/lambda-type-gen-impl/lambda-type-gen-impl.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-share.iml" filepath="$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-share.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-jdk.iml" filepath="$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-jdk.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-stub.iml" filepath="$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-stub.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent.iml" filepath="$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../core/chir-lib/chir-lib.iml" filepath="$PROJECT_DIR$/../../core/chir-lib/chir-lib.iml" />
     </modules>
   </component>

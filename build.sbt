@@ -11,11 +11,7 @@ import build.Build
 lazy val all                       = Build.all
 lazy val tests                     = Build.tests
 lazy val compiler                  = Build.compiler
-lazy val compilerAOT               = Build.compilerAOT
-lazy val compilerAOTVMDependent    = Build.compilerAOTVMDependent
-lazy val xscalaVMDependentShare    = Build.xscalaVMDependentShare
-lazy val xscalaVMDependentStub     = Build.xscalaVMDependentStub
-lazy val xscalaVMDependentJDK      = Build.xscalaVMDependentJDK
+lazy val xscalaVMDependent         = Build.xscalaVMDependent
 lazy val assembler                 = Build.assembler
 lazy val commonJavaLib             = Build.commonJavaLib
 lazy val commonRtCompiler          = Build.commonRtCompiler
