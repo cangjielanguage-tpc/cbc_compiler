@@ -7,7 +7,6 @@ import com.huawei.excelsior.jet.compiler.chir.{CHIR, CHIRItemProvider, CustomTyp
 abstract class CustomTypeDefImpl(d: CustomTypeDef)(using provider: CHIRItemProvider) extends CHIR.CustomTypeDef
   with HasAnnotationsImpl(d.base) with HasAttributesImpl(d.base.attributes) {
   
-  override def tpe: CHIR.CustomType = provider.getType[CHIR.CustomType](d.`type`).get
   override def packageName: String = d.packageName
   override def identifier: String = d.identifier
   override def srcCodeIdentifier: String = d.srcCodeIdentifier
@@ -39,7 +38,7 @@ abstract class CustomTypeDefImpl(d: CustomTypeDef)(using provider: CHIRItemProvi
 }
 
 final class EnumDefImpl(e: EnumDef)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(e.base) with CHIR.EnumDef {
-  override def tpe: CHIR.EnumType = super.tpe.asInstanceOf[CHIR.EnumType]
+  override def tpe: CHIR.EnumType = provider.getType[CHIR.EnumType](e.base.`type`).get
   override def nonExhaustive: Boolean = e.nonExhaustive
   override def ctors: Seq[CHIR.EnumCtor] = {
     for (idx <- e.ctorsVector.toSeq) yield {
@@ -49,16 +48,17 @@ final class EnumDefImpl(e: EnumDef)(using provider: CHIRItemProvider) extends Cu
 }
 
 final class ClassDefImpl(c: ClassDef)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(c.base) with CHIR.ClassDef {
-  override def tpe: CHIR.ClassType = super.tpe.asInstanceOf[CHIR.ClassType]
+  override def tpe: CHIR.ClassType = provider.getType[CHIR.ClassType](c.base.`type`).get
   override def isClass: Boolean = c.isClass
   override def superClass: Option[CHIR.ClassType] = provider.getType[CHIR.ClassType](c.superClass) 
 }
 
 final class StructDefImpl(s: StructDef)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(s.base) with CHIR.StructDef {
-  override def tpe: CHIR.StructType = super.tpe.asInstanceOf[CHIR.StructType]
+  override def tpe: CHIR.StructType = provider.getType[CHIR.StructType](s.base.`type`).get
 }
 
 final class ExtendDefImpl(e: ExtendDef)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(e.base) with CHIR.ExtendDef {
+  override def tpe: CHIR.Type = provider.getType[CHIR.Type](e.extendedType).get
   override def genericTypeParams: Seq[CHIR.GenericType] = {
     for (idx <- e.genericParamsVector.toSeq) yield {
       provider.getType[CHIR.GenericType](idx).get
