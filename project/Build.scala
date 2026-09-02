@@ -314,26 +314,6 @@ object Build {
   }
 
   lazy val xscalaJDK = xscalaImpl(HostVM.JDK, suffix = "")
-    .settings(
-      // rt.jar is required to obtain `sun/misc/Unsafe` when running scalac on JDK9+
-      //
-      // We can't simply refer to rt.jar in Compile / unmanagedJars, since
-      // for some reason SBT replaces such classpath entry with `file(".") / "rt.jar"`
-      //
-      // Therefore, we should copy it to `target` directory.
-      Compile / unmanagedJars += Def.task {
-        val src = file(sys.props("java.home")) / "lib/rt.jar"
-        val dst = target.value / "jars/jdk8_rt.jar"
-
-        val log = streams.value.log
-        if (!dst.exists()) {
-          log.info(s"copying $src to $dst")
-          IO.copyFile(sourceFile = src, targetFile = dst)
-        }
-
-        dst
-      }.value,
-    )
 
   // Bootstrapped xscala-library
   // which uses non-bootstrapped xscala-library
