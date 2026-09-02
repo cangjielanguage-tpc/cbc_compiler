@@ -9,12 +9,10 @@
 package com.huawei.excelsior.jet.compiler.bytecode
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
-import com.huawei.excelsior.dotty.annot.javaFriendly
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind
 
 
 /** Method access kind. Corresponds to one of 'invoke' bytecode instructions. */
-@javaFriendly
 enum MethodAccessKind {
   case STATIC
   case VIRTUAL

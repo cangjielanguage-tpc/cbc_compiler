@@ -14,12 +14,10 @@ import com.huawei.excelsior.jet.assembler.Width.W32
 import com.huawei.excelsior.jet.assembler.Width.W64
 import com.huawei.excelsior.jet.assembler.Width.WNONE
 import com.huawei.excelsior.common.Arch
-import com.huawei.excelsior.dotty.annot.javaFriendly
 import com.huawei.excelsior.jet.assembler.Width
 
 // TODO: separate fixups to internal and external when CODE_SEGM will be dead
 /** Enumerates supported relocation kinds. */
-@javaFriendly
 enum RelocationKind(val width: Width = WNONE, private val supportedArch: Arch = null) {
   case ADDR32          extends RelocationKind(W32)
   case ADDR64          extends RelocationKind(W64)

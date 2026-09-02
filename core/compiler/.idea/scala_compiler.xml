@@ -11,7 +11,6 @@
       <parameter value="-source" />
       <parameter value="3.0" />
       <parameter value="-explain" />
-      <parameter value="-Xplugin:$PROJECT_DIR$/../../scala/plugins/java-friendly-enums/target/plugin.jar" />
       <parameter value="-release" />
       <parameter value="8" />
     </parameters>

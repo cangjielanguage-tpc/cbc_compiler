@@ -8,13 +8,10 @@
 
 package com.huawei.excelsior.jet.compiler.bytecode
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
-
 /** Constant pool tag
   *
   * @author cypok
   */
-@javaFriendly
 enum Tag {
   case UNDEFINED_0
   case UTF8

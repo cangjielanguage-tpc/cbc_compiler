@@ -8,13 +8,10 @@
 
 package com.huawei.excelsior.jet.compiler
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
-
 /** RT global variables
   *
   * @author paul
   */
-@javaFriendly
 enum RTSGlobal {
   case JR_ComponentDescriptor
   case JR_FLOAT_SIGN_FLIP

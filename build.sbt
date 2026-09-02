@@ -36,7 +36,6 @@ lazy val verifierImpl              = Build.verifierImpl
 lazy val wrapperCompiler           = Build.wrapperCompiler
 lazy val xminizip                  = Build.xminizip
 lazy val xpackii                   = Build.xpackii
-lazy val javaFriendlyEnums         = Build.javaFriendlyEnums
 lazy val chirLib                   = Build.chirLib
 lazy val cbcAsm                    = Build.cbcAsm
 lazy val testCompilerJIT           = Build.testCompilerJIT

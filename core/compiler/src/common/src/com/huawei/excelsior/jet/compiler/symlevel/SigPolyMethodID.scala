@@ -8,13 +8,10 @@
 
 package com.huawei.excelsior.jet.compiler.symlevel
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
-
 /** ID of signature polymorphic method.
   *
   * @author alexm
   */
-@javaFriendly
 enum SigPolyMethodID {
   case
     NONE,

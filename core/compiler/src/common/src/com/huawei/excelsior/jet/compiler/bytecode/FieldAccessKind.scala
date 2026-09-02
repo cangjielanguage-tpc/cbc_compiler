@@ -8,10 +8,8 @@
 
 package com.huawei.excelsior.jet.compiler.bytecode
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
 
 /** Field access kind. Corresponds to one of bytecode instructions. */
-@javaFriendly
 enum FieldAccessKind(statik: Boolean, write: Boolean) {
   case GETFIELD extends FieldAccessKind(false, false)
   case PUTFIELD extends FieldAccessKind(false, true)

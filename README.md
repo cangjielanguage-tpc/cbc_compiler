@@ -56,10 +56,7 @@ cbc_compiler/
 │   │       └── xpackii                       # Rsulting binary artifact management module
 │   └── xscala-vm-dependent                   # Internal library for support of different compiler VM
 ├── figures                                   # Documentation images
-├── project                                   # SBT buildsystem configuration
-└── scala
-    └── plugins
-        └── java-friendly-enums               # Scala compiler plugin
+└── project                                   # SBT buildsystem configuration
 ```
 
 ## Constraints

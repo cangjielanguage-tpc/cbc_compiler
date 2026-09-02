@@ -40,7 +40,6 @@ object Build {
       "-explain-types",
       "-deprecation",
       "-unchecked",
-      s"-Xplugin:${projectRoot / "scala/plugins/java-friendly-enums/target/plugin.jar"}",
     ),
 
     javacOptions ++= {
@@ -96,11 +95,11 @@ object Build {
 
   lazy val all = (project in projectRoot)
     .settings(
-      addCommandAlias("test", "javaFriendlyEnums/assembly;tests/test"),
-      addCommandAlias("jar", "javaFriendlyEnums/assembly;compiler/assembly"),
-      addCommandAlias("compile", "javaFriendlyEnums/assembly;compiler/compile"),
+      addCommandAlias("test", "tests/test"),
+      addCommandAlias("jar", "compiler/assembly"),
+      addCommandAlias("compile", "compiler/compile"),
       addCommandAlias("clean", "all/clean;all/cleanAll"),
-      addCommandAlias("jit-test-jar", "javaFriendlyEnums/assembly;testCompilerJIT/assembly"),
+      addCommandAlias("jit-test-jar", "testCompilerJIT/assembly"),
 
       TaskKey[Unit]("cleanAll") := Def.task {
         val log = streams.value.log
@@ -384,21 +383,5 @@ object Build {
   lazy val xpackii = (project in file("core/compiler/src/xpackii"))
     .dependsOn(commonJavaLib, commonRtCompiler, compilerCommon, xminizip, xscalaVMDependentProvided)
     .settings(commonSourceLayout)
-
-  lazy val javaFriendlyEnums = (project in file("scala/plugins/java-friendly-enums"))
-    .settings(commonSourceLayout)
-    .settings(
-      version := "1.0",
-      Compile / unmanagedResourceDirectories ++= Seq(baseDirectory.value / "resources"),
-      Compile / unmanagedJars ++= scalaInstance.value.compilerJars.toSeq,
-      scalacOptions := Seq(
-        "-release", "8",
-        "-source", "3.0",
-      ),
-
-      autoScalaLibrary := true,
-      compilerAssemblySettings(),
-      assembly / assemblyOutputPath := target.value / "plugin.jar",
-    )
 
 }

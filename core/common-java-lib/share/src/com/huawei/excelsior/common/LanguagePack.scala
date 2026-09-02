@@ -9,10 +9,8 @@
 package com.huawei.excelsior.common
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
-import com.huawei.excelsior.dotty.annot.javaFriendly
 
 /** Enumerates possible combinations of [[Language]]s supported by a given configuration of JET framework. */
-@javaFriendly
 enum LanguagePack(private val name: String, languages: Language*) {
   case NONE extends LanguagePack("none", Language.AJ)
   case JAVA extends LanguagePack("java", Language.AJ, Language.JAVA)
