@@ -2,13 +2,7 @@ package com.huawei.excelsior.jet.compiler.chir
 
 object CHIR {
 
-  enum Version {
-    case V1_0
-  }
-
-  def newPackage(version: Version, source: String): Package = version match {
-    case Version.V1_0 => new v1_0.PackageImpl(source)
-  }
+  def newPackage(source: String): Package = new PackageImpl(source)
 
   trait Package {
     def name: String

@@ -6,10 +6,10 @@
  * See https://cangjie-lang.cn/pages/LICENSE for license information.
  */
 
-package com.huawei.excelsior.jet.compiler.chir.v1_0
+package com.huawei.excelsior.jet.compiler.chir
 
-import com.google.flatbuffers.{IntVector, LongVector, UnionVector}
-import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.{EnumCtorInfo, MemberVarInfo, VTableInType, VirtualMethodInfo}
+import com.google.flatbuffers.{IntVector, LongVector}
+import com.huawei.excelsior.jet.compiler.chir.PackageFormat.{EnumCtorInfo, MemberVarInfo, VTableInType, VirtualMethodInfo}
 
 object CHIRUtils {
 

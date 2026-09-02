@@ -1,9 +1,9 @@
-package com.huawei.excelsior.jet.compiler.chir.v1_0
+package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.jet.compiler.chir.CHIR
+import com.huawei.excelsior.jet.compiler.chir.*
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{Binary, Intrinsic, Unary}
-import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.toSeq
-import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.{AllocateBase, ApplyBase, BinaryExpressionBase, Branch, CHIRExprKind, Debug, Expression, Field, FieldByName, GetElementRef, GetRTTIStatic, InstanceOf, IntrinsicBase, IntrinsicKind, InvokeBase, MultiBranch, NumericCastBase, OverflowStrategy, RawArrayAllocateBase, SpawnBase, StoreElementRef, UnaryExpressionBase}
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
+import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 class AllocateImpl(e: AllocateBase)(implicit provider: CHIRItemProvider) extends CHIR.Allocate {
   override def allocatedType: CHIR.Type = provider.getType[CHIR.Type](e.allocatedType).get

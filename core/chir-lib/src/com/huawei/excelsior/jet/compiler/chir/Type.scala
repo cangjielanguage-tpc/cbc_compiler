@@ -1,8 +1,8 @@
-package com.huawei.excelsior.jet.compiler.chir.v1_0
+package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.jet.compiler.chir.CHIR
-import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.{iterator, toSeq}
-import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.{CustomType, FuncType, GenericType, RawArrayType, Type, VArrayType}
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.{iterator, toSeq}
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, CustomTypeImpl}
+import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 final class BoxTypeImpl(b: Type)(using provider: CHIRItemProvider) extends CHIR.BoxType {
   override def baseType: CHIR.Type = provider.getType[CHIR.Type](b.argTys(0)).get
