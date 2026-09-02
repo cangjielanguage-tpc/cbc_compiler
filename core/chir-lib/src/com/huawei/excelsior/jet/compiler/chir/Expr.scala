@@ -320,8 +320,7 @@ final class TupleImpl(e: Expression)(implicit provider: CHIRItemProvider) extend
   override def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
 }
 
-// TODO now it's unused in parser
-final class GetRTTIImpl(e: Expression) extends CHIR.Expression {
+final class GetRTTIImpl(e: Expression) extends CHIR.GetRTTI {
 }
 
 private def mapOverflowStrategy(os: Int): CHIR.OverflowStrategy = os match {
