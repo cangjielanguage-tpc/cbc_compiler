@@ -29,8 +29,6 @@
     <orderEntry type="module" module-name="lambda-type-gen-impl" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
     <orderEntry type="module" module-name="xpackii" />
-    <orderEntry type="module" module-name="verifier-all" />
-    <orderEntry type="module" module-name="verifier-impl-all" />
     <orderEntry type="module" module-name="xscala-vm-dependent-jdk" />
     <orderEntry type="module" module-name="xscala-vm-dependent-jet" />
     <orderEntry type="module" module-name="xscala-vm-dependent-share" />

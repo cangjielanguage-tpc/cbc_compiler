@@ -307,7 +307,6 @@ object Build {
     Project(s"starter${component.toUpperCase}", file("core/compiler/src/starter") / component)
       .dependsOnWhen(component == "aot" && env.languagePack == "cangjie-java")(cangjieJavaClassGenImpl)
       .dependsOnWhen(component == "aot" && (env.languagePack.contains("java") || env.languagePack == "scala"))(lambdaTypeGenImpl)
-      .dependsOnWhen(env.languagePack.contains("java"))(verifier, verifierImpl)
       .dependsOnWhen(component == "aot")(
         o2Lib, opt, xpackii, xminizip
       )
@@ -328,14 +327,6 @@ object Build {
 
   lazy val symlevelLight = (project in file("core/compiler/src/symlevel-light"))
     .dependsOn(assembler, commonRtCompiler, compilerCommon, commonJavaLib, o2Lib)
-    .settings(commonSourceLayout)
-
-  lazy val verifier = (project in file("core/compiler/src/verifier"))
-    .dependsOn(assembler, commonRtCompiler, compilerCommon, commonJavaLib, xscalaVMDependentProvided)
-    .settings(commonSourceLayout)
-
-  lazy val verifierImpl = (project in file("core/compiler/src/verifier-impl"))
-    .dependsOn(assembler, commonRtCompiler, compilerCommon, commonJavaLib, o2Lib, verifier, xscalaVMDependentProvided)
     .settings(commonSourceLayout)
 
   lazy val wrapperCompiler = (project in file("core/compiler/src/wrapper-compiler"))

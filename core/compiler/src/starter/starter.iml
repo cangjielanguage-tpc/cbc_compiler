@@ -22,8 +22,6 @@
     <orderEntry type="module" module-name="cangjie-java-class-gen-impl" />
     <orderEntry type="module" module-name="lambda-type-gen-impl" />
     <orderEntry type="module" module-name="xpackii" />
-    <orderEntry type="module" module-name="verifier" />
-    <orderEntry type="module" module-name="verifier-impl" />
     <orderEntry type="module" module-name="xscala-vm-dependent-jdk" />
     <orderEntry type="module" module-name="xscala-vm-dependent-share" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />

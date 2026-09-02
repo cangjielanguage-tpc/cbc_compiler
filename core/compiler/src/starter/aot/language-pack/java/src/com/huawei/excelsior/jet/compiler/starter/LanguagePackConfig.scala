@@ -12,12 +12,10 @@ import com.huawei.excelsior.common.LanguagePack
 import com.huawei.excelsior.jet.compiler.Env.languagePack
 import com.huawei.excelsior.jet.compiler.lambda.LambdaTypeGenerator
 import com.huawei.excelsior.jet.compiler.lambda.impl.LambdaTypeGeneratorImpl
-import com.huawei.excelsior.jet.compiler.symlevel.impl.light.{JavaVerifier, LightweightJavaVerifier}
 
 object LanguagePackConfig {
   def init(): Unit = {
     assert(languagePack == LanguagePack.JAVA)
-    JavaVerifier := new LightweightJavaVerifier
     LambdaTypeGenerator := LambdaTypeGeneratorImpl
   }
 }

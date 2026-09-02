@@ -16,8 +16,6 @@
       <module fileurl="file://$PROJECT_DIR$/src/xminizip/xminizip.iml" filepath="$PROJECT_DIR$/src/xminizip/xminizip.iml" />
       <module fileurl="file://$PROJECT_DIR$/src/xpackii/xpackii.iml" filepath="$PROJECT_DIR$/src/xpackii/xpackii.iml" />
       <module fileurl="file://$PROJECT_DIR$/src/cangjie-java-class-gen-impl/cangjie-java-class-gen-impl.iml" filepath="$PROJECT_DIR$/src/cangjie-java-class-gen-impl/cangjie-java-class-gen-impl.iml" />
-      <module fileurl="file://$PROJECT_DIR$/src/verifier/verifier.iml" filepath="$PROJECT_DIR$/src/verifier/verifier.iml" />
-      <module fileurl="file://$PROJECT_DIR$/src/verifier-impl/verifier-impl.iml" filepath="$PROJECT_DIR$/src/verifier-impl/verifier-impl.iml" />
       <module fileurl="file://$PROJECT_DIR$/src/lambda-type-gen-impl/lambda-type-gen-impl.iml" filepath="$PROJECT_DIR$/src/lambda-type-gen-impl/lambda-type-gen-impl.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-share.iml" filepath="$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-share.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-jdk.iml" filepath="$PROJECT_DIR$/../../core/xscala-vm-dependent/xscala-vm-dependent-jdk.iml" />
