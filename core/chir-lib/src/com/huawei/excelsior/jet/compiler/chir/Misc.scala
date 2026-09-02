@@ -1,9 +1,9 @@
-package com.huawei.excelsior.jet.compiler.chir.v1_0
+package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{HasAnnotations, HasAttributes, HasDeclaringDef}
-import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.{notImplemented, toSeq}
-import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.{notImplemented, toSeq}
+import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, CHIRItemProvider, HasAttributesImpl}
 
 trait HasAnnotationsImpl(b: Base)(using provider: CHIRItemProvider) extends HasAnnotations {
   override lazy val annotations: Seq[CHIR.Annotation] = {

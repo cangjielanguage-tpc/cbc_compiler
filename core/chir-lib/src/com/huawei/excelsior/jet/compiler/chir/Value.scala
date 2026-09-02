@@ -1,9 +1,9 @@
-package com.huawei.excelsior.jet.compiler.chir.v1_0
+package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
-import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.toSeq
-import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.{Block, BlockGroup, BoolLiteral, FloatLiteral, FuncKind, Function, GlobalVar, IntLiteral, LiteralValue, LocalVar, NullLiteral, Parameter, RuneLiteral, StringLiteral}
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, LiteralImpl}
+import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider) extends CHIR.Func
   with HasAnnotationsImpl(f.base.base.base) with HasAttributesImpl(f.base.base.base.attributes) with HasDeclaringDefImpl(f.base) {

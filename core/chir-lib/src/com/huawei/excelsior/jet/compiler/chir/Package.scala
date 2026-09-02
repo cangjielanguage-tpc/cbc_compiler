@@ -6,12 +6,12 @@
  * See https://cangjie-lang.cn/pages/LICENSE for license information.
  */
 
-package com.huawei.excelsior.jet.compiler.chir.v1_0
+package com.huawei.excelsior.jet.compiler.chir
 
 import com.google.flatbuffers.IntVector
-import com.huawei.excelsior.jet.compiler.chir.CHIR
-import com.huawei.excelsior.jet.compiler.chir.v1_0.CHIRUtils.*
-import com.huawei.excelsior.jet.compiler.chir.v1_0.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.*
+import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.{BoxTypeImpl, CHIR, CHIRItemProvider, CPointerTypeImpl, RefTypeImpl}
 
 import java.nio.ByteBuffer
 import scala.reflect.ClassTag
