@@ -13,6 +13,6 @@
     <orderEntry type="module" module-name="xminizip" />
     <orderEntry type="module" module-name="common" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-share" />
+    <orderEntry type="module" module-name="xscala-vm-dependent" />
   </component>
 </module>

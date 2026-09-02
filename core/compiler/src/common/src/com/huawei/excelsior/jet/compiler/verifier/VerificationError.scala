@@ -8,7 +8,6 @@
 
 package com.huawei.excelsior.jet.compiler.verifier
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
 import com.huawei.excelsior.jet.compiler.verifier.VerificationError.ErrorKind.CLASSLOADING_ERROR
 import com.huawei.excelsior.jet.compiler.verifier.VerificationError.{ErrorKind, ExceptionKind}
 import com.huawei.excelsior.jet.common.XString
@@ -31,7 +30,6 @@ case class VerificationError(errorMsg: XString, errorKind: ErrorKind, exceptionK
 object VerificationError {
 
   /** Major kind of verification error. */
-  @javaFriendly
   enum ErrorKind {
     case VERIFY_ERROR
     case CLASSFORMAT_ERROR
@@ -40,7 +38,6 @@ object VerificationError {
   }
 
   /** Kind of standard exception corresponding to the error. */
-  @javaFriendly
   enum ExceptionKind {
     case NoClassDefFoundError
     case NoSuchFieldError // should be never used

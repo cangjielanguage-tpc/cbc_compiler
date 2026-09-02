@@ -39,27 +39,18 @@ cbc_compiler/
 │   ├── common-rt-compiler                    # Common sources between compiler and some runtimes
 │   ├── compiler                              # Main compiler sources
 │   │   └── src
-│   │       ├── cangjie-java-class-gen-impl   # Java classfile generator for Cangjie-Java interop
 │   │       ├── common                        # Common compiler-specific sources
 │   │       ├── lambda-type-gen-impl          # Lambda type generator
-│   │       ├── lazy-jit-stubs-generator      # Adapter and stub generator
-│   │       ├── newbaseline                   # Lower-tier compiler
 │   │       ├── newbaseline-code-generator    # Code generator module of lower-tier compiler
 │   │       ├── o2-lib                        # Compilation driver and compilation project system
 │   │       ├── opt                           # General-purpose code optimizer
 │   │       ├── starter                       # Main compiler entrypoint
-│   │       ├── symlevel-light                # Type, member and field representations
-│   │       ├── verifier                      # Java bytecode verifier interface
-│   │       ├── verifier-impl                 # Java bytecode verifier implementation
 │   │       ├── wrapper-compiler              # Generator of various function wrappers
 │   │       ├── xminizip                      # Bindings for minizip
 │   │       └── xpackii                       # Rsulting binary artifact management module
 │   └── xscala-vm-dependent                   # Internal library for support of different compiler VM
 ├── figures                                   # Documentation images
-├── project                                   # SBT buildsystem configuration
-└── scala
-    └── plugins
-        └── java-friendly-enums               # Scala compiler plugin
+└── project                                   # SBT buildsystem configuration
 ```
 
 ## Constraints
@@ -118,18 +109,15 @@ cs setup
 For ease of development, it is advised to copy [env.properties.sample](/env.properties.sample)
 to `env.properties`, uncomment and modify corresponding properties for configuration:
 
-- `os` - target OS (`windows` or `linux`), for CBC use `linux`
 - `arch` - target arch (`amd64` or `arm64`)
 - `mode` - build mode (`work` or `enduser`), for release builds use `enduser`
-- `language.pack` - input language configuration (`none`, `java`, `cangjie`, `cangjie-java` and `scala`),
-  for CBC use `cangjie`
 
 The rest of properties are optional and are needed for internal development with other non-CBC related projects.
 
 > Without `env.properties` all of the options will need to be explicitly passed
 > to `sbt` commands with `-D` prefix, for example like this:
 > ```bash
-> $ sbt -Dos=linux -Darch=amd64 -Dmode=enduser -Dlanguage.pack=cangjie ...
+> $ sbt -Darch=amd64 -Dmode=enduser ...
 > ```
 
 ### Build

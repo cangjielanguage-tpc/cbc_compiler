@@ -8,13 +8,10 @@
 
 package com.huawei.excelsior.jet.common
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
-
 /** Built-in Java fields.
   *
   * @author alexm
   */
-@javaFriendly
 enum BuiltInField {
   case METHOD_HANDLE_FORM       // field java.lang.invoke.MethodHandle.form
   case LAMBDA_FORM_VMENTRY      // field java.lang.invoke.LambdaForm.vmentry

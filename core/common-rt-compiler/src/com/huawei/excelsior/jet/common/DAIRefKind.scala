@@ -8,10 +8,7 @@
 
 package com.huawei.excelsior.jet.common
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
-
 /** Kinds of references used for deferred access. */
-@javaFriendly
 enum DAIRefKind {
   case
     UNDEFINED,

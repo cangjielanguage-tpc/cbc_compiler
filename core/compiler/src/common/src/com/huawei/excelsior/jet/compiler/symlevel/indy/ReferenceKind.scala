@@ -8,7 +8,6 @@
 
 package com.huawei.excelsior.jet.compiler.symlevel.indy
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
 import com.huawei.excelsior.jet.compiler.bytecode.{FieldAccessKind, MethodAccessKind}
 
 import scala.annotation.nowarn
@@ -17,7 +16,6 @@ import scala.annotation.nowarn
   *
   * @author liontiger
   */
-@javaFriendly
 enum ReferenceKind {
   case REF_NONE // null value
   case REF_getField

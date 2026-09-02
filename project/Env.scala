@@ -17,15 +17,11 @@ import scala.util.Using
 class Env(props: Properties) {
   private var errors = false
 
-  val os                 = apply("os",                  None,                "linux", "windows")
+  val os                 = apply("os",                  Some("linux"),       "linux", "windows")
   val arch               = apply("arch",                None,                "amd64", "arm64")
   val mode               = apply("mode",                None,                "work", "enduser")
-  val languagePack       = apply("language.pack",       None,                "none", "java", "cangjie", "cangjie-java", "scala")
-  val jcStandalone       = apply("jc.standalone",       Some("true"),        "true", "false")
+  val languagePack       = apply("language.pack",       Some("cangjie"),     "none", "java", "cangjie", "scala")
   val flatc              = apply("flatc",               Some("flatc"))
-  val xscala             = apply("xscala",              Some("<undefined>"))
-  val xscalaBootstrapped = apply("xscala.bootstrapped", Some("false"),       "true", "false")
-  val xscalaVM           = apply("xscala.vm",           Some("jdk"),         "jdk", "jet")
 
   def apply(name: String, default: Option[String], variants: String*): String = {
     sys.props.get(name)

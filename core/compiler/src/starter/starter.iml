@@ -19,14 +19,10 @@
     <orderEntry type="module" module-name="opt" />
     <orderEntry type="module" module-name="newbaseline-code-generator" />
     <orderEntry type="module" module-name="wrapper-compiler" />
-    <orderEntry type="module" module-name="lazy-jit-stubs-generator" />
     <orderEntry type="module" module-name="cangjie-java-class-gen-impl" />
     <orderEntry type="module" module-name="lambda-type-gen-impl" />
     <orderEntry type="module" module-name="xpackii" />
-    <orderEntry type="module" module-name="verifier" />
-    <orderEntry type="module" module-name="verifier-impl" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-jdk" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-share" />
+    <orderEntry type="module" module-name="xscala-vm-dependent" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
     <orderEntry type="module" module-name="xminizip" />
   </component>

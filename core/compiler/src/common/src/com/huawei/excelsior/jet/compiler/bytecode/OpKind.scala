@@ -8,13 +8,10 @@
 
 package com.huawei.excelsior.jet.compiler.bytecode
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
-
 /** Kind of bytecode operation
   *
   * @author paul
   */
-@javaFriendly
 enum OpKind {
   case CONST      // push immediate const
   case LOAD       // load local to operand stack

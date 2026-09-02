@@ -8,13 +8,11 @@
 
 package com.huawei.excelsior.jet.compiler.symlevel
 
-import com.huawei.excelsior.dotty.annot.javaFriendly
 
 /** Access kind of MethodReference.
   *
   * @author ikireev
   */
-@javaFriendly
 enum MethodReferenceAccessKind {
   case
     STATIC,

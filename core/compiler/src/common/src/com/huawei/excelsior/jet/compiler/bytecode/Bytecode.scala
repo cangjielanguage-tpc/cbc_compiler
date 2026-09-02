@@ -9,7 +9,6 @@
 package com.huawei.excelsior.jet.compiler.bytecode
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
-import com.huawei.excelsior.dotty.annot.javaFriendly
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp.*
 import com.huawei.excelsior.jet.compiler.bytecode.CompareOp.*
 import com.huawei.excelsior.jet.compiler.bytecode.OpKind.*
@@ -19,7 +18,6 @@ import xscala.util.StringOps.*
   *
   * @author paul
   */
-@javaFriendly
 enum Bytecode private (_fmt: String, var _kind: OpKind) {
   case NOP extends Bytecode(">")
 

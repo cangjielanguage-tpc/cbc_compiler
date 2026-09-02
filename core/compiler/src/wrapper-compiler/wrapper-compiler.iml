@@ -14,6 +14,6 @@
     <orderEntry type="module" module-name="newbaseline-code-generator" />
     <orderEntry type="module" module-name="common-rt-compiler" />
     <orderEntry type="library" name="scala-sdk-3.3.3" level="application" />
-    <orderEntry type="module" module-name="xscala-vm-dependent-share" />
+    <orderEntry type="module" module-name="xscala-vm-dependent" />
   </component>
 </module>
