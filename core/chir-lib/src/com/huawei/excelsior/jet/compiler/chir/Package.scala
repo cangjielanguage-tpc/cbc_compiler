@@ -92,6 +92,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
             case CHIRTypeKind.REFTYPE => new RefTypeImpl(t)
             case CHIRTypeKind.BOXTYPE => new BoxTypeImpl(t)
             case CHIRTypeKind.TUPLE => new TupleTypeImpl(t)
+            case CHIRTypeKind.THIS => new ThisTypeImpl(t)
           }
         }
       }
