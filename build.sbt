@@ -22,7 +22,6 @@ lazy val newbaselineCodeGenerator  = Build.newbaselineCodeGenerator
 lazy val o2Lib                     = Build.o2Lib
 lazy val opt                       = Build.opt
 lazy val starterAOT                = Build.starterAOT
-lazy val symlevelLight             = Build.symlevelLight
 lazy val wrapperCompiler           = Build.wrapperCompiler
 lazy val xminizip                  = Build.xminizip
 lazy val xpackii                   = Build.xpackii

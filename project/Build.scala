@@ -252,7 +252,6 @@ object Build {
     .settings(
       Compile / unmanagedSourceDirectories := Seq(
         baseDirectory.value / "src",
-        baseDirectory.value / ".." / "symlevel-light" / "src",
       )
     )
 
@@ -284,10 +283,6 @@ object Build {
   }
 
   lazy val starterAOT = starter("aot")
-
-  lazy val symlevelLight = (project in file("core/compiler/src/symlevel-light"))
-    .dependsOn(assembler, commonRtCompiler, compilerCommon, commonJavaLib, o2Lib)
-    .settings(commonSourceLayout)
 
   lazy val wrapperCompiler = (project in file("core/compiler/src/wrapper-compiler"))
     .dependsOn(assembler, commonRtCompiler, compilerCommon, commonJavaLib, newbaselineCodeGenerator, xscalaVMDependent)
