@@ -50,11 +50,6 @@ final class TupleTypeImpl(t: Type)(using provider: CHIRItemProvider) extends CHI
   }
 }
 
-final class VArrayTypeImpl(t: VArrayType)(using provider: CHIRItemProvider) extends CHIR.VArrayType {
-  override def elementType: CHIR.Type = provider.getType[CHIR.Type](t.base.argTys(0)).get
-  override def size: Long = t.size
-}
-
 final class GenericTypeImpl(t: GenericType)(using provider: CHIRItemProvider) extends CHIR.GenericType {
   override def identifier: String = t.identifier
   override def upperBounds: Seq[CHIR.Type] = {
