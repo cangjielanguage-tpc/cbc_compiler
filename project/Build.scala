@@ -156,6 +156,7 @@ object Build {
   lazy val chirLib = (project in file("core/chir-lib"))
     .settings(flatbuffersSettings)
     .settings(
+      Compile / managedSourceDirectories += file("core/chir-lib/generated/src"),
       Compile / sourceGenerators += Def.task {
         val schema = file("core/chir-lib/PackageFormat.fbs")
         val generated = file("core/chir-lib/generated/src")
