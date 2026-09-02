@@ -281,7 +281,7 @@ trait DCEComponent extends UCEComponent { self: Universe =>
         status = WAS_DEAD
       }
 
-      assert(all[Proxy].isEmpty)
+      assert(all[Proxy].isEmpty, all[Proxy].toSeq)
 
       // Branch elimination produces unreachable code, so it is a good idea to cleanup after ourselves,
       // especially considering that before DCE there was no unreachable code.
