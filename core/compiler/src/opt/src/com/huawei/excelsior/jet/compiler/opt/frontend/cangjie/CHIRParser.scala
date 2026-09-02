@@ -1649,7 +1649,7 @@ trait CHIRParser
 
       case e: CHIR.Load =>
         e.location match {
-          case Seq(localVar: CHIR.LocalVar) =>
+          case localVar: CHIR.LocalVar =>
             val sig = resolver.typeSig(localVar.tpe)
             if (sig.isZST) {
               // nothing to do
@@ -1690,7 +1690,7 @@ trait CHIRParser
               }
               state(e) = n
             }
-          case Seq(globalVar: CHIR.GlobalVar) =>
+          case globalVar: CHIR.GlobalVar =>
             val field = staticFieldRef(globalVar)
             val n = if (field.fieldType.isZST) {
               Void()

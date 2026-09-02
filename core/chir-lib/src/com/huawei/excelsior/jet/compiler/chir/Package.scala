@@ -9,9 +9,9 @@
 package com.huawei.excelsior.jet.compiler.chir
 
 import com.google.flatbuffers.IntVector
+import com.huawei.excelsior.jet.compiler.chir.CHIR.GetException
 import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.*
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
-import com.huawei.excelsior.jet.compiler.chir.{BoxTypeImpl, CHIR, CHIRItemProvider, CPointerTypeImpl, RefTypeImpl}
 
 import java.nio.ByteBuffer
 import scala.reflect.ClassTag
@@ -62,6 +62,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case t: GenericType => GenericTypeImpl(t)
           case t: FuncType => FuncTypeImpl(t)
           case t: RawArrayType => RawArrayTypeImpl(t)
+          case t: VArrayType => VArrayTypeImpl(t)
           case t: CustomType => t.base.kind match {
             case CHIRTypeKind.CLASS => ClassTypeImpl(t)
             case CHIRTypeKind.STRUCT => StructTypeImpl(t)
@@ -225,6 +226,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
             case CHIRExprKind.RawArrayInitByValue => new RawArrayInitByValueImpl(e)
             case CHIRExprKind.Constant => new ConstantImpl(e)
             case CHIRExprKind.Tuple => new TupleImpl(e)
+            case CHIRExprKind.GetException => GetException
           }
         }
       }

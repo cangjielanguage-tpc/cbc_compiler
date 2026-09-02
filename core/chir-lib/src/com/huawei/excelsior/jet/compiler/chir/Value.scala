@@ -2,7 +2,6 @@ package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
 import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
-import com.huawei.excelsior.jet.compiler.chir.{CHIR, LiteralImpl}
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider) extends CHIR.Func
@@ -15,7 +14,7 @@ final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider
   override def identifier: String = v.identifier
   override def srcCodeIdentifier: String = gv.srcCodeIdentifier
   override def packageName: String = gv.packageName
-  override def kind: Func.Kind = f.funcKind() match {
+  override def kind: Func.Kind = f.funcKind match {
     case FuncKind.DEFAULT => Func.Kind.Default
     case FuncKind.GETTER => Func.Kind.Getter
     case FuncKind.SETTER => Func.Kind.Setter

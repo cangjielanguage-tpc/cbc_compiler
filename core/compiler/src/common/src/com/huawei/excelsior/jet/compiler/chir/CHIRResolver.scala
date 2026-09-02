@@ -95,8 +95,8 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def linkageName(v: CHIR.Func | CHIR.GlobalVar | CHIR.InstanceVar): String = v match {
-    case v: CHIR.Func => v.identifier
-    case v: CHIR.GlobalVar => v.identifier
+    case v: CHIR.Func => v.identifier.tail
+    case v: CHIR.GlobalVar => v.identifier.tail
     case v: CHIR.InstanceVar => null
   }
 
@@ -185,13 +185,15 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
         if (params.nonEmpty) InstantiatedRecord(symName(t), params) else Record(symName(t))
       case t: CHIR.VArrayType =>
         VArray(typeSig(t.elementType), t.size)
+      case t: CHIR.TupleType =>
+        Tuple(t.fieldTypes.map(typeSig))
     }
   }
 
   @tailrec
   private def withGenericParams[T](v: CHIR.CustomTypeDef | CHIR.Type | CHIR.Func | CHIR.FuncSig | CHIR.VMethod)(action: Seq[CHIR.Type] => T): T = (v: @unchecked) match {
     case v: CHIR.ExtendDef => action(v.genericTypeParams)
-    case v: CHIR.CustomTypeDef => action(v.tpe.genericTypeParams)
+    case v: CHIR.CustomTypeDef => action(v.tpe.asInstanceOf[CHIR.CustomType].genericTypeParams)
     case v: CHIR.CustomType => withGenericParams(v.typeDef)(action)
     case v: CHIR.RefType => withGenericParams(v.baseType)(action)
     case CHIR.BuiltinType.This => action(Seq.empty)
@@ -233,7 +235,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
         case d: CHIR.ExtendDef => d.genericTypeParams
         case d: CHIR.CustomTypeDef if isGenericInstantiated(d) => Seq.empty
         // TODO are generic type params generic always here?
-        case d: CHIR.CustomTypeDef => d.tpe.genericTypeParams collect {
+        case d: CHIR.CustomTypeDef => d.tpe.asInstanceOf[CHIR.CustomType].genericTypeParams collect {
           case t: CHIR.GenericType => t
         }
       }
@@ -302,7 +304,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     t.annotations exists isAutoEnv
   }
 
-  private def isLambda(t: CHIR.CustomType): Boolean = {
+  private def isLambda(t: CHIR.Type): Boolean = {
     typeSig(t).isCangjieLambda
   }
 

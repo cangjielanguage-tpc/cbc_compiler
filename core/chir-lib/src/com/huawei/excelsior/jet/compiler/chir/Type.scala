@@ -1,7 +1,6 @@
 package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.{iterator, toSeq}
-import com.huawei.excelsior.jet.compiler.chir.{CHIR, CustomTypeImpl}
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 final class BoxTypeImpl(b: Type)(using provider: CHIRItemProvider) extends CHIR.BoxType {
@@ -48,6 +47,11 @@ final class TupleTypeImpl(t: Type)(using provider: CHIRItemProvider) extends CHI
       provider.getType[CHIR.Type](idx).get
     }
   }
+}
+
+final class VArrayTypeImpl(t: VArrayType)(using provider: CHIRItemProvider) extends CHIR.VArrayType {
+  override def elementType: CHIR.Type = provider.getType[CHIR.Type](t.base.argTys(0)).get
+  override def size: Long = t.size
 }
 
 final class GenericTypeImpl(t: GenericType)(using provider: CHIRItemProvider) extends CHIR.GenericType {

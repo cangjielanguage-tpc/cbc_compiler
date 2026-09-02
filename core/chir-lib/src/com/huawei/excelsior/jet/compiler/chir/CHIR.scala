@@ -211,7 +211,7 @@ object CHIR {
   }
 
   trait CustomTypeDef extends HasAttributes with HasAnnotations {
-    def tpe: CustomType
+    def tpe: Type
     def packageName: String
     def identifier: String
     def srcCodeIdentifier: String
@@ -565,20 +565,6 @@ object CHIR {
     case PreviouslyDeserialized // Mark that deserialization occurs not in the newly created node, but in an existing one.
 
     case ATTR_END
-
-    def name: String = this match {
-      case Readonly => "readOnly"
-      case Const => "compileTimeVal"
-      case CompilerAdd => "compilerAdd"
-      case NonRecompile => "nonRecompile"
-      case NoReflectInfo => "noReflectInfo"
-      case NoDebugInfo => "noDebugInfo"
-      case NoInline => "noInline"
-      case NoSideEffect => "noSideEffect"
-      case JavaMirror => "javaMirror"
-      case JavaImpl => "javaImpl"
-      case _ => toString.toLowerCase
-    }
   }
 
   enum OverflowStrategy {
