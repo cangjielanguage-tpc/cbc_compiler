@@ -53,12 +53,16 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     }
 
     def globalName(_v: CHIR.Func | CHIR.GlobalVar): String = {
-      val (id, identifier, srcName, annotations) = _v match {
-        case v: CHIR.Func => (v.id, v.identifier, v.srcCodeIdentifier, v.annotations)
-        case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier, v.annotations)
+      val annotations = _v match {
+        case v: CHIR.Func => v.annotations
+        case v: CHIR.GlobalVar => v.annotations
       }
       val wrappedMethod = annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
       val v = wrappedMethod.getOrElse(_v)
+      val (id, identifier, srcName) = v match {
+        case v: CHIR.Func => (v.id, v.identifier, v.srcCodeIdentifier)
+        case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
+      }
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
       val isPackageGlobal = v.declaringDef.isEmpty
       val suffix = if (isGenericInstantiated(v)) {
@@ -75,7 +79,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
           val vtableFuncs = d.vTables.flatMap(_.vMethods)
           vtableFuncs.find(_.instance == f) match {
             case Some(m) => m.name
-            case None => shouldNotReachHere(f.identifier)
+            case None => shouldNotReachHere(identifier)
           }
         case None =>
           if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
