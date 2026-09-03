@@ -501,13 +501,42 @@ def test_command(test_root_dir: Path, tmp_dir_arg: str, tags_only: set[str]) -> 
         print(f"[DEBUG] Failed environment preserved inside '{tmp_dir.name}/' directory.")
         return False
 
+def _resolve_path(value: str | None, env_var: str, label: str) -> Path | None:
+    """Resolve a path from CLI arg or env var. Returns None if neither is set."""
+    if value is not None:
+        return Path(value).resolve()
+    env_val = os.environ.get(env_var)
+    if env_val:
+        return Path(env_val).resolve()
+    return None
+
+
+def _error_missing(env_var: str, cli_flag: str, label: str, extra_hint: str = "") -> None:
+    """Print a structured error for a missing required path."""
+    print(f"[ERROR] {label} is not set.")
+    print(f"  Set via environment variable: export {env_var}=/path/to/{label.lower()}")
+    print(f"  Or pass CLI argument:        --{cli_flag.replace('_', '-')}=/path/to/{label.lower()}")
+    if extra_hint:
+        print(f"  Hint: {extra_hint}")
+    sys.exit(1)
+
+
+def _validate_dir(p: Path, env_var: str, cli_flag: str, label: str) -> None:
+    """Validate that a resolved path exists as a directory."""
+    if not p.is_dir():
+        print(f"[ERROR] {label} path does not exist: {p}")
+        print(f"  {env_var}={p}")
+        print(f"  Fix: set {env_var} to a valid path, or use --{cli_flag.replace('_', '-')} to override.")
+        sys.exit(1)
+
+
 def configure_toolchain(cangjie_home: Path, stdx_path: Path | None) -> None:
     """
     Source envsetup.sh from the toolchain to set CANGJIE_HOME and LD_LIBRARY_PATH,
     then optionally add stdx library path.
 
     Since envsetup.sh must be sourced (not executed), we run it in a subprocess
-    that dumps the resulting env vars to a temp file, then read them back.
+    that dumps the resulting env vars, then read them back.
 
     If --stdx is given, it is treated as the base directory under which to
     auto-detect libstdx.chir.so. If auto-detect fails, we error out.
@@ -545,6 +574,12 @@ env
     chir_so_candidates = list(search_base.rglob("libstdx.chir.so"))
     if not chir_so_candidates:
         print(f"[ERROR] libstdx.chir.so not found under: {search_base}")
+        if stdx_path:
+            print(f"  --stdx={stdx_path}")
+            print(f"  Fix: set CANGJIE_STDX_PATH to a directory containing libstdx.chir.so, or use --stdx to override.")
+        else:
+            print(f"  CANGJIE_STDX_PATH is not set.")
+            print(f"  Fix: set CANGJIE_STDX_PATH to the stdx directory, or use --stdx to override.")
         sys.exit(1)
 
     if len(chir_so_candidates) > 1:
@@ -558,19 +593,26 @@ env
 
 
 def main():
-    parser = argparse.ArgumentParser(description="One-file Python Hotfix Test Framework")
+    parser = argparse.ArgumentParser(
+        description="One-file Python Hotfix Test Framework\n\n"
+                    "Either set environment variables (CANGJIE_HOME, optionally CANGJIE_STDX_PATH)\n"
+                    "or use --cangjie-home and/or --stdx CLI arguments. CLI arguments override env vars.",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     test_parser = subparsers.add_parser("test", help="Scan and run tests")
+
     test_parser.add_argument(
-        "cangjie_toolchain",
-        help="Path to the CangJie toolchain (CANGJIE_HOME)",
+        "--cangjie-home",
+        type=str,
+        default=None,
+        help="Path to CangJie toolchain (overrides CANGJIE_HOME env var)",
     )
     test_parser.add_argument(
         "--stdx",
         type=str,
         default=None,
-        help="Path to stdx library directory (default: auto-detect under cangjie toolchain)",
+        help="Path to stdx base directory for auto-detecting libstdx.chir.so (overrides CANGJIE_STDX_PATH env var)",
     )
 
     test_parser.add_argument(
@@ -596,12 +638,14 @@ def main():
     args = parser.parse_args()
 
     if args.command == "test":
-        cangjie_home = Path(args.cangjie_toolchain).resolve()
-        if not cangjie_home.is_dir():
-            print(f"[ERROR] CangJie toolchain path does not exist: {cangjie_home}")
-            sys.exit(1)
+        cangjie_home = _resolve_path(args.cangjie_home, "CANGJIE_HOME", "CangJie toolchain")
+        if cangjie_home is None:
+            _error_missing("CANGJIE_HOME", "cangjie-home", "CangJie toolchain (CANGJIE_HOME)")
 
-        stdx_path = Path(args.stdx).resolve() if args.stdx else None
+        _validate_dir(cangjie_home, "CANGJIE_HOME", "cangjie-home", "CangJie toolchain")
+
+        stdx_path = _resolve_path(args.stdx, "CANGJIE_STDX_PATH", "stdx")
+
         configure_toolchain(cangjie_home, stdx_path)
 
         script_dir = Path(__file__).resolve().parent
