@@ -552,6 +552,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     private def genArrayGet(arrGet: ArrayGet): Unit = {
       addXSite(arrGet)
 
+      val adapter = asm.adapter
+      
       val arrayType = arrGet.arrayType
       val elemType = arrayType.getArrayElemType
       val asmType = elemType.toAsm
@@ -559,7 +561,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       (arrGet.array, arrGet.idx) match {
         case (IReg(arr), IReg(idx)) =>
           if (elemType.isRecord) {
-            asm.ldarrRecord(dst.asInstanceOf[IR], arr, idx, CodeSigSymbol(elemType))
+            asm.index(dst.asInstanceOf[IR], arr, idx, adapter.sigType(CodeSigSymbol(elemType)))
           } else if (elemType.isTraceableReference) {
             asm.ldarrObj(dst, arr, idx)
           } else {

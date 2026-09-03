@@ -892,6 +892,14 @@ trait ForkedAssembler {
       .sym16(sig)
   }
 
+  def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = {
+    stream
+      .opc8(Opcode.Index)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(idx).w4(idx))
+      .sym16(sig)
+  }
+
   // endregion
 }
 
@@ -1122,6 +1130,7 @@ object Assembler {
     case St_Static
     case LeaBox
     case Copy
+    case Index
   }
 
   enum MemOpcode extends Ordinal {
