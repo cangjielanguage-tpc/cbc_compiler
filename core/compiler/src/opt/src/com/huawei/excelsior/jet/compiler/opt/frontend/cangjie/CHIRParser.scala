@@ -1607,7 +1607,8 @@ trait CHIRParser
         e.executeClosure match {
           case None =>
             val retType = resolver.typeSig(e.resultTpe)
-            state(e) = SpawnFuture(retType)(obj)
+            SpawnFuture(retType)(obj)
+            state(e) = obj
           case Some(_) =>
             SpawnClosure(objSig)(obj)
         }
