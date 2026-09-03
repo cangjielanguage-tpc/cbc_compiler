@@ -136,7 +136,7 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
         m <- Node.rematerializeCompletely(n)
       } {
         m.singleUse match {
-          case use: InstanceFieldSeqOperation => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
+          case use: (InstanceFieldSeqOperation | CopyStructure) => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
           case use => shouldNotReachHere(use)
         }
       }
@@ -146,7 +146,7 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
         m <- Node.rematerializeCompletely(n)
       } {
         m.singleUse match {
-          case use: (FieldChainRead | FieldChainWrite | CopyStructureCBC) => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
+          case use: (FieldChainRead | FieldChainWrite | CopyStructure | CopyStructureCBC) => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
           case use => shouldNotReachHere(use)
         }
       }
