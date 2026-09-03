@@ -298,7 +298,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case _: SaveCallRefTypeInfo =>
       tailRegSet // fixed register for call ref type info passing
 
-    case _: (New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | UniversalGeneric.CopyResultVST | SpawnFuture | SpawnClosure | NewGeneric) => ir1Set
+    case _: (New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | UniversalGeneric.CopyResultVST | SpawnClosure | NewGeneric) => ir1Set
 
     case _ => super.resultResourcesSetImpl(node)
   }

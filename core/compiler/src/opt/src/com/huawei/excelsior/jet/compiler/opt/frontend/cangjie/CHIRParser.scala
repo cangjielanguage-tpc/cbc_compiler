@@ -1671,7 +1671,8 @@ trait CHIRParser
         pkg.getValue[Table](e.executeClosure) match {
           case null =>
             val retType = resolver.typeSig(e.base.resultTy)
-            state(e) = SpawnFuture(retType)(obj)
+            SpawnFuture(retType)(obj)
+            state(e) = obj
           case _ =>
             SpawnClosure(objSig)(obj)
         }

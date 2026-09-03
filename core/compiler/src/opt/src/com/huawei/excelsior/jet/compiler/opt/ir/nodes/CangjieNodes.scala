@@ -518,7 +518,7 @@ trait CangjieNodes { self: Universe =>
     def apply(base: SignatureType)(arg: Node) = proto(base)(arg)
   }
 
-  class SpawnFuture private(proto: SpawnFuture.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with ProducesValue with CanThrow {
+  class SpawnFuture private(proto: SpawnFuture.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with NotProducesValue with CanThrow {
     def retType = proto.retType
 
     def future = arg(2)
@@ -526,8 +526,8 @@ trait CangjieNodes { self: Universe =>
 
   object SpawnFuture {
     case class Proto private[SpawnFuture](retType: SignatureType)
-      extends FixedArgs[SpawnFuture](ControlType, MemoryType, TRefType)(TRefType)
-        with ControlMemoryValueTagged[SpawnFuture] {
+      extends FixedArgs[SpawnFuture](ControlType, MemoryType, TRefType)(VoidType)
+        with ControlMemoryTagged[SpawnFuture] {
 
       def newInstance() = new SpawnFuture(this)
     }
