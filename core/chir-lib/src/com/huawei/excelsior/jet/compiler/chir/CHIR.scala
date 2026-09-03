@@ -515,53 +515,53 @@ object CHIR {
   }
 
   enum Attribute {
-    case Static // Mark whether a member is a static one.
-    case Public // Mark whether a member is a public one.
-    case Private // Mark whether a member is a private one.
-    case Protected // Mark whether a member is a protected one.
+    case Static                 // Mark whether a member is a static one.
+    case Public                 // Mark whether a member is a public one.
+    case Private                // Mark whether a member is a private one.
+    case Protected              // Mark whether a member is a protected one.
 
-    case Abstract // Mark whether a function is an abstract one.
-    case Virtual // Mark whether a declaration is in fact open (even if the user does not use `open` keyword).
+    case Abstract               // Mark whether a function is an abstract one.
+    case Virtual                // Mark whether a declaration is in fact open (even if the user does not use `open` keyword).
 
-    case Override // Mark whether a declaration in fact overrides the inherited one (even if the user does not use `override` keyword).
+    case Override               // Mark whether a declaration in fact overrides the inherited one (even if the user does not use `override` keyword).
 
-    case Redef // Mark whether a declaration in fact overrides the inherited one (even if the user does not use `redef` keyword).
+    case Redef                  // Mark whether a declaration in fact overrides the inherited one (even if the user does not use `redef` keyword).
 
-    case Sealed // Mark whether a declaration is a sealed one.
-    case Foreign // Mark whether a declaration is a foreign one.
+    case Sealed                 // Mark whether a declaration is a sealed one.
+    case Foreign                // Mark whether a declaration is a foreign one.
 
-    case Mut // Mark whether a declaration is a mutable one.
-    case Final // Mark a func override a parent class's func, and this func self does not have VIRTUAL Attribute.
-    case Operator // Mark whether a declaration is a operator one.
-    case Readonly // 'let x = xxx', 'x' enable READONLY attribute
-    case Const // correspond `const` keyword in Cangjie source code.
-    case Imported // Mark whether variable、func、enum、struct、class is imported from other package.
-    case GenericInstantiated // Mark whether a `GlobalVar/Function/Type` is instantiated.
-    case NoDebugInfo // Mark a `Value` doesn't contain debug info, like line/column number.
-    case Generic // Mark a declaration is generic
-    case Internal // GlobalVar/Function/Enum/Class/Struct/Interface is visible in current and sub package.
-    case CompilerAdd // Mark a `Value` is added by compiler, like "copied default func from interface".
+    case Mut                    // Mark whether a declaration is a mutable one.
+    case Final                  // Mark a func override a parent class's func, and this func self does not have VIRTUAL Attribute.
+    case Operator               // Mark whether a declaration is a operator one.
+    case Readonly               // 'let x = xxx', 'x' enable READONLY attribute
+    case Const                  // correspond `const` keyword in Cangjie source code.
+    case Imported               // Mark whether variable、func、enum、struct、class is imported from other package.
+    case GenericInstantiated    // Mark whether a `GlobalVar/Function/Type` is instantiated.
+    case NoDebugInfo            // Mark a `Value` doesn't contain debug info, like line/column number.
+    case Generic                // Mark a declaration is generic
+    case Internal               // GlobalVar/Function/Enum/Class/Struct/Interface is visible in current and sub package.
+    case CompilerAdd            // Mark a `Value` is added by compiler, like "copied default func from interface".
 
     // compiler attribute
-    case NoReflectInfo // Mark a `Value` is't used by `reflect` feature.
-    case NoInline // Mark a Function can't be inlined.
-    case NonRecompile // only used in imported global var/func in incremental compilation, indicate this value is converted from a decl in current package that is not recompiled.
-    case Unreachable // Mark a Block is unreachable.
-    case NoSideEffect // Mark a Function does't have side effect.
-    case Common // Mark whether it's common declaration.
-    case Specific // Mark whether it's specific declaration.
-    case SkipAnalysis // Mark node that is not used for analysis e.g. Node can be skiped if it has no body when creating 'common part'
-    case Deserialized // Node deserialized from .chir file
-    case Initializer // Mark nodes that related to initialization process.
-    // Marked functions are package initializer, file initializers, variable initializer or so.
-    // On the block is used to search for it among other blocks of the function.
-    case Unsafe // Mark whether a function that was marked as `unsafe`
+    case NoReflectInfo          // Mark a `Value` is't used by `reflect` feature.
+    case NoInline               // Mark a Function can't be inlined.
+    case NonRecompile           // only used in imported global var/func in incremental compilation, indicate this value is converted from a decl in current package that is not recompiled.
+    case Unreachable            // Mark a Block is unreachable.
+    case NoSideEffect           // Mark a Function does't have side effect.
+    case Common                 // Mark whether it's common declaration.
+    case Specific               // Mark whether it's specific declaration.
+    case SkipAnalysis           // Mark node that is not used for analysis e.g. Node can be skiped if it has no body when creating 'common part'
+    case Deserialized           // Node deserialized from .chir file
+    case Initializer            // Mark nodes that related to initialization process.
+                                // Marked functions are package initializer, file initializers, variable initializer or so.
+                                // On the block is used to search for it among other blocks of the function.
+    case Unsafe                 // Mark whether a function that was marked as `unsafe`
     // Native FFI attributes
-    case JavaMirror // Mark whether it's @JavaMirror declaration (binding for a java type).
-    case JavaImpl // Mark whether it's @JavaImpl declaration.
-    case ObjCMirror // Mark whether it's @ObjCMirror declaration (binding for an Objective-C type).
-    case HasInitedField // Mark whether a node is a special flag, which marks the class instance as initialized.
-    case JavaHasDefault // Mark whether JAVA_MIRROR interface has default method.
+    case JavaMirror             // Mark whether it's @JavaMirror declaration (binding for a java type).
+    case JavaImpl               // Mark whether it's @JavaImpl declaration.
+    case ObjCMirror             // Mark whether it's @ObjCMirror declaration (binding for an Objective-C type).
+    case HasInitedField         // Mark whether a node is a special flag, which marks the class instance as initialized.
+    case JavaHasDefault         // Mark whether JAVA_MIRROR interface has default method.
     case PreviouslyDeserialized // Mark that deserialization occurs not in the newly created node, but in an existing one.
 
     case ATTR_END
