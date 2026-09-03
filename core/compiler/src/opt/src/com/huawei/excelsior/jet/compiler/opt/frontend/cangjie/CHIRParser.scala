@@ -1461,7 +1461,7 @@ trait CHIRParser
               case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
-            AtomicOps.Store(obj.tpe, field)(obj, PutMemoryOperation.adjustValue(field.fieldType.toAsm, value))
+            state(e) = AtomicOps.Store(obj.tpe, field)(obj, PutMemoryOperation.adjustValue(field.fieldType.toAsm, value))
 
           case CHIR.Intrinsic.Kind.AtomicCAS =>
             val args = e.args
@@ -1479,7 +1479,7 @@ trait CHIRParser
               case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
-            AtomicOps.Simple.swap(obj.tpe, field)(obj, value)
+            state(e) = AtomicOps.Simple.swap(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchAdd =>
             val args = e.args
@@ -1488,7 +1488,7 @@ trait CHIRParser
               case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
-            AtomicOps.Simple.fetchAdd(obj.tpe, field)(obj, value)
+            state(e) = AtomicOps.Simple.fetchAdd(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchSub =>
             val args = e.args
@@ -1497,7 +1497,7 @@ trait CHIRParser
               case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
-            AtomicOps.Simple.fetchSub(obj.tpe, field)(obj, value)
+            state(e) = AtomicOps.Simple.fetchSub(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchAnd =>
             val args = e.args
@@ -1506,7 +1506,7 @@ trait CHIRParser
               case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
-            AtomicOps.Simple.fetchAnd(obj.tpe, field)(obj, value)
+            state(e) = AtomicOps.Simple.fetchAnd(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchOr =>
             val args = e.args
@@ -1515,7 +1515,7 @@ trait CHIRParser
               case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
-            AtomicOps.Simple.fetchOr(obj.tpe, field)(obj, value)
+            state(e) = AtomicOps.Simple.fetchOr(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.AtomicFetchXor =>
             val args = e.args
@@ -1524,7 +1524,7 @@ trait CHIRParser
               case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
-            AtomicOps.Simple.fetchXor(obj.tpe, field)(obj, value)
+            state(e) = AtomicOps.Simple.fetchXor(obj.tpe, field)(obj, value)
 
           case CHIR.Intrinsic.Kind.Sqrt =>
             e.args.map(state.apply) match {
