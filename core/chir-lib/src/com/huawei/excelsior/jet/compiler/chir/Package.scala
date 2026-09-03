@@ -42,7 +42,6 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   private val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
   private val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
 
-  /** Returns cached Type or null if id is zero or negative. */
   override def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
       None
@@ -102,7 +101,6 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
     }
   }
 
-  /** Returns cached Value or null if id is zero or negative. */
   override def getValue[T >: Null <: CHIR.Value : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
       None
@@ -147,7 +145,6 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
     }
   }
 
-  /** Returns cached Expr or null if id is zero or negative. */
   override def getExpr[T >: Null <: CHIR.Expression : ClassTag](id: Long): T = {
     if (id <= 0) {
       null
