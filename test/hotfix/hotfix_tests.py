@@ -501,11 +501,77 @@ def test_command(test_root_dir: Path, tmp_dir_arg: str, tags_only: set[str]) -> 
         print(f"[DEBUG] Failed environment preserved inside '{tmp_dir.name}/' directory.")
         return False
 
+def configure_toolchain(cangjie_home: Path, stdx_path: Path | None) -> None:
+    """
+    Source envsetup.sh from the toolchain to set CANGJIE_HOME and LD_LIBRARY_PATH,
+    then optionally add stdx library path.
+
+    Since envsetup.sh must be sourced (not executed), we run it in a subprocess
+    that dumps the resulting env vars to a temp file, then read them back.
+
+    If --stdx is given, it is treated as the base directory under which to
+    auto-detect libstdx.chir.so. If auto-detect fails, we error out.
+    """
+    envsetup_sh = cangjie_home / "envsetup.sh"
+    if not envsetup_sh.is_file():
+        print(f"[ERROR] envsetup.sh not found at: {envsetup_sh}")
+        sys.exit(1)
+
+    dump_script = f"""\
+set -e
+source "{envsetup_sh}"
+env
+"""
+    proc = subprocess.run(
+        ["bash", "-c", dump_script],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        err = proc.stderr.strip() or "Unknown error sourcing envsetup.sh"
+        print(f"[ERROR] Failed to source envsetup.sh: {err}")
+        sys.exit(1)
+
+    for line in proc.stdout.splitlines():
+        if "=" in line:
+            key, _, value = line.partition("=")
+            os.environ[key] = value
+
+    # Resolve stdx lib path
+    if stdx_path:
+        search_base = stdx_path
+    else:
+        search_base = cangjie_home
+
+    chir_so_candidates = list(search_base.rglob("libstdx.chir.so"))
+    if not chir_so_candidates:
+        print(f"[ERROR] libstdx.chir.so not found under: {search_base}")
+        sys.exit(1)
+
+    if len(chir_so_candidates) > 1:
+        print(f"[WARN] Found {len(chir_so_candidates)} libstdx.chir.so files under {search_base}:")
+        for i, p in enumerate(chir_so_candidates, 1):
+            marker = " <-- chosen" if i == 1 else ""
+            print(f"  {i}. {p}{marker}")
+    stdx_lib_dir = chir_so_candidates[0].parent
+    existing_ld = os.environ.get("LD_LIBRARY_PATH", "")
+    os.environ["LD_LIBRARY_PATH"] = str(stdx_lib_dir) + (f":{existing_ld}" if existing_ld else "")
+
+
 def main():
     parser = argparse.ArgumentParser(description="One-file Python Hotfix Test Framework")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     test_parser = subparsers.add_parser("test", help="Scan and run tests")
+    test_parser.add_argument(
+        "cangjie_toolchain",
+        help="Path to the CangJie toolchain (CANGJIE_HOME)",
+    )
+    test_parser.add_argument(
+        "--stdx",
+        type=str,
+        default=None,
+        help="Path to stdx library directory (default: auto-detect under cangjie toolchain)",
+    )
 
     test_parser.add_argument(
         "--save-temps",
@@ -530,6 +596,14 @@ def main():
     args = parser.parse_args()
 
     if args.command == "test":
+        cangjie_home = Path(args.cangjie_toolchain).resolve()
+        if not cangjie_home.is_dir():
+            print(f"[ERROR] CangJie toolchain path does not exist: {cangjie_home}")
+            sys.exit(1)
+
+        stdx_path = Path(args.stdx).resolve() if args.stdx else None
+        configure_toolchain(cangjie_home, stdx_path)
+
         script_dir = Path(__file__).resolve().parent
 
         tests_excluded = split_first_line(script_dir / "tests_excluded")
