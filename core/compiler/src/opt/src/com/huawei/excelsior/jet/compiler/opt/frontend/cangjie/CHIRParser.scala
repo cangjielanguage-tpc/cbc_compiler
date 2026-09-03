@@ -674,52 +674,6 @@ trait CHIRParser
           callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
         }
       }
-
-      if (pkg.getValue[Function](pkg.pkg.packageLiteralInitFunc) == func) {
-        // TODO: consider moving it under @has_invoked_pkg_init_literal check
-        for (id <- 1L to pkg.pkg.valuesLength) pkg.getValue[Table](id) match {
-          case g: PackageFormat.GlobalVar if !resolver.isImported(g.base) =>
-            val declType = if (g.base.declaredParent == 0) {
-              resolver.findClass(pkg.pkg.name).get
-            } else {
-              resolver.symType(pkg.getDef[Table](g.base.declaredParent)).get
-            }
-            val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
-            assert(field.isStatic, field)
-            val value = pkg.getValue[Table](g.initializer) match {
-              case null | _: PackageFormat.UnitLiteral => null
-              case v: PackageFormat.NullLiteral => IntegralConst(ValueType.fromSig(field.getType))(0)
-              case v: PackageFormat.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.`val`)
-              case v: PackageFormat.FloatLiteral => field.getType match {
-                case SignatureType.Float32 => FConst(v.`val`.toFloat)
-                case SignatureType.Float64 => DConst(v.`val`)
-                case t => notImplemented(s"unexpected static field type ${t.toJETSignature} of field $field")
-              }
-              case v: PackageFormat.BoolLiteral => IConst(if (v.`val`) 1 else 0)
-              case v: PackageFormat.RuneLiteral => IConst(v.`val`.toInt)
-              case v: PackageFormat.StringLiteral => constString(v.`val`)
-              case func: PackageFormat.Function =>
-                val refType = resolver.findClass(func.base.packageName).get
-
-                val name = resolver.symName(func)
-                val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, func, func.funcKind, func.base.base.base.attributes)
-
-                callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
-                null
-            }
-            value match {
-              case null =>
-                // nothing to do
-              case StackAlloc.Local(allocType) =>
-                // string
-                val mem = GetStaticFieldSeqRef(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global())
-                copy(allocType, mem, value)
-              case _ =>
-                StoreStaticFieldSeq(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global(), value)
-            }
-          case _ =>
-        }
-      }
     }
 
     private def parseCasts(e: Expression, overflowStrategy: Int, state: State) = {
@@ -1464,7 +1418,49 @@ trait CHIRParser
       case e: PackageFormat.IntrinsicBase =>
         e.intrinsicKind match {
           case PackageFormat.IntrinsicKind.PREINITIALIZE =>
-          // no-op
+            assert(pkg.getValue[Function](pkg.pkg.packageInitFunc) == func, method)
+            for (id <- 1L to pkg.pkg.valuesLength) pkg.getValue[Table](id) match {
+              case g: PackageFormat.GlobalVar if !resolver.isImported(g.base) =>
+                val declType = if (g.base.declaredParent == 0) {
+                  resolver.findClass(pkg.pkg.name).get
+                } else {
+                  resolver.symType(pkg.getDef[Table](g.base.declaredParent)).get
+                }
+                val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
+                assert(field.isStatic, field)
+                val value = pkg.getValue[Table](g.initializer) match {
+                  case null | _: PackageFormat.UnitLiteral => null
+                  case v: PackageFormat.NullLiteral => IntegralConst(ValueType.fromSig(field.getType))(0)
+                  case v: PackageFormat.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.`val`)
+                  case v: PackageFormat.FloatLiteral => field.getType match {
+                    case SignatureType.Float32 => FConst(v.`val`.toFloat)
+                    case SignatureType.Float64 => DConst(v.`val`)
+                    case t => notImplemented(s"unexpected static field type ${t.toJETSignature} of field $field")
+                  }
+                  case v: PackageFormat.BoolLiteral => IConst(if (v.`val`) 1 else 0)
+                  case v: PackageFormat.RuneLiteral => IConst(v.`val`.toInt)
+                  case v: PackageFormat.StringLiteral => constString(v.`val`)
+                  case func: PackageFormat.Function =>
+                    val refType = resolver.findClass(func.base.packageName).get
+
+                    val name = resolver.symName(func)
+                    val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, func, func.funcKind, func.base.base.base.attributes)
+
+                    callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
+                    null
+                }
+                value match {
+                  case null =>
+                  // nothing to do
+                  case StackAlloc.Local(allocType) =>
+                    // string
+                    val mem = GetStaticFieldSeqRef(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global())
+                    copy(allocType, mem, value)
+                  case _ =>
+                    StoreStaticFieldSeq(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global(), value)
+                }
+              case _ =>
+            }
 
           case PackageFormat.IntrinsicKind.BEGIN_CATCH =>
             operands(e.base.base) match {
