@@ -1655,7 +1655,6 @@ trait CHIRParser
             if (sig.isZST) {
               // nothing to do
               state(e) = Void()
-
             } else {
               val n = state(localVar) match {
                 case mem @ GetFieldSeqRef(fields, _, base) =>
@@ -1683,7 +1682,7 @@ trait CHIRParser
                     LoadStaticFieldSeq(fields)(DerivedPtr.Global())
                   }
                 case mem =>
-                  if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive) {
+                  if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive || sig.isTypeVariable) {
                     mem
                   } else {
                     LoadMemory(sig.toAsm, sig, atomic = false)(mem)
@@ -2178,8 +2177,12 @@ trait CHIRParser
             retType match {
               case rt: SignatureType.OptionLikeEnum if rt.isNullableOption =>
                 Unbox(retType)(loadTypeInfo(retType), abiRetVal)
-              case rt: SignatureType.OptionLikeEnum if rt.someType.isTypeVariable =>
+              case _ if retType.isVariableSizeType =>
                 abiRetVal
+              //case _ if retType.someType.isVariableSize =>
+              //  abiRetVal
+              // case rt: SignatureType.OptionLikeEnum if rt.someType.isTypeVariable =>
+              //   abiRetVal
               case _ =>
                 UnboxRec(retType)(loadTypeInfo(retType), abiRetVal)
             }
