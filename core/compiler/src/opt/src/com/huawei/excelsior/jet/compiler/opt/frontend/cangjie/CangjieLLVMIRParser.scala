@@ -900,7 +900,7 @@ trait CangjieLLVMIRParser
         val tvRef = hlir.ref(ty.name).get.asInstanceOf[Ref.TypeVariable]
         UniversalGeneric.CopyUniversalVariable(resolver.refSignature(tvRef))(to, from)
       case _ =>
-        CopyStructure(ty2sig(ty))(to, from)
+        CopyStructure(ty2sig(ty))(DerivedPtr.Local(), to, DerivedPtr.Local(), from)
     }
 
     override def store(ty: Bitcode.Type, mem: Node, value: Node): Unit = spinalAny {
@@ -1431,7 +1431,7 @@ trait CangjieLLVMIRParser
 
       } else if (elemTypeSig.isRecord) {
         val addr = ArrayGet(arrayType)(array, index)
-        CopyStructure(elemTypeSig)(addr, value)
+        CopyStructure(elemTypeSig)(DerivedPtr.Local(), addr, DerivedPtr.Local(), value)
 
       } else {
         val enrichedElemType = obtainEnrichedElemType(arrayType, elemType)
@@ -1966,7 +1966,7 @@ trait CangjieLLVMIRParser
 
             } else if (boxedType.isRecord) {
               val addr = GetField(boxField)(box)
-              CopyStructure(boxedType)(addr, value)
+              CopyStructure(boxedType)(DerivedPtr.Local(), addr, DerivedPtr.Local(), value)
 
 
             } else {

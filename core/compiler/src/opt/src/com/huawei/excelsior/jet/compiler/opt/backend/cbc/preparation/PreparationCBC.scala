@@ -128,33 +128,6 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
     }
   }
 
-  override def prepareCopyStructure(): Unit = {
-    if (!isStandalone) { return }
-
-    def attachToCopyStructure(cs: CopyStructure, node: FloatingNode): Unit = {
-      Node.rematerializeConditionally(node, { _.target == cs }) foreach {
-        _.attachToGroup(cs, Group.AttachReason.COPY_STRUCTURE)
-      }
-    }
-
-    for {
-      cs <- all[CopyStructure]
-    } {
-      (cs.src, cs.dst) match {
-        case ((_: GetStaticFieldSeqRef | _: GetFieldSeqRef), (_: GetStaticFieldSeqRef | _: GetFieldSeqRef)) => {
-          shouldNotReachHere()
-        }
-        case (g: (GetStaticFieldSeqRef | GetFieldSeqRef), _) => {
-          attachToCopyStructure(cs, g)
-        }
-        case (_, g: (GetStaticFieldSeqRef | GetFieldSeqRef)) => {
-          attachToCopyStructure(cs, g)
-        }
-        case (_, _) =>
-      }
-    }
-  }
-
   override def prepareRecordArrayGet(): Unit = {
     if (isStandalone) {
       for {
@@ -163,7 +136,7 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
         m <- Node.rematerializeCompletely(n)
       } {
         m.singleUse match {
-          case use: (InstanceFieldSeqOperation | CopyStructure) => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
+          case use: InstanceFieldSeqOperation => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
           case use => shouldNotReachHere(use)
         }
       }
@@ -173,7 +146,7 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
         m <- Node.rematerializeCompletely(n)
       } {
         m.singleUse match {
-          case use: (FieldChainRead | FieldChainWrite | CopyStructure | CopyStructureCBC) => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
+          case use: (FieldChainRead | FieldChainWrite | CopyStructureCBC) => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
           case use => shouldNotReachHere(use)
         }
       }

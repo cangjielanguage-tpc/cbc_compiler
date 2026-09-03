@@ -884,12 +884,12 @@ trait ForkedAssembler {
     analyzer.prim(dst)
   }
   
-  def copy(dst: IR, src: IR, fr: FieldReference): Unit = {
+  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = {
     stream
       .opc8(Opcode.Copy)
-      .bits(_.w4(dst).w4(src))
-      .sym16(fr)
-    markMemBase(src, fr)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .sym16(sig)
   }
 
   // endregion
