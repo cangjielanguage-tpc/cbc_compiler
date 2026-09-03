@@ -351,7 +351,6 @@ trait ForkedAssembler {
 
   def spawnFuture(future: IR, retType: Signature): Unit = instr {
     regSymGroup(RegSymGroup.SpawnFuture, analyzer.useRef(future), retType)
-    analyzer.ref(IR.IR1)
     saveState()
   }
 
