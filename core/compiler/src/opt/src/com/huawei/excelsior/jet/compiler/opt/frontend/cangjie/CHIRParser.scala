@@ -2272,10 +2272,6 @@ trait CHIRParser
                 Unbox(retType)(loadTypeInfo(retType), abiRetVal)
               case _ if retType.isVariableSizeType =>
                 abiRetVal
-              //case _ if retType.someType.isVariableSize =>
-              //  abiRetVal
-              // case rt: SignatureType.OptionLikeEnum if rt.someType.isTypeVariable =>
-              //   abiRetVal
               case _ =>
                 UnboxRec(retType)(loadTypeInfo(retType), abiRetVal)
             }
