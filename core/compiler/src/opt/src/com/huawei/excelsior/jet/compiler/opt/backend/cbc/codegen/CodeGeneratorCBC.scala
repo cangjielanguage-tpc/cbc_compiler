@@ -12,7 +12,7 @@ import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHe
 import com.huawei.excelsior.jet.assembler.AsmType.*
 import com.huawei.excelsior.jet.assembler.Width.{W32, W64}
 import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, *}
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{ConstIndexFieldReference, MultiFieldReference, NoneFieldReference}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{ConstIndexFieldReference, FieldReferenceWithType, MultiFieldReference, NoneFieldReference, SingleFieldReference}
 import com.huawei.excelsior.jet.assembler.cbc.Local.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
@@ -350,12 +350,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case slot: StackSlot.Typed => notImplemented("lea for typed slots")
             case base: IR =>
               genLeaChain(IR1, base, fieldRefs, n.typeInfos)
+              val IReg(baseRef) = n.baseRef
               if (n.resType.isVariableSizeType) {
-                val IReg(baseRef) = n.baseRef
                 val IReg(ti) = n.typeInfos.last
                 asm.ld(dst, baseRef, IR1, ti, NoneFieldReference())
               } else {
-                asm.ld(dst, base, NoneFieldReference())
+                val fieldRef = constrFieldRef(Seq(fieldRefs.last)).asInstanceOf[FieldReferenceWithType]
+                asm.ld(dst, baseRef, IR1, NoneFieldReference(fieldRef.fieldType))
               }
           }
           addXSite(n)
@@ -413,12 +414,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case slot: StackSlot.Typed => notImplemented("lea for typed slots")
             case base: IR =>
               genLeaChain(IR1, base, fieldRefs, n.typeInfos)
+              val IReg(baseRef) = n.baseRef
               if (n.resType.isVariableSizeType) {
-                val IReg(baseRef) = n.baseRef
                 val IReg(ti) = n.typeInfos.last
                 asm.st(src, baseRef, IR1, ti, NoneFieldReference())
               } else {
-                asm.st(src, base, NoneFieldReference())
+                val fieldRef = constrFieldRef(Seq(fieldRefs.last)).asInstanceOf[FieldReferenceWithType]
+                asm.st(src, baseRef, IR1, NoneFieldReference(fieldRef.fieldType))
               }
           }
           addXSite(n)
