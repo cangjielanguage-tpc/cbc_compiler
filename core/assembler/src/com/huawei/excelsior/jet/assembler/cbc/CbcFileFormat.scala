@@ -327,7 +327,7 @@ object CbcFileFormat {
     def refType = subRefs.head.refType
     def fieldType = subRefs.last.fieldType
   }
-  case class NoneFieldReference(sig: Option[Signature] = None) extends FieldReference // TODO specify more
+  case class NoneFieldReference(sig: Signature = BuiltinSignature.Void) extends FieldReference // TODO specify more
 
   sealed trait AotData
   case class DirectCallAotData(linkageName: String) extends AotData
