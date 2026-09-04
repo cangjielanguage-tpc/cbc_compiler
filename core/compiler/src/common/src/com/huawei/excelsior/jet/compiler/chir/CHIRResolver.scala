@@ -238,7 +238,6 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       val gTypes = d match {
         case d: CHIR.ExtendDef => d.genericTypeParams
         case d: CHIR.CustomTypeDef if isGenericInstantiated(d) => Seq.empty
-        // TODO are generic type params generic always here?
         case d: CHIR.CustomTypeDef => d.tpe.asInstanceOf[CHIR.CustomType].genericTypeParams collect {
           case t: CHIR.GenericType => t
         }
@@ -354,11 +353,11 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   def enumKind(enumDef: CHIR.EnumDef): EnumKind = enumKindByEnumDef.getOrElseUpdate(enumDef, {
     val ctorSigs = enumDef.ctors.map(_.tpe)
     val ctors = ctorSigs.map(_.paramTypes)
-    val noParams = ctors.forall(c => c.isEmpty)
+    val noParams = ctors.forall(_.isEmpty)
 
-    def zstParams = ctors.forall(c => c.forall(isZST))
+    def zstParams = ctors.forall(_.forall(isZST))
 
-    def hasRefParams = ctors.exists(c => c.exists(t => isReferenceType(t) || isTraceableStruct(t)))
+    def hasRefParams = ctors.exists(_.exists(t => isReferenceType(t) || isTraceableStruct(t)))
 
     lazy val optionLikeParam = ScalaCollections.singleton(ctors.flatten)
 
