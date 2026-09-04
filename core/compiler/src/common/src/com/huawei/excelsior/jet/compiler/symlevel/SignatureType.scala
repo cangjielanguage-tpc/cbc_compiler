@@ -275,8 +275,8 @@ sealed abstract class SignatureType extends Signature {
   }
 
   final def isCangjieLambda: Boolean = this match {
-    case x: CangjieReference => x.name.startsWith("$Cl") || x.name.startsWith("$Cw")
-    case x: InstantiatedReference => x.name.startsWith("$Cl") || x.name.startsWith("$Cw")
+    case x: CangjieReference => x.name.startsWith("$Cl") || x.name.startsWith("$Cw") || x.name.startsWith("$Cf")
+    case x: InstantiatedReference => x.name.startsWith("$Cl") || x.name.startsWith("$Cw") || x.name.startsWith("$Cf")
     case _ => false
   }
 
