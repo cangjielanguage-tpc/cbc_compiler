@@ -2112,7 +2112,7 @@ trait CHIRParser
               // TODO: prepareSRet
               val memType = ReferenceType.cangjieStdCoreObject.sigType
               val mem = StackAlloc.Local(memType, workaroundForNonZeroedTraceableRecords = true)
-              val value = if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && (retType.isTraceableReference || retType.isTypeVariable)) {
+              val value = if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && retType.isTraceableReference) {
                 Null()
               } else {
                 val box = SignatureType.Box(retType)
