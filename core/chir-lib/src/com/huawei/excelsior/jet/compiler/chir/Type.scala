@@ -4,12 +4,12 @@ import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 final class BoxTypeImpl(b: Type)(using provider: CHIRItemProvider) extends CHIR.BoxType {
-  override def baseType: CHIR.Type = provider.getType[CHIR.Type](b.argTys(0)).get
+  def baseType: CHIR.Type = provider.getType[CHIR.Type](b.argTys(0)).get
 }
 
 trait CustomTypeImpl(c: CustomType)(using provider: CHIRItemProvider) extends CHIR.CustomType {
-  override def typeDef: CHIR.CustomTypeDef = provider.getDef[CHIR.CustomTypeDef](c.customTypeDef).get
-  override def genericTypeParams: Seq[CHIR.Type] = {
+  def typeDef: CHIR.CustomTypeDef = provider.getDef[CHIR.CustomTypeDef](c.customTypeDef).get
+  def genericTypeParams: Seq[CHIR.Type] = {
     for (idx <- c.base.argTysVector.toSeq) yield {
       provider.getType[CHIR.Type](idx).get
     }
@@ -29,20 +29,20 @@ final class StructTypeImpl(c: CustomType)(using provider: CHIRItemProvider) exte
 }
 
 final class CPointerTypeImpl(t: Type)(using provider: CHIRItemProvider) extends CHIR.CPointerType {
-  override def elementType: CHIR.Type = provider.getType[CHIR.Type](t.argTys(0)).get
+  def elementType: CHIR.Type = provider.getType[CHIR.Type](t.argTys(0)).get
 }
 
 final class RefTypeImpl(t: Type)(using provider: CHIRItemProvider) extends CHIR.RefType {
-  override def baseType: CHIR.Type = provider.getType[CHIR.Type](t.argTys(0)).get
+  def baseType: CHIR.Type = provider.getType[CHIR.Type](t.argTys(0)).get
 }
 
 final class RawArrayTypeImpl(t: RawArrayType)(using provider: CHIRItemProvider) extends CHIR.RawArrayType {
-  override def elementType: CHIR.Type = provider.getType[CHIR.Type](t.base.argTys(0)).get
-  override def dimension: Long = t.dims
+  def elementType: CHIR.Type = provider.getType[CHIR.Type](t.base.argTys(0)).get
+  def dimension: Long = t.dims
 }
 
 final class TupleTypeImpl(t: Type)(using provider: CHIRItemProvider) extends CHIR.TupleType {
-  override def fieldTypes: Seq[CHIR.Type] = {
+  def fieldTypes: Seq[CHIR.Type] = {
     for (idx <- t.argTysVector.toSeq) yield {
       provider.getType[CHIR.Type](idx).get
     }
@@ -50,13 +50,13 @@ final class TupleTypeImpl(t: Type)(using provider: CHIRItemProvider) extends CHI
 }
 
 final class VArrayTypeImpl(t: VArrayType)(using provider: CHIRItemProvider) extends CHIR.VArrayType {
-  override def elementType: CHIR.Type = provider.getType[CHIR.Type](t.base.argTys(0)).get
-  override def size: Long = t.size
+  def elementType: CHIR.Type = provider.getType[CHIR.Type](t.base.argTys(0)).get
+  def size: Long = t.size
 }
 
 final class GenericTypeImpl(t: GenericType)(using provider: CHIRItemProvider) extends CHIR.GenericType {
-  override def identifier: String = t.identifier
-  override def upperBounds: Seq[CHIR.Type] = {
+  def identifier: String = t.identifier
+  def upperBounds: Seq[CHIR.Type] = {
     for (idx <- t.upperBoundsVector.toSeq) yield {
       provider.getType[CHIR.Type](idx).get
     }
@@ -69,9 +69,9 @@ final class FuncTypeImpl(f: FuncType)(using provider: CHIRItemProvider) extends 
       provider.getType[CHIR.Type](idx).get
     }
   }
-  override def paramTypes: Seq[CHIR.Type] = argsTypes.dropRight(1)
-  override def receiverType: CHIR.Type = paramTypes.head
-  override def returnType: CHIR.Type = argsTypes.last
-  override def isC: Boolean = f.isCfuncType
-  override def hasVarArg: Boolean = f.hasVarArg
+  def paramTypes: Seq[CHIR.Type] = argsTypes.dropRight(1)
+  def receiverType: CHIR.Type = paramTypes.head
+  def returnType: CHIR.Type = argsTypes.last
+  def isC: Boolean = f.isCfuncType
+  def hasVarArg: Boolean = f.hasVarArg
 }

@@ -42,7 +42,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   private val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
   private val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
 
-  override def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T] = {
+  def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
       None
     } else {
@@ -101,7 +101,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
     }
   }
 
-  override def getValue[T >: Null <: CHIR.Value : ClassTag](id: Long): Option[T] = {
+  def getValue[T >: Null <: CHIR.Value : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
       None
     } else {
@@ -145,7 +145,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
     }
   }
 
-  override def getExpr[T >: Null <: CHIR.Expression : ClassTag](id: Long): T = {
+  def getExpr[T >: Null <: CHIR.Expression : ClassTag](id: Long): T = {
     if (id <= 0) {
       null
     } else {
@@ -234,7 +234,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   }
 
   /** Returns cached Def or null if id is zero or negative. */
-  override def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): Option[T] = {
+  def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
       None
     } else {
@@ -260,25 +260,25 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
     }
   }
 
-  override def typeDefs: Iterator[CHIR.CustomTypeDef] = {
+  def typeDefs: Iterator[CHIR.CustomTypeDef] = {
     (1 to pkg.defsLength()).iterator.map { id =>
       getDef[CHIR.CustomTypeDef](id).get
     }
   }
 
-  override def name: String = pkg.name
+  def name: String = pkg.name
 
-  override def packageInitFunc: CHIR.Func = getValue[CHIR.Func](pkg.packageInitFunc).get
+  def packageInitFunc: CHIR.Func = getValue[CHIR.Func](pkg.packageInitFunc).get
 
-  override def packageInitLiteralFunc: CHIR.Func = getValue[CHIR.Func](pkg.packageLiteralInitFunc).get
+  def packageInitLiteralFunc: CHIR.Func = getValue[CHIR.Func](pkg.packageLiteralInitFunc).get
 
-  override def values: Iterator[CHIR.Value] = {
+  def values: Iterator[CHIR.Value] = {
     (1 to pkg.valuesLength()).iterator.map { id =>
       getValue[CHIR.Value](id).get
     }
   }
 
-  override def function(idx: Int): CHIR.Func = {
+  def function(idx: Int): CHIR.Func = {
     getValue[CHIR.Func](idx).get
   }
 }

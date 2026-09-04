@@ -10,11 +10,11 @@ final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider
   private val gv = f.base
   private val v = gv.base
 
-  override def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.`type`).get
-  override def identifier: String = v.identifier
-  override def srcCodeIdentifier: String = gv.srcCodeIdentifier
-  override def packageName: String = gv.packageName
-  override def kind: Func.Kind = f.funcKind match {
+  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.`type`).get
+  def identifier: String = v.identifier
+  def srcCodeIdentifier: String = gv.srcCodeIdentifier
+  def packageName: String = gv.packageName
+  def kind: Func.Kind = f.funcKind match {
     case FuncKind.DEFAULT => Func.Kind.Default
     case FuncKind.GETTER => Func.Kind.Getter
     case FuncKind.SETTER => Func.Kind.Setter
@@ -31,39 +31,39 @@ final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider
     case FuncKind.DEFAULT_PARAMETER_FUNC => Func.Kind.DefaultParameter
     case FuncKind.INSTANCEVAR_INIT => Func.Kind.InstanceVarInit
   }
-  override def genericTypeParams: Seq[CHIR.GenericType] = {
+  def genericTypeParams: Seq[CHIR.GenericType] = {
     for (idx <- f.genericTypeParamsVector.toSeq) yield {
       provider.getType[CHIR.GenericType](idx).get
     }
   }
-  override def body: Option[CHIR.BlockGroup] = provider.getValue[CHIR.BlockGroup](f.body)
-  override def params: Seq[CHIR.Parameter] = {
+  def body: Option[CHIR.BlockGroup] = provider.getValue[CHIR.BlockGroup](f.body)
+  def params: Seq[CHIR.Parameter] = {
     for (idx <- f.paramsVector.toSeq) yield {
       provider.getValue[CHIR.Parameter](idx).get
     }
   }
-  override def retVal: Option[CHIR.LocalVar] = provider.getValue[CHIR.LocalVar](f.retVal)
+  def retVal: Option[CHIR.LocalVar] = provider.getValue[CHIR.LocalVar](f.retVal)
 }
 
-class BlockGroupImpl(b: BlockGroup)(using provider: CHIRItemProvider) extends CHIR.BlockGroup {
-  override def blocks: Seq[CHIR.Block] = {
+final class BlockGroupImpl(b: BlockGroup)(using provider: CHIRItemProvider) extends CHIR.BlockGroup {
+  def blocks: Seq[CHIR.Block] = {
     for (idx <- b.blocksVector.toSeq) yield {
       block(idx)
     }
   }
-  override def entryBlock: CHIR.Block = block(b.entryBlock)
+  def entryBlock: CHIR.Block = block(b.entryBlock)
   private def block(idx: Long) = provider.getValue[CHIR.Block](idx).get
 }
 
 final class BlockImpl(b: Block)(using provider: CHIRItemProvider) extends CHIR.Block {
-  override lazy val expressions: Seq[CHIR.Expression] = {
+  lazy val expressions: Seq[CHIR.Expression] = {
     for (idx <- b.exprsVector.toSeq) yield {
       provider.getExpr[CHIR.Expression](idx)
     }
   }
-  override def nonTerminatorExpressions: Seq[CHIR.Expression] = expressions.init
-  override def terminator: CHIR.Terminator = expressions.last.asInstanceOf[CHIR.Terminator]
-  override def isLandingPadBlock: Boolean = b.isLandingPadBlock
+  def nonTerminatorExpressions: Seq[CHIR.Expression] = expressions.init
+  def terminator: CHIR.Terminator = expressions.last.asInstanceOf[CHIR.Terminator]
+  def isLandingPadBlock: Boolean = b.isLandingPadBlock
 }
 
 final class GlobalVarImpl(g: GlobalVar, val id: Long)(using provider: CHIRItemProvider) extends CHIR.GlobalVar
@@ -73,45 +73,45 @@ final class GlobalVarImpl(g: GlobalVar, val id: Long)(using provider: CHIRItemPr
   private val v = gv.base
   private val b = v.base
 
-  override def identifier: String = v.identifier
-  override def srcCodeIdentifier: String = gv.srcCodeIdentifier
-  override def packageName: String = gv.packageName
-  override def tpe: CHIR.Type = provider.getType[CHIR.Type](v.`type`).get
-  override def initializer: Option[CHIR.Value] = provider.getValue[CHIR.Value](g.initializer)
+  def identifier: String = v.identifier
+  def srcCodeIdentifier: String = gv.srcCodeIdentifier
+  def packageName: String = gv.packageName
+  def tpe: CHIR.Type = provider.getType[CHIR.Type](v.`type`).get
+  def initializer: Option[CHIR.Value] = provider.getValue[CHIR.Value](g.initializer)
 }
 
 final class LocalVarImpl(l: LocalVar)(using provider: CHIRItemProvider) extends CHIR.LocalVar {
-  override def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`).get
-  override def associatedExpr: CHIR.Expression = provider.getExpr[CHIR.Expression](l.associatedExpr)
+  def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`).get
+  def associatedExpr: CHIR.Expression = provider.getExpr[CHIR.Expression](l.associatedExpr)
 }
 
 final class ParameterImpl(p: Parameter)(using provider: CHIRItemProvider) extends CHIR.Parameter {
-  override def tpe: CHIR.Type = provider.getType[CHIR.Type](p.base.`type`).get
+  def tpe: CHIR.Type = provider.getType[CHIR.Type](p.base.`type`).get
 }
 
 trait LiteralImpl(l: LiteralValue)(using provider: CHIRItemProvider) extends CHIR.Literal {
-  override def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`).get
+  def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`).get
 }
 
 final class NullLiteralImpl(n: NullLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.NullLiteral {
 }
 
 final class IntLiteralImpl(n: IntLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.IntLiteral {
-  override def value: Long = n.`val`
+  def value: Long = n.`val`
 }
 
 final class FloatLiteralImpl(n: FloatLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.FloatLiteral {
-  override def value: Double = n.`val`
+  def value: Double = n.`val`
 }
 
 final class BoolLiteralImpl(n: BoolLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.BoolLiteral {
-  override def value: Boolean = n.`val`
+  def value: Boolean = n.`val`
 }
 
 final class RuneLiteralImpl(n: RuneLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.RuneLiteral {
-  override def value: Long = n.`val`
+  def value: Long = n.`val`
 }
 
 final class StringLiteralImpl(n: StringLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.StringLiteral {
-  override def value: String = n.`val`
+  def value: String = n.`val`
 }
