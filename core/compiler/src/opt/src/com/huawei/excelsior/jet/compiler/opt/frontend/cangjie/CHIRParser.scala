@@ -1476,7 +1476,6 @@ trait CHIRParser
                PackageFormat.IntrinsicKind.ARRAY_GET_REF_UNCHECKED |
                PackageFormat.IntrinsicKind.ARRAY_GET =>
             // TODO: ArrayIndexCheck
-            println(s"YES WE GOT INTO INTRINSIC HERE, ${e}")
             val (arrayType, obj, idx) = operands(e.base.base) match {
               case Seq(obj: PackageFormat.LocalVar, idx) =>
                 (resolver.typeSig(obj.base.`type`), state(obj), state(idx))
