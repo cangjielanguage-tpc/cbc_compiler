@@ -408,7 +408,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           // lea.g IR1, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
           // ...
           // lea.g IR1, IR1,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
-          // st.g  src, baseRef, IR1, tiN, None()                 (or non-generic ld)
+          // st.g  src, baseRef, IR1, tiN, None()                 (or non-generic st)
           val Reg(src) = n.inValue
           getBaseLocation(n.base) match {
             case slot: StackSlot.Typed => notImplemented("lea for typed slots")
@@ -783,7 +783,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
     private def genLoadMemory(load: LoadMemory): Unit = {
       val Reg(dst) = load
-      val adapter = asm.adapter
 
       load.addr match {
         case IReg(src) =>
@@ -807,7 +806,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       case (LoadTailParam(IReg(tailReg), offset), tpe) =>
         val Reg(dst) = ltp
         val ldk = LoadAccessKind.from(cbcTypeKind(tpe))
-        asm.loadTailParam(dst, tailReg, ldk, offset)
+        asm.loadTailParam(dst, tailReg, ldk, offset / Width.W64.nbytes) // TODO: store number in LoadTailParam node
     }
 
     private def genStoreMemory(store: StoreMemory): Unit = {
@@ -1016,10 +1015,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case slot: TypedFrameSlotCBC =>
               slot.tpe match {
                 case sig: SignatureType.TypeVariable =>
-                  val builder = MemSpace.Builder()
-                  builder.typed(slot.typedSlot)
-                  builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
-                  builder.load(dst).gen(asm)
+                  val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc
+                  val fieldType = ReferenceType.cangjieStdCoreObject.sigType.toCbc
+                  asm.ld(dst, slot.typedSlot, ConstIndexFieldReference(refType, 0, fieldType))
                 case sig =>
                   assert(sig.isRecord)
                   asm.ldstackrec(dst, slot.typedSlot)
