@@ -108,9 +108,9 @@ async def build_and_test_patch(release_dir: Path, tag_dir: Path, log_prefix: str
 
             async def execute_diff(tag_chir_name: str, release_chir_path: Path, tag_chir_path: Path, tmp_path: Path, log_prefix: str):
                 async with SEMAPHORE:
-                    print(f"{log_prefix} [RUN] chir-diff {release_chir_path.name} ➔ {tag_chir_path.name}")
+                    print(f"{log_prefix} [RUN] patch-gen {release_chir_path.name} ➔ {tag_chir_path.name}")
                     proc = await asyncio.create_subprocess_exec(
-                        "chir-diff", str(release_chir_path.resolve()), str(tag_chir_path.resolve()),
+                        "patch-gen", str(release_chir_path.resolve()), str(tag_chir_path.resolve()),
                         cwd=str(tmp_path),
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE
@@ -121,7 +121,7 @@ async def build_and_test_patch(release_dir: Path, tag_dir: Path, log_prefix: str
             diff_tasks.append(execute_diff(tag_chir_name, release_chir_path, tag_chir_path, tag_dir, log_prefix))
 
         if diff_tasks:
-            print(f"{log_prefix} [INFO] Processing {len(diff_tasks)} chir-diff jobs concurrently...")
+            print(f"{log_prefix} [INFO] Processing {len(diff_tasks)} patch-gen jobs concurrently...")
             processes = await asyncio.gather(*diff_tasks)
             for diff_ret_code, diff_stderr_bytes, chir_name in processes:
                 if diff_ret_code != 0:
@@ -130,9 +130,10 @@ async def build_and_test_patch(release_dir: Path, tag_dir: Path, log_prefix: str
                     print(f"{log_prefix} [DEBUG] Log details: {err_msg}")
                     return None
 
-            print(f"{log_prefix} [SUCCESS] All chir-diff jobs passed successfully.")
+            print(f"{log_prefix} [SUCCESS] All patch-gen jobs passed successfully.")
 
         valid_diff_files = [f for f in diff_files if f.is_file()]
+        # TODO use patch-gen for new files as well
         valid_new_files = [path for path in new_files.values() if path.is_file()]
 
         compiled_targets = valid_diff_files + valid_new_files
