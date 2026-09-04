@@ -58,21 +58,21 @@ object CHIR {
 
   object Func {
     enum Kind {
-      case Default,
-      Getter,
-      Setter,
-      Lambda,
-      ClassCtor,
-      PrimalClassCtor,
-      StructCtor,
-      PrimalStructCtor,
-      GlobalVarInit,
-      Finalizer,
-      MainEntry,
-      AnnoFactory,
-      Macro,
-      DefaultParameter,
-      InstanceVarInit
+      case Default
+      case Getter
+      case Setter
+      case Lambda
+      case ClassCtor
+      case PrimalClassCtor
+      case StructCtor
+      case PrimalStructCtor
+      case GlobalVarInit
+      case Finalizer
+      case MainEntry
+      case AnnoFactory
+      case Macro
+      case DefaultParameter
+      case InstanceVarInit
     }
   }
 
@@ -147,15 +147,15 @@ object CHIR {
   }
 
   enum BuiltinType extends Type {
-    case Rune,
-    Boolean,
-    Void,
-    Unit,
-    Nothing,
-    Int8, Int16, Int32, Int64, IntNative,
-    UInt8, UInt16, UInt32, UInt64, UIntNative, Float16, Float32, Float64,
-    CString,
-    This
+    case Rune
+    case Boolean
+    case Void
+    case Unit
+    case Nothing
+    case Int8, Int16, Int32, Int64, IntNative
+    case UInt8, UInt16, UInt32, UInt64, UIntNative, Float16, Float32, Float64
+    case CString
+    case This
   }
 
   trait CustomType extends Type {
@@ -320,10 +320,10 @@ object CHIR {
 
   object Binary {
     enum Kind {
-      case Add, Sub, Mul, Div,
-      Mod, Exp,
-      LShift, RShift, And, Or, Xor,
-      Lt, Gt, Le, Ge, Eq, NotEq
+      case Add, Sub, Mul, Div
+      case Mod, Exp
+      case LShift, RShift, And, Or, Xor
+      case Lt, Gt, Le, Ge, Eq, NotEq
     }
   }
 
@@ -385,32 +385,31 @@ object CHIR {
 
   object Intrinsic {
     enum Kind {
-      case
-      Abs,
-      ArrayAcquireRawData,
-      ArrayGetUnchecked,
-      ArrayGetRefUnchecked,
-      ArrayGet,
-      ArrayReleaseRawData,
-      ArraySetUnchecked,
-      ArraySet,
-      ArraySize,
-      ArrayBuiltinCopyTo,
-      AtomicFetchAnd,
-      AtomicFetchAdd,
-      AtomicFetchOr,
-      AtomicFetchSub,
-      AtomicFetchXor,
-      AtomicCAS,
-      AtomicLoad,
-      AtomicStore,
-      AtomicSwap,
-      BeginCatch,
-      Preinitialize,
-      CPointerRead,
-      CPointerWrite,
-      ObjectZeroValue,
-      Sqrt,
+      case Abs
+      case ArrayAcquireRawData
+      case ArrayGetUnchecked
+      case ArrayGetRefUnchecked
+      case ArrayGet
+      case ArrayReleaseRawData
+      case ArraySetUnchecked
+      case ArraySet
+      case ArraySize
+      case ArrayBuiltinCopyTo
+      case AtomicFetchAnd
+      case AtomicFetchAdd
+      case AtomicFetchOr
+      case AtomicFetchSub
+      case AtomicFetchXor
+      case AtomicCAS
+      case AtomicLoad
+      case AtomicStore
+      case AtomicSwap
+      case BeginCatch
+      case Preinitialize
+      case CPointerRead
+      case CPointerWrite
+      case ObjectZeroValue
+      case Sqrt
     }
   }
 
@@ -568,9 +567,6 @@ object CHIR {
   }
 
   enum OverflowStrategy {
-    case Na,
-    Wrapping,
-    Throwing,
-    Saturating,
+    case Na, Wrapping, Throwing, Saturating
   }
 }
