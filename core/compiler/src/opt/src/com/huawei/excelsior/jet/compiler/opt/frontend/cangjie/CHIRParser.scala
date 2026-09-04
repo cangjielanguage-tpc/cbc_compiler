@@ -1127,9 +1127,8 @@ trait CHIRParser
           case _ =>
             argVals.map(state.apply)
         }
-        val paramTypes = argVals.map { v =>
-          val ValueSig(sig) = v
-          sig
+        val paramTypes = argVals.map {
+          case ValueSig(sig) => sig
         }
         val retType = resolver.typeSig(e.resultTpe)
         val call = callMethod(target, outerType, thisType, retType, paramTypes, args, None)
@@ -1166,9 +1165,8 @@ trait CHIRParser
         }
 
         val retType = resolver.typeSig(e.resultTpe)
-        val isigParams = sourceArgVals map { v =>
-          val ValueSig(sig) = v
-          sig
+        val isigParams = sourceArgVals map {
+          case ValueSig(sig) => sig
         }
 
         val func = methodArgVal

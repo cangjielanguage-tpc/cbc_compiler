@@ -46,7 +46,6 @@ class BinaryImpl(e: BinaryExpressionBase)(implicit provider: CHIRItemProvider) e
     case CHIRExprKind.Exp | CHIRExprKind.TryExp => Binary.Kind.Exp
     case CHIRExprKind.LShift | CHIRExprKind.TryLShift => Binary.Kind.LShift
     case CHIRExprKind.RShift | CHIRExprKind.TryRShift => Binary.Kind.RShift
-    // TODO what's about And, Or
     case CHIRExprKind.BitAnd => Binary.Kind.And
     case CHIRExprKind.BitOr => Binary.Kind.Or
     case CHIRExprKind.BitXor => Binary.Kind.Xor
