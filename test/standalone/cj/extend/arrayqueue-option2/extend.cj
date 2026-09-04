@@ -12,4 +12,5 @@ func baz<T>(x: T) {
 
 main() {
   println(baz("foo"))
+  0
 }
