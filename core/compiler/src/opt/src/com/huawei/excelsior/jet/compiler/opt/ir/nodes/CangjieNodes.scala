@@ -55,7 +55,6 @@ trait CangjieNodes { self: Universe =>
   sealed trait InstanceFieldSeqOperation extends FieldSeqOperation {
     // Potentially derived pointer inside of baseRef.
     // Field sequence is traversed starting from this pointer.
-    def baseRef: Node
     def base: Node
   }
 
