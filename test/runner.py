@@ -417,10 +417,14 @@ def test(args):
     res = 0
     collect_enabled_exact_tests(args)
 
-    toolchain_path = args.toolchain
+    toolchain_path = args.cangjie_home or os.environ.get("CANGJIE_HOME")
+    if not toolchain_path:
+        print("No toolchain path specified. Use --cangjie-home or set CANGJIE_HOME environment variable.", file=sys.stderr)
+        exit(1)
+    source = "--cangjie-home flag" if args.cangjie_home else "CANGJIE_HOME env var"
     envsetup = toolchain_path + "/envsetup.sh"
     if not isfile(envsetup):
-        print(f"There is no envsetup.sh in {toolchain_path}, path probably points to wrong place", file=sys.stderr)
+        print(f"There is no envsetup.sh in {toolchain_path} (set via {source}), path probably points to wrong place", file=sys.stderr)
         exit(1)
 
     print(f"CANGJIE_TOOLCHAIN: {toolchain_path}")
@@ -442,7 +446,7 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(required=True)
     parser_test = subparsers.add_parser('test', help="Test all test cases")
     parser_test.set_defaults(func=test)
-    parser_test.add_argument('toolchain', help="Path to Cangjie toolchain")
+    parser_test.add_argument('--cangjie-home', help="Path to Cangjie toolchain (overrides CANGJIE_HOME env var)")
     parser_test.add_argument('--filter', nargs='+', default=[], help="Run only test cases with given prefixes")
     parser_test.add_argument('--filter-file', help="Run only test cases listed in given file")
     parser_test.add_argument('-j', '--parallelism', nargs='?', help="Count of tests built in parallel")
