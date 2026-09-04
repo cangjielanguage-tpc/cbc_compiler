@@ -42,26 +42,4 @@ object CHIRUtils {
     def toSeq: Seq[VirtualMethodInfo] = xs.iterator.toSeq
     def iterator: Iterator[VirtualMethodInfo] = if (xs == null) Iterator.empty else Iterator.tabulate(xs.length)(xs.get)
   }
-
-  /** Exceptions thrown on attempts to use not yet implemented compilers features. */
-  class NotImplementedException private(featureInfo: String) extends RuntimeException(s"not implemented: $featureInfo") {
-    private[CHIRUtils] def this(feature: Any) = this(feature.toString)
-    private[CHIRUtils] def this(feature: Any, details: String) = this(s"$feature ($details)")
-  }
-
-  def notImplemented[T](feature: Any): T = throw new NotImplementedException(feature)
-  def notImplemented[T](feature: Any, extraInfo: Any): T = throw new NotImplementedException(feature, extraInfo.toString)
-
-  def shouldNotReachHere[T](): T = shouldNot("reach here", null)
-
-  /** $shouldNotReachHereDoc */
-  def shouldNotReachHere[T](extraInformation: => Any): T = shouldNot("reach here", extraInformation)
-
-  /** $shouldNotReachHereDoc */
-  def shouldNotReachHere[T](extraInformation: String): T = shouldNotReachHere(extraInformation.asInstanceOf[Any])
-
-  private def shouldNot(what: String, extraInformation: Any) = throw new AssertionError(s"should not $what${
-    if (extraInformation != null) s" (extra information: $extraInformation)"
-    else ""
-  }")
 }

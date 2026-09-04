@@ -76,7 +76,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
         case Some(funcType) =>
           val f = _v.asInstanceOf[CHIR.Func]
           val d = v.declaringDef.get
-          val vtableFuncs = d.vTables.flatMap(_.vMethods)
+          val vtableFuncs = d.vtables.flatMap(_.vMethods)
           vtableFuncs.find(_.instance == f) match {
             case Some(m) => m.name
             case None => shouldNotReachHere(identifier)
