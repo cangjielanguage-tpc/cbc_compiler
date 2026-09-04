@@ -25,7 +25,7 @@ abstract class CustomTypeDefImpl(d: CustomTypeDef)(using provider: CHIRItemProvi
       provider.getValue[CHIR.Func](idx).get
     }
   }
-  override lazy val vTables: Seq[CHIR.VTable] = {
+  override lazy val vtables: Seq[CHIR.VTable] = {
     for (v <- d.vtableVector.toSeq) yield {
       VTableImpl(v)
     }

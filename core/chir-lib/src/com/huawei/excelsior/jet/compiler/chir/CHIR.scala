@@ -218,7 +218,7 @@ object CHIR {
     def instanceVars: Seq[InstanceVar]
     def staticVars: Seq[GlobalVar]
     def methods: Seq[Func]
-    def vTables: Seq[VTable]
+    def vtables: Seq[VTable]
     def implementedInterfaces: Seq[ClassType]
   }
 

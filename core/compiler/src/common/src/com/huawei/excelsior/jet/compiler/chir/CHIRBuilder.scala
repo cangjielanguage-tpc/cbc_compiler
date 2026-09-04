@@ -377,7 +377,7 @@ object CHIRBuilder {
         Seq.empty
       ))
       CHIRVTable(
-        objectExtDef.toSeq ++ d.vTables.map { e =>
+        objectExtDef.toSeq ++ d.vtables.map { e =>
           CHIRVTable.ExtDef(
             resolver.typeSig(e.srcParentType),
             e.vMethods flatMap { m =>
