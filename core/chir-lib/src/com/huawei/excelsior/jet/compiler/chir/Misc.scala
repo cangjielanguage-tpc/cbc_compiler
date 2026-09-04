@@ -5,7 +5,7 @@ import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 trait HasAnnotationsImpl(b: Base)(using provider: CHIRItemProvider) extends HasAnnotations {
-  override lazy val annotations: Seq[CHIR.Annotation] = {
+  lazy val annotations: Seq[CHIR.Annotation] = {
     val annos = b.annosVector
     (0 until annos.length).collect {
       case i if b.annosType(i) != Annotation.NONE =>
@@ -36,19 +36,19 @@ trait HasAnnotationsImpl(b: Base)(using provider: CHIRItemProvider) extends HasA
 }
 
 final class IsAutoEnvClassImpl(i: IsAutoEnvClass) extends CHIR.IsAutoEnvClass {
-  override def value: Boolean = i.value
+  def value: Boolean = i.value
 }
 
 final class OverrideSrcFuncTypeImpl(o: OverrideSrcFuncType)(using provider: CHIRItemProvider) extends CHIR.OverrideSrcFuncType {
-  override def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](o.`type`).get
+  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](o.`type`).get
 }
 
 final class WrappedRawMethodImpl(w: WrappedRawMethod)(using provider: CHIRItemProvider) extends CHIR.WrappedRawMethod {
-  override def rawMethod: CHIR.Func = provider.getValue[CHIR.Func](w.rawMethod).get
+  def rawMethod: CHIR.Func = provider.getValue[CHIR.Func](w.rawMethod).get
 }
 
 trait HasAttributesImpl(attrs: Long) extends HasAttributes {
-  override def attributes: Seq[CHIR.Attribute] = {
+  def attributes: Seq[CHIR.Attribute] = {
     CHIR.Attribute.values.toIndexedSeq.filter { attr =>
       (attrs & (1L << attr.ordinal)) != 0L
     }
@@ -56,17 +56,17 @@ trait HasAttributesImpl(attrs: Long) extends HasAttributes {
 }
 
 trait HasDeclaringDefImpl(gv: GlobalValue)(using provider: CHIRItemProvider) extends HasDeclaringDef {
-  override def declaringDef: Option[CHIR.CustomTypeDef] = provider.getDef[CHIR.CustomTypeDef](gv.declaredParent)
+  def declaringDef: Option[CHIR.CustomTypeDef] = provider.getDef[CHIR.CustomTypeDef](gv.declaredParent)
 }
 
 final class InstanceVarImpl(m: MemberVarInfo)(using provider: CHIRItemProvider) extends CHIR.InstanceVar with HasAttributesImpl(m.attributes) {
-  override def tpe: CHIR.Type = provider.getType[CHIR.Type](m.`type`).get
-  override def name: String = m.name
+  def tpe: CHIR.Type = provider.getType[CHIR.Type](m.`type`).get
+  def name: String = m.name
 }
 
 final class VTableImpl(v: VTableInType)(using provider: CHIRItemProvider) extends CHIR.VTable {
-  override def srcParentType: CHIR.ClassType = provider.getType[CHIR.ClassType](v.srcParentType).get
-  override def vMethods: Seq[CHIR.VMethod] = {
+  def srcParentType: CHIR.ClassType = provider.getType[CHIR.ClassType](v.srcParentType).get
+  def vMethods: Seq[CHIR.VMethod] = {
     for (idx <- v.virtualMethodsVector.toSeq) yield {
       VMethodImpl(idx)
     }
@@ -74,19 +74,19 @@ final class VTableImpl(v: VTableInType)(using provider: CHIRItemProvider) extend
 }
 
 final class VMethodImpl(v: VirtualMethodInfo)(using provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl(v.attributes) {
-  override def name: String = v.funcName
-  override def sig: CHIR.FuncType = provider.getType[CHIR.FuncType](v.sigType).get
-  override def instance: CHIR.Func = provider.getValue[CHIR.Func](v.instance).get
-  override def genericTypeParams: Seq[CHIR.Type] = {
+  def name: String = v.funcName
+  def sig: CHIR.FuncType = provider.getType[CHIR.FuncType](v.sigType).get
+  def instance: CHIR.Func = provider.getValue[CHIR.Func](v.instance).get
+  def genericTypeParams: Seq[CHIR.Type] = {
     for (idx <- v.methodGenericTypeParamsVector.toSeq) yield {
       provider.getType[CHIR.Type](idx).get
     }
   }
-  override def originalType: CHIR.FuncType = provider.getType[CHIR.FuncType](v.originalType).get
-  override def parentType: CHIR.Type = provider.getType[CHIR.Type](v.parentType).get
-  override def returnType: CHIR.Type = provider.getType[CHIR.Type](v.returnType).get
+  def originalType: CHIR.FuncType = provider.getType[CHIR.FuncType](v.originalType).get
+  def parentType: CHIR.Type = provider.getType[CHIR.Type](v.parentType).get
+  def returnType: CHIR.Type = provider.getType[CHIR.Type](v.returnType).get
 }
 
 final class EnumCtorImpl(e: EnumCtorInfo)(using provider: CHIRItemProvider) extends CHIR.EnumCtor {
-  override def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](e.funcType).get
+  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](e.funcType).get
 }
