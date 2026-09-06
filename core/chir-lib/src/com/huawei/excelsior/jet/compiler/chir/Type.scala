@@ -1,6 +1,6 @@
 package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.{toSeq, toTypeSeq}
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 final class BoxTypeImpl(b: Type)(using provider: CHIRItemProvider) extends CHIR.BoxType {
@@ -9,11 +9,7 @@ final class BoxTypeImpl(b: Type)(using provider: CHIRItemProvider) extends CHIR.
 
 trait CustomTypeImpl(c: CustomType)(using provider: CHIRItemProvider) extends CHIR.CustomType {
   def typeDef: CHIR.CustomTypeDef = provider.getDef[CHIR.CustomTypeDef](c.customTypeDef).get
-  def genericTypeParams: Seq[CHIR.Type] = {
-    for (idx <- c.base.argTysVector.toSeq) yield {
-      provider.getType[CHIR.Type](idx).get
-    }
-  }
+  def genericTypeParams = c.base.argTysVector.toTypeSeq[CHIR.Type]
 }
 
 final class ClassTypeImpl(c: CustomType)(using provider: CHIRItemProvider) extends CustomTypeImpl(c) with CHIR.ClassType {
@@ -42,11 +38,7 @@ final class RawArrayTypeImpl(t: RawArrayType)(using provider: CHIRItemProvider) 
 }
 
 final class TupleTypeImpl(t: Type)(using provider: CHIRItemProvider) extends CHIR.TupleType {
-  def fieldTypes: Seq[CHIR.Type] = {
-    for (idx <- t.argTysVector.toSeq) yield {
-      provider.getType[CHIR.Type](idx).get
-    }
-  }
+  def fieldTypes = t.argTysVector.toTypeSeq[CHIR.Type]
 }
 
 final class VArrayTypeImpl(t: VArrayType)(using provider: CHIRItemProvider) extends CHIR.VArrayType {
@@ -56,19 +48,11 @@ final class VArrayTypeImpl(t: VArrayType)(using provider: CHIRItemProvider) exte
 
 final class GenericTypeImpl(t: GenericType)(using provider: CHIRItemProvider) extends CHIR.GenericType {
   def identifier: String = t.identifier
-  def upperBounds: Seq[CHIR.Type] = {
-    for (idx <- t.upperBoundsVector.toSeq) yield {
-      provider.getType[CHIR.Type](idx).get
-    }
-  }
+  def upperBounds = t.upperBoundsVector.toTypeSeq[CHIR.Type]
 }
 
 final class FuncTypeImpl(f: FuncType)(using provider: CHIRItemProvider) extends CHIR.FuncType {
-  private lazy val argsTypes: Seq[CHIR.Type] = {
-    for (idx <- f.base.argTysVector.toSeq) yield {
-      provider.getType[CHIR.Type](idx).get
-    }
-  }
+  private lazy val argsTypes = f.base.argTysVector.toTypeSeq[CHIR.Type]
   def paramTypes: Seq[CHIR.Type] = argsTypes.dropRight(1)
   def receiverType: CHIR.Type = paramTypes.head
   def returnType: CHIR.Type = argsTypes.last
