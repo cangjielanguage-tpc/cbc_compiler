@@ -1,7 +1,7 @@
 package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{HasAnnotations, HasAttributes, HasDeclaringDef}
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.{toSeq, toTypeSeq}
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 trait HasAnnotationsImpl(b: Base)(using provider: CHIRItemProvider) extends HasAnnotations {
@@ -66,22 +66,14 @@ final class InstanceVarImpl(m: MemberVarInfo)(using provider: CHIRItemProvider) 
 
 final class VTableImpl(v: VTableInType)(using provider: CHIRItemProvider) extends CHIR.VTable {
   def srcParentType: CHIR.ClassType = provider.getType[CHIR.ClassType](v.srcParentType).get
-  def vMethods: Seq[CHIR.VMethod] = {
-    for (idx <- v.virtualMethodsVector.toSeq) yield {
-      VMethodImpl(idx)
-    }
-  }
+  def vMethods: Seq[CHIR.VMethod] = v.virtualMethodsVector.toSeq
 }
 
 final class VMethodImpl(v: VirtualMethodInfo)(using provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl(v.attributes) {
   def name: String = v.funcName
   def sig: CHIR.FuncType = provider.getType[CHIR.FuncType](v.sigType).get
   def instance: CHIR.Func = provider.getValue[CHIR.Func](v.instance).get
-  def genericTypeParams: Seq[CHIR.Type] = {
-    for (idx <- v.methodGenericTypeParamsVector.toSeq) yield {
-      provider.getType[CHIR.Type](idx).get
-    }
-  }
+  def genericTypeParams = v.methodGenericTypeParamsVector.toTypeSeq[CHIR.Type]
   def originalType: CHIR.FuncType = provider.getType[CHIR.FuncType](v.originalType).get
   def parentType: CHIR.Type = provider.getType[CHIR.Type](v.parentType).get
   def returnType: CHIR.Type = provider.getType[CHIR.Type](v.returnType).get

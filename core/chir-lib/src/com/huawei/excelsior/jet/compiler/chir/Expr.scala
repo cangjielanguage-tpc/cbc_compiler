@@ -2,7 +2,7 @@ package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.jet.compiler.chir.*
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{Binary, Intrinsic, Unary}
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.{toSeq, toTypeSeq, toValueSeq}
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 class AllocateImpl(e: AllocateBase)(implicit provider: CHIRItemProvider) extends CHIR.Allocate {
@@ -19,11 +19,7 @@ class ApplyImpl(e: ApplyBase)(implicit provider: CHIRItemProvider) extends CHIR.
   private lazy val operands: Seq[CHIR.Value] = mapOperands(ex).ensuring(_.nonEmpty)  // at least callee should be here
   def callee: CHIR.Func = operands.head.asInstanceOf[CHIR.Func]
   def thisType: Option[CHIR.Type] = provider.getType[CHIR.Type](fc.objType)
-  def instantiatedTypeArgs: Seq[CHIR.Type] = {
-    for (idx <- fc.instantiatedTypeArgsVector.toSeq) yield {
-      provider.getType[CHIR.Type](idx).get
-    }
-  }
+  def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
   def args: Seq[CHIR.Value] = operands.tail
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
 }
@@ -95,9 +91,7 @@ final class GetRTTIStaticImpl(e: GetRTTIStatic)(implicit provider: CHIRItemProvi
 
 final class InstanceOfImpl(e: InstanceOf)(implicit provider: CHIRItemProvider) extends CHIR.InstanceOf {
   private lazy val operands: Seq[CHIR.Value] = {
-    val op = for (idx <- e.base.operandsVector.toSeq) yield {
-      provider.getValue[CHIR.Value](idx).get
-    }
+    val op = e.base.operandsVector.toValueSeq[CHIR.Value]
     assert(op.size == 1)
     op
   }
@@ -152,11 +146,7 @@ class InvokeImpl(e: InvokeBase)(implicit provider: CHIRItemProvider) extends CHI
   def callee: CHIR.Func = operands.head.asInstanceOf[CHIR.Func]
   def thisType: CHIR.Type = provider.getType[CHIR.Type](fc.objType).get
   def thisArg: CHIR.Value = args.head
-  def instantiatedTypeArgs: Seq[CHIR.Type] = {
-    for (idx <- fc.instantiatedTypeArgsVector.toSeq) yield {
-      provider.getType[CHIR.Type](idx).get
-    }
-  }
+  def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
   def args: Seq[CHIR.Value] = operands.tail
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
 }
@@ -329,10 +319,8 @@ private def mapOverflowStrategy(os: Int): CHIR.OverflowStrategy = os match {
   case OverflowStrategy.SATURATING => CHIR.OverflowStrategy.Saturating
 }
 
-private def mapOperands(e: Expression)(implicit provider: CHIRItemProvider): Seq[CHIR.Value] = {
-  for (idx <- e.operandsVector.toSeq) yield {
-    provider.getValue[CHIR.Value](idx).get
-  }
+private def mapOperands(e: Expression)(implicit provider: CHIRItemProvider) = {
+  e.operandsVector.toValueSeq[CHIR.Value]
 }
 
 private def takeLastTwoBlocks(operands: Seq[CHIR.Value]): Seq[CHIR.Block] = {

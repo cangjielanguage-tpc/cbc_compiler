@@ -1,7 +1,7 @@
 package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.toSeq
+import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.{toExprSeq, toSeq, toTypeSeq, toValueSeq}
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
 
 final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider) extends CHIR.Func
@@ -31,36 +31,20 @@ final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider
     case FuncKind.DEFAULT_PARAMETER_FUNC => Func.Kind.DefaultParameter
     case FuncKind.INSTANCEVAR_INIT => Func.Kind.InstanceVarInit
   }
-  def genericTypeParams: Seq[CHIR.GenericType] = {
-    for (idx <- f.genericTypeParamsVector.toSeq) yield {
-      provider.getType[CHIR.GenericType](idx).get
-    }
-  }
+  def genericTypeParams = f.genericTypeParamsVector.toTypeSeq[CHIR.GenericType]
   def body: Option[CHIR.BlockGroup] = provider.getValue[CHIR.BlockGroup](f.body)
-  def params: Seq[CHIR.Parameter] = {
-    for (idx <- f.paramsVector.toSeq) yield {
-      provider.getValue[CHIR.Parameter](idx).get
-    }
-  }
+  def params = f.paramsVector.toValueSeq[CHIR.Parameter]
   def retVal: Option[CHIR.LocalVar] = provider.getValue[CHIR.LocalVar](f.retVal)
 }
 
 final class BlockGroupImpl(b: BlockGroup)(using provider: CHIRItemProvider) extends CHIR.BlockGroup {
-  def blocks: Seq[CHIR.Block] = {
-    for (idx <- b.blocksVector.toSeq) yield {
-      block(idx)
-    }
-  }
+  def blocks = b.blocksVector.toValueSeq[CHIR.Block]
   def entryBlock: CHIR.Block = block(b.entryBlock)
   private def block(idx: Long) = provider.getValue[CHIR.Block](idx).get
 }
 
 final class BlockImpl(b: Block)(using provider: CHIRItemProvider) extends CHIR.Block {
-  lazy val expressions: Seq[CHIR.Expression] = {
-    for (idx <- b.exprsVector.toSeq) yield {
-      provider.getExpr[CHIR.Expression](idx)
-    }
-  }
+  lazy val expressions = b.exprsVector.toExprSeq[CHIR.Expression]
   def nonTerminatorExpressions: Seq[CHIR.Expression] = expressions.init
   def terminator: CHIR.Terminator = expressions.last.asInstanceOf[CHIR.Terminator]
   def isLandingPadBlock: Boolean = b.isLandingPadBlock
