@@ -11,8 +11,8 @@ package com.huawei.excelsior.jet.compiler.opt.backend.cbc.codegen
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.AsmType.*
 import com.huawei.excelsior.jet.assembler.Width.{W32, W64}
-import com.huawei.excelsior.jet.assembler.cbc.*
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.MultiFieldReference
+import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, *}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{ConstIndexFieldReference, FieldReferenceWithType, MultiFieldReference, NoneFieldReference, SingleFieldReference}
 import com.huawei.excelsior.jet.assembler.cbc.Local.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
@@ -34,12 +34,12 @@ import com.huawei.excelsior.jet.compiler.opt.ir.{Resources, Universe}
 import com.huawei.excelsior.jet.compiler.options.BoolOption
 import com.huawei.excelsior.jet.compiler.options.BoolOption.*
 import com.huawei.excelsior.jet.compiler.symlevel.*
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{OptionLikeEnum, TypeVariable}
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{OptionLikeEnum, TypeVariable, fromSymType}
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 import xscala.io.ByteBuffer
 
 import scala.PartialFunction.condOpt
-import scala.annotation.nowarn
+import scala.annotation.{nowarn, tailrec}
 
 @nowarn("msg=match may not be exhaustive")
 trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGeneratorCBC with LocalLivenessAnalyzerCBC { self: Universe with BackEndCBC =>
@@ -276,71 +276,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       addXSite(n)
 
       val adapter = asm.adapter
-
       val fieldRefs = n.fields
-      val builder = MemSpace.Builder()
 
-      // TODO remove
-      def memExprHead(base: Node, n: Node): Unit = n match {
-        case sa: HasFrameSlot => sa.slot match {
-          case slot: TypedFrameSlotCBC => builder.typed(slot.typedSlot)
-          case _ => shouldNotReachHere(sa)
-        }
-
-        case n @ ArrayGet(_, _, IReg(obj), IReg(idx)) =>
-          assert(n.arrayType.isRecordArray)
-          builder.obj(obj)
-            .index(idx, n.arrayType.getArrayElemType.toCbc, checked = false)
-
-        case IReg(r) =>
-          if (fieldRefs.head.refType.isTraceableReference) {
-            builder.obj(r)
-          } else {
-            valueOf(base).producer match {
-              case base: DerivedPtr.BaseHandle =>
-                builder.rec(r)
-              case _ =>
-                val IReg(b) = base
-                builder.handle(b, r)
-            }
-          }
-      }
-
-      // TODO remove
-      def fields(fields: Seq[CangjieFieldReference], typeInfos: Seq[Node] = Seq.empty): Unit = {
-        for ((f, i) <- fields.zipWithIndex) f.field match {
-          case Some(field) =>
-            if (f.refType.isVariableLayoutType) {
-              val IReg(ti) = typeInfos(i)
-              builder.fieldGeneric(adapter.field(f), ti)
-            } else {
-              builder.field(adapter.field(f))
-            }
-          case None =>
-            val refType = f.refType match {
-              case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
-              case t => t
-            }
-            if (refType.isVariableLayoutType) {
-              val IReg(ti) = typeInfos(i)
-              builder.constIndexGeneric(f.idx.toInt, refType.toCbc, ti)
-            } else {
-              builder.constIndex(f.idx.toInt, refType.toCbc)
-            }
-        }
-      }
-
-      // TODO remove
-      def store(value: Node): Unit = (value match {
-        case _: AnyNull       => builder.storeImm(0)
-        case IntegralConst(c) => builder.storeImm(c)
-        case FConst(c)        => builder.storeImm(java.lang.Float.floatToRawIntBits(c))
-        case DConst(c)        => builder.storeImm(java.lang.Double.doubleToRawLongBits(c))
-        case Reg(r)           => builder.store(r)
-      }).gen(asm)
-
-      def getBaseLocation(n: Node) = n match {
+      def getBaseLocation(n: Node): IR | StackSlot.Typed = n match {
         case IReg(r) => r
+        case n: HasFrameSlot => n.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot
       }
 
       def maybeImmValue(value: Node): Option[Long] = value match {
@@ -372,73 +312,90 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
       }
 
+      // TODO: merge non-generic lea-s into one lea with multi field reference
+      @tailrec
+      def genLeaChain(scratch: IR, base: IR, fields: Seq[CangjieFieldReference], typeInfos: Seq[Node]): Unit = {
+        if (fields.isEmpty) return
+
+        val field = fields.head
+        if (field.refType.isVariableLayoutType) {
+          val IReg(ti) = typeInfos.head
+          asm.leaGeneric(scratch, base, ti, constrFieldRef(Seq(field)))
+        } else {
+          asm.lea(scratch, base, constrFieldRef(Seq(field)))
+        }
+        genLeaChain(scratch, scratch, fields.tail, typeInfos.tail)
+      }
+
       n match {
-        case n: GetFieldSeqRef if !n.isInstanceOf[HasFrameSlot] =>
-          val IReg(dst) = n
-          val base = getBaseLocation(n.base)
-          asm.lea(dst, base, constrFieldRef(fieldRefs))
-        case n: LoadFieldSeq if !n.isInstanceOf[HasFrameSlot] =>
+        case n: LoadFieldSeq =>
+          // ld dst, [base | slot], [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
           val Reg(dst) = n
-          val base = getBaseLocation(n.base)
-          asm.ld(dst, base, constrFieldRef(fieldRefs))
-        case n: (GetFieldSeqRef | LoadFieldSeq) =>
-          val Reg(dst) = n
-          memExprHead(n.baseRef, n.base)
-          fields(fieldRefs)
-          builder.load(dst).gen(asm)
-        case n: GetFieldSeqRefGeneric =>
-          val Reg(dst) = n
-          memExprHead(n.baseRef, n.base)
-          fields(fieldRefs, n.typeInfos)
-          builder.load(dst).gen(asm)
-        case n: LoadFieldSeqGeneric =>
-          val Reg(dst) = n
-          memExprHead(n.baseRef, n.base)
-          fields(fieldRefs, n.typeInfos)
-          if (n.resType.isVariableSizeType) {
-            val IReg(ti) = n.typeInfos.last
-            builder.loadGeneric(dst.asInstanceOf[IR], ti).gen(asm)
-          } else {
-            builder.load(dst).gen(asm)
+          getBaseLocation(n.base) match {
+            case base: IR              => asm.ld(dst, base, constrFieldRef(fieldRefs))
+            case slot: StackSlot.Typed => asm.ld(dst, slot, constrFieldRef(fieldRefs))
           }
-          addXSite(n)
-          saveGCState(n)
-        case n: GetStaticFieldSeqRef =>
-          val Reg(dst) = n
-          assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
-          builder.static(adapter.field(fieldRefs.head))
-          fields(fieldRefs.tail)
-          builder.load(dst).gen(asm)
         case n: LoadStaticFieldSeq =>
+          // ld dst, [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
           val Reg(dst) = n
           assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
           asm.ld(dst, constrFieldRef(fieldRefs))
-        case n: StoreFieldSeq if !n.isInstanceOf[HasFrameSlot] =>
+        case n: LoadFieldSeqGeneric =>
+          // lea.g IR1, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
+          // ...
+          // lea.g IR1, IR1,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
+          // ld.g  dst, baseRef, IR1, tiN, None()                 (or non-generic ld)
+          val Reg(dst) = n
+          getBaseLocation(n.base) match {
+            case slot: StackSlot.Typed => notImplemented("lea for typed slots")
+            case base: IR =>
+              genLeaChain(IR1, base, fieldRefs, n.typeInfos)
+              val IReg(baseRef) = n.baseRef
+              if (n.resType.isVariableSizeType) {
+                val IReg(ti) = n.typeInfos.last
+                asm.ld(dst, baseRef, IR1, ti, NoneFieldReference())
+              } else {
+                val fieldRef = constrFieldRef(Seq(fieldRefs.last)).asInstanceOf[FieldReferenceWithType]
+                asm.ld(dst, baseRef, IR1, NoneFieldReference(fieldRef.fieldType))
+              }
+          }
           addXSite(n)
-          maybeImmValue(n.inValue) match {
-            case Some(_) => shouldNotReachHere("Field seq stores with imm are not supported")
-            case None =>
-              val Reg(src) = n.inValue
-              val base = getBaseLocation(n.base)
-              asm.st(src, base, constrFieldRef(fieldRefs))
+          saveGCState(n)
+        case n: GetFieldSeqRef =>
+          // lea dst, base, [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
+          val IReg(dst) = n
+          getBaseLocation(n.base) match {
+            case slot: StackSlot.Typed => notImplemented("lea for typed slots")
+            case base: IR              => asm.lea(dst, base, constrFieldRef(fieldRefs))
+          }
+        case n: GetStaticFieldSeqRef =>
+          // lea dst, base, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
+          val IReg(dst) = n
+          val IReg(dstBaseRef) = n.baseRef
+          require(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
+          asm.leaStatic(dst, dstBaseRef, constrFieldRef(fieldRefs))
+        case n: GetFieldSeqRefGeneric =>
+          // lea.g dst, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
+          // ...
+          // lea.g dst, dst,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
+          val IReg(dst) = n
+          getBaseLocation(n.base) match {
+            case _: StackSlot.Typed => notImplemented("lea for typed slots")
+            case base: IR => genLeaChain(dst, base, fieldRefs, n.typeInfos)
           }
         case n: StoreFieldSeq =>
-          memExprHead(n.baseRef, n.base)
-          fields(fieldRefs)
-          store(n.inValue)
-        case n: StoreFieldSeqGeneric =>
-          addXSite(n)
-          memExprHead(n.baseRef, n.base)
-          fields(fieldRefs, n.typeInfos)
-          if (n.resType.isVariableSizeType) {
-            val IReg(ti) = n.typeInfos.last
-            val IReg(src) = n.inValue
-            builder.storeGeneric(src, ti).gen(asm)
-          } else {
-            store(n.inValue)
+          // st src, [base | slot], [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
+          maybeImmValue(n.inValue) match {
+            case Some(x) => shouldNotReachHere(s"Field seq stores with imm are not supported: $x")
+            case None =>
+              val Reg(src) = n.inValue
+              getBaseLocation(n.base) match {
+                case base: IR => asm.st(src, base, constrFieldRef(fieldRefs))
+                case slot: StackSlot.Typed => asm.st(src, slot, constrFieldRef(fieldRefs))
+              }
           }
         case n: StoreStaticFieldSeq =>
-          addXSite(n)
+          // st src, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
           assert(fieldRefs.size == 1 || !fieldRefs.head.fieldType.isTraceableReference, fieldRefs)
           maybeImmValue(n.inValue) match {
             case Some(x) => shouldNotReachHere(s"Field seq stores with imm are not supported: $x")
@@ -446,11 +403,29 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               val Reg(src) = n.inValue
               asm.st(src, constrFieldRef(fieldRefs))
           }
+          addXSite(n)
+        case n: StoreFieldSeqGeneric =>
+          // lea.g IR1, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
+          // ...
+          // lea.g IR1, IR1,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
+          // st.g  src, baseRef, IR1, tiN, None()                 (or non-generic st)
+          val Reg(src) = n.inValue
+          getBaseLocation(n.base) match {
+            case slot: StackSlot.Typed => notImplemented("lea for typed slots")
+            case base: IR =>
+              genLeaChain(IR1, base, fieldRefs, n.typeInfos)
+              val IReg(baseRef) = n.baseRef
+              if (n.resType.isVariableSizeType) {
+                val IReg(ti) = n.typeInfos.last
+                asm.st(src, baseRef, IR1, ti, NoneFieldReference())
+              } else {
+                val fieldRef = constrFieldRef(Seq(fieldRefs.last)).asInstanceOf[FieldReferenceWithType]
+                asm.st(src, baseRef, IR1, NoneFieldReference(fieldRef.fieldType))
+              }
+          }
+          addXSite(n)
+          saveGCState(n)
       }
-    }
-
-    private def createFieldRef(f: Field): FieldReference = {
-      FieldRef.createFieldRef(f, None, None)
     }
 
     private def genBFX(bfx: BitFieldExtract): Unit = if (!Isa12Mode) {
@@ -657,10 +632,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case slot: TypedFrameSlotCBC =>
           slot.tpe match {
             case sig: SignatureType.TypeVariable =>
-              val builder = MemSpace.Builder()
-              builder.typed(slot.typedSlot)
-              builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
-              builder.load(dst).gen(asm)
+              val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc
+              val fieldType = ReferenceType.cangjieStdCoreObject.sigType.toCbc
+              asm.ld(dst, slot.typedSlot, ConstIndexFieldReference(refType, 0, fieldType))
             case sig =>
               if (sig.isRecord) {
                 asm.ldstackrec(dst, slot.typedSlot)
@@ -812,14 +786,15 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       load.addr match {
         case IReg(src) =>
-            asm.loadRawMemory(dst, src, LoadAccessKind.from(cbcTypeKind(load.tpe)), 0)
+          val refType = SignatureType.Tuple(Seq(load.signature)).toCbc
+          val fieldType = load.signature.toCbc
+          asm.ld(dst, src, ConstIndexFieldReference(refType, 0, fieldType))
         case sa @ StackAlloc.Local(t) =>
           sa.slot match {
             case slot: TypedFrameSlotCBC =>
-              val builder = MemSpace.Builder()
-              builder.typed(slot.typedSlot)
-              builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
-              builder.load(dst).gen(asm)
+              val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc
+              val fieldType = ReferenceType.cangjieStdCoreObject.sigType.toCbc
+              asm.ld(dst, slot.typedSlot, ConstIndexFieldReference(refType, 0, fieldType))
             case slot: FrameSlotCBC =>
               assert(t.isTraceableReference || t.isPrimitive)
               asm.loadUntyped(dst, LoadAccessKind.from(cbcTypeKind(load.tpe)), slot.untypedSlot)
@@ -831,22 +806,22 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       case (LoadTailParam(IReg(tailReg), offset), tpe) =>
         val Reg(dst) = ltp
         val ldk = LoadAccessKind.from(cbcTypeKind(tpe))
-        asm.loadRawMemory(dst, tailReg, ldk, offset)
+        asm.loadTailParam(dst, tailReg, ldk, offset / Width.W64.nbytes) // TODO: store number in LoadTailParam node
     }
 
     private def genStoreMemory(store: StoreMemory): Unit = {
       (store.addr, store.inValue0) match {
         case (IReg(dst), Reg(src)) =>
-          (store.signature, src) match {
+          val (fieldType, refType) = (store.signature, src) match {
             case (_: SignatureType.Box, _) =>
               assert(!src.isIReg || check(src.asIReg, localTypeOf(store.inValue0)))
-              val builder = MemSpace.Builder()
-              builder.rec(dst)
-              builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
-              builder.store(src).gen(asm)
+              val fieldSigType = ReferenceType.cangjieStdCoreObject.sigType
+              (fieldSigType.toCbc, SignatureType.Tuple(Seq(fieldSigType)).toCbc)
             case (_, src: (IR | FR)) =>
-              asm.storeRawMemory(src, dst, StoreAccessKind.from(CbcTypeKind(store.accessType)), 0)
+              val fieldSigType = store.signature
+              (fieldSigType.toCbc, SignatureType.Tuple(Seq(fieldSigType)).toCbc)
           }
+          asm.st(src, dst, ConstIndexFieldReference(refType, 0, fieldType))
         case (sa: StackAlloc, Reg(src)) =>
           assert(!src.isIReg || check(src.asIReg, localTypeOf(store.inValue0)))
           val (dst, typeKind) = getSlotForStackAllocLoadStore(store)
@@ -1040,10 +1015,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case slot: TypedFrameSlotCBC =>
               slot.tpe match {
                 case sig: SignatureType.TypeVariable =>
-                  val builder = MemSpace.Builder()
-                  builder.typed(slot.typedSlot)
-                  builder.constIndex(0, SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc)
-                  builder.load(dst).gen(asm)
+                  val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc
+                  val fieldType = ReferenceType.cangjieStdCoreObject.sigType.toCbc
+                  asm.ld(dst, slot.typedSlot, ConstIndexFieldReference(refType, 0, fieldType))
                 case sig =>
                   assert(sig.isRecord)
                   asm.ldstackrec(dst, slot.typedSlot)
@@ -1120,10 +1094,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genUnboxLea(n: UnboxLea): Unit = {
-      val fasm = asm.asInstanceOf[ForkedISA12Assembler]
       val IReg(dst) = n
       val IReg(src) = n.value
-      fasm.leaBox(dst, src)
+      asm.leaBox(dst, src)
     }
 
     private def genSpawnFuture(n: SpawnFuture): Unit = {
@@ -1321,10 +1294,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case _: MemBarrier => // nop
           // TODO: make proper support for barriers in CBC: JET-14017
           // TODO: overrides common code generator, remove it when CodeEmitterCBC appear
-
-        case FieldAddr(field) =>
-          val IReg(dst) = node
-          asm.lea_static(dst, createFieldRef(field))
 
         case x: ZeroRefs =>
           asm.zerorefs(x.sa.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot)

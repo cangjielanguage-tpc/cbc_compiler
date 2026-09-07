@@ -35,7 +35,7 @@ trait CangjieNodes { self: Universe =>
       val res = resType(fields)
       res match {
         case res: SignatureType.OptionLikeEnum if res.someType.isTypeVariable => TRefType
-        case _ => if (res.isTypeVariable) TRefType else ValueType.fromSig(res)
+        case _ => if (res.isVariableSizeType) TRefType else ValueType.fromSig(res)
       }
     }
     def resAddrTpe(fields: Seq[CangjieFieldReference]): Type = {
