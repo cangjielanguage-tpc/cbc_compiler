@@ -1,14 +1,13 @@
 package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.common.CodeHelpers.*
-import com.huawei.excelsior.jet.compiler.chir.v100.PackageImpl
 
 object CHIR {
 
   val defaultVersion = 100
 
   def newPackage(source: String, version: Int): Package = version match {
-    case defaultVersion => new PackageImpl(source)
+    case CHIR.defaultVersion => new v100.PackageImpl(source)
     case _ => notImplemented("unsupported CHIR version", version)
   }
 

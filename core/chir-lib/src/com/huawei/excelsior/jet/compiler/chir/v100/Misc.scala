@@ -2,7 +2,7 @@ package com.huawei.excelsior.jet.compiler.chir.v100
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{HasAnnotations, HasAttributes, HasDeclaringDef}
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.{toSeq, toTypeSeq}
 
 trait HasAnnotationsImpl(b: Base)(using provider: CHIRItemProvider) extends HasAnnotations {

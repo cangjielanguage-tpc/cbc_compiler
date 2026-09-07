@@ -1,7 +1,7 @@
 package com.huawei.excelsior.jet.compiler.chir.v100
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.toTypeSeq
 
 final class BoxTypeImpl(b: Type)(using provider: CHIRItemProvider) extends CHIR.BoxType {

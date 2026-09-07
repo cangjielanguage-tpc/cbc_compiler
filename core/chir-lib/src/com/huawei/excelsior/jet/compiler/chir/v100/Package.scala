@@ -11,7 +11,7 @@ package com.huawei.excelsior.jet.compiler.chir.v100
 import com.google.flatbuffers.IntVector
 import com.huawei.excelsior.jet.compiler.chir.*
 import com.huawei.excelsior.jet.compiler.chir.CHIR.GetException
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.*
 
 import java.nio.ByteBuffer
