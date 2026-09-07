@@ -941,6 +941,7 @@ trait CHIRParser
               case CHIRExprKind.Sub => Sub(l, r)
               case CHIRExprKind.Mul => Mul(l, r)
               case CHIRExprKind.Div => FDiv(tpe)(l, r)
+              case CHIRExprKind.Exp => notImplemented("floating point binary expression: Exp")
               case x => shouldNotReachHere(s"unexpected floating point binary expression: ${PackageFormat.CHIRExprKind.name(x)}")
             }
 
