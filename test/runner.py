@@ -175,21 +175,25 @@ class StandaloneTestSuite(TestSuite):
         await self.print_status(f"Building test {test_name}")
 
         import_args = []
-        if os.path.isfile(dotcjaot(test_name)):
+        aot_so_names = []
+        for aot_file in sorted(glob.glob(os.path.join(test_work_dir, "*.aot.cj"))):
+            aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
+            aot_so = f"{test_work_dir}/lib{aot_name}.so"
             import_args = ["--import-path", test_work_dir]
             aot_log = io.StringIO()
-            res = await self.run_cjc(dotcjaot(test_name),
-                                     output_file=f"{test_work_dir}/libaot.so",
+            res = await self.run_cjc(aot_file,
+                                     output_file=aot_so,
                                      output_type="dylib",
                                      use_tool_sh=True,
                                      log=aot_log)
             if res != 0:
-                err_msg = f"Standalone test AOT part compilation error: {res}\n"
+                err_msg = f"Standalone test AOT part compilation error ({aot_name}): {res}\n"
                 if aot_log.getvalue().strip():
                     err_msg += aot_log.getvalue()
                 await self.print_stderr(err_msg)
-                self.compilation_failures.append((test_name, in_mode, "during AOT compilation"))
+                self.compilation_failures.append((test_name, in_mode, f"during AOT compilation ({aot_name})"))
                 return 1
+            aot_so_names.append(aot_name)
 
         match in_mode:
             case "asm":
@@ -263,7 +267,8 @@ class StandaloneTestSuite(TestSuite):
                         self.compilation_failures.append((test_name, in_mode, f"during compilation ({mode})"))
                         continue
 
-                    chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + int_chir_files
+                    aot_deps_args = [f"-cbcaotdeps={':'.join(aot_so_names)}"] if aot_so_names else []
+                    chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + int_chir_files
                     cbc_log = io.StringIO()
                     cbc_err = io.StringIO()
                     res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)
