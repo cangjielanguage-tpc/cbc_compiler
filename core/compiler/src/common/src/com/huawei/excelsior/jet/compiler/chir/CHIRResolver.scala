@@ -121,10 +121,8 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def functionSig(funcType: CHIR.FuncType, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
-    val params = (funcType.paramTypes :+ funcType.returnType).map(typeSig)
-    val startIdx = if (hasReceiver) 1 else 0
-    val paramsWithoutRcv = params.drop(startIdx)
-    (MethodSignature(paramsWithoutRcv.last, paramsWithoutRcv.init), Option.when(hasReceiver)(params.head), funcType.isC, funcType.hasVarArg)
+    (MethodSignature(typeSig(funcType.returnType), funcType.paramTypesWithoutReceiver.map(typeSig)),
+      Option.when(hasReceiver)(typeSig(funcType.receiverType)), funcType.isC, funcType.hasVarArg)
   }
 
   def typeSig(tpe: CHIR.Type): SignatureType = {

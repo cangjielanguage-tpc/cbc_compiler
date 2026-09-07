@@ -54,6 +54,7 @@ final class GenericTypeImpl(t: GenericType)(using provider: CHIRItemProvider) ex
 final class FuncTypeImpl(f: FuncType)(using provider: CHIRItemProvider) extends CHIR.FuncType {
   private lazy val argsTypes = f.base.argTysVector.toTypeSeq[CHIR.Type]
   def paramTypes: Seq[CHIR.Type] = argsTypes.dropRight(1)
+  def paramTypesWithoutReceiver: Seq[CHIR.Type] = paramTypes.dropRight(1)
   def receiverType: CHIR.Type = paramTypes.head
   def returnType: CHIR.Type = argsTypes.last
   def isC: Boolean = f.isCfuncType
