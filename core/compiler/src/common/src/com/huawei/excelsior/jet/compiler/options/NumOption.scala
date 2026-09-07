@@ -9,10 +9,10 @@
 package com.huawei.excelsior.jet.compiler.options
 
 import com.huawei.excelsior.common.Arch.*
-import com.huawei.excelsior.common.CodeHelpers.shouldNotCallThis
 import com.huawei.excelsior.common.Language.CANGJIE
 import com.huawei.excelsior.jet.compiler.Env.{isWorkMode, languagePack, targetArch}
 import com.huawei.excelsior.jet.compiler.RTConst.CPUFeature
+import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.options.BoolOption.{FastBackEnd, SoftFP16}
 import com.huawei.excelsior.jet.compiler.options.Option.SmartKind
 import com.huawei.excelsior.jet.compiler.{Env, Environment}
@@ -136,6 +136,8 @@ enum NumOption(range: Range,
   case Parallelism                              extends NumOption(1)
 
   case PrefetchLevel                            extends NumOption(1) // {1, 2, 3} -- cache level
+  
+  case CHIRVersion                              extends NumOption(range(1, Integer.MAX_VALUE), CHIR.defaultVersion)
 
   def this(range: Range, defaultValue: Int)                     = this(range, defaultValue, null)
   def this(range: Range, defaultLambda: Environment => Integer) = this(range, null, defaultLambda)

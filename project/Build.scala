@@ -146,6 +146,7 @@ object Build {
     )
 
   lazy val chirLib = (project in file("core/chir-lib"))
+    .dependsOn(commonJavaLib)
     .settings(flatbuffersSettings)
     .settings(commonSourceLayout)
     .settings(

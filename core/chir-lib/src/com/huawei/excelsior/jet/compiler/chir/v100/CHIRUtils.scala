@@ -6,10 +6,12 @@
  * See https://cangjie-lang.cn/pages/LICENSE for license information.
  */
 
-package com.huawei.excelsior.jet.compiler.chir
+package com.huawei.excelsior.jet.compiler.chir.v100
 
 import com.google.flatbuffers.{IntVector, LongVector}
+import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.PackageFormat.{EnumCtorInfo, MemberVarInfo, VTableInType, VirtualMethodInfo}
+
 import scala.reflect.ClassTag
 
 object CHIRUtils {
