@@ -141,20 +141,20 @@ object CbcSignatureAdapter {
 
     case sig: SignatureType.Record =>
       assert(!asClassType(sig).isUniversalGeneric, s"erased signature type: ${sig.toJETSignature}")
-      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.rec(sig.name)
-      else CbcFileFormat.TypeSignature.rec(sig.name)
+      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.rec(sig.name, !sig.isVariableSizeType)
+      else CbcFileFormat.TypeSignature.rec(sig.name, !sig.isVariableSizeType)
 
     case sig: SignatureType.CangjieReference =>
       assert(!asClassType(sig).isUniversalGeneric, s"erased signature type: ${sig.toJETSignature}")
       adaptFunctional(sig).getOrElse {
-        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.ref(sig.name)
-        else CbcFileFormat.TypeSignature.ref(sig.name)
+        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.ref(sig.name, !sig.isVariableSizeType)
+        else CbcFileFormat.TypeSignature.ref(sig.name, !sig.isVariableSizeType)
       }
 
     case sig: SignatureType.InstantiatedType   =>
       adaptFunctional(sig).getOrElse {
         if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference)
-        else CbcFileFormat.TypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference)
+        else CbcFileFormat.TypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
       }
 
     case sig: SignatureType.CangjieArray       => CbcFileFormat.CangjieArray(sig.elemType.toCbc)
@@ -171,9 +171,9 @@ object CbcSignatureAdapter {
     case sig: SignatureType.UnionBasedEnum => CbcFileFormat.UnionEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.ClassBasedEnum =>
       if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
-      else CbcFileFormat.TypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
+      else CbcFileFormat.TypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
     case sig: SignatureType.OptionLikeEnum =>
-      CbcFileFormat.OptionSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
+      CbcFileFormat.OptionSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
 
     case sig: SignatureType.ArraySlice => notImplemented(sig)
     case sig: SignatureType.JavaArray => notImplemented(sig)

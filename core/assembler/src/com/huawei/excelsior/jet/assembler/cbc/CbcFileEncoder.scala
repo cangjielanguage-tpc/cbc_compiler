@@ -618,25 +618,31 @@ private class ByteArrayPool extends Pool[ArraySeq[Byte]] { self: RawPool =>
 }
 
 private class SignaturePool extends Pool[Signature] { self: RawPool with PoolProvider =>
-  override def add(data: Signature): Offset = put { output =>
+  override def add(data: Signature): Offset = put {
+    output => if (data.isFixedSize) {
+        output.putW8(SignatureTag.Fst.tag)
+        output.putULEB(addImpl(data))
+      }
+  }
+  private def addImpl(data: Signature): Offset = put { output =>
     data match {
-      case TypeSignature(name, Seq(), isReference) =>
+      case TypeSignature(name, Seq(), isReference, _) =>
         val stringOffs = strings.add(name)
         val tag = if (isReference) SignatureTag.Reference else SignatureTag.Record
         output.putW8(tag.tag)
         output.putULEB(stringOffs)
-      case TypeSignature(name, args, isReference) =>
+      case TypeSignature(name, args, isReference, _) =>
         val stringOffs = strings.add(name)
         val tag = if (isReference) SignatureTag.GenericReference else SignatureTag.GenericRecord
         output.putW8(tag.tag)
         output.putULEB(stringOffs)
         output.putW8(args.size) // TODO: uleb?
         args.map(signatures.add).foreach(output.putULEB)
-      case AotTypeSignature(name, Seq(), isReference) => // FIXME: add and handle args
+      case AotTypeSignature(name, Seq(), isReference, _) => // FIXME: add and handle args
         val tag = if (isReference) SignatureTag.AotReference else SignatureTag.AotRecord
         output.putW8(tag.tag)
         output.putULEB(strings.add(name))
-      case AotTypeSignature(name, args, isReference) => // FIXME: add and handle args
+      case AotTypeSignature(name, args, isReference, _) => // FIXME: add and handle args
         val tag = if (isReference) SignatureTag.GenericAotRef else SignatureTag.GenericAotRec
         output.putW8(tag.tag)
         output.putULEB(strings.add(name)) // TODO: uleb?
@@ -679,7 +685,7 @@ private class SignaturePool extends Pool[Signature] { self: RawPool with PoolPro
       case Fst(sig) =>
         output.putW8(SignatureTag.Fst.tag)
         output.putULEB(signatures.add(sig))
-      case OptionSignature(name, args, _) => // TODO: add short form of encoding
+      case OptionSignature(name, args, _, _) => // TODO: add short form of encoding
         output.putW8(SignatureTag.Option.tag)
         output.putULEB(strings.add(name))
         output.putW8(args.length)
