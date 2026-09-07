@@ -979,6 +979,12 @@ trait CHIRParser
                   case CHIRExprKind.Div | CHIRExprKind.TryDiv => CheckedOp(tpe, width, CheckedOp.Kind.DIV, signed, method.isManaged)(normalizedArgs: _*)
                   case CHIRExprKind.Mod | CHIRExprKind.TryMod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(normalizedArgs: _*)
                   case CHIRExprKind.Exp | CHIRExprKind.TryExp => CheckedOp(tpe, width, CheckedOp.Kind.POW, signed, method.isManaged)(normalizedArgs: _*)
+
+                  case CHIRExprKind.BitAnd | CHIRExprKind.BitOr | CHIRExprKind.BitXor |
+                       CHIRExprKind.LShift | CHIRExprKind.TryLShift |
+                       CHIRExprKind.RShift | CHIRExprKind.TryRShift =>
+                    notImplemented(s"throwing binary expression: ${PackageFormat.CHIRExprKind.name(e.base.kind)}")
+
                   case x => shouldNotReachHere(s"unexpected throwing binary expression: ${PackageFormat.CHIRExprKind.name(x)}")
                 }
 
