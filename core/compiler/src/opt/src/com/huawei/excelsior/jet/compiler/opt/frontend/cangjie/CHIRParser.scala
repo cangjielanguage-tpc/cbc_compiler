@@ -1995,7 +1995,7 @@ trait CHIRParser
     }
 
     private def staticFieldRef(globalVar: CHIR.GlobalVar): CangjieFieldReference = {
-      val symRefType  = globalVar.declaringDef
+      val symRefType = globalVar.declaringDef
         .map(d => asClassType(resolver.symType(d).get))
         .getOrElse(resolver.findClass(globalVar.packageName).get)
 
