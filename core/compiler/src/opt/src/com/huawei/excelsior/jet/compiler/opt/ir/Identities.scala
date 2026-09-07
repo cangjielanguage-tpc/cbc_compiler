@@ -155,6 +155,10 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
             case (I64, F32, LConst(v)) => FConst(v.toFloat)
             case (I64, F64, LConst(v)) => DConst(v.toDouble)
 
+            case (U64, F32, LConst(v)) if v > 0 => FConst(v.toFloat)
+            case (U64, F64, LConst(v)) if v > 0 => DConst(v.toDouble)
+            // TODO: support arbitrary unsigned long values
+
             case (F32, I32, FConst(v)) => IConst(v.toInt)
             case (F32, I64, FConst(v)) => LConst(v.toLong)
             case (F32, F64, FConst(v)) => DConst(v.toDouble)
