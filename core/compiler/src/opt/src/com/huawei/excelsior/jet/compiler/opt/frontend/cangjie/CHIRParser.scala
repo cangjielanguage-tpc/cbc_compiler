@@ -26,7 +26,6 @@ import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CangjieEnumWrap
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.ScalaCollections.*
-import com.huawei.excelsior.jet.compiler.util.{Maps, Sets}
 import com.huawei.excelsior.jet.util.{Closure, Numbering, ScalaCollections}
 
 import scala.collection.mutable
@@ -749,7 +748,7 @@ trait CHIRParser
               case CHIR.Binary.Kind.Sub => Sub(l, r)
               case CHIR.Binary.Kind.Mul => Mul(l, r)
               case CHIR.Binary.Kind.Div => FDiv(tpe)(l, r)
-              case CHIRExprKind.Exp => notImplemented("floating point binary expression: Exp")
+              case CHIR.Binary.Kind.Exp => notImplemented("floating point binary expression: Exp")
               case x => shouldNotReachHere(s"unexpected floating point binary expression: ${e.kind}")
             }
 
@@ -789,10 +788,9 @@ trait CHIRParser
                   case CHIR.Binary.Kind.Mod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(normalizedArgs: _*)
                   case CHIR.Binary.Kind.Exp => CheckedOp(tpe, width, CheckedOp.Kind.POW, signed, method.isManaged)(normalizedArgs: _*)
 
-                  case CHIRExprKind.BitAnd | CHIRExprKind.BitOr | CHIRExprKind.BitXor |
-                       CHIRExprKind.LShift | CHIRExprKind.TryLShift |
-                       CHIRExprKind.RShift | CHIRExprKind.TryRShift =>
-                    notImplemented(s"throwing binary expression: ${PackageFormat.CHIRExprKind.name(e.base.kind)}")
+                  case CHIR.Binary.Kind.And | CHIR.Binary.Kind.Or | CHIR.Binary.Kind.Xor |
+                       CHIR.Binary.Kind.LShift | CHIR.Binary.Kind.RShift =>
+                    notImplemented(s"throwing binary expression: ${e.kind}")
 
                   case x => shouldNotReachHere(s"unexpected throwing binary expression: ${e.kind}")
                 }
