@@ -939,16 +939,16 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
   // TODO: Move meaningful parts to the trait
   def packageInitCheck(sig_id: Symbol): Unit = doNothing
 
-  def arrFill(arr: IR, data: Array[Byte]): Unit = notImplemented("todo")
+  def arrFill(arr: IR, data: Array[Byte]): Unit = notImplemented("assembler arrFill")
 
   def loadConstDataAddr(dst: IR, data: Array[Byte], alignment: Int): Unit = shouldNotReachHere("aj strings")
 
-  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = notImplemented("todo")
+  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = notImplemented("assembler scc")
 
-  def mulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("todo")
-  def umulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("todo")
-  def mulhi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = notImplemented("todo")
-  def umulhi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = notImplemented("todo")
+  def mulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("assembler mulh")
+  def umulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("assembler umulh")
+  def mulhi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = notImplemented("assembler mulhi")
+  def umulhi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = notImplemented("assembler umulhi")
 
   def ldarr(asmType: AsmType, rd: Rg, ra: IR, ri: IR): Unit = loadArray(rd, LoadAccessKind.from(CbcTypeKind(asmType)), ra, ri)
   def ldarrObj(rd: Rg, ra: IR, ri: IR): Unit = loadArray(rd, LD_REF, ra, ri)
@@ -960,14 +960,14 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
 
   def newarr(ftc_sig_id: Symbol): Unit = newarr(adapter.sigType(ftc_sig_id))
   def newarrzv(ftc_sig_id: Symbol): Unit = newarr(adapter.sigType(ftc_sig_id))
-  def newarrfillconst(dst: IR, len: IR, value: Long, ftc_sig_id: Symbol): Unit = notImplemented("todo")
-  def newarrfillnonconst(dst: IR, len: IR, value: IR, ftc_sig_id: Symbol): Unit = notImplemented("todo")
+  def newarrfillconst(dst: IR, len: IR, value: Long, ftc_sig_id: Symbol): Unit = notImplemented("assembler newarrfillconst")
+  def newarrfillnonconst(dst: IR, len: IR, value: IR, ftc_sig_id: Symbol): Unit = notImplemented("assembler newarrfillnonconst")
 
-  def callIndirect(targetReg: IR, sig_id: Symbol): Unit = notImplemented("todo")
+  def callIndirect(targetReg: IR, sig_id: Symbol): Unit = notImplemented("assembler callIndirect")
 
   def lea_static(dst: IR, field_id: Symbol): Unit = shouldNotReachHere("gc unsafe operation")
   def lea_us(dst: IR, us: StackSlot.Untyped): Unit = shouldNotReachHere("rec tracing unsafe operation. TODO: special tail instruction")
-  def lea_cforeign(dst: IR, method_id: Symbol): Unit = notImplemented("todo")
+  def lea_cforeign(dst: IR, method_id: Symbol): Unit = notImplemented("assembler lea_cforeign")
 }
 
 object Assembler {
