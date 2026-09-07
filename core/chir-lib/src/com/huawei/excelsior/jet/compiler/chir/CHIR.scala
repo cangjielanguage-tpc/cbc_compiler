@@ -181,6 +181,7 @@ object CHIR {
 
   trait FuncType extends Type {
     def paramTypes: Seq[Type]
+    def paramTypesWithoutReceiver: Seq[Type]
     def receiverType: Type
     def returnType: Type
     def isC: Boolean
