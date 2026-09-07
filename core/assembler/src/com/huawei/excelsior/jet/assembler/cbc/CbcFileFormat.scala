@@ -34,6 +34,7 @@ object CbcFileFormat {
 
   sealed trait Signature extends BytecodeReference {
     def isReference: Boolean
+    def isFixedSize: Boolean
   }
 
   enum BuiltinSignature(val id: Int) extends Signature {
@@ -59,47 +60,61 @@ object CbcFileFormat {
     case F64 extends BuiltinSignature(0x13)
 
     override def isReference = false
+    override def isFixedSize: Boolean = true
   }
 
-  case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean) extends Signature
-  case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean) extends Signature
-  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean) extends Signature
+  case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
+  case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
+  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
   case class PrimitiveEnum(name: String, args: Seq[Signature]) extends Signature {
     override def isReference = false
+    override def isFixedSize: Boolean = true
   }
   case class UnionEnum(name: String, args: Seq[Signature]) extends Signature {
     override def isReference = false
+    override def isFixedSize: Boolean = true
   }
   case class CangjieArray(tpe: Signature) extends Signature {
     override def isReference = true
+    override def isFixedSize: Boolean = true
   }
   case class Tuple(args: Seq[Signature]) extends Signature {
     override def isReference = false
+    override def isFixedSize: Boolean = args.forall(_.isFixedSize)
   }
   case class Functional(args: Seq[Signature], result: Signature) extends Signature {
     override def isReference = true
+    override def isFixedSize: Boolean = false
   }
   case class Nullable(sig: Signature) extends Signature { // FIXME: remove
     override def isReference = sig.isReference
+    override def isFixedSize: Boolean = sig.isFixedSize
   }
   case class NonNullable(sig: Signature) extends Signature {
     override def isReference = sig.isReference
+    override def isFixedSize: Boolean = sig.isFixedSize
   }
   case class VArray(sig: Signature, length: Long) extends Signature {
     override def isReference = false
+    override def isFixedSize: Boolean = sig.isFixedSize
   }
   case class CPointer(sig: Signature) extends Signature {
     override def isReference = false
+    override def isFixedSize: Boolean = sig.isFixedSize
   }
   case class Box(sig: Signature) extends Signature {
     override def isReference = true
+    override def isFixedSize: Boolean = sig.isFixedSize
   }
   case class Fst(sig: Signature) extends Signature {
     override def isReference = false
+    // It's false to stop recursion in the encoding
+    override def isFixedSize: Boolean = false
   }
 
   sealed trait TypeVariable extends Signature {
     override def isReference = false
+    override def isFixedSize: Boolean = false
   }
   case class FuncTypeVariable(id: Int) extends TypeVariable
   case class ClassTypeVariable(id: Int) extends TypeVariable
@@ -110,13 +125,13 @@ object CbcFileFormat {
   }
 
   object TypeSignature {
-    def ref(name: String) = TypeSignature(name, Seq.empty, isReference = true)
-    def rec(name: String) = TypeSignature(name, Seq.empty, isReference = false)
+    def ref(name: String, isFixedSize: Boolean = false) = TypeSignature(name, Seq.empty, isReference = true, isFixedSize)
+    def rec(name: String, isFixedSize: Boolean) = TypeSignature(name, Seq.empty, isReference = false, isFixedSize)
   }
 
   object AotTypeSignature {
-    def ref(name: String) = AotTypeSignature(name, Seq.empty, isReference = true)
-    def rec(name: String) = AotTypeSignature(name, Seq.empty, isReference = false)
+    def ref(name: String, isFixedSize: Boolean = false) = AotTypeSignature(name, Seq.empty, isReference = true, isFixedSize)
+    def rec(name: String, isFixedSize: Boolean) = AotTypeSignature(name, Seq.empty, isReference = false, isFixedSize)
   }
 
   sealed trait Flag {
