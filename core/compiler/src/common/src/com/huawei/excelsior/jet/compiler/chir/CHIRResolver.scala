@@ -8,43 +8,34 @@
 
 package com.huawei.excelsior.jet.compiler.chir
 
-import com.google.flatbuffers.{IntVector, Table}
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.common.XString.xstr
-import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.*
-import com.huawei.excelsior.jet.compiler.chir.EnumKind
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.CHIR.{Attribute, CustomTypeDef, GenericType}
+import com.huawei.excelsior.jet.compiler.chir.EnumKind.ZeroSized
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.*
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.LocalTypeVariable
-import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
 import com.huawei.excelsior.jet.compiler.symlevel.{GenericInfo, MethodSignature, SignatureType, ClassType as SymClassType, Type as SymType}
+import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
 import com.huawei.excelsior.jet.util.ScalaCollections
 
 import scala.PartialFunction.cond
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.reflect.ClassTag
 
 /** Provides resolving utilities to/from [[PackageFormat]] entities.
   *
   * @author liontiger
   */
-class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environment) {
+class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment) {
   private implicit val typeProvider: TypeProvider = env.getTypeProvider
 
-  private val symTypeByTable = mutable.HashMap.empty[Table, SymType]
-  def symType(v: Table): Option[SymType] = symTypeByTable.get(v) orElse {
+  private val symTypeByTable = mutable.HashMap.empty[CHIR.Type | CHIR.CustomTypeDef, SymType]
+  def symType(v: CHIR.Type | CHIR.CustomTypeDef): Option[SymType] = symTypeByTable.get(v) orElse {
     val res = (v: @unchecked) match {
-      case v: StructDef => findClass(symName(v))
-      case v: CustomType => symType(pkg.getDef[Table](v.customTypeDef))
-      case v: ClassDef => findClass(symName(v))
-      case v: EnumDef => findClass(symName(v)) // TODO: support proper Enum
-      case v: ExtendDef => findClass(symName(v))
-      case v: Type => v.kind match {
-        case CHIRTypeKind.REFTYPE => symType(pkg.getType[Table](v.argTys(0)))
-      }
+      case v: CHIR.CustomTypeDef => findClass(symName(v))
+      case v: CHIR.CustomType => symType(v.typeDef)
+      case v: CHIR.RefType => symType(v.baseType)
     }
 
     for (t <- res) {
@@ -55,70 +46,72 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
     res
   }
 
-  def symName(v: Table): String = {
-    def typeDefName(v: CustomTypeDef): String = {
+  def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.Func | CHIR.GlobalVar | CHIR.FuncSig): String = {
+    def typeDefName(v: CHIR.CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
       if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
     }
 
-    def globalName(_v: GlobalValue, t: Table): String = {
-      val wrappedMethod = annotations(_v.base.base).collectFirst { case m: WrappedRawMethod => pkg.getValue[Function](m.rawMethod).base }
+    def globalName(_v: CHIR.Func | CHIR.GlobalVar): String = {
+      val annotations = _v match {
+        case v: CHIR.Func => v.annotations
+        case v: CHIR.GlobalVar => v.annotations
+      }
+      val wrappedMethod = annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
       val v = wrappedMethod.getOrElse(_v)
-      val srcName = v.srcCodeIdentifier
-      val isPrivate = Attribute.PRIVATE in v.base.base.attributes
-      val isPackageGlobal = v.declaredParent == 0
+      val (id, identifier, srcName) = v match {
+        case v: CHIR.Func => (v.id, v.identifier, v.srcCodeIdentifier)
+        case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
+      }
+      val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
+      val isPackageGlobal = v.declaringDef.isEmpty
       val suffix = if (isGenericInstantiated(v)) {
-        val id = pkg.getValueID(t)
+        // TODO another way without id usage?
         assert(id > 0)
-        s"$$instantiated$$${pkg.pkg.name}$$$id"
+        s"$$instantiated$$${pkg.name}$$$id"
       } else {
         ""
       }
       getOverrideSrcFuncType(v) match {
         case Some(funcType) =>
-          val f = t.asInstanceOf[Function]
-          val d = pkg.getDef[Table](v.declaredParent) match {
-            case d: ClassDef => d.base
-            case d: StructDef => d.base
-            case d: EnumDef => d.base
-            case d: ExtendDef => d.base
-          }
-          val vtableFuncs = d.vtableVector.toSeq.flatMap(_.virtualMethodsVector.toSeq)
-          vtableFuncs.find(m => pkg.getValue[Function](m.instance) == f) match {
-            case Some(m) => m.funcName
-            case None => shouldNotReachHere(v.base.identifier)
+          val f = _v.asInstanceOf[CHIR.Func]
+          val d = v.declaringDef.get
+          val vtableFuncs = d.vtables.flatMap(_.vMethods)
+          vtableFuncs.find(_.instance == f) match {
+            case Some(m) => m.name
+            case None => shouldNotReachHere(identifier)
           }
         case None =>
-          if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) v.base.identifier.tail else srcName + suffix
+          if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
       }
     }
 
     ((v: @unchecked) match {
-      case v: StructDef => typeDefName(v.base)
-      case v: CustomType => symName(pkg.getDef[Table](v.customTypeDef))
-      case v: ClassDef => typeDefName(v.base)
-      case v: EnumDef => typeDefName(v.base) // TODO: support proper Enum
-      case v: ExtendDef => typeDefName(v.base)
-      case v: Function => globalName(v.base, v)
-      case v: GlobalVar => globalName(v.base, v)
-      case v: FuncSigInfo => v.funcName
+      case v: CHIR.StructDef => typeDefName(v)
+      case v: CHIR.CustomType => symName(v.typeDef)
+      case v: CHIR.ClassDef => typeDefName(v)
+      case v: CHIR.EnumDef => typeDefName(v) // TODO: support proper Enum
+      case v: CHIR.ExtendDef => typeDefName(v)
+      case v: CHIR.Func => globalName(v)
+      case v: CHIR.GlobalVar => globalName(v)
+      case v: CHIR.FuncSig => v.name
     }) ensuring (_.nonEmpty)
   }
 
-  def linkageName(v: Function | GlobalVar | MemberVarInfo): String = v match {
-    case v: Function => v.base.base.identifier.tail
-    case v: GlobalVar => v.base.base.identifier.tail
-    case v: MemberVarInfo => null
+  def linkageName(v: CHIR.Func | CHIR.GlobalVar | CHIR.InstanceVar): String = v match {
+    case v: CHIR.Func => v.identifier.tail
+    case v: CHIR.GlobalVar => v.identifier.tail
+    case v: CHIR.InstanceVar => null
   }
 
   def mutWithoutTI(name: String): String = {
     name + "$withoutTI"
   }
 
-  def functionSig(m: Function, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
-    val (sig, rcv, isCFunc, hasVarArg) = functionSig(m.base.base.`type`, hasReceiver)
-    if (m.base.srcCodeIdentifier == "$lambda") {
-      val cparams = Seq.tabulate(m.genericTypeParamsLength)(SignatureType.LocalTypeVariable.apply)
+  def functionSig(m: CHIR.Func, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
+    val (sig, rcv, isCFunc, hasVarArg) = functionSig(m.tpe, hasReceiver)
+    if (m.srcCodeIdentifier == "$lambda") {
+      val cparams = Seq.tabulate(m.genericTypeParams.size)(SignatureType.LocalTypeVariable.apply)
       val lparams = Seq.empty
       val lsig = sig.instantiate(cparams, lparams)
       (lsig, rcv, isCFunc, hasVarArg)
@@ -127,99 +120,94 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
     }
   }
 
-  def functionSig(id: Long, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
-    val funcType = pkg.getType[FuncType](id)
-    val params = funcType.base.argTysVector.toSeq.map(typeSig)
-    val startIdx = if (hasReceiver) 1 else 0
-    val paramsWithoutRcv = params.drop(startIdx)
-    (MethodSignature(paramsWithoutRcv.last, paramsWithoutRcv.init), Option.when(hasReceiver)(params.head), funcType.isCfuncType, funcType.hasVarArg)
+  def functionSig(funcType: CHIR.FuncType, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
+    val (receiverType, paramTypes) = if hasReceiver then (Some(funcType.receiverType), funcType.paramTypesWithoutReceiver) else (None, funcType.paramTypes)
+    (MethodSignature(typeSig(funcType.returnType), paramTypes.map(typeSig)), receiverType.map(typeSig), funcType.isC, funcType.hasVarArg)
   }
 
-  def typeSig(id: Long): SignatureType = {
+  def typeSig(tpe: CHIR.Type): SignatureType = {
     import SignatureType.*
 
-    def typeParams(t: Type): Seq[SignatureType] = t.argTysVector.toSeq.map(typeSig)
+    tpe match {
+      case t: CHIR.BoxType =>
+        val base = typeSig(t.baseType)
+        if (base.isTraceableReference && !base.isInstanceOf[OptionLikeEnum]) base else Box(base)
 
-    pkg.getType[Table](id) match {
-      case t: Type => t.kind match {
-        case CHIRTypeKind.RUNE => UnicodeChar32
-        case CHIRTypeKind.BOOLEAN => Boolean
-        case CHIRTypeKind.VOID => Void
-        case CHIRTypeKind.UNIT => Unit
-        case CHIRTypeKind.NOTHING => Nothing
-        case CHIRTypeKind.INT8 => Int8
-        case CHIRTypeKind.INT16 => Int16
-        case CHIRTypeKind.INT32 => Int32
-        case CHIRTypeKind.INT64 => Int64
-        case CHIRTypeKind.INT_NATIVE => AddrInt
-        case CHIRTypeKind.UINT8 => UInt8
-        case CHIRTypeKind.UINT16 => UInt16
-        case CHIRTypeKind.UINT32 => UInt32
-        case CHIRTypeKind.UINT64 => UInt64
-        case CHIRTypeKind.UINT_NATIVE => AddrUInt
-        case CHIRTypeKind.FLOAT16 => Float16
-        case CHIRTypeKind.FLOAT32 => Float32
-        case CHIRTypeKind.FLOAT64 => Float64
-        case CHIRTypeKind.C_STRING => BString
-        case CHIRTypeKind.C_POINTER => CPointer(typeSig(t.argTys(0)))
-        case CHIRTypeKind.THIS => ThisTypeInfo
-        case CHIRTypeKind.REFTYPE => typeSig(t.argTys(0)) // TODO: do we need to distinguish?
-        case CHIRTypeKind.BOXTYPE =>
-          val base = typeSig(t.argTys(0))
-          if (base.isTraceableReference && !base.isInstanceOf[OptionLikeEnum]) base else Box(base)
-        case CHIRTypeKind.TUPLE => Tuple(typeParams(t))
-        case k => notImplemented(CHIRTypeKind.name(k))
-      }
-      case t: RawArrayType => Seq.iterate(typeSig(t.base.argTys(0)), t.dims.toInt + 1)(CangjieArray.apply).last
-      case t: VArrayType => VArray(typeSig(t.base.argTys(0)), t.size)
-      case t: GenericType => typeVariableSig(t)
-      case t: CustomType => t.base.kind match {
-        case CHIRTypeKind.CLASS =>
-          val params = typeParams(t.base)
-          if (params.nonEmpty) InstantiatedReference(symName(t), params) else Reference(symName(t), jbc = false)
-        case CHIRTypeKind.STRUCT =>
-          val params = typeParams(t.base)
-          if (params.nonEmpty) InstantiatedRecord(symName(t), params) else Record(symName(t))
-        case CHIRTypeKind.ENUM =>
-          val enumDef = pkg.getDef[EnumDef](t.customTypeDef)
-          enumKind(enumDef) match {
-            case EnumKind.ZeroSized => ZeroSizedEnum(symName(t), typeParams(t.base))
-            case EnumKind.PrimitiveBased => PrimitiveBasedEnum(symName(t), typeParams(t.base))
-            case EnumKind.OptionLike(base) =>
-              val params = typeParams(t.base)
-              val baseSig = typeSig(base).instantiate(params, Seq.empty)
-              OptionLikeEnum(symName(t), params, baseSig)
-            case EnumKind.UnionBased => UnionBasedEnum(symName(t), typeParams(t.base))
-            case EnumKind.ClassBased => ClassBasedEnum(symName(t), typeParams(t.base))
-          }
-        case k => notImplemented(CHIRTypeKind.name(k))
-      }
-      case t: FuncType => notImplemented("FuncType")
+      case CHIR.BuiltinType.Rune => UnicodeChar32
+      case CHIR.BuiltinType.Boolean => Boolean
+      case CHIR.BuiltinType.Void => Void
+      case CHIR.BuiltinType.Unit => Unit
+      case CHIR.BuiltinType.Nothing => Nothing
+      case CHIR.BuiltinType.Int8 => Int8
+      case CHIR.BuiltinType.Int16 => Int16
+      case CHIR.BuiltinType.Int32 => Int32
+      case CHIR.BuiltinType.Int64 => Int64
+      case CHIR.BuiltinType.IntNative => AddrInt
+      case CHIR.BuiltinType.UInt8 => UInt8
+      case CHIR.BuiltinType.UInt16 => UInt16
+      case CHIR.BuiltinType.UInt32 => UInt32
+      case CHIR.BuiltinType.UInt64 => UInt64
+      case CHIR.BuiltinType.UIntNative => AddrUInt
+      case CHIR.BuiltinType.Float16 => Float16
+      case CHIR.BuiltinType.Float32 => Float32
+      case CHIR.BuiltinType.Float64 => Float64
+      case CHIR.BuiltinType.CString => BString
+      case CHIR.BuiltinType.This => ThisTypeInfo
+
+      case t: CHIR.ClassType =>
+        val params = t.genericTypeParams.map(typeSig)
+        if (params.nonEmpty) InstantiatedReference(symName(t), params) else Reference(symName(t), jbc = false)
+      case t: CHIR.CPointerType =>
+        CPointer(typeSig(t.elementType))
+      case t: CHIR.EnumType =>
+        enumKind(t.typeDef) match {
+          case EnumKind.ZeroSized =>
+            ZeroSizedEnum(symName(t), t.genericTypeParams.map(typeSig))
+          case EnumKind.PrimitiveBased =>
+            PrimitiveBasedEnum(symName(t), t.genericTypeParams.map(typeSig))
+          case EnumKind.OptionLike(base) =>
+            val params = t.genericTypeParams.map(typeSig)
+            val baseSig = typeSig(base).instantiate(params, Seq.empty)
+            OptionLikeEnum(symName(t), params, baseSig)
+          case EnumKind.UnionBased =>
+            UnionBasedEnum(symName(t), t.genericTypeParams.map(typeSig))
+          case EnumKind.ClassBased =>
+            ClassBasedEnum(symName(t), t.genericTypeParams.map(typeSig))
+        }
+      case t: CHIR.FuncType =>
+        notImplemented("FuncType")
+      case t: CHIR.GenericType =>
+        typeVariableSig(t)
+      case t: CHIR.RefType =>
+        typeSig(t.baseType) // TODO: do we need to distinguish?
+      case t: CHIR.RawArrayType =>
+        Seq.iterate(typeSig(t.elementType), t.dimension.toInt + 1)(CangjieArray.apply).last
+      case t: CHIR.StructType =>
+        val params = t.genericTypeParams.map(typeSig)
+        if (params.nonEmpty) InstantiatedRecord(symName(t), params) else Record(symName(t))
+      case t: CHIR.VArrayType =>
+        VArray(typeSig(t.elementType), t.size)
+      case t: CHIR.TupleType =>
+        Tuple(t.fieldTypes.map(typeSig))
     }
   }
 
   @tailrec
-  private def withGenericParams[T](v: Table)(action: IntVector => T): T = (v: @unchecked) match {
-    case v: CustomTypeDef => action(pkg.getType[CustomType](v.`type`).base.argTysVector)
-    case v: CustomType => withGenericParams(pkg.getDef[CustomTypeDef](v.customTypeDef))(action)
-    case v: StructDef => withGenericParams(v.base)(action)
-    case v: ClassDef => withGenericParams(v.base)(action)
-    case v: EnumDef => withGenericParams(v.base)(action)
-    case v: Function => action(v.genericTypeParamsVector)
-    case v: ExtendDef => action(v.genericParamsVector)
-    case v: FuncSigInfo => action(v.genericTypeParamsVector)
-    case v: VirtualMethodInfo => action(v.methodGenericTypeParamsVector)
-    case v: Type => v.kind match {
-      case CHIRTypeKind.REFTYPE => withGenericParams(pkg.getType[Table](v.argTys(0)))(action)
-      case CHIRTypeKind.THIS => action(IntVector())
-    }
+  private def withGenericParams[T](v: CHIR.CustomTypeDef | CHIR.Type | CHIR.Func | CHIR.FuncSig | CHIR.VMethod)(action: Seq[CHIR.Type] => T): T = (v: @unchecked) match {
+    case v: CHIR.ExtendDef => action(v.genericTypeParams)
+    case v: CHIR.CustomTypeDef => action(v.tpe.asInstanceOf[CHIR.CustomType].genericTypeParams)
+    case v: CHIR.CustomType => withGenericParams(v.typeDef)(action)
+    case v: CHIR.RefType => withGenericParams(v.baseType)(action)
+    case CHIR.BuiltinType.This => action(Seq.empty)
+    case v: CHIR.Func => action(v.genericTypeParams)
+    case v: CHIR.FuncSig => action(v.genericTypeParams)
+    case v: CHIR.VMethod => action(v.genericTypeParams)
   }
 
-  def genericInfo(v: Table): GenericInfo = withGenericParams(v) { params =>
-    val constraints = for ((id, i) <- params.toSeq.zipWithIndex) yield {
-      val t = pkg.getType[Table](id)
+  def genericInfo(v: CHIR.CustomTypeDef | CHIR.Func): GenericInfo = withGenericParams(v) { params =>
+    val constraints = for ((t, i) <- params.zipWithIndex) yield {
       val upperBounds = t match {
-        case t: GenericType => t.upperBoundsVector.toSeq.map(typeSig)
+        case t: CHIR.GenericType => t.upperBounds.map(typeSig)
         case _ => Seq.empty
       }
       GenericInfo.Constraint(LocalTypeVariable(i), upperBounds)
@@ -232,42 +220,35 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
     }
   }
 
-  private val typeVarCache = mutable.HashMap.empty[GenericType, SignatureType.TypeVariable]
+  private val typeVarCache = mutable.HashMap.empty[CHIR.GenericType, SignatureType.TypeVariable]
   private var typeVarCacheInitialized = false
 
   private def initTypeVars(): Unit = {
-    def fillTypeVars(gids: IntVector, local: Boolean): Unit = {
-      for ((gid, i) <- gids.iterator.zipWithIndex) {
-        val genericType = pkg.getType[GenericType](gid)
+    def fillTypeVars(gTypes: Seq[CHIR.GenericType], local: Boolean): Unit = {
+      for ((genericType, i) <- gTypes.zipWithIndex) {
         val typeVar = if (local) SignatureType.LocalTypeVariable(i) else SignatureType.ClassTypeVariable(i)
         assert(!typeVarCache.contains(genericType) || typeVarCache(genericType) == typeVar, genericType.identifier)
         typeVarCache(genericType) = typeVar
       }
     }
-    def customTypeDefParams(d: CustomTypeDef): IntVector = {
-      if (isGenericInstantiated(d)) {
-        IntVector()
-      } else {
-        pkg.getType[CustomType](d.`type`).base.argTysVector
+
+    for (d <- pkg.typeDefs) {
+      val gTypes = d match {
+        case d: CHIR.ExtendDef => d.genericTypeParams
+        case d: CHIR.CustomTypeDef if isGenericInstantiated(d) => Seq.empty
+        case d: CHIR.CustomTypeDef => d.tpe.asInstanceOf[CHIR.CustomType].genericTypeParams collect {
+          case t: CHIR.GenericType => t
+        }
       }
+      fillTypeVars(gTypes, local = false)
     }
-    for (id <- 1L to pkg.pkg.defsLength) {
-      val d = pkg.getDef[Table](id)
-      val gids = d match {
-        case d: ClassDef  => customTypeDefParams(d.base)
-        case d: StructDef => customTypeDefParams(d.base)
-        case d: EnumDef   => customTypeDefParams(d.base)
-        case d: ExtendDef => d.genericParamsVector
-      }
-      fillTypeVars(gids, local = false)
-    }
-    for (id <- 1L to pkg.pkg.valuesLength) pkg.getValue[Table](id) match {
-      case d: Function if d.base.srcCodeIdentifier != "$lambda" => fillTypeVars(d.genericTypeParamsVector, local = true)
+    pkg.values foreach {
+      case d: CHIR.Func if d.srcCodeIdentifier != "$lambda" => fillTypeVars(d.genericTypeParams, local = true)
       case _ =>
     }
   }
 
-  private def typeVariableSig(t: GenericType): SignatureType.TypeVariable = {
+  private def typeVariableSig(t: CHIR.GenericType): SignatureType.TypeVariable = {
     if (!typeVarCacheInitialized) {
       initTypeVars()
       typeVarCacheInitialized = true
@@ -279,145 +260,97 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
     Option(typeProvider.findClass(xstr(className), loadPDB = true))
   }
 
-  def symModifiers(modifiers: Long): Modifiers = {
+  def symModifiers(a: CHIR.HasAttributes): Modifiers = {
     var mods = Modifiers.EMPTY
 
-    if (Attribute.PUBLIC    in modifiers) mods += PUBLIC
-    if (Attribute.PROTECTED in modifiers) mods += PROTECTED
-    if (Attribute.PRIVATE   in modifiers) mods += PRIVATE
-    //if (Attribute.VIRTUAL   in modifiers) // TODO: support
-    if (Attribute.SEALED    in modifiers) mods += CJ_SEALED
-    if (Attribute.ABSTRACT  in modifiers) mods += ABSTRACT
-    if (Attribute.READONLY  in modifiers) mods += FINAL
-    if (Attribute.MUT       in modifiers) mods += CJ_MUT
-    if (Attribute.REDEF     in modifiers) mods += CJ_REDEF
-    if (Attribute.OVERRIDE  in modifiers) mods += CJ_OVERRIDE
-    if (Attribute.STATIC    in modifiers) { mods -= FINAL; mods += STATIC }
-
-    // TODO: handle more cases?
+    a.attributes.foreach {
+      case CHIR.Attribute.Public => mods += PUBLIC
+      case CHIR.Attribute.Protected => mods += PROTECTED
+      case CHIR.Attribute.Private => mods += PRIVATE
+//      case CHIR.Attribute.Virtual => // TODO: support
+      case CHIR.Attribute.Sealed => mods += CJ_SEALED
+      case CHIR.Attribute.Abstract => mods += ABSTRACT
+      case CHIR.Attribute.Readonly => mods += FINAL
+      case CHIR.Attribute.Mut => mods += CJ_MUT
+      case CHIR.Attribute.Redef => mods += CJ_REDEF
+      case CHIR.Attribute.Override => mods += CJ_OVERRIDE
+      case CHIR.Attribute.Static => mods -= FINAL; mods += STATIC
+      case _ => // do nothing
+    }
 
     mods
   }
 
-  def isGenericInstantiated(t: (CustomTypeDef | GlobalValue)): Boolean = {
-    val attrs = t match {
-      case t: CustomTypeDef => t.base.attributes
-      case t: GlobalValue => t.base.base.attributes
-    }
-    Attribute.GENERIC_INSTANTIATED in attrs
+  def isGenericInstantiated(t: CHIR.HasAttributes): Boolean = {
+    t.attributes.contains(CHIR.Attribute.GenericInstantiated)
   }
 
-  def isImported(t: CustomTypeDef | GlobalValue): Boolean = {
+  def isImported(t: CHIR.CustomTypeDef | CHIR.Func | CHIR.GlobalVar): Boolean = {
     val (attrs, isFunctionalTypeBase) = t match {
-      case t: CustomTypeDef => (t.base.attributes, isFunctionalType(t) && !isLambda(t.`type`))
-      case t: GlobalValue   => (t.base.base.attributes, false)
+      case t: CHIR.CustomTypeDef => (t.attributes, isFunctionalType(t) && !isLambda(t.tpe))
+      case t: (CHIR.Func | CHIR.GlobalVar)  => (t.attributes, false)
     }
-    (Attribute.IMPORTED in attrs) || isFunctionalTypeBase
+    attrs.contains(CHIR.Attribute.Imported) || isFunctionalTypeBase
   }
 
-  def isFunctionalType(t: CustomTypeDef): Boolean = {
-    annotations(t.base) exists isAutoEnv
+  /**
+   * Sorts out redundant functions marked by diff-tool.
+   * For example, the global functions are referenced from vtable.
+   */
+  def isDeadFunction(f: CHIR.Func): Boolean = {
+    f.attributes.contains(Attribute.Unreachable)
   }
 
-  def isLambda(t: Long): Boolean = {
+  private def isFunctionalType(t: CHIR.CustomTypeDef): Boolean = {
+    t.annotations exists isAutoEnv
+  }
+
+  private def isLambda(t: CHIR.Type): Boolean = {
     typeSig(t).isCangjieLambda
   }
 
-  def isAutoEnv(x: Table): Boolean = cond(x) {
-    case x: IsAutoEnvClass => x.value
+  private def isAutoEnv(x: CHIR.Annotation): Boolean = cond(x) {
+    case x: CHIR.IsAutoEnvClass => x.value
   }
 
-  def annotations(base: Base): Iterator[Table] = {
-    val annos = base.annosVector
-    Iterator.tabulate(annos.length) { i =>
-      val obj = base.annosType(i) match {
-        case Annotation.needCheckArrayBound => new NeedCheckArrayBound
-        case Annotation.needCheckCast => new NeedCheckCast
-        case Annotation.debugLocationInfoForWarning => new DebugLocation
-        case Annotation.generatedFromForIn => new GeneratedFromForIn
-        case Annotation.isAutoEnvClass => new IsAutoEnvClass
-        case Annotation.isCapturedClassInCC => new IsCapturedClassInCC
-        case Annotation.linkTypeInfo => new LinkTypeInfo
-        case Annotation.skipCheck => new SkipCheck
-        case Annotation.neverOverflowInfo => new NeverOverflowInfo
-        case Annotation.enumCaseIndex => new EnumCaseIndex
-        case Annotation.virMethodOffset => new VirMethodOffset
-        case Annotation.wrappedRawMethod => new WrappedRawMethod
-        case Annotation.overrideSrcFuncType => new OverrideSrcFuncType
+  private def isZST(t: CHIR.Type): Boolean = t match {
+    case CHIR.BuiltinType.Void | CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => true
+    case t: CHIR.TupleType => t.fieldTypes.forall(isZST)
+    case t: CHIR.VArrayType => isZST(t.elementType)
+    case t: CHIR.StructType => t.typeDef.instanceVars.forall(i => isZST(i.tpe))
+    case t: CHIR.EnumType => enumKind(t.typeDef) == EnumKind.ZeroSized
+    case _ => false
+  }
+
+  @tailrec
+  private def isReferenceType(t: CHIR.Type): Boolean = t match {
+    case CHIR.BuiltinType.This => true
+    case _: (CHIR.BoxType | CHIR.RawArrayType | CHIR.ClassType) => true
+    case t: CHIR.RefType => isReferenceType(t.baseType)
+    case t: CHIR.EnumType =>
+      enumKind(t.typeDef) match {
+        case EnumKind.OptionLike(base) => isReferenceType(base)
+        case EnumKind.ClassBased => true
+        case _ => false
       }
-      annos.get(obj, i)
-    }
-  }
-
-  private def isZST(id: Long): Boolean = isZST(pkg.getType[Table](id))
-
-  private def isZST(t: Table): Boolean = t match {
-    case t: Type => t.kind match {
-      case CHIRTypeKind.VOID => true
-      case CHIRTypeKind.UNIT => true
-      case CHIRTypeKind.NOTHING => true
-      case CHIRTypeKind.TUPLE => t.argTysVector.iterator.forall(isZST)
-      case _ => false
-    }
-    case t: VArrayType => isZST(t.base.argTys(0))
-    case t: CustomType => t.base.kind match {
-      case CHIRTypeKind.CLASS => false
-      case CHIRTypeKind.STRUCT => pkg.getDef[StructDef](t.customTypeDef).base.instanceMemberVarsVector.iterator.forall(i => isZST(i.`type`))
-      case CHIRTypeKind.ENUM => enumKind(pkg.getDef[EnumDef](t.customTypeDef)) == EnumKind.ZeroSized
-    }
     case _ => false
   }
 
-  private def isReferenceType(id: Long): Boolean = isReferenceType(pkg.getType[Table](id))
-
-  private def isReferenceType(t: Table): Boolean = t match {
-    case t: Type => t.kind match {
-      case CHIRTypeKind.THIS => true
-      case CHIRTypeKind.REFTYPE => isReferenceType(t.argTys(0))
-      case CHIRTypeKind.BOXTYPE => true
-      case _ => false
-    }
-    case t: RawArrayType => true
-    case t: CustomType => t.base.kind match {
-      case CHIRTypeKind.CLASS => true
-      case CHIRTypeKind.STRUCT => false
-      case CHIRTypeKind.ENUM =>
-        enumKind(pkg.getDef[EnumDef](t.customTypeDef)) match {
-          case EnumKind.OptionLike(base) => isReferenceType(base)
-          case EnumKind.ClassBased => true
-          case _ => false
-        }
+  private def isTraceableStruct(t: CHIR.Type): Boolean = t match {
+    case t: CHIR.TupleType => t.fieldTypes.exists(p => isReferenceType(p) || isTraceableStruct(p))
+    case t: CHIR.VArrayType => isReferenceType(t.elementType) || isTraceableStruct(t.elementType)
+    case t: CHIR.StructType => t.typeDef.instanceVars.exists(i => isReferenceType(i.tpe) || isTraceableStruct(i.tpe))
+    case t: CHIR.EnumType => enumKind(t.typeDef) match {
+      case EnumKind.OptionLike(base) => isTraceableStruct(base)
       case _ => false
     }
     case _ => false
   }
 
-  private def isTraceableStruct(id: Long): Boolean = isTraceableStruct(pkg.getType[Table](id))
-
-  private def isTraceableStruct(t: Table): Boolean = t match {
-    case t: Type => t.kind match {
-      case CHIRTypeKind.TUPLE => t.argTysVector.iterator.exists(p => isReferenceType(p) || isTraceableStruct(p))
-      case _ => false
-    }
-    case t: VArrayType =>
-      val p = t.base.argTys(0)
-      isReferenceType(p) || isTraceableStruct(p)
-    case t: CustomType => t.base.kind match {
-      case CHIRTypeKind.CLASS => false
-      case CHIRTypeKind.STRUCT => pkg.getDef[StructDef](t.customTypeDef).base.instanceMemberVarsVector.iterator.exists(i => isReferenceType(i.`type`) || isTraceableStruct(i.`type`))
-      case CHIRTypeKind.ENUM =>
-        enumKind(pkg.getDef[EnumDef](t.customTypeDef)) match {
-          case EnumKind.OptionLike(base) => isTraceableStruct(base)
-          case _ => false
-        }
-    }
-    case _ => false
-  }
-
-  private val enumKindByEnumDef = mutable.HashMap.empty[EnumDef, EnumKind]
-  def enumKind(enumDef: EnumDef): EnumKind = enumKindByEnumDef.getOrElseUpdate(enumDef, {
-    val ctorSigs = enumDef.ctorsVector.toSeq.map(c => pkg.getType[FuncType](c.funcType))
-    val ctors = ctorSigs.map(_.base.argTysVector.toSeq.init)
+  private val enumKindByEnumDef = mutable.HashMap.empty[CHIR.EnumDef, EnumKind]
+  def enumKind(enumDef: CHIR.EnumDef): EnumKind = enumKindByEnumDef.getOrElseUpdate(enumDef, {
+    val ctorSigs = enumDef.ctors.map(_.tpe)
+    val ctors = ctorSigs.map(_.paramTypes)
     val noParams = ctors.forall(_.isEmpty)
 
     def zstParams = ctors.forall(_.forall(isZST))
@@ -426,7 +359,7 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
 
     lazy val optionLikeParam = ScalaCollections.singleton(ctors.flatten)
 
-    def nonGenericEnum = pkg.getType[CustomType](enumDef.base.`type`).base.argTysLength == 0
+    def nonGenericEnum = enumDef.tpe.genericTypeParams.isEmpty
 
     if (enumDef.nonExhaustive) {
       if (noParams) {
@@ -460,13 +393,9 @@ class CHIRResolver(implicit val pkg: ParsedCHIRPackage, private val env: Environ
     s"$name:$idx"
   }
 
-  def getOverrideSrcFuncType(f: Function): Option[OverrideSrcFuncType] = {
-    getOverrideSrcFuncType(f.base)
-  }
-
-  def getOverrideSrcFuncType(f: GlobalValue): Option[OverrideSrcFuncType] = {
-    annotations(f.base.base).collectFirst {
-      case a: OverrideSrcFuncType => a
+  def getOverrideSrcFuncType(f: CHIR.HasAnnotations): Option[CHIR.OverrideSrcFuncType] = {
+    f.annotations.collectFirst {
+      case a: CHIR.OverrideSrcFuncType => a
     }
   }
 }
