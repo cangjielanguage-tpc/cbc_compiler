@@ -31,6 +31,8 @@ trait CHIRItemProvider {
  */
 final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvider {
 
+  given provider: CHIRItemProvider = this
+
   private lazy val pkg: CHIRPackage = {
     // TODO: fix performance regression of XScala IO compared to JDK IO
     val bytes = java.nio.file.Files.readAllBytes(java.io.File(source).toPath)
@@ -56,7 +58,6 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case TypeElem.CustomType => new CustomType
           case TypeElem.GenericType => new GenericType
         }
-        given provider: CHIRItemProvider = this
         _types(i) = pkg.types(obj, i) match {
           case t: GenericType => GenericTypeImpl(t)
           case t: FuncType => FuncTypeImpl(t)
@@ -122,7 +123,6 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case ValueElem.Block => new Block
           case ValueElem.BlockGroup => new BlockGroup
         }
-        given provider: CHIRItemProvider = this
         _values(i) = pkg.values(obj, i) match {
           case v: BoolLiteral => BoolLiteralImpl(v)
           case v: RuneLiteral => RuneLiteralImpl(v)
@@ -181,7 +181,6 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           operandsVector.iterator.exists(getValue[CHIR.Block](_).nonEmpty)
         }
 
-        given provider: CHIRItemProvider = this
         _exprs(i) = pkg.exprs(obj, i) match {
           case e: AllocateBase if hasBlockOperand(e.base.operandsVector) => new TryAllocateImpl(e)
           case e: AllocateBase => new AllocateImpl(e)
@@ -246,7 +245,6 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case CustomTypeDefElem.ClassDef => new ClassDef
           case CustomTypeDefElem.ExtendDef => new ExtendDef
         }
-        given provider: CHIRItemProvider = this
         _customDefs(i) = pkg.defs(obj, i) match {
           case t: EnumDef => EnumDefImpl(t)
           case t: ClassDef => ClassDefImpl(t)
