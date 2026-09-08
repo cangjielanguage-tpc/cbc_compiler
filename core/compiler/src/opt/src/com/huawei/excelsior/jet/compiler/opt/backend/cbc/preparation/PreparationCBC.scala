@@ -128,21 +128,6 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
     }
   }
 
-  override def prepareCopyStructure(): Unit = {
-    if (!isStandalone) { return }
-
-    for {
-      cs <- all[CopyStructure]
-      arg <- Seq(cs.src, cs.dst)
-    } {
-      arg match {
-        case g: (GetStaticFieldSeqRef | GetFieldSeqRef) =>
-          Node.rematerializeConditionally(g, { _.target == cs }).foreach(_ => ())
-        case _ =>
-      }
-    }
-  }
-
   override def prepareRecordArrayGet(): Unit = {
     if (isStandalone) {
       for {
