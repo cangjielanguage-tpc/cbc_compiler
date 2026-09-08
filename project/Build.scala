@@ -146,27 +146,38 @@ object Build {
     )
 
   lazy val chirLib = (project in file("core/chir-lib"))
+    .dependsOn(commonJavaLib)
     .settings(flatbuffersSettings)
     .settings(commonSourceLayout)
     .settings(
-      Compile / managedSourceDirectories += file("core/chir-lib/generated/src"),
       Compile / sourceGenerators += Def.task {
-        val schema = file("core/chir-lib/PackageFormat.fbs")
-        val generated = file("core/chir-lib/generated/src")
+        val versionsDirs: Seq[File] = (file("core/chir-lib/schema") * DirectoryFilter).get()
+
         val cache = streams.value.cacheDirectory / "chir-lib-cache"
-        
-        val cached = FileFunction.cached(cache, FilesInfo.hash, FilesInfo.exists) { _ =>
-          val chirPackage = "com.huawei.excelsior.jet.compiler.chir"
-          IO.delete(generated)
-          Seq(env.flatc,
-            "--no-warnings", "--java",
-            "-o", generated.toString,
-            "--java-package-prefix", chirPackage,
-            schema.toString
+        val generatedRoot = (Compile / sourceManaged).value
+
+        versionsDirs.flatMap { versionDir =>
+          val schema = versionDir / "PackageFormat.fbs"
+          val version = versionDir.getName
+
+          val cached = FileFunction.cached(cache, FilesInfo.hash, FilesInfo.exists) { _ =>
+            val chirPackage = s"com.huawei.excelsior.jet.compiler.chir.$version"
+            val generated = generatedRoot / s"com/huawei/excelsior/jet/compiler/chir/$version"
+
+            IO.delete(generated / "PackageFormat")
+
+            Seq(env.flatc,
+              "--no-warnings", "--java",
+              "-o", generatedRoot.toString,
+              "--java-package-prefix", chirPackage,
+              schema.toString
             ).!!
-          showAllFiles(generated.toPath).toSet
+
+            showAllFiles(generated.toPath).toSet
+          }
+
+          cached(Set(schema)).toSeq
         }
-        cached(Set(schema)).toSeq
       }.taskValue,
     )
 

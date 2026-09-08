@@ -1,9 +1,9 @@
-package com.huawei.excelsior.jet.compiler.chir
+package com.huawei.excelsior.jet.compiler.chir.v100
 
 import com.huawei.excelsior.jet.compiler.chir.*
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{Binary, Intrinsic, Unary}
-import com.huawei.excelsior.jet.compiler.chir.CHIRUtils.{toSeq, toTypeSeq, toValueSeq}
-import com.huawei.excelsior.jet.compiler.chir.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.{toSeq, toTypeSeq, toValueSeq}
 
 class AllocateImpl(e: AllocateBase)(implicit provider: CHIRItemProvider) extends CHIR.Allocate {
   def allocatedType: CHIR.Type = provider.getType[CHIR.Type](e.allocatedType).get
