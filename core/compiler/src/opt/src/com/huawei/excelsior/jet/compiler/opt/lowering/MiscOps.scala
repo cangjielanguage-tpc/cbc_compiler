@@ -465,7 +465,7 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
       CopyStructure.primitive(refType)(maybeDerivedPtrBase(dst), dst, maybeDerivedPtrBase(src), src)
     } else {
       val temp = StackAlloc.Local(refType)
-      CopyStructure.primitive(refType)(DerivedPtr.Local(), temp, DerivedPtr.Local(), maybeDerivedPtrBase(src))
+      CopyStructure.primitive(refType)(DerivedPtr.Local(), temp,  maybeDerivedPtrBase(src), src)
       CopyStructure.primitive(refType)(maybeDerivedPtrBase(dst), dst, DerivedPtr.Local(), temp)
     }
   }
