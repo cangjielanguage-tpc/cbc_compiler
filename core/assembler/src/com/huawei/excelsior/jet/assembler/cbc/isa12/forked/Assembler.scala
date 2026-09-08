@@ -660,11 +660,7 @@ trait ForkedAssembler {
     }
   }
 
-  def scc(op: BranchOp, dst: IR, l: IR, r: IR, width: AsmWidth): Unit = instr {
-    analyzer.prim(dst);
-    analyzer.usePrim(l);
-    analyzer.usePrim(r)
-
+  private def sccCommon(op: BranchOp, dst: IR, l: Rg, r: Rg, width: AsmWidth): Unit = instr {
     val w = Width(width)
     val (cc, swap) = CondConversions.normalize(op)
     val (lhs, rhs) = if (!swap) (l, r) else (r, l)
@@ -675,6 +671,15 @@ trait ForkedAssembler {
       .bits(_.w4(cc).w4(dst))
       .bits(_.w4(lhs).w4(rhs))
   }
+
+  def scc(op: BranchOp, dst: IR, l: IR, r: IR, width: AsmWidth): Unit = {
+    analyzer.prim(dst);
+    analyzer.usePrim(l);
+    analyzer.usePrim(r)
+    sccCommon(op, dst, l, r, width)
+  }
+
+  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = sccCommon(op, dst, src1, src2, width)
 
   def scc(op: BranchOp, dst: IR, lhs: IR, _imm: Long, width: AsmWidth): Unit = instr {
     analyzer.trans(dst, lhs)
@@ -1040,8 +1045,6 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
   def arrFill(arr: IR, data: Array[Byte]): Unit = notImplemented("assembler arrFill")
 
   def loadConstDataAddr(dst: IR, data: Array[Byte], alignment: Int): Unit = shouldNotReachHere("aj strings")
-
-  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = notImplemented("assembler scc")
 
   def mulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("assembler mulh")
   def umulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("assembler umulh")
