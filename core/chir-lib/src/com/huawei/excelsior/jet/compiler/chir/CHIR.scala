@@ -387,6 +387,7 @@ object CHIR {
   object Intrinsic {
     enum Kind {
       case Abs
+      case Fabs
       case ArrayAcquireRawData
       case ArrayGetUnchecked
       case ArrayGetRefUnchecked

@@ -716,7 +716,7 @@ trait CangjieNodes { self: Universe =>
   object Abs {
     case class Proto private[Abs](keyType: Type)
       extends FixedArgs[Abs](ControlType, MemoryType, keyType)(keyType) with ControlMemoryValueTagged[Abs] {
-      require(keyType.isIntegralType)
+      require(keyType.isNumericType)
 
       def newInstance() = new Abs(this)
     }

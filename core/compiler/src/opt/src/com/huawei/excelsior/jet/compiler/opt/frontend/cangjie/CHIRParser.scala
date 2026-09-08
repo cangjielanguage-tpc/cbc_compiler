@@ -192,7 +192,8 @@ trait CHIRParser
       replaceByCode(n) {
         val arg = n.value
         val tpe = arg.tpe
-        val isNegative = If(Cmp(tpe, Condition.LT)(arg, IntegralConst(tpe)(0)))
+        val zero = if tpe.isFloatingPointType then FloatingPointConst(tpe)(0) else IntegralConst(tpe)(0)
+        val isNegative = If(Cmp(tpe, Condition.LT)(arg, zero))
         val b = BBlock(isNegative.trueExit, isNegative.falseExit)
         Phi(tpe)(b, Neg(tpe)(arg), arg)
       }
@@ -1510,7 +1511,7 @@ trait CHIRParser
                 state(e) = MathIntrinsic(kind)(x)
             }
 
-          case CHIR.Intrinsic.Kind.Abs =>
+          case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>
             e.args.map(state.apply) match {
               case Seq(x) =>
                 state(e) = Abs(x)
