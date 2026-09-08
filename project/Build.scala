@@ -150,10 +150,8 @@ object Build {
     .settings(flatbuffersSettings)
     .settings(commonSourceLayout)
     .settings(
-      Compile / sources := (Compile / sources).value.filterNot(_.getName.endsWith(".fbs")).distinct,
-
       Compile / sourceGenerators += Def.task {
-        val versionsDirs: Seq[File] = (file("core/chir-lib/src/com/huawei/excelsior/jet/compiler/chir") * DirectoryFilter).get()
+        val versionsDirs: Seq[File] = (file("core/chir-lib/schema") * DirectoryFilter).get()
 
         val cache = streams.value.cacheDirectory / "chir-lib-cache"
         val generatedRoot = (Compile / sourceManaged).value
