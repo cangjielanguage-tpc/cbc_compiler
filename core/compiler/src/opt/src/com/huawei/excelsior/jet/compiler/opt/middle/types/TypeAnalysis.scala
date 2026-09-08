@@ -393,7 +393,7 @@ trait TypeAnalysis extends OptExtraInfo with CallTargetInfos { self: Universe =>
 
     if (isStandalone) {
       // TODO: support proper root type in standalone mode
-      if (t.isCangjieArray || t.isInstanceOf[SignatureType.Box] || t.isTypeVariable || t.isInstanceOf[SignatureType.CangjieEnum]) {
+      if (t.isCangjieArray || t.isInstanceOf[SignatureType.Box] || t.isVariableSizeType || t.isInstanceOf[SignatureType.CangjieEnum]) {
         OpenCone(ReferenceType.cangjieStdCoreObject, mayBeNull)
       } else {
         OpenCone(ReferenceType(t), mayBeNull)
