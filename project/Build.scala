@@ -183,7 +183,6 @@ object Build {
       }.taskValue,
     )
 
-
   lazy val assembler = (project in file("core/assembler"))
     .dependsOn(xscalaVMDependent, commonJavaLib)
     .settings(commonSourceTestLayout, commonTestSettings)
