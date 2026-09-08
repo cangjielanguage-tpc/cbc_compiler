@@ -136,7 +136,7 @@ enum NumOption(range: Range,
   case Parallelism                              extends NumOption(1)
 
   case PrefetchLevel                            extends NumOption(1) // {1, 2, 3} -- cache level
-  
+
   case CHIRVersion                              extends NumOption(range(1, Integer.MAX_VALUE), CHIR.defaultVersion)
 
   def this(range: Range, defaultValue: Int)                     = this(range, defaultValue, null)
