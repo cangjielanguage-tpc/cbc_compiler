@@ -52,8 +52,6 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
     case _: WeakCast => COMPLEX
 
     case _: TauSwitch => COMPLEX
-    case n: InstanceOf if n.targetType.symKindErased.isClass => COMPLEX
-    case n: BitcodeDeferred.InstanceOf if n.targetType.symKindErased.isClass => COMPLEX
 
     case e: Evacuate => COMPLEX
 
@@ -83,23 +81,10 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
 
   override def decomposeNode(node: Node): Node = node match {
     case x: PutJavaFieldOperation => lowerPutFlatField(x); null
-    case x: InstanceOf => lowerClassInstanceOf(x)
-    case x: BitcodeDeferred.InstanceOf => lowerClassInstanceOf(x)
     case e: Evacuate => lowerEvacuate(e)
     case node @ IDivRemByConstOp(_) => lowerIntegralRem(node)
     case _ => super.decomposeNode(node)
   }
-
-  private def lowerClassInstanceOf(obj: Node, tpe: SignatureType): Node = {
-    assert(tpe.isClass, s"$tpe")
-    val nullExit = makeNullTest(obj)
-    val instanceOf = ControlledInstanceOf(tpe)(obj)
-    join(IConst(0) at nullExit, instanceOf at Goto())
-  }
-
-  private def lowerClassInstanceOf(x: BitcodeDeferred.InstanceOf): Node = lowerClassInstanceOf(x.obj, x.targetType)
-
-  private def lowerClassInstanceOf(x: InstanceOf): Node = lowerClassInstanceOf(x.obj, x.targetType)
 
   private def lowerPutFlatField(pf: PutJavaFieldOperation): Unit = {
     assert(pf.field.isAJFlat)
