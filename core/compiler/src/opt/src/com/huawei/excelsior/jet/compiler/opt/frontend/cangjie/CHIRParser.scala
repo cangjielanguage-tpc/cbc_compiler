@@ -1849,8 +1849,12 @@ trait CHIRParser
                   case args@Seq(IConst(c), _*) =>
                     assert(c >= 0, c)
                     val constrName = resolver.classBasedEnumConstructorName(resolver.symName(t), c)
-                    val constr = resolver.findClass(constrName).get
-                    state(e) = allocEnumObject(SignatureType.fromSymType(constr), args)
+                    val constr = if (enumType.params.isEmpty) {
+                      SignatureType.CangjieReference(constrName)
+                    } else {
+                      SignatureType.InstantiatedReference(constrName, enumType.params)
+                    }
+                    state(e) = allocEnumObject(constr, args)
                 }
 
               case enumType: UnionBasedEnum =>
