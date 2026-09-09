@@ -500,6 +500,10 @@ object pcOModule {
           }
         }
         addFEXT(CHIRVTableFEXT(vtable), chirVTable)
+      } else {
+        // Paranoid assertions for CHIRVTable inconsistencies in multi-pkg compilation
+        val prevVTable = getCHIRVTable.get
+        assert(prevVTable == vtable, s"New ${vtable} differs from old ${prevVTable}")
       }
     }
 
