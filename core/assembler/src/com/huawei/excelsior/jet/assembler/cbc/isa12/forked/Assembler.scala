@@ -247,6 +247,7 @@ trait ForkedAssembler {
   def fsub(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Sub, d, l, r)
   def fmul(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Mul, d, l, r)
   def fdiv(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Div, d, l, r)
+  def fpow(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Pow, d, l, r)
   def fneg(d: FR, s: FR, w: AsmWidth): Unit  = fneg(d, d, s, w)
   def fsqrt(d: FR, s: FR, w: AsmWidth): Unit = fsqrt(d, d, s, w)
   def fabs(d: FR, s: FR, w: AsmWidth): Unit  = fabs(d, d, s, w)
@@ -1283,6 +1284,7 @@ object Assembler {
     case Sqrt
     case I2f
     case F2i
+    case Pow
   }
 
   @nowarn("msg=match may not be exhaustive")

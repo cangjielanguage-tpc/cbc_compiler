@@ -71,10 +71,9 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
   override private [lowering] def procForMathIntrinsic(node: MathIntrinsic): Option[symlevel.Method] = {
     import Java.Lang.MathIntrinsic.*
     node.kind match {
-      case D_SQRT => None
-      case F_SQRT => None
-      case D_ABS => None
-      case F_ABS => None
+      case D_SQRT | F_SQRT => None
+      case D_ABS | F_ABS => None
+      case D_POW | F_POW => None
       case _ => super.procForMathIntrinsic(node)
     }
   }

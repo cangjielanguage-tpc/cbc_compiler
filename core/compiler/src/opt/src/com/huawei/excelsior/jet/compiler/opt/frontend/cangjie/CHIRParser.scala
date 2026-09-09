@@ -1511,6 +1511,13 @@ trait CHIRParser
                 state(e) = MathIntrinsic(kind)(x)
             }
 
+          case CHIR.Intrinsic.Kind.Pow =>
+            e.args.map(state.apply) match {
+              case Seq(x, y) =>
+                val kind = if (x.tpe == DoubleType) Java.Lang.MathIntrinsic.D_POW else Java.Lang.MathIntrinsic.F_POW
+                state(e) = MathIntrinsic(kind)(x, y)
+            }
+
           case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>
             e.args.map(state.apply) match {
               case Seq(x) =>

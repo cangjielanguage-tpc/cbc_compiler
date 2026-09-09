@@ -117,6 +117,7 @@ class IntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) exten
     case IntrinsicKind.CPOINTER_WRITE => Intrinsic.Kind.CPointerWrite
     case IntrinsicKind.OBJECT_ZERO_VALUE => Intrinsic.Kind.ObjectZeroValue
     case IntrinsicKind.SQRT => Intrinsic.Kind.Sqrt
+    case IntrinsicKind.POW => Intrinsic.Kind.Pow
   }
   def args: Seq[CHIR.Value] = operands
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get

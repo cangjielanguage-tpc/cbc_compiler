@@ -412,6 +412,7 @@ object CHIR {
       case CPointerWrite
       case ObjectZeroValue
       case Sqrt
+      case Pow
     }
   }
 
