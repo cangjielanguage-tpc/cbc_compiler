@@ -48,6 +48,10 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
       // IDivRemOp is a controlled node but it is applicable to const fold except division by zero
       isCompileTimeComputable(node)
 
+    case _: Pow =>
+      // TODO: support me
+      false
+
     case _: HasInMemory | _: HasInControl =>
       // Node has control or memory argument
       false
