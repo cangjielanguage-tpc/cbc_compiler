@@ -203,8 +203,8 @@ trait CHIRParser
       replaceByCode(n) {
         val arrayType = n.arrayType
         val idxTpe = n.srcStart.tpe
-        
-        // TODO: is not true if stdlib is compiled to CBC 
+
+        // TODO: is not true if stdlib is compiled to CBC
         assert(!arrayType.getArrayElemType.isTypeVariable)
 
         val entryGoto = Goto()
@@ -340,7 +340,7 @@ trait CHIRParser
 
       bv.terminator match {
         case t: CHIR.Goto => goto(t)
-        case _: CHIR.Exit => exit()
+        case CHIR.Exit => exit()
         case t: CHIR.RaiseException => throwOp(t)
         case t: (CHIR.TryApply |
           CHIR.TryInvoke |
@@ -620,17 +620,6 @@ trait CHIRParser
       val chirParamStart = method.getMethodType.startSpecialParamsCount
       for ((p, i) <- args.zipWithIndex) {
         state(p) = rootMethodParam(i + chirParamStart)
-      }
-
-      if (env.enabled(PackageInitFromMain) && method.isMain) {
-        for (func <- Seq(pkg.packageInitLiteralFunc, pkg.packageInitFunc)) {
-          val refType = resolver.findClass(func.packageName).get
-
-          val name = resolver.symName(func)
-          val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, func)
-
-          callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
-        }
       }
     }
 
@@ -1623,7 +1612,7 @@ trait CHIRParser
             case CHIR.BuiltinType.Float32 => FConst(v.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.toDouble)
             case CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => IntegralConst(AddrType)(v)
-            case t: CHIR.CustomType => IntegralConst(AddrType)(v)
+            case _: CHIR.CustomType => IntegralConst(AddrType)(v)
           }
         }
         val value = e.literal match {
@@ -1760,7 +1749,7 @@ trait CHIRParser
       case _: CHIR.Goto =>
         assert(block.blockEnd.isInstanceOf[Goto])
 
-      case _: CHIR.Exit =>
+      case CHIR.Exit =>
         val retType = rootMethod.getReturnType
         val retVal = if (retType.isZST) {
           Void()
@@ -1811,6 +1800,7 @@ trait CHIRParser
         val ret = block.blockEnd.asInstanceOf[Return]
         val proxy = ret.inValue
         assert(proxy.isInstanceOf[Proxy] && proxy.singleUse == ret)
+        println(retVal)
         proxy.replaceBy(retVal)
 
       case e: CHIR.RaiseException =>

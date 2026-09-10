@@ -16,6 +16,7 @@ import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.*
 
 import java.nio.ByteBuffer
 import scala.reflect.ClassTag
+import scala.collection.mutable
 
 trait CHIRItemProvider {
   def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T]
@@ -41,7 +42,9 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
     CHIRPackage.getRootAsCHIRPackage(buf)
   }
   private val _types = Array.fill[CHIR.Type](pkg.typesLength)(null)
+  private val _customTypes = mutable.HashMap.empty[String, CHIR.CustomType]
   private val _values = Array.fill[CHIR.Value](pkg.valuesLength)(null)
+  private val _funcs = mutable.HashMap.empty[String, CHIR.Func]
   private val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
   private val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
 
@@ -64,11 +67,14 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case t: FuncType => FuncTypeImpl(t)
           case t: RawArrayType => RawArrayTypeImpl(t)
           case t: VArrayType => VArrayTypeImpl(t)
-          case t: CustomType => t.base.kind match {
-            case CHIRTypeKind.CLASS => ClassTypeImpl(t)
-            case CHIRTypeKind.STRUCT => StructTypeImpl(t)
-            case CHIRTypeKind.ENUM => EnumTypeImpl(t)
-          }
+          case t: CustomType =>
+            val tpe = t.base.kind match {
+              case CHIRTypeKind.CLASS => ClassTypeImpl(t)
+              case CHIRTypeKind.STRUCT => StructTypeImpl(t)
+              case CHIRTypeKind.ENUM => EnumTypeImpl(t)
+            }
+            _customTypes.put(tpe.typeDef.identifier, tpe)
+            tpe
           case t: Type => t.kind match {
             case CHIRTypeKind.INT8 => CHIR.BuiltinType.Int8
             case CHIRTypeKind.INT16 => CHIR.BuiltinType.Int16
@@ -135,7 +141,10 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case v: Parameter => ParameterImpl(v)
           case v: LocalVar => LocalVarImpl(v)
           case v: GlobalVar => GlobalVarImpl(v, id)
-          case v: Function => FuncImpl(v, id)
+          case v: Function =>
+            val f = FuncImpl(v, id)
+            _funcs.put(f.identifier, f)
+            f
           case v: Block => BlockImpl(v)
           case v: BlockGroup => BlockGroupImpl(v)
         }
@@ -211,7 +220,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case e: UnaryExpressionBase => new UnaryImpl(e)
           case e: Expression => e.kind match {
             case CHIRExprKind.Goto => new GotoImpl(e)
-            case CHIRExprKind.Exit => new ExitImpl(e)
+            case CHIRExprKind.Exit => CHIR.Exit
             case CHIRExprKind.RaiseException => new RaiseExceptionImpl(e)
             case CHIRExprKind.StaticCast => new StaticCastImpl(e)
             case CHIRExprKind.Box => new BoxImpl(e)
@@ -260,7 +269,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   }
 
   def typeDefs: Iterator[CHIR.CustomTypeDef] = {
-    (1 to pkg.defsLength()).iterator.map { id =>
+    (1 to pkg.defsLength).iterator.map { id =>
       getDef[CHIR.CustomTypeDef](id).get
     }
   }
@@ -272,13 +281,36 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   def packageInitLiteralFunc: CHIR.Func = getValue[CHIR.Func](pkg.packageLiteralInitFunc).get
 
   def values: Iterator[CHIR.Value] = {
-    (1 to pkg.valuesLength()).iterator.map { id =>
+    (1 to pkg.valuesLength).iterator.map { id =>
       getValue[CHIR.Value](id).get
     }
   }
 
+  def types: Iterator[CHIR.Type] = {
+    (1 to pkg.typesLength).iterator.map { id =>
+      getType[CHIR.Type](id).get
+    }
+  } 
+  
   def function(idx: Int): CHIR.Func = {
     getValue[CHIR.Func](idx).get
   }
-}
 
+  def getCustomType(identifier: String): Option[CHIR.CustomType] = {
+    val id = "@" + identifier
+    _customTypes.get(id).orElse {
+      types collectFirst {
+        case t: CHIR.CustomType if t.typeDef.identifier == id => t
+      }
+    }
+  }
+
+  def getFunc(identifier: String): Option[CHIR.Func] = {
+    val id = "@" + identifier
+    _funcs.get(id).orElse {
+      values collectFirst {
+        case t: CHIR.Func if t.identifier == id => t
+      }
+    }
+  }
+}
