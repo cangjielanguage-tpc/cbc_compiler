@@ -192,7 +192,8 @@ trait CHIRParser
       replaceByCode(n) {
         val arg = n.value
         val tpe = arg.tpe
-        val isNegative = If(Cmp(tpe, Condition.LT)(arg, IntegralConst(tpe)(0)))
+        val zero = if tpe.isFloatingPointType then FloatingPointConst(tpe)(0) else IntegralConst(tpe)(0)
+        val isNegative = If(Cmp(tpe, Condition.LT)(arg, zero))
         val b = BBlock(isNegative.trueExit, isNegative.falseExit)
         Phi(tpe)(b, Neg(tpe)(arg), arg)
       }
@@ -832,7 +833,6 @@ trait CHIRParser
                 }
                 if (env.enabled(FailSaturatingArithmetic)) {
                   notImplemented("Saturating arithmetic")
-                  //RTSCall(proc)(lraw, rraw)
                 }
                 IntegralConst(tpe)(123456789)
             }
@@ -1275,19 +1275,10 @@ trait CHIRParser
           case (from: Integral, to: FloatingPoint) =>
             val fpToAsm = if (toAsm == F16) F32 else toAsm
             val res = fromAsm match {
-              case U64 =>
-                val proc = fpToAsm match {
-                  case F32 => RTSProc.JR_ul2f
-                  case F64 => RTSProc.JR_ul2d
-                  case _ => shouldNotReachHere(toAsm)
-                }
-                RTSCall(proc)(value)
-
               case U32 =>
                 // Non-long values could be zero-extended to bigger signed type and then converted to float.
                 val i64 = BFX(LongType, 0, from.bits, signExtension = false, value)
                 ValueConvert(I64, fpToAsm)(i64)
-
               case _ =>
                 val (adjFromAsm, adjValue) = if (fromAsm.isShortIntegral) {
                   (I32, BFX(IntType, 0, fromAsm.sizeInBits, signExtension = fromAsm.signed, value))
@@ -1307,19 +1298,10 @@ trait CHIRParser
             }
 
             toAsm match {
-              case U64 =>
-                val proc = fpFromAsm match {
-                  case F32 => RTSProc.JR_f2ul
-                  case F64 => RTSProc.JR_d2ul
-                  case _ => shouldNotReachHere(fromAsm)
-                }
-                RTSCall(proc)(fpValue)
-
               case U32 =>
                 // Value could be converted to bigger signed type and then zero-extended to target type.
                 val i64 = ValueConvert(fpFromAsm, I64)(fpValue)
                 BitFieldExtract.Truncate(i64)
-
               case _ =>
                 val adjToAsm = if (toAsm.isShortIntegral) I32 else toAsm
                 ValueConvert(fpFromAsm, adjToAsm)(fpValue)
@@ -1529,7 +1511,14 @@ trait CHIRParser
                 state(e) = MathIntrinsic(kind)(x)
             }
 
-          case CHIR.Intrinsic.Kind.Abs =>
+          case CHIR.Intrinsic.Kind.Pow =>
+            e.args.map(state.apply) match {
+              case Seq(x, y) =>
+                val kind = if (x.tpe == DoubleType) Java.Lang.MathIntrinsic.D_POW else Java.Lang.MathIntrinsic.F_POW
+                state(e) = MathIntrinsic(kind)(x, y)
+            }
+
+          case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>
             e.args.map(state.apply) match {
               case Seq(x) =>
                 state(e) = Abs(x)

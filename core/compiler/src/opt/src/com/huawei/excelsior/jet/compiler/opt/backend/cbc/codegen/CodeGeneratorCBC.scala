@@ -509,9 +509,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     private def genMathIntrinsic(x: MathIntrinsic): Unit = {
       import Java.Lang.MathIntrinsic.*
       val width = widthOf(x)
-      (x.kind, x, x.arg) match {
-        case (F_ABS | D_ABS,   FReg(dst), FReg(src)) => asm.fabs(dst, src, width)
-        case (F_SQRT | D_SQRT, FReg(dst), FReg(src)) => asm.fsqrt(dst, src, width)
+      (x.kind, x, x.argsSeq) match {
+        case (F_ABS | D_ABS,   FReg(dst), Seq(FReg(src))) => asm.fabs(dst, src, width)
+        case (F_SQRT | D_SQRT, FReg(dst), Seq(FReg(src))) => asm.fsqrt(dst, src, width)
+        case (F_POW | D_POW,   FReg(dst), Seq(FReg(l), FReg(r))) => asm.fpow(width, dst, l, r)
       }
     }
 

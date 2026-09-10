@@ -840,6 +840,7 @@ trait RTStructs { this: CompilerEnvironment =>
         case F_ABS extends MathIntrinsic(RTSProc.JR_fabs)
         case D_ATAN2 extends MathIntrinsic(RTSProc.JR_atan2)
         case D_POW extends MathIntrinsic(RTSProc.JR_pow)
+        case F_POW extends MathIntrinsic(RTSProc.JR_pow)
         case D_REM1 extends MathIntrinsic(RTSProc.JR_rem1)
         case D_REM extends MathIntrinsic(RTSProc.JR_drem)
         case F_REM extends MathIntrinsic(RTSProc.JR_frem)

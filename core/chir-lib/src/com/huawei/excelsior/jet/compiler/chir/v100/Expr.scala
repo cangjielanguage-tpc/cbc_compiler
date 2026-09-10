@@ -92,6 +92,7 @@ class IntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) exten
 
   def kind: Intrinsic.Kind = e.intrinsicKind match {
     case IntrinsicKind.ABS => Intrinsic.Kind.Abs
+    case IntrinsicKind.FABS => Intrinsic.Kind.Fabs
     case IntrinsicKind.ARRAY_ACQUIRE_RAW_DATA => Intrinsic.Kind.ArrayAcquireRawData
     case IntrinsicKind.ARRAY_BUILT_IN_COPY_TO => Intrinsic.Kind.ArrayBuiltinCopyTo
     case IntrinsicKind.ARRAY_GET_UNCHECKED => Intrinsic.Kind.ArrayGetUnchecked
@@ -116,6 +117,7 @@ class IntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) exten
     case IntrinsicKind.CPOINTER_WRITE => Intrinsic.Kind.CPointerWrite
     case IntrinsicKind.OBJECT_ZERO_VALUE => Intrinsic.Kind.ObjectZeroValue
     case IntrinsicKind.SQRT => Intrinsic.Kind.Sqrt
+    case IntrinsicKind.POW => Intrinsic.Kind.Pow
   }
   def args: Seq[CHIR.Value] = operands
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get

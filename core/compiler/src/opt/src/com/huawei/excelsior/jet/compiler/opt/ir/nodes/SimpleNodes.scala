@@ -1238,6 +1238,11 @@ trait SimpleNodes { self: Universe with Nodes =>
   }
 
   object FloatingPointConst {
+    def apply(tpe: Type)(v: Double): Node = tpe match {
+      case DoubleType => DConst(v)
+      case FloatType => FConst(v.toFloat)
+    }
+
     def unapply(x: FConst | DConst): Option[Double] = x match {
       case FConst(x) => Some(x)
       case DConst(x) => Some(x)

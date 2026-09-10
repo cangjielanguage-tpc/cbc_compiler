@@ -394,6 +394,7 @@ object CHIR {
   object Intrinsic {
     enum Kind {
       case Abs
+      case Fabs
       case ArrayAcquireRawData
       case ArrayGetUnchecked
       case ArrayGetRefUnchecked
@@ -418,6 +419,7 @@ object CHIR {
       case CPointerWrite
       case ObjectZeroValue
       case Sqrt
+      case Pow
     }
   }
 

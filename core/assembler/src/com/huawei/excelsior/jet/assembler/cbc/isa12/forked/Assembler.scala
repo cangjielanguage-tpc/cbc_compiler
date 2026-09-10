@@ -247,6 +247,7 @@ trait ForkedAssembler {
   def fsub(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Sub, d, l, r)
   def fmul(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Mul, d, l, r)
   def fdiv(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Div, d, l, r)
+  def fpow(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Pow, d, l, r)
   def fneg(d: FR, s: FR, w: AsmWidth): Unit  = fneg(d, d, s, w)
   def fsqrt(d: FR, s: FR, w: AsmWidth): Unit = fsqrt(d, d, s, w)
   def fabs(d: FR, s: FR, w: AsmWidth): Unit  = fabs(d, d, s, w)
@@ -659,11 +660,7 @@ trait ForkedAssembler {
     }
   }
 
-  def scc(op: BranchOp, dst: IR, l: IR, r: IR, width: AsmWidth): Unit = instr {
-    analyzer.prim(dst);
-    analyzer.usePrim(l);
-    analyzer.usePrim(r)
-
+  private def sccCommon(op: BranchOp, dst: IR, l: Rg, r: Rg, width: AsmWidth): Unit = instr {
     val w = Width(width)
     val (cc, swap) = CondConversions.normalize(op)
     val (lhs, rhs) = if (!swap) (l, r) else (r, l)
@@ -674,6 +671,15 @@ trait ForkedAssembler {
       .bits(_.w4(cc).w4(dst))
       .bits(_.w4(lhs).w4(rhs))
   }
+
+  def scc(op: BranchOp, dst: IR, l: IR, r: IR, width: AsmWidth): Unit = {
+    analyzer.prim(dst);
+    analyzer.usePrim(l);
+    analyzer.usePrim(r)
+    sccCommon(op, dst, l, r, width)
+  }
+
+  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = sccCommon(op, dst, src1, src2, width)
 
   def scc(op: BranchOp, dst: IR, lhs: IR, _imm: Long, width: AsmWidth): Unit = instr {
     analyzer.trans(dst, lhs)
@@ -1040,8 +1046,6 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
 
   def loadConstDataAddr(dst: IR, data: Array[Byte], alignment: Int): Unit = shouldNotReachHere("aj strings")
 
-  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = notImplemented("assembler scc")
-
   def mulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("assembler mulh")
   def umulh(w: AsmWidth, d: IR, l: IR, r: IR): Unit = notImplemented("assembler umulh")
   def mulhi(w: AsmWidth, d: IR, l: IR, imm: Long): Unit = notImplemented("assembler mulhi")
@@ -1279,6 +1283,7 @@ object Assembler {
     case Sqrt
     case I2f
     case F2i
+    case Pow
   }
 
   @nowarn("msg=match may not be exhaustive")
