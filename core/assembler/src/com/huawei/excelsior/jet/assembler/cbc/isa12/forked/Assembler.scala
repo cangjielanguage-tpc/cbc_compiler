@@ -1120,9 +1120,6 @@ object Assembler {
     case FMov64i
     case MovBP
     case BFX
-    case LoadTyped
-    case StoreTyped
-    case StoreTypedImm
     case Add32
     case Sub32
     case Mul32
@@ -1168,17 +1165,8 @@ object Assembler {
     case ArrayIndexCheck
     case Float32
     case Float64
-    case LoadStatic
-    case StoreStatic
-    case LoadField
-    case StoreField
     case LoadStackRec
     case Nop
-    case MemHeadReg
-    case MemHeadField
-    case MemHeadStatic
-    case MemHeadHandle
-    case MemHeadTyped
     case LoadUntyped
     case StoreUntyped
     case StoreUntypedImm
@@ -1236,26 +1224,6 @@ object Assembler {
     case LoadTailParam
     case Copy
     case Index
-  }
-
-  enum MemOpcode extends Ordinal {
-    case Field1
-    case Field2
-    case Field3
-    case Field4
-    case Index
-    case Load
-    case Store
-    case StoreImm
-    case CopyRegTo
-    case CopyRegFrom
-    case ConstIndex
-    case FieldGeneric
-    case ConstIndexGeneric
-    case IndexGeneric
-    case LoadGeneric
-    case StoreGeneric
-    case Offset
   }
 
   enum RegSymGroup extends Ordinal {

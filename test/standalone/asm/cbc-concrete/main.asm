@@ -46,15 +46,15 @@
       movi.64 IR1, 33
       movi.64 IR2, 9
 
-      st.ref.field IR11, IR12, #foo_obj.x
-      st.ref.field IR12, IR12, #foo_obj.y
-      st.ref.field IR1, IR11, #foo_byte.x
-      st.ref.field IR2, IR11, #foo_byte.y
+      st.field IR11, IR12, #foo_obj.x
+      st.field IR12, IR12, #foo_obj.y
+      st.field IR1, IR11, #foo_byte.x
+      st.field IR2, IR11, #foo_byte.y
 
-      ld.ref.field IR12, IR12, #foo_obj.y
-      ld.ref.field IR4, IR12, #foo_obj.x
-      ld.ref.field IR5, IR4, #foo_byte.y
-      ld.ref.field IR4, IR4, #foo_byte.x
+      ld.field IR12, IR12, #foo_obj.y
+      ld.field IR4, IR12, #foo_obj.x
+      ld.field IR5, IR4, #foo_byte.y
+      ld.field IR4, IR4, #foo_byte.x
 
       @dead IR1
       add.64 IR1, IR5, IR4

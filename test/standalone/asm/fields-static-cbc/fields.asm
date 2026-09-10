@@ -33,9 +33,9 @@
     @code
       newobj aot:Point@aref
       movi.64 IR2, 123
-      st.ref.field IR2, IR1, #xPointRef
+      st.field IR2, IR1, #xPointRef
       movi.64 IR3, 321
-      st.ref.field IR3, IR1, #yPointRef
+      st.field IR3, IR1, #yPointRef
       st.static IR1, #refFieldRef
       @dead IR1 IR2 IR3
 

@@ -44,9 +44,9 @@
 
       type.arg IR4, 0, IR3
 
-      ms.hd.obj IR1
-        ms.field.g #foo.field, IR3
-        ms.st.g IR2, IR4
+      lea.g IR9, IR1, IR3, #foo.field
+      st.g IR2, IR1, IR9, IR4
+      @dead IR9
 
       @dead IR1, IR2, IR3, IR4
       movi.64 IR1, 0
@@ -77,8 +77,8 @@
       call.direct IR1, #invoke
       @dead IR1, IR2, IR3
 
-      ld.ref.field IR2, IR12, #foo.fieldi64
-      ld.ref.field IR3, IR11, #foo.fieldref
+      ld.field IR2, IR12, #foo.fieldi64
+      ld.field IR3, IR11, #foo.fieldref
 
       movi.64 IR1, 0
       bcci.64 NE, IR2, 42, fail
@@ -89,9 +89,9 @@
       load.type.info IR3, default:Generic[I64]@ref
       load.type.info IR4, I64
       ; load directly boxed value
-      ms.hd.obj IR12
-        ms.field.g #foo.field, IR3
-        ms.ld.g IR2, IR4
+      lea.g IR9, IR12, IR3, #foo.field
+      ld.g IR2, IR12, IR9, IR4
+      @dead IR9
 
       unbox IR2, IR2, I64
 
@@ -101,9 +101,9 @@
       load.type.info IR3, default:Generic[std.core:Object@aref]@ref
       load.type.info IR4, std.core:Object@aref
       ; load directly reference value
-      ms.hd.obj IR11
-        ms.field.g #foo.field, IR3
-        ms.ld.g IR2, IR4
+      lea.g IR9, IR11, IR3, #foo.field
+      ld.g IR2, IR11, IR9, IR4
+      @dead IR9
 
       bcc.64 RNE, IR2, IR12, fail
       @dead IR2, IR3, IR4
@@ -114,9 +114,7 @@
       offset IR5, #foo.field, IR3
 
       ; load directly boxed value
-      ms.hd.obj IR12
-        ms.offset IR5
-        ms.ld.g IR2, IR4
+      ld.g IR2, IR12, IR5, IR4
 
       unbox IR2, IR2, I64
 

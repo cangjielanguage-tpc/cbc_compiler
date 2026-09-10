@@ -4,6 +4,9 @@
 
 @aot_deps "cangjie-std-core"
 
+@field_ref index_ref_0 = [I64, I32] 0 I64
+@field_ref index_ref_1 = [I64, I32] 1 I32
+
 @type std.core:Object
   @flags PUBLIC AOT
 @end
@@ -34,31 +37,17 @@
       movi.64 IR2, -2
       movi.64 IR3, 1
 
-      ms.hd.typed $0
-        ms.const.idx 0, [I64, I32]
-        ms.st IR3
+      st.typed IR3, $0, #index_ref_0
 
-      ms.hd.typed $1
-        ms.const.idx 1, [I64, I32]
-        ms.st IR2
+      st.typed IR2, $1, #index_ref_1
 
-      ms.hd.obj IR1
-        ms.field #zfr
-        ms.const.idx 1, [I64, I32]
-        ms.st IR2
+      st.field IR2, IR1, #zfr, #index_ref_1
 
-      ms.hd.typed $0
-        ms.const.idx 0, [I64, I32]
-        ms.ld IR4
+      ld.typed IR4, $0, #index_ref_0
 
-      ms.hd.typed $1
-        ms.const.idx 1, [I64, I32]
-        ms.ld IR5
+      ld.typed IR5, $1, #index_ref_1
 
-      ms.hd.obj IR1
-        ms.field #zfr
-        ms.const.idx 1, [I64, I32]
-        ms.ld IR6
+      ld.field IR6, IR1, #zfr, #index_ref_1
 
       @dead IR1
       add.32 IR1, IR4, IR5

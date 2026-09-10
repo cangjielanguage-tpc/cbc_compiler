@@ -41,8 +41,8 @@
       @dead IR1, IR2, IR3, IR7, IR8
       @live.ref IR1
 
-      ld.ref.field IR2, IR1, #foo.x
-      ld.ref.field IR3, IR1, #foo.y
+      ld.field IR2, IR1, #foo.x
+      ld.field IR3, IR1, #foo.y
       @dead IR1
 
       movi.64 IR1, 0

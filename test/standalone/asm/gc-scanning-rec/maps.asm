@@ -39,8 +39,8 @@
       movi.64 IR2, 123
       movi.64 IR3, 321
       newobj aot:TestClass@aref
-      st.ref.field IR2, IR1, #x_field
-      st.ref.field IR3, IR1, #y_field
+      st.field IR2, IR1, #x_field
+      st.field IR3, IR1, #y_field
       @dead IR2 IR3
       ret.ref IR1
     @end
@@ -53,17 +53,17 @@
       zero.refs $0
 
       movi.64 IR2, 0xABAB
-      st.tslot IR2, $0, #p1_field
+      st.typed IR2, $0, #p1_field
 
       call.direct IR1, #default.newObj
       @live.ref IR1
-      st.tslot IR1, $0, #r1_field
+      st.typed IR1, $0, #r1_field
 
       @dead IR1 IR2
 
       gcpoint
 
-      ld.tslot IR1, $0, #r1_field
+      ld.typed IR1, $0, #r1_field
       call.direct IR1, #check
       @dead IR1
 
@@ -81,29 +81,29 @@
 
       call.direct IR1, #default.newObj
       @live.ref IR1
-      st.tslot IR1, $0, #r1_field
+      st.typed IR1, $0, #r1_field
 
       movi.64 IR2, 0xABAB
-      st.tslot IR2, $0, #p1_field
+      st.typed IR2, $0, #p1_field
 
       @dead IR1 IR2
 
       call.direct IR1, #default.newObj
       @live.ref IR1
-      st.tslot IR1, $1, #r1_field
+      st.typed IR1, $1, #r1_field
 
       movi.64 IR2, 0xBABA
-      st.tslot IR2, $1, #p1_field
+      st.typed IR2, $1, #p1_field
 
       @dead IR1 IR2
 
       call.direct IR1, #default.baz
 
-      ld.tslot IR1, $0, #r1_field
+      ld.typed IR1, $0, #r1_field
       call.direct IR1, #check
       @dead IR1
 
-      ld.tslot IR1, $1, #r1_field
+      ld.typed IR1, $1, #r1_field
       call.direct IR1, #check
       @dead IR1
 
@@ -121,29 +121,29 @@
 
       call.direct IR1, #default.newObj
       @live.ref IR1
-      st.tslot IR1, $0, #r1_field
+      st.typed IR1, $0, #r1_field
 
       movi.64 IR2, 0xBEBE
-      st.tslot IR2, $0, #p1_field
+      st.typed IR2, $0, #p1_field
 
       @dead IR1 IR2
 
       call.direct IR1, #default.newObj
       @live.ref IR1
-      st.tslot IR1, $1, #r1_field
+      st.typed IR1, $1, #r1_field
 
       movi.64 IR2, 0xB1B1
-      st.tslot IR2, $1, #p1_field
+      st.typed IR2, $1, #p1_field
 
       @dead IR1 IR2
 
       call.direct IR1, #default.bar
 
-      ld.tslot IR1, $0, #r1_field
+      ld.typed IR1, $0, #r1_field
       call.direct IR1, #check
       @dead IR1
 
-      ld.tslot IR1, $1, #r1_field
+      ld.typed IR1, $1, #r1_field
       call.direct IR1, #check
       @dead IR1
 

@@ -171,7 +171,7 @@
 
             movi.64 IR2, 42
             newobj aot:Basic@aref
-            st.ref.field IR2, IR1, #Basic_x
+            st.field IR2, IR1, #Basic_x
             st.static IR1, #basic_ref
             @dead IR1, IR2
 
@@ -189,57 +189,49 @@
             ; Filling level 4 container
 
             ; memexpr {
-            ms.hd.obj IR1
-            ms.field #L4C_f1
-            ms.st.imm 4
+            movi.64 IR9, 4
+            st.field IR9, IR1, #L4C_f1
+            @dead IR9
             ; }
 
             ; memexpr {
-            ms.hd.obj IR1
-            ms.field #L4C_f2
-            ms.st IR2
+            st.field IR2, IR1, #L4C_f2
             ; }
 
             ; Filling level 4
 
             ; memexpr {
-            ms.hd.obj IR1
-            ms.fseq #L4C_f3, #L4_f1
-            ms.st.imm 4
+            movi.64 IR9, 4
+            st.field IR9, IR1, #L4C_f3, #L4_f1
+            @dead IR9
             ; }
 
             ; memexpr {
-            ms.hd.obj IR1
-            ms.fseq #L4C_f3, #L4_f2
-            ms.st IR2
+            st.field IR2, IR1, #L4C_f3, #L4_f2
             ; }
 
             ; Filling level 2
 
             ; memexpr {
-            ms.hd.obj IR1
-            ms.fseq #L4C_f3, #L4_f3, #L3_f1, #L2a_f1
-            ms.st IR3
+            st.field IR3, IR1, #L4C_f3, #L4_f3, #L3_f1, #L2a_f1
             ; }
 
             ; memexpr {
-            ms.hd.obj IR1
-            ms.fseq #L4C_f3, #L4_f3, #L3_f2, #L2b_f1
-            ms.st.imm 2
+            movi.64 IR9, 2
+            st.field IR9, IR1, #L4C_f3, #L4_f3, #L3_f2, #L2b_f1
+            @dead IR9
             ; }
 
             ; Filling level 1
 
             ; memexpr {
-            ms.hd.obj IR1
-            ms.fseq #L4C_f3, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
-            ms.st.imm 1
+            movi.64 IR9, 1
+            st.field IR9, IR1, #L4C_f3, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
+            @dead IR9
             ; }
 
             ; memexpr {
-            ms.hd.obj IR1
-            ms.fseq #L4C_f3, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
-            ms.st IR3
+            st.field IR3, IR1, #L4C_f3, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
             ; }
 
             @dead IR1, IR2, IR3
@@ -255,18 +247,14 @@
             ; Reading level 4 container
 
             ; memexpr {
-            ms.hd.obj IR8
-            ms.field #L4C_f1
-            ms.ld IR1
+            ld.field IR1, IR8, #L4C_f1
             ; }
             movi.64 IR2, 4
             call.direct IR1, #aot.checkPrim
             @dead IR1, IR2
 
             ; memexpr {
-            ms.hd.obj IR8
-            ms.field #L4C_f2
-            ms.ld IR1
+            ld.field IR1, IR8, #L4C_f2
             ; }
             movi.64 IR2, 42
             call.direct IR1, #aot.checkPrim
@@ -275,18 +263,14 @@
             ; Reading level 4
 
             ; memexpr {
-            ms.hd.obj IR8
-            ms.fseq #L4C_f3, #L4_f1
-            ms.ld IR1
+            ld.field IR1, IR8, #L4C_f3, #L4_f1
             ; }
             movi.64 IR2, 4
             call.direct IR1, #aot.checkPrim
             @dead IR1, IR2
 
             ; memexpr {
-            ms.hd.obj IR8
-            ms.fseq #L4C_f3, #L4_f2
-            ms.ld IR1
+            ld.field IR1, IR8, #L4C_f3, #L4_f2
             ; }
             movi.64 IR2, 42
             call.direct IR1, #aot.checkPrim
@@ -295,17 +279,13 @@
             ; Reading level 2
 
             ; memexpr {
-            ms.hd.obj IR8
-            ms.fseq #L4C_f3, #L4_f3, #L3_f1, #L2a_f1
-            ms.ld IR1
+            ld.field IR1, IR8, #L4C_f3, #L4_f3, #L3_f1, #L2a_f1
             ; }
             call.direct IR1, #aot.checkObj
             @dead IR1
 
             ; memexpr {
-            ms.hd.obj IR8
-            ms.fseq #L4C_f3, #L4_f3, #L3_f2, #L2b_f1
-            ms.ld IR1
+            ld.field IR1, IR8, #L4C_f3, #L4_f3, #L3_f2, #L2b_f1
             ; }
             movi.64 IR2, 2
             call.direct IR1, #aot.checkPrim
@@ -314,18 +294,14 @@
             ; Reading level 1
 
             ; memexpr {
-            ms.hd.obj IR8
-            ms.fseq #L4C_f3, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
-            ms.ld IR1
+            ld.field IR1, IR8, #L4C_f3, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
             ; }
             movi.64 IR2, 1
             call.direct IR1, #aot.checkPrim
             @dead IR1, IR2
 
             ; memexpr {
-            ms.hd.obj IR8
-            ms.fseq #L4C_f3, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
-            ms.ld IR1
+            ld.field IR1, IR8, #L4C_f3, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
             ; }
             call.direct IR1, #aot.checkObj
             @dead IR1
@@ -344,43 +320,37 @@
             ; Filling level 4
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f1
-            ms.st.imm 4
+            movi.64 IR9, 4
+            st.static IR9, #staticRec_ref, #L4_f1
+            @dead IR9
             ; }
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f2
-            ms.st IR2
+            st.static IR2, #staticRec_ref, #L4_f2
             ; }
 
             ; Filling level 2
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f3, #L3_f1, #L2a_f1
-            ms.st IR3
+            st.static IR3, #staticRec_ref, #L4_f3, #L3_f1, #L2a_f1
             ; }
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f3, #L3_f2, #L2b_f1
-            ms.st.imm 2
+            movi.64 IR9, 2
+            st.static IR9, #staticRec_ref, #L4_f3, #L3_f2, #L2b_f1
+            @dead IR9
             ; }
 
             ; Filling level 1
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
-            ms.st.imm 1
+            movi.64 IR9, 1
+            st.static IR9, #staticRec_ref, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
+            @dead IR9
             ; }
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
-            ms.st IR3
+            st.static IR3, #staticRec_ref, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
             ; }
 
             @dead IR2, IR3
@@ -395,18 +365,14 @@
             ; Reading level 4
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f1
-            ms.ld IR1
+            ld.static IR1, #staticRec_ref, #L4_f1
             ; }
             movi.64 IR2, 4
             call.direct IR1, #aot.checkPrim
             @dead IR1, IR2
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f2
-            ms.ld IR1
+            ld.static IR1, #staticRec_ref, #L4_f2
             ; }
             movi.64 IR2, 42
             call.direct IR1, #aot.checkPrim
@@ -415,17 +381,13 @@
             ; Reading level 2
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f3, #L3_f1, #L2a_f1
-            ms.ld IR1
+            ld.static IR1, #staticRec_ref, #L4_f3, #L3_f1, #L2a_f1
             ; }
             call.direct IR1, #aot.checkObj
             @dead IR1
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f3, #L3_f2, #L2b_f1
-            ms.ld IR1
+            ld.static IR1, #staticRec_ref, #L4_f3, #L3_f2, #L2b_f1
             ; }
             movi.64 IR2, 2
             call.direct IR1, #aot.checkPrim
@@ -434,18 +396,14 @@
             ; Reading level 1
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
-            ms.ld IR1
+            ld.static IR1, #staticRec_ref, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
             ; }
             movi.64 IR2, 1
             call.direct IR1, #aot.checkPrim
             @dead IR1, IR2
 
             ; memexpr {
-            ms.hd.static #staticRec_ref
-            ms.fseq #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
-            ms.ld IR1
+            ld.static IR1, #staticRec_ref, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
             ; }
             call.direct IR1, #aot.checkObj
             @dead IR1
@@ -465,43 +423,37 @@
             ; Filling level 4
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f1
-            ms.st.imm 4
+            movi.64 IR9, 4
+            st.typed IR9, $0, #L4_f1
+            @dead IR9
             ; }
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f2
-            ms.st IR2
+            st.typed IR2, $0, #L4_f2
             ; }
 
             ; Filling level 2
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f3, #L3_f1, #L2a_f1
-            ms.st IR3
+            st.typed IR3, $0, #L4_f3, #L3_f1, #L2a_f1
             ; }
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f3, #L3_f2, #L2b_f1
-            ms.st.imm 2
+            movi.64 IR9, 2
+            st.typed IR9, $0, #L4_f3, #L3_f2, #L2b_f1
+            @dead IR9
             ; }
 
             ; Filling level 1
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
-            ms.st.imm 1
+            movi.64 IR9, 1
+            st.typed IR9, $0, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
+            @dead IR9
             ; }
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
-            ms.st IR3
+            st.typed IR3, $0, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
             ; }
 
             @dead IR2, IR3
@@ -509,18 +461,14 @@
             ; Reading level 4
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f1
-            ms.ld IR1
+            ld.typed IR1, $0, #L4_f1
             ; }
             movi.64 IR2, 4
             call.direct IR1, #aot.checkPrim
             @dead IR1, IR2
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f2
-            ms.ld IR1
+            ld.typed IR1, $0, #L4_f2
             ; }
             movi.64 IR2, 42
             call.direct IR1, #aot.checkPrim
@@ -529,17 +477,13 @@
             ; Reading level 2
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f3, #L3_f1, #L2a_f1
-            ms.ld IR1
+            ld.typed IR1, $0, #L4_f3, #L3_f1, #L2a_f1
             ; }
             call.direct IR1, #aot.checkObj
             @dead IR1
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f3, #L3_f2, #L2b_f1
-            ms.ld IR1
+            ld.typed IR1, $0, #L4_f3, #L3_f2, #L2b_f1
             ; }
             movi.64 IR2, 2
             call.direct IR1, #aot.checkPrim
@@ -548,18 +492,14 @@
             ; Reading level 1
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
-            ms.ld IR1
+            ld.typed IR1, $0, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
             ; }
             movi.64 IR2, 1
             call.direct IR1, #aot.checkPrim
             @dead IR1, IR2
 
             ; memexpr {
-            ms.hd.typed $0
-            ms.fseq #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
-            ms.ld IR1
+            ld.typed IR1, $0, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
             ; }
             call.direct IR1, #aot.checkObj
             @dead IR1

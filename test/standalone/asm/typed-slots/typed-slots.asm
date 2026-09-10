@@ -23,19 +23,21 @@
 
     @code
       movi.64 IR1, 0x1A
-      st.tslot IR1, $0, #rec_i8_1
+      st.typed IR1, $0, #rec_i8_1
       @dead IR1
       movi.64 IR1, 0x2B
-      st.tslot IR1, $0, #rec_i8_2
+      st.typed IR1, $0, #rec_i8_2
       @dead IR1
-      st.tslot.imm 0x3456, $0, #rec_i16
+      movi.64 IR9, 0x3456
+      st.typed IR9, $0, #rec_i16
+      @dead IR9
       movi.64 IR1, 0x78ABCDEF
-      st.tslot IR1, $0, #rec_i32
+      st.typed IR1, $0, #rec_i32
       @dead IR1
-      ld.tslot IR1, $0, #rec_i8_1
-      ld.tslot IR2, $0, #rec_i8_2
-      ld.tslot IR3, $0, #rec_i16
-      ld.tslot IR4, $0, #rec_i32
+      ld.typed IR1, $0, #rec_i8_1
+      ld.typed IR2, $0, #rec_i8_2
+      ld.typed IR3, $0, #rec_i16
+      ld.typed IR4, $0, #rec_i32
       lsli.64 IR1, IR1, 56
       lsli.64 IR2, IR2, 48
       lsli.64 IR3, IR3, 32

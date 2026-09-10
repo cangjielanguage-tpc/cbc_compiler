@@ -48,8 +48,12 @@
     @typed_slots aot:Foo[I64]@rec
 
     @code
-      st.tslot.imm 42, $0, #foo.x
-      st.tslot.imm 99, $0, #foo.y
+      movi.64 IR9, 42
+      st.typed IR9, $0, #foo.x
+      @dead IR9
+      movi.64 IR9, 99
+      st.typed IR9, $0, #foo.y
+      @dead IR9
 
       newobj aot:Bar[I64]@ref
       mov.ref IR2, IR1
@@ -61,8 +65,8 @@
       call.direct IR1, #foo
       @dead IR1, IR2, IR3
 
-      ld.ref.field IR2, IR12, #bar.x
-      ld.ref.field IR3, IR12, #bar.y
+      ld.field IR2, IR12, #bar.x
+      ld.field IR3, IR12, #bar.y
 
       movi.64 IR1, 0
       bcci.64 NE, IR2, 42, fail

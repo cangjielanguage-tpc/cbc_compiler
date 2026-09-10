@@ -18,7 +18,7 @@ import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{MemSpace, Assembler as ForkedISA12Assembler}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler as ForkedISA12Assembler
 import com.huawei.excelsior.jet.assembler.{AsmEmitter, AsmType, Label, Location, Segment, Symbol, Width}
 import com.huawei.excelsior.jet.compiler.NotImplementedFeature.CBC
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp

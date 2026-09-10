@@ -23,7 +23,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessAnalyzer
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, ForkedAssembler, MemSpace}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, ForkedAssembler}
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Segment, Width}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
 import xscala.io.*
@@ -289,10 +289,16 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
 
     def parseFieldReference(): FieldReference = {
       val refType = parseType()
-      val name = parseIdent()
-      val fieldType = parseType()
-      val aotData = parseAotData()
-      SingleFieldReference(refType, name, fieldType, aotData = aotData)
+      current match {
+        case _: Token.IntegerLit =>
+          val idx = parseInt().toInt
+          ConstIndexFieldReference(refType, idx, parseType())
+        case _ =>
+          val name = parseIdent()
+          val fieldType = parseType()
+          val aotData = parseAotData()
+          SingleFieldReference(refType, name, fieldType, aotData = aotData)
+      }
     }
 
     def parseMethodReference(): MethodReference = {
@@ -718,18 +724,6 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
     override def parse(stream: TokenStream): Step = {
       val tok = stream.consume()
       tok match {
-        case Ident("ms.hd.obj") =>
-          val args = Arguments(stream, labels)
-          Push(MemSpaceCodeParser(MemSpace.Builder().obj(args.ireg), gen))
-        case Ident("ms.hd.rec") =>
-          val args = Arguments(stream, labels)
-          Push(MemSpaceCodeParser(MemSpace.Builder().rec(args.ireg), gen))
-        case Ident("ms.hd.typed") =>
-          val args = Arguments(stream, labels)
-          Push(MemSpaceCodeParser(MemSpace.Builder().typed(args.ts), gen))
-        case Ident("ms.hd.static") =>
-          val args = Arguments(stream, labels)
-          Push(MemSpaceCodeParser(MemSpace.Builder().static(args.field), gen))
         case Ident(labelName) if labelName.endsWith(":") =>
           stream.consume()
           gen.bind(labels.get(labelName.stripSuffix(":")))
@@ -759,30 +753,6 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
           Continue // empty line
         case t =>
           errors += stream.newError(s"Unexpected token in type definition $t")
-          Continue
-      }
-    }
-  }
-
-  private class MemSpaceCodeParser(builder: MemSpace.Builder, gen: Assembler) extends Parser {
-    private val nolabels = new Labels() {
-      def get(str: String): Label = shouldNotReachHere("label usage in memspace operation")
-    }
-
-    override def parse(stream: NewAsmParser.this.TokenStream): Step = {
-      val tok = stream.consume()
-      tok match {
-        case Ident(instrName) =>
-          val foundTail = InstructionParser.memInvoke(instrName, builder, gen, Arguments(stream, nolabels), onError = () => {
-            errors += stream.newError(s"failed to find instruction $instrName", tok)
-          })
-          if (foundTail) {
-            End
-          } else {
-            Continue
-          }
-        case t =>
-          errors += stream.newError(s"Unexpected token in memspace $t")
           Continue
       }
     }
@@ -877,36 +847,14 @@ private object ArgParseError extends Throwable
 
 private object InstructionParser {
   private case class Instruction(name: String, routine: (Assembler, ArgStream) => Unit)
-  private case class MemInstruction(name: String, routine: (MemSpace.Builder, ArgStream) => Option[MemSpace.Chain])
   private val instructions = mutable.HashMap.empty[String, Instruction]
-  private val memInstructions = mutable.HashMap.empty[String, MemInstruction]
 
   private def instr(name: String)(routine: (Assembler, ArgStream) => Unit): Unit =
     instructions.put(name, Instruction(name, routine)).ensuring(_.isEmpty, s"duplicate instruction $name")
 
-  private def memInstr(name: String)(routine: (MemSpace.Builder, ArgStream) => Unit): Unit =
-    memInstructions.put(name, MemInstruction(name, (b, args) => {
-      routine(b, args)
-      None
-    })).ensuring(_.isEmpty, s"duplicate instruction $name")
-
-  private def tailInstr(name: String)(routine: (MemSpace.Builder, ArgStream) => MemSpace.Chain): Unit =
-    memInstructions.put(name, MemInstruction(name, (b, args) => {
-      Some(routine(b, args))
-    })).ensuring(_.isEmpty, s"duplicate instruction $name")
-
   def invoke(name: String, asm: Assembler, args: ArgStream, onError: () => Unit): Unit = instructions.get(name) match {
     case Some(instr) => instr.routine(asm, args)
     case _ => onError()
-  }
-
-  def memInvoke(name: String, builder: MemSpace.Builder, asm: Assembler, args: ArgStream, onError: () => Unit): Boolean = memInstructions.get(name) match {
-    case Some(instr) =>
-      instr.routine(builder, args) match {
-        case Some(chain) => chain.gen(asm); true
-        case _ => false
-      }
-    case _ => onError(); false
   }
 
   // movs
@@ -1105,19 +1053,29 @@ private object InstructionParser {
   instr("new.none.g")   { (a, s) => a.newNoneGeneric(s.ireg, s.ireg, s.ireg, s.tpe) }
   instr("new.some.g")   { (a, s) => a.newSomeGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
 
-  // memory access - field
-  instr("ld.ref.field")   { (a, s) => val dst = s.ireg; MemSpace.Builder().obj(s.ireg).field(s.field).load(dst).gen(a) }
-  instr("ld.ref.field.f") { (a, s) => val dst = s.freg; MemSpace.Builder().obj(s.ireg).field(s.field).load(dst).gen(a) }
-  instr("st.ref.field")   { (a, s) => val src = s.ireg; MemSpace.Builder().obj(s.ireg).field(s.field).store(src).gen(a) }
-  instr("st.ref.field.f") { (a, s) => val src = s.freg; MemSpace.Builder().obj(s.ireg).field(s.field).store(src).gen(a) }
-  instr("ld.rec.field")   { (a, s) => val dst = s.ireg; MemSpace.Builder().rec(s.ireg).field(s.field).load(dst).gen(a) }
-  instr("ld.rec.field.f") { (a, s) => val dst = s.freg; MemSpace.Builder().rec(s.ireg).field(s.field).load(dst).gen(a) }
-  instr("st.rec.field")   { (a, s) => val src = s.ireg; MemSpace.Builder().rec(s.ireg).field(s.field).store(src).gen(a) }
-  instr("st.rec.field.f") { (a, s) => val src = s.freg; MemSpace.Builder().rec(s.ireg).field(s.field).store(src).gen(a) }
-  instr("ld.static")      { (a, s) => val dst = s.ireg; MemSpace.Builder().static(s.field).load(dst).gen(a) }
-  instr("ld.static.f")    { (a, s) => val dst = s.freg; MemSpace.Builder().static(s.field).load(dst).gen(a) }
-  instr("st.static")      { (a, s) => val src = s.ireg; MemSpace.Builder().static(s.field).store(src).gen(a) }
-  instr("st.static.f")    { (a, s) => val src = s.freg; MemSpace.Builder().static(s.field).store(src).gen(a) }
+  private def fieldPath(s: ArgStream): FieldReference = s.fields match {
+    case Seq(fr) => fr
+    case refs if refs.nonEmpty => MultiFieldReference(refs.map(_.asInstanceOf[FieldReferenceWithType]))
+    case _ => throw ArgParseError
+  }
+
+  instr("ld.field") { (a, s) => a.ld(s.ireg, s.ireg, fieldPath(s)) }
+  instr("ld.static") { (a, s) => a.ld(s.ireg, fieldPath(s)) }
+  instr("ld.typed") { (a, s) => a.ld(s.ireg, s.ts, fieldPath(s)) }
+  instr("ld.field.f") { (a, s) => a.ld(s.freg, s.ireg, fieldPath(s)) }
+  instr("ld.static.f") { (a, s) => a.ld(s.freg, fieldPath(s)) }
+  instr("ld.typed.f") { (a, s) => a.ld(s.freg, s.ts, fieldPath(s)) }
+  instr("ld.g") { (a, s) => a.ld(s.ireg, s.ireg, s.ireg, s.ireg, NoneFieldReference()); a.saveState() }
+  instr("st.field") { (a, s) => a.st(s.ireg, s.ireg, fieldPath(s)) }
+  instr("st.static") { (a, s) => a.st(s.ireg, fieldPath(s)) }
+  instr("st.typed") { (a, s) => a.st(s.ireg, s.ts, fieldPath(s)) }
+  instr("st.field.f") { (a, s) => a.st(s.freg, s.ireg, fieldPath(s)) }
+  instr("st.static.f") { (a, s) => a.st(s.freg, fieldPath(s)) }
+  instr("st.typed.f") { (a, s) => a.st(s.freg, s.ts, fieldPath(s)) }
+  instr("st.g") { (a, s) => a.st(s.ireg, s.ireg, s.ireg, s.ireg, NoneFieldReference()) }
+  instr("lea") { (a, s) => a.instr { a.lea(s.ireg, s.ireg, fieldPath(s)) } }
+  instr("lea.g") { (a, s) => a.leaGeneric(s.ireg, s.ireg, s.ireg, s.field) }
+  instr("copy") { (a, s) => a.instr { a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) } }
 
   // memory access - uslot
   instr("ld.uslot.s8")  { (a, s) => a.loadUntyped(s.ireg, LD_S8, s.us) }
@@ -1139,13 +1097,6 @@ private object InstructionParser {
   instr("st.uslot.f32") { (a, s) => a.storeUntyped(s.freg, ST_F32, s.us) }
   instr("st.uslot.f64") { (a, s) => a.storeUntyped(s.freg, ST_F64, s.us) }
   instr("st.uslot.imm") { (a, s) => a.storeUntypedImm(s.int, s.us) }
-
-  // memory access - tslot
-  instr("ld.tslot")     { (a, s) => val dst = s.ireg; MemSpace.Builder().typed(s.ts).field(s.field).load(dst).gen(a) }
-  instr("ld.tslot.f")   { (a, s) => val dst = s.freg; MemSpace.Builder().typed(s.ts).field(s.field).load(dst).gen(a) }
-  instr("st.tslot")     { (a, s) => val src = s.ireg; MemSpace.Builder().typed(s.ts).field(s.field).store(src).gen(a) }
-  instr("st.tslot.f")   { (a, s) => val src = s.freg; MemSpace.Builder().typed(s.ts).field(s.field).store(src).gen(a) }
-  instr("st.tslot.imm") { (a, s) => val src = s.int;  MemSpace.Builder().typed(s.ts).field(s.field).storeImm(src).gen(a) }
 
   // memory access - raw
   instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, number = s.int) }
@@ -1184,22 +1135,4 @@ private object InstructionParser {
 
   instr("load.type.info.obj") { (a, s) => a.loadTypeInfoObj(s.ireg, s.ireg) }
 
-  // memspace
-  memInstr("ms.const.idx") { (b, s) => b.constIndex(s.int.toInt, s.tpe) }
-  memInstr("ms.idx")       { (b, s) => b.index(s.ireg, s.tpe) }
-  memInstr("ms.field")     { (b, s) => b.field(s.field) }
-  memInstr("ms.fseq")      { (b, s) => s.fields.foreach(b.field(_)) }
-  memInstr("ms.offset")    { (b, s) => b.offset(s.ireg) }
-
-  memInstr("ms.const.idx.g") { (b, s) => b.constIndexGeneric(s.int.toInt, s.tpe, s.ireg) }
-  memInstr("ms.idx.g")       { (b, s) => b.indexGeneric(s.ireg, s.tpe, s.ireg) }
-  memInstr("ms.field.g")     { (b, s) => b.fieldGeneric(s.field, s.ireg) }
-
-  tailInstr("ms.ld")     { (b, s) => b.load(s.ireg) }
-  tailInstr("ms.ld.f")   { (b, s) => b.load(s.freg) }
-  tailInstr("ms.ld.g")   { (b, s) => b.loadGeneric(s.ireg, s.ireg) }
-  tailInstr("ms.st")     { (b, s) => b.store(s.ireg) }
-  tailInstr("ms.st.f")   { (b, s) => b.store(s.freg) }
-  tailInstr("ms.st.imm") { (b, s) => b.storeImm(s.int) }
-  tailInstr("ms.st.g")   { (b, s) => b.storeGeneric(s.ireg, s.ireg) }
 }
