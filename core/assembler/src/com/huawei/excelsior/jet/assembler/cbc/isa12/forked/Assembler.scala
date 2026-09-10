@@ -890,7 +890,10 @@ trait ForkedAssembler {
     analyzer.useRef(baseRef)
     analyzer.usePrim(derived)
     analyzer.usePrim(ti)
-    markLoadStoreValue(dst, fr, load = true)
+    dst match {
+      case r: IR => analyzer.ref(r)
+      case _ =>
+    }
   }
 
   def lea(dst: IR, base: IR, fr: FieldReference): Unit = {
@@ -917,7 +920,7 @@ trait ForkedAssembler {
       .bits(_.w4(dst).w4(dst))
       .bits(_.w4(base).w4(ti))
       .sym16(fr)
-    markMemBase(base, fr)
+    analyzer.useRef(base)
     analyzer.usePrim(ti)
     analyzer.prim(dst)
   }
@@ -978,7 +981,10 @@ trait ForkedAssembler {
     analyzer.useRef(base)
     analyzer.usePrim(derived)
     analyzer.usePrim(ti)
-    markLoadStoreValue(src, fr, load = false)
+    src match {
+      case r: IR => analyzer.useRef(r)
+      case _ =>
+    }
   }
 
   def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = {
@@ -989,12 +995,27 @@ trait ForkedAssembler {
       .sym16(sig)
   }
 
+  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = {
+    stream
+      .opc8(Opcode.CopyGeneric)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
   def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = {
     stream
       .opc8(Opcode.Index)
       .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
       .bits(_.w4(idx).w4(idx))
       .sym16(sig)
+  }
+
+  def index(dst: IR, src: IR, idx: IR, ti: IR): Unit = {
+    stream
+      .opc8(Opcode.IndexGeneric)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(idx).w4(analyzer.usePrim(ti)))
   }
 
   // endregion
@@ -1223,7 +1244,9 @@ object Assembler {
     case St_Generic
     case LoadTailParam
     case Copy
+    case CopyGeneric
     case Index
+    case IndexGeneric
   }
 
   enum RegSymGroup extends Ordinal {
