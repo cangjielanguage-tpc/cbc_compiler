@@ -18,6 +18,8 @@ object CHIR {
     def function(idx: Int): Func
     def packageInitFunc: Func
     def packageInitLiteralFunc: Func
+    def getCustomType(identifier: String): Option[CustomType]
+    def getFunc(identifier: String): Option[Func]
   }
 
   trait HasAnnotations {
@@ -306,6 +308,7 @@ object CHIR {
 
   trait HasResultVar {
     def resultTpe: CHIR.Type
+    def resultVar: CHIR.LocalVar
   }
 
   trait Unary extends Expression with HasResultVar {
@@ -381,7 +384,7 @@ object CHIR {
   trait GetRTTI extends Expression {
   }
 
-  trait InstanceOf extends Expression {
+  trait InstanceOf extends Expression with HasResultVar {
     def obj: Value
     def testType: Type
   }
@@ -477,8 +480,7 @@ object CHIR {
     def falseBlock: Block
   }
 
-  trait Exit extends Expression with Terminator {
-  }
+  object Exit extends Expression with Terminator
 
   trait Goto extends Expression with Terminator with HasSuccessors {
     def destination: Block

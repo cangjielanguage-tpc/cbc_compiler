@@ -20,6 +20,7 @@ class ApplyImpl(e: ApplyBase)(implicit provider: CHIRItemProvider) extends CHIR.
   def thisType: Option[CHIR.Type] = provider.getType[CHIR.Type](fc.objType)
   def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.base.resultLocalVar).get
 }
 
 final class TryApplyImpl(e: ApplyBase)(implicit provider: CHIRItemProvider) extends ApplyImpl(e) with CHIR.TryApply {
@@ -54,6 +55,7 @@ class BinaryImpl(e: BinaryExpressionBase)(implicit provider: CHIRItemProvider) e
   def leftOperand: CHIR.Value = operands.head
   def rightOperand: CHIR.Value = operands(1)
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.resultLocalVar).get
 }
 
 final class TryBinaryImpl(e: BinaryExpressionBase)(implicit provider: CHIRItemProvider) extends BinaryImpl(e) with CHIR.TryBinary {
@@ -84,6 +86,8 @@ final class GetRTTIStaticImpl(e: GetRTTIStatic)(implicit provider: CHIRItemProvi
 final class InstanceOfImpl(e: InstanceOf)(implicit provider: CHIRItemProvider) extends CHIR.InstanceOf {
   lazy val Seq(obj: CHIR.Value) = mapOperands(e.base)
   def testType: CHIR.Type = provider.getType[CHIR.Type](e.targetType).get
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.base.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.resultLocalVar).get
 }
 
 class IntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) extends CHIR.Intrinsic {
@@ -121,6 +125,7 @@ class IntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) exten
   }
   def args: Seq[CHIR.Value] = operands
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.base.resultLocalVar).get
 }
 
 final class TryIntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) extends IntrinsicImpl(e) with CHIR.TryIntrinsic {
@@ -136,6 +141,7 @@ class InvokeImpl(e: InvokeBase)(implicit provider: CHIRItemProvider) extends CHI
   def thisArg: CHIR.Value = args.head
   def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.base.resultLocalVar).get
 }
 
 final class TryInvokeImpl(e: InvokeBase)(implicit provider: CHIRItemProvider) extends InvokeImpl(e) with CHIR.TryInvoke {
@@ -187,6 +193,7 @@ class SpawnImpl(e: SpawnBase)(implicit provider: CHIRItemProvider) extends CHIR.
   def obj: CHIR.Value = operands.head
   def executeClosure: Option[CHIR.Func] = provider.getValue[CHIR.Func](e.executeClosure)
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.base.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.resultLocalVar).get
 }
 
 final class TrySpawnImpl(e: SpawnBase)(implicit provider: CHIRItemProvider) extends SpawnImpl(e) with CHIR.TrySpawn {
@@ -208,6 +215,7 @@ class UnaryImpl(e: UnaryExpressionBase)(implicit provider: CHIRItemProvider) ext
     case CHIRExprKind.Neg => Unary.Kind.Neg
   }
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.base.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.resultLocalVar).get
 }
 
 final class TryUnaryImpl(e: UnaryExpressionBase)(implicit provider: CHIRItemProvider) extends UnaryImpl(e) with CHIR.TryUnary {
@@ -217,9 +225,6 @@ final class TryUnaryImpl(e: UnaryExpressionBase)(implicit provider: CHIRItemProv
 final class GotoImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Goto {
   lazy val Seq(destination: CHIR.Block) = mapOperands(e)
   def successors: Seq[CHIR.Block] = Seq(destination)
-}
-
-final class ExitImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Exit {
 }
 
 final class RaiseExceptionImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.RaiseException {
@@ -266,11 +271,13 @@ final class RawArrayInitByValueImpl(e: Expression)(implicit provider: CHIRItemPr
 final class ConstantImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Constant {
   lazy val Seq(literal: CHIR.Value) = mapOperands(e)
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
 final class TupleImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Tuple {
   def elementValues: Seq[CHIR.Value] = mapOperands(e)
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
 final class GetRTTIImpl(e: Expression) extends CHIR.GetRTTI {
