@@ -142,9 +142,6 @@ trait ConsistencyChecking extends SynchronizationOptimization with UCEComponent 
               }
               cs.dst match {
                 case f: FieldSeqOperation =>
-                  val a = cs.dstBase
-                  val b = f.baseRef
-                  val c = cs.srcBase
                   assert(cs.dstBase == f.baseRef)
                 case _ =>
               }
