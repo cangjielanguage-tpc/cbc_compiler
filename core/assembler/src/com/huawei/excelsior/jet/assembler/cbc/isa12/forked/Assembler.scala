@@ -814,6 +814,14 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       .sym16(sig)
   }
 
+  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = {
+    stream
+      .opc8(Opcode.CopyGeneric)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
   def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = {
     stream
       .opc8(Opcode.Index)
@@ -822,6 +830,14 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
       .sym16(sig)
   }
 
+  def index(dst: IR, src: IR, idx: IR, ti: IR): Unit = {
+    stream
+      .opc8(Opcode.IndexGeneric)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(idx).w4(analyzer.usePrim(ti)))
+  }
+
+  // endregion
 }
 
 class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler with NewIsaParts with CbcAssembler { self: SymbolAdapter =>
@@ -1140,7 +1156,9 @@ object Assembler {
     case St_Generic
     case LoadTailParam
     case Copy
+    case CopyGeneric
     case Index
+    case IndexGeneric
   }
 
   enum MemOpcode extends Ordinal {
