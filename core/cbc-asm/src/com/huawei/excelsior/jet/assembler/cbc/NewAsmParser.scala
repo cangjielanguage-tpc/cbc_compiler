@@ -1105,6 +1105,10 @@ private object InstructionParser {
   instr("new.none.g")   { (a, s) => a.newNoneGeneric(s.ireg, s.ireg, s.ireg, s.tpe) }
   instr("new.some.g")   { (a, s) => a.newSomeGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
 
+  // Explicit base pointers for record copies; retain MemSpace for the older field API.
+  instr("copy") { (a, s) => a.instr { a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) } }
+  instr("index") { (a, s) => a.instr { a.index(s.ireg, s.ireg, s.ireg, s.tpe) } }
+
   // memory access - field
   instr("ld.ref.field")   { (a, s) => val dst = s.ireg; MemSpace.Builder().obj(s.ireg).field(s.field).load(dst).gen(a) }
   instr("ld.ref.field.f") { (a, s) => val dst = s.freg; MemSpace.Builder().obj(s.ireg).field(s.field).load(dst).gen(a) }
