@@ -629,48 +629,6 @@ trait CHIRParser
           callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
         }
       }
-
-      if (pkg.packageInitLiteralFunc == func) {
-        // TODO: consider moving it under @has_invoked_pkg_init_literal check
-        for (v <- pkg.values) v match {
-          case g: CHIR.GlobalVar if !resolver.isImported(g) =>
-            val declType = g.declaringDef.flatMap(resolver.symType).getOrElse(resolver.findClass(pkg.name).get)
-            val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
-            assert(field.isStatic, field)
-            val value = g.initializer.map {
-              case CHIR.UnitLiteral => null
-              case _: CHIR.NullLiteral => IntegralConst(ValueType.fromSig(field.getType))(0)
-              case v: CHIR.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.value)
-              case v: CHIR.FloatLiteral => field.getType match {
-                case SignatureType.Float32 => FConst(v.value.toFloat)
-                case SignatureType.Float64 => DConst(v.value)
-                case t => notImplemented(s"unexpected static field type ${t.toJETSignature} of field $field")
-              }
-              case v: CHIR.BoolLiteral => IConst(if (v.value) 1 else 0)
-              case v: CHIR.RuneLiteral => IConst(v.value.toInt)
-              case v: CHIR.StringLiteral => constString(v.value)
-              case v: CHIR.Func =>
-                val refType = resolver.findClass(v.packageName).get
-
-                val name = resolver.symName(v)
-                val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, v)
-
-                callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
-                null
-            }.orNull
-            value match {
-              case null =>
-                // nothing to do
-              case StackAlloc.Local(allocType) =>
-                // string
-                val mem = GetStaticFieldSeqRef(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global())
-                copy(allocType, mem, value)
-              case _ =>
-                StoreStaticFieldSeq(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global(), value)
-            }
-          case _ =>
-        }
-      }
     }
 
     object ValueSig {
@@ -1369,7 +1327,45 @@ trait CHIRParser
       case e: CHIR.Intrinsic =>
         e.kind match {
           case CHIR.Intrinsic.Kind.Preinitialize =>
-          // no-op
+            assert(pkg.packageInitFunc == func, method)
+            for (v <- pkg.values) v match {
+              case g: CHIR.GlobalVar if !resolver.isImported(g) =>
+                val declType = g.declaringDef.flatMap(resolver.symType).getOrElse(resolver.findClass(pkg.name).get)
+                val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
+                assert(field.isStatic, field)
+                val value = g.initializer.map {
+                  case CHIR.UnitLiteral => null
+                  case _: CHIR.NullLiteral => IntegralConst(ValueType.fromSig(field.getType))(0)
+                  case v: CHIR.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.value)
+                  case v: CHIR.FloatLiteral => field.getType match {
+                    case SignatureType.Float32 => FConst(v.value.toFloat)
+                    case SignatureType.Float64 => DConst(v.value)
+                    case t => notImplemented(s"unexpected static field type ${t.toJETSignature} of field $field")
+                  }
+                  case v: CHIR.BoolLiteral => IConst(if (v.value) 1 else 0)
+                  case v: CHIR.RuneLiteral => IConst(v.value.toInt)
+                  case v: CHIR.StringLiteral => constString(v.value)
+                  case v: CHIR.Func =>
+                    val refType = resolver.findClass(v.packageName).get
+
+                    val name = resolver.symName(v)
+                    val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, v)
+
+                    callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
+                    null
+                }.orNull
+                value match {
+                  case null =>
+                    // nothing to do
+                  case StackAlloc.Local(allocType) =>
+                    // string
+                    val mem = GetStaticFieldSeqRef(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global())
+                    copy(allocType, mem, value)
+                  case _ =>
+                    StoreStaticFieldSeq(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global(), value)
+                }
+              case _ =>
+            }
 
           case CHIR.Intrinsic.Kind.BeginCatch =>
             e.args match {

@@ -186,6 +186,8 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
       }
 
       if (exportedName != null) {
+        val dups = clazz.getDeclaredMethods.filter(f => f.getExportedName == XString(exportedName) && !f.getName.contains("$instantiated$")).toSeq
+        assert(dups.isEmpty, s"Unexpected duplicate linkage names: ${methodByO2Object(m) +: dups}")
         m.markAsExported(XString(exportedName))
       }
 

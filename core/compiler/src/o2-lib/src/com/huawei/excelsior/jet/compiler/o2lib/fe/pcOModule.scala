@@ -483,7 +483,7 @@ object pcOModule {
     }
 
     def setCHIRVTable(vtable: CHIRVTable): Unit = {
-      if (!hasFEXT(chirVTable)) {
+      def serializeVTable(): Unit = {
         // TODO: stop serializing everything
         for (ed <- vtable.extDefs) {
           addImport(ed.extType)
@@ -499,7 +499,19 @@ object pcOModule {
             addImport(m.instantiatedReturnType)
           }
         }
-        addFEXT(CHIRVTableFEXT(vtable), chirVTable)
+      }
+      fextOption[CHIRVTableFEXT](chirVTable) match {
+        case Some(fext) =>
+          if (!fext.fromCHIRDef && isCHIRDef) {
+            // Previous FEXT was from imported entry
+            // but right now vtable is from real CHIR Def.
+            assert(!fext.frozen, s"VTable for ${this.name} was already serialized")
+            serializeVTable()
+            fext.vtable = vtable
+          }
+        case None =>
+          serializeVTable()
+          addFEXT(CHIRVTableFEXT(vtable, isCHIRDef), chirVTable)
       }
     }
 
@@ -3356,9 +3368,11 @@ object pcOModule {
 
   private class CHIRVTableFEXT extends FEXT {
     private[pcOModule] var vtable: CHIRVTable = _
+    private[pcOModule] var fromCHIRDef: Boolean = _
+    private[pcOModule] var frozen: Boolean = false
     private[pcOModule] var unresolvedVTable: CHIRVTable = _
     private[pcOModule] var unresolvedImpls: Seq[Seq[Option[MethodFEXT]]] = _
-    def this(vtable: CHIRVTable) = { this(); this.vtable = vtable }
+    def this(vtable: CHIRVTable, fromCHIRDef: Boolean) = { this(); this.vtable = vtable; this.fromCHIRDef = fromCHIRDef }
 
     def getVTable: CHIRVTable = {
       if (vtable == null) {
@@ -3402,8 +3416,10 @@ object pcOModule {
           }
         }
       }
+      frozen = true
     }
     override def externalize(si: SymIO): Unit = {
+      frozen = true
       si.writeSeq(vtable.extDefs) { extDef =>
         si.writeSignatureType(extDef.extType)
         si.writeSeq(extDef.funcTable) { entry =>

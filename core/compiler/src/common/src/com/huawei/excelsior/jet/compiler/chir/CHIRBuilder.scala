@@ -238,7 +238,7 @@ object CHIRBuilder {
         case typeSig: SignatureType.OptionLikeEnum if typeSig.someType.isTypeVariable => SignatureType.Box(typeSig)
         case _ => typeSig
       }
-      for (m <- d.methods) {
+      for (m <- d.methods if !resolver.isDeadFunction(m)) {
         val name = resolver.symName(m)
         val mutModifiers = m.kind match {
           case CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>

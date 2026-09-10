@@ -62,6 +62,10 @@ def parse_tests_list(config_file: str, root_dir: str) -> dict[str, list[str]]:
 
     tests = {}
     for f in sorted(list(matched_files)):
+        if f.endswith(".aot.cj"):
+            continue
+        if f.endswith(".int.cj"):
+            continue
         if f.endswith(".cj"):
             test_name = f[:-len(".cj")]
         elif f.endswith(".asm"):
@@ -171,21 +175,25 @@ class StandaloneTestSuite(TestSuite):
         await self.print_status(f"Building test {test_name}")
 
         import_args = []
-        if os.path.isfile(dotcjaot(test_name)):
+        aot_so_names = []
+        for aot_file in sorted(glob.glob(os.path.join(test_work_dir, "*.aot.cj"))):
+            aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
+            aot_so = f"{test_work_dir}/lib{aot_name}.so"
             import_args = ["--import-path", test_work_dir]
             aot_log = io.StringIO()
-            res = await self.run_cjc(dotcjaot(test_name),
-                                     output_file=f"{test_work_dir}/libaot.so",
+            res = await self.run_cjc(aot_file,
+                                     output_file=aot_so,
                                      output_type="dylib",
                                      use_tool_sh=True,
                                      log=aot_log)
             if res != 0:
-                err_msg = f"Standalone test AOT part compilation error: {res}\n"
+                err_msg = f"Standalone test AOT part compilation error ({aot_name}): {res}\n"
                 if aot_log.getvalue().strip():
                     err_msg += aot_log.getvalue()
                 await self.print_stderr(err_msg)
-                self.compilation_failures.append((test_name, in_mode, "during AOT compilation"))
+                self.compilation_failures.append((test_name, in_mode, f"during AOT compilation ({aot_name})"))
                 return 1
+            aot_so_names.append(aot_name)
 
         match in_mode:
             case "asm":
@@ -218,6 +226,33 @@ class StandaloneTestSuite(TestSuite):
 
                     output_chir = dotchir(f"{mode_work_dir}/{name}")
 
+                    int_chir_files = []
+                    int_cj_files = sorted(glob.glob(os.path.join(test_work_dir, "*.int.cj")))
+
+                    if int_cj_files:
+                        int_temp_dir = f"{mode_work_dir}/temp"
+                        import_args += ["--import-path", int_temp_dir]
+                        os.makedirs(int_temp_dir, exist_ok=True)
+                        for int_cj_file in int_cj_files:
+                            int_fullname = os.path.splitext(os.path.basename(int_cj_file))[0]
+                            int_basename = os.path.splitext(int_fullname)[0]
+                            int_chir_files.append(f"temp/{int_basename}.chir")
+                            int_log = io.StringIO()
+                            res = await self.run_cjc(int_cj_file,
+                                                     output_file=f"{int_temp_dir}/{int_basename}",
+                                                     additional_args=["--save-temps", int_temp_dir, "--output-type", "staticlib"] +
+                                                                     import_args + opt_flags,
+                                                     use_tool_sh=True,
+                                                     log=int_log)
+                            if res != 0:
+                                err_msg = f"Standalone test INT package compilation error ({int_basename}): {res}\n"
+                                if int_log.getvalue().strip():
+                                    err_msg += int_log.getvalue()
+                                await self.print_stderr(err_msg)
+                                self.compilation_failures.append((test_name, in_mode, f"during INT package compilation ({int_basename})"))
+                                return 1
+
+
                     chir_log = io.StringIO()
                     res = await self.run_cjc(dotcj(test_name),
                                              output_file=output_chir,
@@ -232,7 +267,8 @@ class StandaloneTestSuite(TestSuite):
                         self.compilation_failures.append((test_name, in_mode, f"during compilation ({mode})"))
                         continue
 
-                    chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"{name}.chir", args.jc_options]
+                    aot_deps_args = [f"-cbcaotdeps={':'.join(aot_so_names)}"] if aot_so_names else []
+                    chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + int_chir_files
                     cbc_log = io.StringIO()
                     cbc_err = io.StringIO()
                     res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)

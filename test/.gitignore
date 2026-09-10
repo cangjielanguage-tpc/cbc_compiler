@@ -1,5 +1,8 @@
 __pycache__
 jetpdb
+temp
+O2
+default
 *.actual
 *.actual.filtered
 *.cbc
