@@ -1630,7 +1630,7 @@ trait CHIRParser
             case CHIR.BuiltinType.Float16 => notImplemented(s"FLOAT16: $v")
             case CHIR.BuiltinType.Float32 => FConst(v.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.toDouble)
-            case CHIR.BuiltinType.Unit => IntegralConst(AddrType)(v)
+            case CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => IntegralConst(AddrType)(v)
             case t: CHIR.CustomType => IntegralConst(AddrType)(v)
           }
         }
