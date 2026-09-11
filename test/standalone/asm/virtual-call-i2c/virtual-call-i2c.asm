@@ -11,7 +11,7 @@
 
 @type default
 
-  @method main()I64
+  @method cj_entry()I64
     @code
 	    call.direct IR1, #getA
       @live.ref IR1

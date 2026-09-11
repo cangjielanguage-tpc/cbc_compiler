@@ -36,7 +36,7 @@
 @method_ref qwerty = aot:A@aref qwerty()I64 #qwerty_data
 
 @type default
-  @method main()I64
+  @method cj_entry()I64
     @code
       newobj default:Child@ref
       call.direct IR1, #qwerty

@@ -33,7 +33,7 @@
 @field_ref foo_byte.y = default:Foo[I8]@ref y I8
 
 @type default
-  @method main()I64
+  @method cj_entry()I64
     @saved_iregs IR11, IR12
     @code
       newobj default:Foo[default:Foo[I8]@ref]@ref

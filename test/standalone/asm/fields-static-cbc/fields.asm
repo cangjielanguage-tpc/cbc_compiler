@@ -29,7 +29,7 @@
     @flags STATIC
   @end
 
-  @method main()I64
+  @method cj_entry()I64
     @code
       newobj aot:Point@aref
       movi.64 IR2, 123

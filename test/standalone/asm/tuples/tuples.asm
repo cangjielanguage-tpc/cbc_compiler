@@ -26,7 +26,7 @@
 @field_ref zfr = default:Foo@ref z [I64, I32]
 
 @type default
-  @method main()I64
+  @method cj_entry()I64
     @typed_slots [I64, I32], [I64, I32]
     @code
       newobj default:Foo@ref

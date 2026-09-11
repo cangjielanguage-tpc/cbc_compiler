@@ -4,7 +4,7 @@
 @method_ref default_foo = default@ref foo(I64,I64)I64
 
 @type default
-  @method main()I64
+  @method cj_entry()I64
     @code
       movi.64 IR1, 0x7
       movi.64 IR2, 0x0

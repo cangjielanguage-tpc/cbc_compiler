@@ -101,7 +101,7 @@
     @end
   @end
 
-  @method main()I64
+  @method cj_entry()I64
     @saved_iregs IR12, IR13
     @code
       call.direct IR1, #startGarbageGenerator

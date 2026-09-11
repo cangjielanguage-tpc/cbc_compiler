@@ -28,7 +28,7 @@
 
 @type default
 
-  @method main()I64
+  @method cj_entry()I64
     @code
       movi.64 IR7, 99
       movi.64 IR8, 42

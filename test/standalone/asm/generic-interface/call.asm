@@ -65,7 +65,7 @@
 @method_ref fooobj = default:I[I32, std.core:Object@aref]@ref foo(std.core:Object@aref)I64
 
 @type default
-  @method main()I64
+  @method cj_entry()I64
     @saved_iregs IR11
     @code
       newobj default:Foo[I32]@ref

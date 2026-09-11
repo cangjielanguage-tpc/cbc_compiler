@@ -5,7 +5,7 @@
 @aot_deps "aot"
 
 @type default
-  @method main()I64
+  @method cj_entry()I64
     @code
       newobj aot:Foo@aref
       @dead IR1
