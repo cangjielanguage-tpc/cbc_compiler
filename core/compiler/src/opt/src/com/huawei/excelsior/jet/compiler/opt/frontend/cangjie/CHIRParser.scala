@@ -203,6 +203,9 @@ trait CHIRParser
       replaceByCode(n) {
         val arrayType = n.arrayType
         val idxTpe = n.srcStart.tpe
+        
+        // TODO: is not true if stdlib is compiled to CBC 
+        assert(!arrayType.getArrayElemType.isTypeVariable)
 
         val entryGoto = Goto()
 
@@ -216,7 +219,7 @@ trait CHIRParser
         if (arrayType.getArrayElemType.isRecord) {
           val srcMem = ArrayGet(arrayType)(n.src, srcIdx)
           val dstMem = ArrayGet(arrayType)(n.dst, dstIdx)
-          CopyStructure(arrayType.getArrayElemType)(srcMem, dstMem)
+          CopyStructure(arrayType.getArrayElemType)(dstMem, srcMem)
         } else {
           val value = ArrayGet(arrayType)(n.src, srcIdx)
           ArrayPut(arrayType)(n.dst, dstIdx, value)
