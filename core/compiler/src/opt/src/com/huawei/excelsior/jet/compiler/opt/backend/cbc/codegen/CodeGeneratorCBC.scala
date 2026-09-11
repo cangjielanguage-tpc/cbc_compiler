@@ -706,7 +706,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     // TODO replace ArrayGet with FieldSeq operations
     private def genArrayGet(arrGet: ArrayGet): Unit = {
       addXSite(arrGet)
-      val adapter = asm.adapter
 
       val arrayType = arrGet.arrayType
       val elemType = arrayType.getArrayElemType
@@ -718,8 +717,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             asm.javaLdarr(asmType, dst, arr, idx)
           } else {
             if (elemType.isRecord) {
-              val arrayOrElemSig = if (isStandalone) elemType else arrayType
-              fasm.index(dst.asInstanceOf[IR], arr, idx, fasm.adapter.sigType(CodeSigSymbol(arrayOrElemSig)))
+              if (isStandalone) {
+                fasm.index(dst.asInstanceOf[IR], arr, idx, fasm.adapter.sigType(CodeSigSymbol(arrayType)))
+              } else {
+                asm.ldarrRecord(dst.asInstanceOf[IR], arr, idx, CodeSigSymbol(arrayType))
+              }
             } else if (elemType.isTraceableReference) {
               asm.ldarrObj(dst, arr, idx)
             } else {

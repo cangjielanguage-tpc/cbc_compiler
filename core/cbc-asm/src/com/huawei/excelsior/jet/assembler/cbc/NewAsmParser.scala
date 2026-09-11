@@ -1107,6 +1107,8 @@ private object InstructionParser {
 
   // Explicit base pointers for record copies; retain MemSpace for the older field API.
   instr("copy") { (a, s) => a.instr { a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) } }
+  instr("copy.g") { (a, s) => a.instr { a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.ireg) } }
+  instr("index.g") { (a, s) => a.instr { a.index(s.ireg, s.ireg, s.ireg, s.ireg) } }
   instr("index") { (a, s) => a.instr { a.index(s.ireg, s.ireg, s.ireg, s.tpe) } }
 
   // memory access - field

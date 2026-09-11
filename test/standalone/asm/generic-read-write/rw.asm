@@ -113,12 +113,6 @@
       load.type.info IR4, I64
       offset IR5, #foo.field, IR3
 
-      mov.64 IR9, IR12
-      @dead IR9
-      @live.prim IR9
-      add.64 IR5, IR9, IR5
-      @dead IR9
-
       ; load directly boxed value
       ms.hd.obj IR12
         ms.offset IR5

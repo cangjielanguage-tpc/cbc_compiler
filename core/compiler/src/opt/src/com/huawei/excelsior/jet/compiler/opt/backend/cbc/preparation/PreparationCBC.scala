@@ -137,6 +137,7 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
         m.singleUse match {
           case use: InstanceFieldSeqOperation => m.attachToGroup(use, Group.AttachReason.DERIVED_PTR)
           case use: Call =>
+          case use: CopyStructure =>
           case use => shouldNotReachHere(use)
         }
       }

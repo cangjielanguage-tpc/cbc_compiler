@@ -8,6 +8,7 @@
 
 package com.huawei.excelsior.jet.compiler.opt.ir.nodes
 
+import com.huawei.excelsior.common.CodeHelpers.notImplemented
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe

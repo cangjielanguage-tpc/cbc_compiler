@@ -823,18 +823,19 @@ trait ForkedAssembler extends CbcAssembler with MeaningfulNewIsaParts {
   }
 
   def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = {
+    if (sig.isReference) analyzer.useRef(src) else analyzer.useRec(src)
     stream
       .opc8(Opcode.Index)
-      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
-      .bits(_.w4(idx).w4(idx))
+      .bits(_.w4(analyzer.rec(dst)).w4(src))
+      .bits(_.w4(analyzer.usePrim(idx)).w4(idx))
       .sym16(sig)
   }
 
   def index(dst: IR, src: IR, idx: IR, ti: IR): Unit = {
     stream
       .opc8(Opcode.IndexGeneric)
-      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
-      .bits(_.w4(idx).w4(analyzer.usePrim(ti)))
+      .bits(_.w4(analyzer.rec(dst)).w4(analyzer.useAny(src)))
+      .bits(_.w4(analyzer.usePrim(idx)).w4(analyzer.usePrim(ti)))
   }
 
   // endregion
