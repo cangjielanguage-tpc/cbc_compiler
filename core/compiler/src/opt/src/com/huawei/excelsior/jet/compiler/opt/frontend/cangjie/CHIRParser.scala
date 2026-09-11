@@ -1114,8 +1114,14 @@ trait CHIRParser
         val thisTypeInfo = thisTypeArgVal.map(state.apply)
 
         val thisType = resolver.typeSig(e.thisType) match {
-          // FIXME
-          case SignatureType.ThisTypeInfo => SignatureType.fromSymType(rootMethod.getDeclaringClass)
+          case SignatureType.ThisTypeInfo =>
+            val c = rootMethod.getDeclaringClass
+            if (c.isCangjieExtend) {
+              c.getCangjieExtendInfo
+            } else {
+              // FIXME: erasure
+              fromSymType(c)
+            }
           case _: SignatureType.TypeVariable =>
             val v = if (isStatic) thisTypeArgVal.get else sourceArgVals.head
             val ValueSig(sig) = v
