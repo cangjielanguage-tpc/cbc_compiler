@@ -65,6 +65,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
         case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
       }
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
+      val isInitializer = v.attributes.contains(CHIR.Attribute.Initializer)
       val isPackageGlobal = v.declaringDef.isEmpty
       val suffix = if (isGenericInstantiated(v)) {
         // TODO another way without id usage?
@@ -83,7 +84,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
             case None => shouldNotReachHere(identifier)
           }
         case None =>
-          if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
+          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
       }
     }
 
