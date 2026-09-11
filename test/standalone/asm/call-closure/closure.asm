@@ -134,7 +134,7 @@
     @flags PUBLIC STATIC
   @end
 
-  @method main()I64
+  @method cj_entry()I64
     @typed_slots std.core:String@arec, [std.core:Object@aref]
     @code
       movi.64 IR1, 0

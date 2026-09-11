@@ -9,7 +9,7 @@
 
 @type default
 
-  @method main()I64
+  @method cj_entry()I64
     @code
       movi.64 IR1, 42 ; first arg on aarch64
       movi.64 IR2, 42 ; first arg on x86_64 (due to Unit ret-by-val taking up IR1)
