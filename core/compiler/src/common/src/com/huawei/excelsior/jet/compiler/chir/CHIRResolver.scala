@@ -16,6 +16,7 @@ import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.*
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.LocalTypeVariable
 import com.huawei.excelsior.jet.compiler.symlevel.{GenericInfo, MethodSignature, SignatureType, ClassType as SymClassType, Type as SymType}
+import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
 import com.huawei.excelsior.jet.util.ScalaCollections
 
@@ -64,6 +65,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
         case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
       }
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
+      val isInitializer = v.attributes.contains(CHIR.Attribute.Initializer)
       val isPackageGlobal = v.declaringDef.isEmpty
       val suffix = if (isGenericInstantiated(v)) {
         // TODO another way without id usage?
@@ -82,7 +84,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
             case None => shouldNotReachHere(identifier)
           }
         case None =>
-          if (srcName.isEmpty || srcName == "$lambda" || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
+          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
       }
     }
 
@@ -167,7 +169,13 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
             PrimitiveBasedEnum(symName(t), t.genericTypeParams.map(typeSig))
           case EnumKind.OptionLike(base) =>
             val params = t.genericTypeParams.map(typeSig)
-            val baseSig = typeSig(base).instantiate(params, Seq.empty)
+            val baseSig = base match {
+              case _: CHIR.RefType =>
+                // Erase immediately to avoid infinite recursion.
+                ReferenceType.cangjieStdCoreObject.sigType
+              case _ =>
+                typeSig(base).instantiate(params, Seq.empty)
+            }
             OptionLikeEnum(symName(t), params, baseSig)
           case EnumKind.UnionBased =>
             UnionBasedEnum(symName(t), t.genericTypeParams.map(typeSig))

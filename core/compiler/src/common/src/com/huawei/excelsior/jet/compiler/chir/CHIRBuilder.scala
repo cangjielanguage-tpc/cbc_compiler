@@ -104,7 +104,7 @@ object CHIRBuilder {
         for (name <- Seq("$g", "$i")) {
           val f = builder.addField(symType, name, SignatureType.Int64, null, Modifiers(PUBLIC).value)
           if (symType.isCHIRDef) {
-            builder.markAsCHIRDef(f, NO_LLVM_INDEX)
+            builder.markAsCHIRDef(f, NO_LLVM_INDEX, overwrite = false)
           }
         }
       }
@@ -116,7 +116,7 @@ object CHIRBuilder {
         val linkageName = resolver.linkageName(v)
         val sym = builder.addField(symType, name, sig, linkageName, modifiers.value)
         if (symType.isCHIRDef) {
-          builder.markAsCHIRDef(sym, NO_LLVM_INDEX)
+          builder.markAsCHIRDef(sym, NO_LLVM_INDEX, overwrite = false)
         }
       }
 
@@ -128,7 +128,7 @@ object CHIRBuilder {
         val linkageName = resolver.linkageName(v)
         val sym = builder.addField(symType, name, sig, linkageName, modifiers.value)
         if (symType.isCHIRDef) {
-          builder.markAsCHIRDef(sym, v.id.toInt)
+          builder.markAsCHIRDef(sym, v.id.toInt, overwrite = false)
         }
       }
     }
@@ -191,7 +191,7 @@ object CHIRBuilder {
           def addEnumField(clazz: SymClassType, name: String, sig: SignatureType): Unit = {
             val field = builder.addField(clazz, name, sig, null, Modifiers(Modifier.PUBLIC).value)
             if (!imported) {
-              builder.markAsCHIRDef(field, NO_LLVM_INDEX)
+              builder.markAsCHIRDef(field, NO_LLVM_INDEX, overwrite = false)
             }
           }
 
@@ -306,7 +306,7 @@ object CHIRBuilder {
             builder.markAsCHIRDef(symType)
           }
           if (symType.isCHIRDef && !resolver.isImported(m)) {
-            builder.markAsCHIRDef(symMethod, m.id.toInt)
+            builder.markAsCHIRDef(symMethod, m.id.toInt, overwrite = false)
           }
           m.kind match {
             case CHIR.Func.Kind.ClassCtor | CHIR.Func.Kind.PrimalClassCtor |
@@ -355,7 +355,7 @@ object CHIRBuilder {
         virtMethods(m) = symMethod
 
         if (symType.isCHIRDef) {
-          builder.markAsCHIRDef(symMethod, m.id.toInt)
+          builder.markAsCHIRDef(symMethod, m.id.toInt, overwrite = false)
         }
         m.kind match {
           case CHIR.Func.Kind.ClassCtor | CHIR.Func.Kind.PrimalClassCtor |
@@ -428,7 +428,7 @@ object CHIRBuilder {
         val linkageName = resolver.linkageName(m)
         val symField = builder.addField(symPkg, name, sig, linkageName, modifiers)
         if (!resolver.isImported(m)) {
-          builder.markAsCHIRDef(symField, m.id.toInt)
+          builder.markAsCHIRDef(symField, m.id.toInt, overwrite = false)
         }
 
       case m: CHIR.Func if m.declaringDef.isEmpty && !resolver.isDeadFunction(m) =>
@@ -450,7 +450,8 @@ object CHIRBuilder {
           builder.markAsPackageLiteralInit(symMethod)
         }
         if (!resolver.isImported(m) || m.body.nonEmpty) {
-          builder.markAsCHIRDef(symMethod, m.id.toInt)
+          val overwrite = pkg.name == m.packageName
+          builder.markAsCHIRDef(symMethod, m.id.toInt, overwrite)
         }
 
       case _ =>

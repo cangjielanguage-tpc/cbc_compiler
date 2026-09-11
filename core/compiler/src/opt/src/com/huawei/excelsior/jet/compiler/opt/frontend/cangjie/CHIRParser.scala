@@ -810,6 +810,9 @@ trait CHIRParser
               sig match {
                 case _ if sig.isAbstractClass =>
                   Null()
+                case sig: SignatureType.OptionLikeEnum =>
+                  assert(sig.isNullableOption)
+                  Null()
                 case sig: SignatureType.InstantiatedReference if sig.isCangjieLambda =>
                   NewGeneric(sig)(loadTypeInfo(sig))
                 case _ if sig.containsTypeVariables =>
@@ -1346,12 +1349,7 @@ trait CHIRParser
                   case v: CHIR.RuneLiteral => IConst(v.value.toInt)
                   case v: CHIR.StringLiteral => constString(v.value)
                   case v: CHIR.Func =>
-                    val refType = resolver.findClass(v.packageName).get
-
-                    val name = resolver.symName(v)
-                    val target = calcMethodRef(refType, SignatureType.fromSymType(refType), name, v)
-
-                    callMethod(target, None, None, SignatureType.Void, Seq.empty, Seq.empty, None)
+                    // Such initializers must be called explicitly in CHIR from corresponding global init.
                     null
                 }.orNull
                 value match {

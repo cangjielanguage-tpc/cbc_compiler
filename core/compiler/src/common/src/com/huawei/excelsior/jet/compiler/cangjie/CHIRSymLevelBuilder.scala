@@ -46,8 +46,8 @@ trait CHIRSymLevelBuilder {
   def markAsMutWrapper(method: Method): Unit
 
   def markAsCHIRDef(clazz: ClassType): Unit
-  def markAsCHIRDef(field: Field, id: Int): Unit
-  def markAsCHIRDef(method: Method, id: Int): Unit
+  def markAsCHIRDef(field: Field, id: Int, overwrite: Boolean): Unit
+  def markAsCHIRDef(method: Method, id: Int, overwrite: Boolean): Unit
 
   def addInterface(pkg: Type, name: String, modifiers: Int, isCangjie: Boolean, genericInfo: GenericInfo): ClassType
 
