@@ -230,12 +230,12 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
     typeToO2Class(clazz).markAsCHIRDef()
   }
 
-  override def markAsCHIRDef(field: Field, id: Int): Unit = {
-    fieldToO2Field(field).addCHIRDef(srcFD.getName, id)
+  override def markAsCHIRDef(field: Field, id: Int, overwrite: Boolean): Unit = {
+    fieldToO2Field(field).addCHIRDef(srcFD.getName, id, overwrite)
   }
 
-  override def markAsCHIRDef(method: Method, id: Int): Unit = {
-    getO2Method(method).addCHIRDef(srcFD.getName, id)
+  override def markAsCHIRDef(method: Method, id: Int, overwrite: Boolean): Unit = {
+    getO2Method(method).addCHIRDef(srcFD.getName, id, overwrite)
   }
 
 }

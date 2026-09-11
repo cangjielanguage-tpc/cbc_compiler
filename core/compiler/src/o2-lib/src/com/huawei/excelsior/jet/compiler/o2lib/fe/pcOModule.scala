@@ -2117,9 +2117,18 @@ object pcOModule {
 
     def isExternal: Boolean = memtags contains memtag_ajexternal
 
-    def addCHIRDef(src: XString, id: Int): Unit = {
-      if (!hasFEXT(chirDef)) {
-        addFEXT(CHIRDefFEXT(src, id), chirDef)
+    def addCHIRDef(src: XString, id: Int, overwrite: Boolean): Unit = {
+      fextOption[CHIRDefFEXT](chirDef) match {
+        case Some(fext) =>
+          if (overwrite) {
+            // Previous FEXT was from imported entry
+            // but right now vtable is from real CHIR Def.
+            assert(!fext.frozen, s"CHIRDef for ${this.name} was already serialized")
+            fext.src = src
+            fext.id = id
+          }
+        case None =>
+          addFEXT(CHIRDefFEXT(src, id), chirDef)
       }
     }
 
@@ -3360,10 +3369,11 @@ object pcOModule {
   private class CHIRDefFEXT extends FEXT {
     private[pcOModule] var src: XString = _
     private[pcOModule] var id: Int = _
+    private[pcOModule] var frozen: Boolean = false
     def this(_src: XString, _id: Int) = { this(); src = _src; id = _id }
 
-    override def internalize(si: SymIO): Unit = { src = si.curFile.readJString(); id = si.curFile.readUInt() - 1 }
-    override def externalize(si: SymIO): Unit = { si.curFile.writeJString(src); si.curFile.writeUInt(id + 1) }
+    override def internalize(si: SymIO): Unit = { src = si.curFile.readJString(); id = si.curFile.readUInt() - 1; frozen = true }
+    override def externalize(si: SymIO): Unit = { frozen = true; si.curFile.writeJString(src); si.curFile.writeUInt(id + 1) }
   }
 
   private class CHIRVTableFEXT extends FEXT {
