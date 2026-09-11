@@ -1141,21 +1141,6 @@ object Assembler {
     case CBinaryImm16
     case CBinaryImm32
     case CBinaryImm64
-    case Ld
-    case Ld_Static
-    case Ld_Typed
-    case Ld_Derived
-    case Ld_Generic
-    case Lea
-    case Lea_Static
-    case Lea_Generic
-    case LeaBox
-    case St
-    case St_Static
-    case St_Typed
-    case St_Derived
-    case St_Generic
-    case LoadTailParam
     case Copy
     case CopyGeneric
     case Index
