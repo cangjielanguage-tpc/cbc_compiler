@@ -810,6 +810,9 @@ trait CHIRParser
               sig match {
                 case _ if sig.isAbstractClass =>
                   Null()
+                case sig: SignatureType.OptionLikeEnum =>
+                  assert(sig.isNullableOption)
+                  Null()
                 case sig: SignatureType.InstantiatedReference if sig.isCangjieLambda =>
                   NewGeneric(sig)(loadTypeInfo(sig))
                 case _ if sig.containsTypeVariables =>

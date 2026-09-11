@@ -28,6 +28,7 @@ import com.huawei.excelsior.jet.compiler.options.{BoolOption, StrOption}
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{NonNullableWrapper, NullableWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.*
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
+import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 import com.huawei.excelsior.jet.util.{Closure, Worklist}
 import xscala.io.{DataOutput, Path}
 
@@ -151,14 +152,30 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
 
       if (t.isCangjieEnum) {
         // TODO: store kind in symlevel type
+        def isNullableOption(base: SignatureType): Boolean = base match {
+          case _: SignatureType.OptionLikeEnum => false
+          case _ => base.isReference
+        }
         val ctors = t.getCangjieEnumInfo.constructors.map(_.params)
         ctors match {
-          case Seq(Seq(t), Seq()) =>
+          case Seq(Seq(base), Seq()) =>
             builder.setEnumKind(TypeEnumKind.Option0)
-            builder.setSuperOrEnumType(t.toCbc)
-          case Seq(Seq(), Seq(t)) =>
+            val enumType = if (isNullableOption(base)) {
+              // Erase to avoid infinite recursion.
+              ReferenceType.cangjieStdCoreObject.sigType.toCbc
+            } else {
+              base.toCbc
+            }
+            builder.setSuperOrEnumType(enumType)
+          case Seq(Seq(), Seq(base)) =>
             builder.setEnumKind(TypeEnumKind.Option1)
-            builder.setSuperOrEnumType(t.toCbc)
+            val enumType = if (isNullableOption(base)) {
+              // Erase to avoid infinite recursion.
+              ReferenceType.cangjieStdCoreObject.sigType.toCbc
+            } else {
+              base.toCbc
+            }
+            builder.setSuperOrEnumType(enumType)
           case _ if ctors.forall(_.isEmpty) =>
             builder.setEnumKind(TypeEnumKind.Primitive)
             builder.setSuperOrEnumType(CbcFileFormat.BuiltinSignature.I32)
