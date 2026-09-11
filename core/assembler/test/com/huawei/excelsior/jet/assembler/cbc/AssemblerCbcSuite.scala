@@ -77,6 +77,7 @@ class AssemblerCbcSuite extends AnyFunSuite with AssemblerToolbox[Assembler] {
             case (Sub, false) => asm.cusub(dst, l, r, width)
             case (Mul, false) => asm.cumul(dst, l, r, width)
             case (Div, false) =>
+            case _ =>
           }
 
           if (sign == Unsigned && op == Div) {
@@ -208,6 +209,7 @@ class AssemblerCbcSuite extends AnyFunSuite with AssemblerToolbox[Assembler] {
             case LSR => asm.lsr(width, dst, l, r)
             case ASR => asm.asr(width, dst, l, r)
             case LSL => asm.lsl(width, dst, l, r)
+            case _=>
           }
 
           if (dst == l && op.b2rAllowed && !prohibitB2r) {

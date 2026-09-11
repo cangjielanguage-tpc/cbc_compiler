@@ -1566,18 +1566,7 @@ trait CHIRParser
 
           case PackageFormat.IntrinsicKind.ARRAY_ACQUIRE_RAW_DATA =>
             state(e) = LConst(123456789)
-          case 6 => 
-
-          case 7 =>
-            val sig = resolver.typeSig(e.base.base.resultTy)
-            val res = if (sig.isZST) {
-              Void()
-            } else if (sig.isRecord) {
-              StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
-            } else {
-              ZeroValueNode(ValueType.fromSig(sig))
-            }
-            state(e) = res
+          case _ =>
         }
 
       case e: PackageFormat.SpawnBase =>
