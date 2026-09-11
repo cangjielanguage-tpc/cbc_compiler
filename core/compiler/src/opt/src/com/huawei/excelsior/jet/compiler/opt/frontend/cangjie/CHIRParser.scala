@@ -1565,13 +1565,19 @@ trait CHIRParser
             }
 
           case PackageFormat.IntrinsicKind.ARRAY_ACQUIRE_RAW_DATA =>
-            val (sig, from) = operands(e.base.base) match {
-              case Seq(n: PackageFormat.LocalVar) =>
-                (resolver.typeSig(n.base.`type`), state(n))
-              case Seq(n: PackageFormat.Parameter) =>
-                (resolver.typeSig(n.base.`type`), state(n))
+            state(e) = LConst(123456789)
+          case 6 => 
+
+          case 7 =>
+            val sig = resolver.typeSig(e.base.base.resultTy)
+            val res = if (sig.isZST) {
+              Void()
+            } else if (sig.isRecord) {
+              StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
+            } else {
+              ZeroValueNode(ValueType.fromSig(sig))
             }
-            notImplemented("ARRAY_ACQUIRE_RAW_DATA intrinsic")
+            state(e) = res
         }
 
       case e: PackageFormat.SpawnBase =>
