@@ -5,7 +5,7 @@
 
 @type default {
 
-  @method main()I64
+  @method cj_entry()I64
     @code
       movi.64 IR1, 0x7
       call.direct IR1, #default.fib

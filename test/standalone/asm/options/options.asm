@@ -31,7 +31,7 @@
 @field_ref first = default:OptionHolder[std.core:Object@aref]@ref first default:MyOption[I64]@nopt
 
 @type default
-  @method main()I64
+  @method cj_entry()I64
     @saved_iregs IR12
     @code
       newobj default:OptionHolder[I64]@ref

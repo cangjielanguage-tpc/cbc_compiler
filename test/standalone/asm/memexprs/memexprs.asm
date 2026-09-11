@@ -569,7 +569,7 @@
         @end
     @end
 
-    @method main()I64
+    @method cj_entry()I64
         @saved_iregs IR11
         @code
             movi.64 IR11, 0

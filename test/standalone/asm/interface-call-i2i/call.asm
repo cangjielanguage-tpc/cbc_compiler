@@ -43,7 +43,7 @@
 
 @method_ref mfoo = default:I@ref foo()Void
 @type default
-  @method main()I64
+  @method cj_entry()I64
     @code
       newobj default:Foo@ref
       call.interf IR1, #mfoo

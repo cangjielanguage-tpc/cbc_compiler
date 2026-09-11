@@ -31,7 +31,7 @@
 @method_ref virt_foo = default:Foo@ref foo()Void
 
 @type default
-  @method main()I64
+  @method cj_entry()I64
     @code
       newobj default:Foo@ref
       call.virt IR1, #virt_foo
