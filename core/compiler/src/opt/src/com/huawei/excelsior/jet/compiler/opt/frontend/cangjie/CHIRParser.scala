@@ -1161,7 +1161,8 @@ trait CHIRParser
               Void()
 
             } else {
-              staticField match {
+              val shouldCopy = needsCopy(lastField.fieldType)
+              val valueOrMem = staticField match {
                 case None =>
                   if (host.isVariableLayoutType || fields.exists(_.fieldType.isVariableSizeType)) {
                     val tis = typeInfos(fields)
@@ -1183,6 +1184,13 @@ trait CHIRParser
                   } else {
                     LoadStaticFieldSeq(sf +: fields)(DerivedPtr.Global())
                   }
+              }
+              if (shouldCopy) {
+                val local = StackAlloc.Local(lastField.fieldType)
+                copy(lastField.fieldType, local, valueOrMem)
+                local
+              } else {
+                valueOrMem
               }
             }
             state(e) = n

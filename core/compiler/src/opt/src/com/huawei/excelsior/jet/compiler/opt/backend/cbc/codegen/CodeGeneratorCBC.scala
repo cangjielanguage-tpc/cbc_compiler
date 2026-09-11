@@ -414,13 +414,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val fieldRefs = n.fields
       val builder = MemSpace.Builder()
 
-      def memExprHead(n: Node): Unit = n match {
+      def memExprHead(base: Node, n: Node): Unit = n match {
         case sa: HasFrameSlot => sa.slot match {
           case slot: TypedFrameSlotCBC => builder.typed(slot.typedSlot)
           case _ => shouldNotReachHere(sa)
         }
-        case n @ DerivedPtr(IReg(base), IReg(derived)) =>
-          builder.handle(base, derived)
 
         case n @ ArrayGet(_, _, IReg(obj), IReg(idx)) =>
           assert(n.arrayType.isRecordArray)
@@ -431,7 +429,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           if (fieldRefs.head.refType.isTraceableReference) {
             builder.obj(r)
           } else {
-            builder.rec(r)
+            valueOf(base).producer match {
+              case base: DerivedPtr.BaseHandle =>
+                builder.rec(r)
+              case _ =>
+                val IReg(b) = base
+                builder.handle(b, r)
+            }
           }
       }
 
@@ -469,17 +473,17 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       n match {
         case n: (GetFieldSeqRef | LoadFieldSeq) =>
           val Reg(dst) = n
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs)
           builder.load(dst).gen(fasm)
         case n: GetFieldSeqRefGeneric =>
           val Reg(dst) = n
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs, n.typeInfos)
           builder.load(dst).gen(fasm)
         case n: LoadFieldSeqGeneric =>
           val Reg(dst) = n
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs, n.typeInfos)
           if (n.resType.isVariableSizeType) {
             val IReg(ti) = n.typeInfos.last
@@ -497,12 +501,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           builder.load(dst).gen(fasm)
         case n: StoreFieldSeq =>
           addXSite(n)
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs)
           store(n.inValue)
         case n: StoreFieldSeqGeneric =>
           addXSite(n)
-          memExprHead(n.obj)
+          memExprHead(n.baseRef, n.base)
           fields(fieldRefs, n.typeInfos)
           if (n.resType.isVariableSizeType) {
             val IReg(ti) = n.typeInfos.last
