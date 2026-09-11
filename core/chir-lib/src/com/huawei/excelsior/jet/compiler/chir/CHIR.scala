@@ -20,6 +20,7 @@ object CHIR {
     def packageInitLiteralFunc: Func
     def getCustomType(identifier: String): Option[CustomType]
     def getFunc(identifier: String): Option[Func]
+    def getDef(identifier: String): Option[CustomTypeDef]
   }
 
   trait HasAnnotations {

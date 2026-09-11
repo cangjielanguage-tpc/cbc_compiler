@@ -29,7 +29,7 @@ object CHIRLoader {
       val pkg: CHIR.Package = CHIR.newPackage(source, env.valueOf(CHIRVersion))
       val cjEntryId = pkg.values.length
       implicit val delegate: CHIR.Package = new CHIR.Package {
-        private lazy val cjEntry = pkg.getFunc("user.main").map(CHIRCjEntryGenerator(pkg, cjEntryId, _).gen())
+        private lazy val cjEntry = pkg.getFunc("user.main").map(CHIRCJEntryGenerator(pkg, cjEntryId, _).gen())
 
         def name: String = pkg.name
         def typeDefs: Iterator[CHIR.CustomTypeDef] = pkg.typeDefs
@@ -38,7 +38,8 @@ object CHIRLoader {
         def packageInitFunc: CHIR.Func = pkg.packageInitFunc
         def packageInitLiteralFunc: CHIR.Func = pkg.packageInitLiteralFunc
         def getCustomType(identifier: String): Option[CHIR.CustomType] = pkg.getCustomType(identifier)
-        def getFunc(identifier: String): Option[CHIR.Func] = if identifier != CHIRCjEntryGenerator.name then pkg.getFunc(identifier) else cjEntry
+        def getFunc(identifier: String): Option[CHIR.Func] = if identifier != CHIRCJEntryGenerator.name then pkg.getFunc(identifier) else cjEntry
+        def getDef(identifier: String): Option[CHIR.CustomTypeDef] = pkg.getDef(identifier)
       }
 
       val resolver = CHIRResolver()
