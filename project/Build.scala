@@ -34,6 +34,7 @@ object Build {
       "-explain-types",
       "-deprecation",
       "-unchecked",
+      "-Werror",
     ),
 
     javacOptions ++= {
