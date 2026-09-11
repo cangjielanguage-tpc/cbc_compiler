@@ -1800,7 +1800,6 @@ trait CHIRParser
         val ret = block.blockEnd.asInstanceOf[Return]
         val proxy = ret.inValue
         assert(proxy.isInstanceOf[Proxy] && proxy.singleUse == ret)
-        println(retVal)
         proxy.replaceBy(retVal)
 
       case e: CHIR.RaiseException =>

@@ -45,6 +45,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   private val _customTypes = mutable.HashMap.empty[String, CHIR.CustomType]
   private val _values = Array.fill[CHIR.Value](pkg.valuesLength)(null)
   private val _funcs = mutable.HashMap.empty[String, CHIR.Func]
+  private val _defs = mutable.HashMap.empty[String, CHIR.CustomTypeDef]
   private val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
   private val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
 
@@ -255,12 +256,14 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case CustomTypeDefElem.ClassDef => new ClassDef
           case CustomTypeDefElem.ExtendDef => new ExtendDef
         }
-        _customDefs(i) = pkg.defs(obj, i) match {
+        val d = pkg.defs(obj, i) match {
           case t: EnumDef => EnumDefImpl(t)
           case t: ClassDef => ClassDefImpl(t)
           case t: StructDef => StructDefImpl(t)
           case t: ExtendDef => ExtendDefImpl(t)
         }
+        _customDefs(i) = d
+        _defs.put(d.identifier, d)
       }
       Some(_customDefs(i)).collect {
         case t: T => t
@@ -311,6 +314,13 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
       values collectFirst {
         case t: CHIR.Func if t.identifier == id => t
       }
+    }
+  }
+
+  def getDef(identifier: String): Option[CHIR.CustomTypeDef] = {
+    val id = "@" + identifier
+    _defs.get(id).orElse {
+      typeDefs.find(_.identifier == id)
     }
   }
 }

@@ -1,11 +1,11 @@
 package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.common.CodeHelpers
-import com.huawei.excelsior.jet.compiler.chir.CHIRCjEntryGenerator.*
+import com.huawei.excelsior.jet.compiler.chir.CHIRCJEntryGenerator.*
 
 import scala.collection.mutable
 
-object CHIRCjEntryGenerator {
+object CHIRCJEntryGenerator {
   val name = "cj_entry"
   private val getEx = CHIR.GetException
   private val Bool = CHIR.BuiltinType.Boolean
@@ -14,7 +14,7 @@ object CHIRCjEntryGenerator {
   private val Exit = CHIR.Exit
 }
 
-class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
+class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
 
   private val OOM = pkg.getCustomType("_CNat16OutOfMemoryErrorE").get
   private val Object = pkg.getCustomType("_CNat6ObjectE").get
@@ -23,6 +23,7 @@ class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
   private val Exception = pkg.getCustomType("_CNat9ExceptionE").get
   private val eprintlnFunc = pkg.getFunc("_CNat8eprintlnHRNat6StringE").get
   private val handleExFunc = pkg.getFunc("_CNat15handleExceptionHCNat9ExceptionE").get
+  private val getCmdLineArgsFunc = pkg.getFunc("_CNat18getCommandLineArgsHv").get
 
   def gen(): CHIR.Func = {
     new CHIR.Func {
@@ -41,7 +42,7 @@ class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
       def id: Long = _id
       def identifier: String = name
       def srcCodeIdentifier: String = name
-      def packageName: String = main.packageName
+      def packageName: String = userMain.packageName
       def kind: CHIR.Func.Kind = CHIR.Func.Kind.Default
       def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
 
@@ -109,6 +110,13 @@ class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
           isLandingPadBlock = true
         )
 
+        val (userMainCallExprs, userMainCallArgs) = if (userMain.tpe.paramTypes.isEmpty) {
+          (Seq.empty, Seq.empty)
+        } else {
+          val ArrOfStr = pkg.getDef("_CNat5ArrayIRNat6StringEE").get.tpe
+          (Seq((lv(7, ArrOfStr), apply(getCmdLineArgsFunc, Seq.empty))), Seq(7))
+        }
+
         g.entry(
           exprs = Seq(
             (lv(retValIdx, ref(Int64)), alloc(Int64)),
@@ -119,9 +127,8 @@ class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
               ),
               terminator = (lv(5, Unit), tryApply(pkg.packageInitLiteralFunc, Seq.empty,
                 g.bb(6)(
-                  exprs = Seq(
-                  ),
-                  terminator = (lv(6, Int64), tryApply(main, Seq.empty,
+                  exprs = userMainCallExprs,
+                  terminator = (lv(6, Int64), tryApply(userMain, userMainCallArgs,
                     g.bb(7)(
                       exprs = Seq(
                         (lv(27, Unit), st(6, 2))
@@ -151,7 +158,7 @@ class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
       }
 
       def annotations: Seq[CHIR.Annotation] = Seq.empty
-      // TODO
+      // TODO need some?
       def attributes: Seq[CHIR.Attribute] = Seq.empty
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
     }
@@ -162,8 +169,10 @@ class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
     def resultVar_=(v: CHIR.LocalVar): Unit
   }
 
-  private trait ValueProvider(deps: Int*)(implicit b: bg.Raw) {
-    deps.foreach(b.indexVal)
+  private trait ValueProvider(deps: Int*) {
+    def blockGroup: bg.Raw
+
+    deps.foreach(blockGroup.indexVal)
   }
 
   private class alloc(val allocatedType: CHIR.Type) extends CHIR.Allocate {}
@@ -174,49 +183,47 @@ class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
   }
 
   private class apply(val callee: CHIR.Func, argsIndices: Seq[Int], val thisType: Option[CHIR.Type] = None)
-                     (implicit b: bg.Raw) extends ValueProvider(argsIndices: _*) with CHIR.Apply with HasResultVar {
-    def args: Seq[CHIR.Value] = argsIndices.map(b.apply)
+                     (implicit val blockGroup: bg.Raw) extends ValueProvider(argsIndices: _*) with CHIR.Apply with HasResultVar {
+    def args: Seq[CHIR.Value] = argsIndices.map(blockGroup.apply)
     def instantiatedTypeArgs: Seq[CHIR.Type] = Seq.empty
 
     var resultTpe: CHIR.Type = _
     var resultVar: CHIR.LocalVar = _
   }
 
-  private class invoke(val callee: CHIR.Func, val thisType: CHIR.Type, argsIndices: Int*)(implicit b: bg.Raw)
+  private class invoke(val callee: CHIR.Func, val thisType: CHIR.Type, argsIndices: Int*)(implicit val blockGroup: bg.Raw)
     extends ValueProvider(argsIndices: _*) with CHIR.Invoke with HasResultVar {
+
     def thisArg: CHIR.Value = args.head
-
-    def args: Seq[CHIR.Value] = argsIndices.map(b.apply)
-
+    def args: Seq[CHIR.Value] = argsIndices.map(blockGroup.apply)
     def instantiatedTypeArgs: Seq[CHIR.Type] = Seq.empty
 
     var resultTpe: CHIR.Type = _
     var resultVar: CHIR.LocalVar = _
   }
 
-  private class st(valueIdx: Int, locationIdx: Int)(implicit b: bg.Raw) extends ValueProvider(valueIdx, locationIdx) with CHIR.Store {
-    def value: CHIR.Value = b(valueIdx)
-
-    def location: CHIR.Value = b(locationIdx)
+  private class st(valueIdx: Int, locationIdx: Int)(implicit val blockGroup: bg.Raw) extends ValueProvider(valueIdx, locationIdx) with CHIR.Store {
+    def value: CHIR.Value = blockGroup(valueIdx)
+    def location: CHIR.Value = blockGroup(locationIdx)
   }
 
-  private class intrinsic(val kind: CHIR.Intrinsic.Kind, argsIndices: Int*)(implicit b: bg.Raw) extends ValueProvider(argsIndices: _*)
+  private class intrinsic(val kind: CHIR.Intrinsic.Kind, argsIndices: Int*)(implicit val blockGroup: bg.Raw) extends ValueProvider(argsIndices: _*)
     with CHIR.Intrinsic with HasResultVar {
-    def args: Seq[CHIR.Value] = argsIndices.map(b.apply)
+    def args: Seq[CHIR.Value] = argsIndices.map(blockGroup.apply)
 
     var resultTpe: CHIR.Type = _
     var resultVar: CHIR.LocalVar = _
   }
 
-  private class iof(objIdx: Int, val testType: CHIR.Type)(implicit b: bg.Raw) extends ValueProvider(objIdx) with CHIR.InstanceOf with HasResultVar {
-    def obj: CHIR.Value = b(objIdx)
+  private class iof(objIdx: Int, val testType: CHIR.Type)(implicit val blockGroup: bg.Raw) extends ValueProvider(objIdx) with CHIR.InstanceOf with HasResultVar {
+    def obj: CHIR.Value = blockGroup(objIdx)
 
     var resultTpe: CHIR.Type = _
     var resultVar: CHIR.LocalVar = _
   }
 
-  private class cast(valueIdx: Int)(implicit b: bg.Raw) extends ValueProvider(valueIdx) with CHIR.StaticCast with HasResultVar {
-    def value: CHIR.Value = b(valueIdx)
+  private class cast(valueIdx: Int)(implicit val blockGroup: bg.Raw) extends ValueProvider(valueIdx) with CHIR.StaticCast with HasResultVar {
+    def value: CHIR.Value = blockGroup(valueIdx)
 
     def targetTpe: CHIR.Type = resultTpe
 
@@ -230,14 +237,14 @@ class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
   }
 
   object const {
-    private[CHIRCjEntryGenerator] def apply(str: String): const = {
+    private[CHIRCJEntryGenerator] def apply(str: String): const = {
       new const(new CHIR.StringLiteral {
         def value: String = str
         def tpe: CHIR.Type = String
       })
     }
 
-    private[CHIRCjEntryGenerator] def apply(i: Long): const = {
+    private[CHIRCJEntryGenerator] def apply(i: Long): const = {
       new const(new CHIR.IntLiteral {
         def value: Long = i
         def tpe: CHIR.Type = Int64
@@ -245,19 +252,19 @@ class CHIRCjEntryGenerator(pkg: CHIR.Package, _id: Long, main: CHIR.Func) {
     }
   }
 
-  private final class br(condIdx: Int, val trueBlock: CHIR.Block, val falseBlock: CHIR.Block)(implicit b: bg.Raw) extends ValueProvider(condIdx) with CHIR.Branch {
-    def condition: CHIR.Value = b(condIdx)
+  private final class br(condIdx: Int, val trueBlock: CHIR.Block, val falseBlock: CHIR.Block)(implicit val blockGroup: bg.Raw) extends ValueProvider(condIdx) with CHIR.Branch {
+    def condition: CHIR.Value = blockGroup(condIdx)
     def successors: Seq[CHIR.Block] = Seq(trueBlock, falseBlock)
   }
 
-  private final class throwEx(exValIdx: Int)(implicit b: bg.Raw) extends ValueProvider(exValIdx) with CHIR.RaiseException {
-    def exceptionValue: CHIR.Value = b(exValIdx)
+  private final class throwEx(exValIdx: Int)(implicit val blockGroup: bg.Raw) extends ValueProvider(exValIdx) with CHIR.RaiseException {
+    def exceptionValue: CHIR.Value = blockGroup(exValIdx)
     def exceptionBlock: Option[CHIR.Block] = None
     def successors: Seq[CHIR.Block] = Seq.empty
   }
 
-  private final class lv(idx: Int, val tpe: CHIR.Type)(implicit b: bg.Raw) extends CHIR.LocalVar {
-    b.indexVal(idx, this)
+  private final class lv(idx: Int, val tpe: CHIR.Type)(implicit blockGroup: bg.Raw) extends CHIR.LocalVar {
+    blockGroup.indexVal(idx, this)
 
     var associatedExpr: CHIR.Expression = _
   }
