@@ -216,17 +216,19 @@ trait SimpleNodes { self: Universe with Nodes =>
     object SecondArg extends EdgeMatcher[Pow](1)
   }
 
-  class CheckedUnary(proto: CheckedUnary.Proto) extends FloatingNodeWithFixedArgs(proto) {
+  class CheckedUnary(proto: CheckedUnary.Proto) extends NodeWithFixedArgs(proto) with SpinalNode with CanThrow with ProducesValue {
     def asmType = proto.asmType
     def kind = proto.kind
     def signed = proto.asmType.signed
+    def value = arg(2)
   }
 
   object CheckedUnary {
     enum Kind:
       case Neg
 
-    case class Proto private[CheckedUnary](keyType: Type, asmType: AsmType, kind: CheckedUnary.Kind) extends FixedArgs[CheckedUnary](keyType)(keyType) {
+    case class Proto private[CheckedUnary](keyType: Type, asmType: AsmType, kind: CheckedUnary.Kind)
+      extends FixedArgs[CheckedUnary](ControlType, MemoryType, keyType)(keyType) with ControlValueTagged[CheckedUnary] {
       def newInstance() = new CheckedUnary(this)
     }
 

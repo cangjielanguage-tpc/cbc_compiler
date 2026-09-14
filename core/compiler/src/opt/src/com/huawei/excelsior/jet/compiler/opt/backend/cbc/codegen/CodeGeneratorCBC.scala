@@ -207,12 +207,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genCheckedUnary(op: CheckedUnary): Unit = {
-      val IReg(src) = op.arg
+      val IReg(src) = op.value
       val IReg(dst) = op
       val width = op.asmType.width
       op.kind match {
         case CheckedUnary.Kind.Neg => if (op.signed) asm.cneg(dst, src, width) else asm.cuneg(dst, src, width)
       }
+      addXSite(op)
     }
 
     private def genCheckedOp(op: CheckedOp): Unit = {
