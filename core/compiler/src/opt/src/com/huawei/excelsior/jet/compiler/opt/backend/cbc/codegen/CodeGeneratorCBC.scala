@@ -658,7 +658,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       (c.dstBaseRef, c.dst, c.srcBaseRef, c.src) match
         case (IReg(dstBase), IReg(dst), IReg(srcBase), IReg(src))  =>
           asm.copy(dstBase, dst, srcBase, src, adapter.sigType(CodeSigSymbol(c.structureType)))
-          if(valueOf(c.dstBaseRef).producer.isInstanceOf[DerivedPtr.Local]) {
+          if (valueOf(c.dstBaseRef).producer.isInstanceOf[DerivedPtr.Local]) {
             mark(dst, LocalType.CLEARED)
           }
         case _ => shouldNotReachHere(c)
