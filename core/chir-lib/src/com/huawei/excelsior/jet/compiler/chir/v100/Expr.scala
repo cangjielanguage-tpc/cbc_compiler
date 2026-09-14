@@ -205,9 +205,10 @@ class UnaryImpl(e: UnaryExpressionBase)(implicit provider: CHIRItemProvider) ext
   def kind: Unary.Kind = e.base.kind match {
     case CHIRExprKind.BitNot => Unary.Kind.BitNot
     case CHIRExprKind.Not => Unary.Kind.Not
-    case CHIRExprKind.Neg => Unary.Kind.Neg
+    case CHIRExprKind.Neg | CHIRExprKind.TryNeg => Unary.Kind.Neg
   }
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.base.resultTy).get
+  def overflowStrategy: CHIR.OverflowStrategy = mapOverflowStrategy(e.overflowStrategy)
 }
 
 final class TryUnaryImpl(e: UnaryExpressionBase)(implicit provider: CHIRItemProvider) extends UnaryImpl(e) with CHIR.TryUnary {
