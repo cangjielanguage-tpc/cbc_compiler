@@ -1,0 +1,36 @@
+-123
+NEG exception
+0
+
+0
+UNEG exception
+0
+
+512
+-512
+LSH exception
+0
+LSH exception
+0
+
+512
+0
+ULSH exception
+0
+ULSH exception
+0
+
+32
+-32
+-1
+RSH exception
+0
+RSH exception
+0
+
+32
+0
+URSH exception
+0
+URSH exception
+0
