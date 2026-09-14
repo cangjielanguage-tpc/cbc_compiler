@@ -44,6 +44,10 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
   protected def isApplicableToConstFold(node: Node): Boolean = node match {
     case IDivRemByConstOp(0) => false
 
+    case _: CheckedUnary =>
+      // TODO: support
+      false
+
     case _: IDivRemOp =>
       // IDivRemOp is a controlled node but it is applicable to const fold except division by zero
       isCompileTimeComputable(node)
