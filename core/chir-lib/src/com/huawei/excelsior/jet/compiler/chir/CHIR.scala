@@ -5,9 +5,11 @@ import com.huawei.excelsior.common.CodeHelpers.*
 object CHIR {
 
   val defaultVersion = 100
+  val releaseBeta120Rc3Version = 1203
 
   def newPackage(source: String, version: Int): Package = version match {
     case CHIR.defaultVersion => new v100.PackageImpl(source)
+    case CHIR.releaseBeta120Rc3Version => new v1203.PackageImpl(source)
     case _ => notImplemented("unsupported CHIR version", version)
   }
 
@@ -254,6 +256,7 @@ object CHIR {
 
   trait FuncSig {
     def name: String
+    def tpe: FuncType
     def genericTypeParams: Seq[Type]
   }
 
@@ -372,7 +375,7 @@ object CHIR {
   }
 
   trait Invoke extends Expression with HasResultVar {
-    def callee: Func
+    def callee: Func | FuncSig
     def thisType: Type
     def thisArg: Value
     def instantiatedTypeArgs: Seq[Type]
@@ -580,6 +583,6 @@ object CHIR {
   }
 
   enum OverflowStrategy {
-    case Na, Wrapping, Throwing, Saturating
+    case Na, Checked, Wrapping, Throwing, Saturating
   }
 }
