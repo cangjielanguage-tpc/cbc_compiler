@@ -37,7 +37,6 @@ object CHIRLoader {
         def function(idx: Int): CHIR.Func = if idx != cjEntryId then pkg.function(idx) else cjEntry.get
         def packageInitFunc: CHIR.Func = pkg.packageInitFunc
         def packageInitLiteralFunc: CHIR.Func = pkg.packageInitLiteralFunc
-        def getCustomType(identifier: String): Option[CHIR.CustomType] = pkg.getCustomType(identifier)
         def getFunc(identifier: String): Option[CHIR.Func] = if identifier != CHIRCJEntryGenerator.name then pkg.getFunc(identifier) else cjEntry
         def getDef(identifier: String): Option[CHIR.CustomTypeDef] = pkg.getDef(identifier)
       }
