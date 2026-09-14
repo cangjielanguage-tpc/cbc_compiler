@@ -731,6 +731,8 @@ trait CHIRParser
                   case CHIR.Binary.Kind.Exp => Pow(l, r)
                   case x => shouldNotReachHere(s"unexpected wrapping binary expression: ${e.kind}")
                 }
+              case CHIR.OverflowStrategy.Checked =>
+                shouldNotReachHere("checked binary expression")
               case CHIR.OverflowStrategy.Throwing =>
                 val width = sig.toAsm.width
                 val normalizedArgs = Seq(l, r) map { n =>
@@ -1133,9 +1135,12 @@ trait CHIRParser
           case ValueSig(sig) => sig
         }
 
-        val func = methodArgVal
-        val name = resolver.symName(func)
-        val (gsig, _, _, _) = resolver.functionSig(func.tpe, hasReceiver = !isStatic)
+        val name = resolver.symName(methodArgVal)
+        val funcType = methodArgVal match {
+          case func: CHIR.Func => func.tpe
+          case sig: CHIR.FuncSig => sig.tpe
+        }
+        val (gsig, _, _, _) = resolver.functionSig(funcType, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
           if (g.isTypeVariable && !i.isTypeVariable && !i.isInstanceOf[SignatureType.Box]) SignatureType.Box(i) else i
@@ -1206,6 +1211,7 @@ trait CHIRParser
         e match {
           case e: CHIR.NumericCast => e.overflowStrategy match {
             case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na => // ok
+            case CHIR.OverflowStrategy.Checked => shouldNotReachHere("checked type cast")
             case CHIR.OverflowStrategy.Throwing => // TODO: do we need to support it?
             case CHIR.OverflowStrategy.Saturating => notImplemented("saturating type cast")
           }
@@ -1290,8 +1296,8 @@ trait CHIRParser
           case (from: ClassBasedEnum, to: Tuple) =>
             val ctors = from.info.constructors
             val targetCtor = to.params.tail // first element is tag
-            val idx = ctors.indexWhere(_.params == targetCtor) // TODO: instantiate
-            assert(idx >= 0)
+            val idx = ctors.indexWhere(_.params.map(_.instantiate(from.params, Seq.empty)) == targetCtor)
+            assert(idx >= 0, s"constructor for cast from $from to $to")
             val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
             val enumType = if (from.params.isEmpty) {
               CangjieReference(enumName)
@@ -1438,7 +1444,7 @@ trait CHIRParser
               case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
-            state(e) = AtomicOps.Store(obj.tpe, field)(obj, PutMemoryOperation.adjustValue(field.fieldType.toAsm, value))
+            AtomicOps.Store(obj.tpe, field)(obj, PutMemoryOperation.adjustValue(field.fieldType.toAsm, value))
 
           case CHIR.Intrinsic.Kind.AtomicCAS =>
             val args = e.args
