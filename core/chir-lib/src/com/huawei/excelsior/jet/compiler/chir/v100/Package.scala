@@ -42,12 +42,12 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
     CHIRPackage.getRootAsCHIRPackage(buf)
   }
   private val _types = Array.fill[CHIR.Type](pkg.typesLength)(null)
-  private val _customTypes = mutable.HashMap.empty[String, CHIR.CustomType]
   private val _values = Array.fill[CHIR.Value](pkg.valuesLength)(null)
-  private val _funcs = mutable.HashMap.empty[String, CHIR.Func]
-  private val _defs = mutable.HashMap.empty[String, CHIR.CustomTypeDef]
   private val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
   private val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
+  
+  private val _funcs = mutable.HashMap.empty[String, CHIR.Func]
+  private val _defs = mutable.HashMap.empty[String, CHIR.CustomTypeDef]
 
   def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
@@ -68,14 +68,11 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case t: FuncType => FuncTypeImpl(t)
           case t: RawArrayType => RawArrayTypeImpl(t)
           case t: VArrayType => VArrayTypeImpl(t)
-          case t: CustomType =>
-            val tpe = t.base.kind match {
-              case CHIRTypeKind.CLASS => ClassTypeImpl(t)
-              case CHIRTypeKind.STRUCT => StructTypeImpl(t)
-              case CHIRTypeKind.ENUM => EnumTypeImpl(t)
-            }
-            _customTypes.put(tpe.typeDef.identifier, tpe)
-            tpe
+          case t: CustomType => t.base.kind match {
+            case CHIRTypeKind.CLASS => ClassTypeImpl(t)
+            case CHIRTypeKind.STRUCT => StructTypeImpl(t)
+            case CHIRTypeKind.ENUM => EnumTypeImpl(t)
+          }
           case t: Type => t.kind match {
             case CHIRTypeKind.INT8 => CHIR.BuiltinType.Int8
             case CHIRTypeKind.INT16 => CHIR.BuiltinType.Int16
@@ -289,23 +286,8 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
     }
   }
 
-  def types: Iterator[CHIR.Type] = {
-    (1 to pkg.typesLength).iterator.map { id =>
-      getType[CHIR.Type](id).get
-    }
-  } 
-  
   def function(idx: Int): CHIR.Func = {
     getValue[CHIR.Func](idx).get
-  }
-
-  def getCustomType(identifier: String): Option[CHIR.CustomType] = {
-    val id = "@" + identifier
-    _customTypes.get(id).orElse {
-      types collectFirst {
-        case t: CHIR.CustomType if t.typeDef.identifier == id => t
-      }
-    }
   }
 
   def getFunc(identifier: String): Option[CHIR.Func] = {

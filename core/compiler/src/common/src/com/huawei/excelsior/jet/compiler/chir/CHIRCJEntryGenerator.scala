@@ -16,11 +16,11 @@ object CHIRCJEntryGenerator {
 
 class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
 
-  private val OOM = pkg.getCustomType("_CNat16OutOfMemoryErrorE").get
-  private val Object = pkg.getCustomType("_CNat6ObjectE").get
-  private val String = pkg.getCustomType("_CNat6StringE").get
-  private val Error = pkg.getCustomType("_CNat5ErrorE").get
-  private val Exception = pkg.getCustomType("_CNat9ExceptionE").get
+  private val OOM = pkg.getDef("_CNat16OutOfMemoryErrorE").get.tpe
+  private val Object = pkg.getDef("_CNat6ObjectE").get.tpe
+  private val String = pkg.getDef("_CNat6StringE").get.tpe
+  private val Error = pkg.getDef("_CNat5ErrorE").get.tpe
+  private val Exception = pkg.getDef("_CNat9ExceptionE").get.tpe
   private val eprintlnFunc = pkg.getFunc("_CNat8eprintlnHRNat6StringE").get
   private val handleExFunc = pkg.getFunc("_CNat15handleExceptionHCNat9ExceptionE").get
   private val getCmdLineArgsFunc = pkg.getFunc("_CNat18getCommandLineArgsHv").get
