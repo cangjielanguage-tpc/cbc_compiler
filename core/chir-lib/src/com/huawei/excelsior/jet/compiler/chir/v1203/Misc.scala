@@ -1,14 +1,14 @@
-package com.huawei.excelsior.jet.compiler.chir.v100
+package com.huawei.excelsior.jet.compiler.chir.v1203
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{HasAnnotations, HasAttributes, HasDeclaringDef}
-import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
-import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.{toSeq, toTypeSeq}
+import com.huawei.excelsior.jet.compiler.chir.v1203.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.v1203.CHIRUtils.{toSeq, toTypeSeq}
 
 trait HasAnnotationsImpl extends HasAnnotations {
   def base: Base
   implicit def provider: CHIRItemProvider
-  
+
   lazy val annotations: Seq[CHIR.Annotation] = {
     val annos = base.annosVector
     (0 until annos.length).collect {
@@ -49,6 +49,12 @@ final class OverrideSrcFuncTypeImpl(o: OverrideSrcFuncType)(using provider: CHIR
 
 final class WrappedRawMethodImpl(w: WrappedRawMethod)(using provider: CHIRItemProvider) extends CHIR.WrappedRawMethod {
   def rawMethod: CHIR.Func = provider.getValue[CHIR.Func](w.rawMethod).get
+}
+
+final class FuncSigImpl(f: FuncSigInfo)(using provider: CHIRItemProvider) extends CHIR.FuncSig {
+  def name: String = f.funcName
+  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](f.funcType).get
+  def genericTypeParams: Seq[CHIR.Type] = f.genericTypeParamsVector.toTypeSeq[CHIR.Type]
 }
 
 trait HasAttributesImpl extends HasAttributes {
