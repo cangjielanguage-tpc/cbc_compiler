@@ -658,7 +658,7 @@ trait CHIRParser
           case CHIR.Unary.Kind.Neg => e.overflowStrategy match {
             case CHIR.OverflowStrategy.Wrapping => Neg(tpe)(arg)
             case CHIR.OverflowStrategy.Throwing => CheckedUnary(tpe, sig.toAsm, CheckedUnary.Kind.Neg)(arg)
-            case CHIR.OverflowStrategy.Saturating => notImplemented("support saturating arithmetics")
+            case CHIR.OverflowStrategy.Saturating => Neg(tpe)(arg) // TODO: support properly
             case s => shouldNotReachHere(s"Unexpected overflow strategy $s")
           }
           case CHIR.Unary.Kind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
