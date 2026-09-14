@@ -1938,11 +1938,11 @@ trait SimpleNodes { self: Universe with Nodes =>
   // High-level copying node
 
   class CopyStructure private(proto: CopyStructure.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {
-    def dstBase = arg(2)
+    def dstBaseRef = arg(2)
     def dst = arg(3)
-    def srcBase = arg(4)
+    def srcBaseRef = arg(4)
     def src = arg(5)
-    def srcBase_=(x: Node): Unit = updateArg(4, x)
+    def srcBaseRef_=(x: Node): Unit = updateArg(4, x)
     def src_=(x: Node): Unit = updateArg(5, x)
 
     def structureType = proto.structureType
@@ -1958,9 +1958,9 @@ trait SimpleNodes { self: Universe with Nodes =>
 
     def proto(x: SignatureType) = Prototype.intern(Proto(x))
 
-    def apply(x: SignatureType)(dstBase: Node, dst: Node, srcBase: Node, src: Node) = proto(x)(dstBase, dst, srcBase, src)
+    def apply(x: SignatureType)(dstBaseRef: Node, dst: Node, srcBaseRef: Node, src: Node) = proto(x)(dstBaseRef, dst, srcBaseRef, src)
 
-    def unapply(x: CopyStructure) = Some(x.structureType, x.dstBase, x.dst, x.srcBase, x.src)
+    def unapply(x: CopyStructure) = Some(x.structureType, x.dstBaseRef, x.dst, x.srcBaseRef, x.src)
   }
 
   class CopyStructureCBC private(proto: CopyStructureCBC.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {

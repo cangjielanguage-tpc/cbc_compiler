@@ -137,12 +137,12 @@ trait ConsistencyChecking extends SynchronizationOptimization with UCEComponent 
             case cs: CopyStructure =>
               cs.src match {
                 case f: FieldSeqOperation =>
-                  assert(cs.srcBase == f.baseRef)
+                  assert(cs.srcBaseRef == f.baseRef)
                 case _ =>
               }
               cs.dst match {
                 case f: FieldSeqOperation =>
-                  assert(cs.dstBase == f.baseRef)
+                  assert(cs.dstBaseRef == f.baseRef)
                 case _ =>
               }
             case _ =>
