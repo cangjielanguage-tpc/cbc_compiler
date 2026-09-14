@@ -34,7 +34,7 @@ trait IOComponent extends BinaryIO { self: Universe =>
    * Must be incremented if args/types of existing nodes are changed.
    * Adding of a new node to the end of SupportedProtos list does not require incrementing of the version.
    */
-  val IRFormatVersion = 138
+  val IRFormatVersion = 139
 
   /**
    * Node identifier.

@@ -1750,6 +1750,8 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
     def array = arg(2)
     def value = arg(valueArgIdx)
 
+    def valueBase = arg(4)
+
     private def valueArgIdx = 3
     def isFillValue(e: Edge) = e.targetArgIndex == valueArgIdx
 
@@ -1758,7 +1760,7 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
 
   object AJArrayFill {
     case class Proto private[AJArrayFill](arrayType: SignatureType, enrichedElemType: SignatureType)
-      extends FixedArgs[AJArrayFill](ControlType, MemoryType, TRefType, ValueType(enrichedElemType, eopTypeForInterfaces = true, instantiateRich = true))(ControlType)
+      extends FixedArgs[AJArrayFill](ControlType, MemoryType, TRefType, ValueType(enrichedElemType, eopTypeForInterfaces = true, instantiateRich = true), TRefType)(ControlType)
         with ControlMemoryTagged[AJArrayFill] {
 
       assert(arrayType.isArray)

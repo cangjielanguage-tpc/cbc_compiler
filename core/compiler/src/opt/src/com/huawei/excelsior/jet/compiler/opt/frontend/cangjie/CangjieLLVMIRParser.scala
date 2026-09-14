@@ -2036,7 +2036,7 @@ trait CangjieLLVMIRParser
           stats.count(StatsKind.ArrayZeroingElimination, "Unit array zeroing eliminated on parsing", array)
         } else {
           val enrichedElemType = obtainEnrichedElemType(arrayType, elemType)
-          AJArrayFill(arrayType, enrichedElemType)(array, value)
+          AJArrayFill(arrayType, enrichedElemType)(array, value, DerivedPtr.Local())
         }
         array
 

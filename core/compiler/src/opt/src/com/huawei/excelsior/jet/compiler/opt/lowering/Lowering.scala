@@ -522,7 +522,6 @@ trait Lowering extends PreLowering with TypeChecks with Allocators with Invokes 
       case x: AcquireRawData                  => lowerAcquireRawData(x)
       case x: ReleaseRawData                  => lowerReleaseRawData(x)
       case x: CompileTimeOp                   => lowerCompileTimeOp(x)
-      case x: CopyStructure                   => lowerCopyStructure(x); null
       case x: LockWrapper                     => lowerLockWrapper(x)
       case _: StackDescriptor                 => lowerGetStackDescriptor();
       case x: ExtractEnrichment               => lowerExtractEnrichment(x)

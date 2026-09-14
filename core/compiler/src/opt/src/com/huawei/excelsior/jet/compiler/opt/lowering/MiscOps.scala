@@ -423,67 +423,28 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
   protected def copyRecordByFields(t: SignatureType, dst: Node, src: Node): Unit = {
     assert(t.isRecord, t)
     assert(!t.isVariableSizeType, t)
-    if (isStandalone) {
-      copyRecordStandalone(t, dst, src)
+    assert(!isStandalone, "standalone record copies must use CopyStructure with explicit bases")
+    for (f <- asClassType(t).getFields if !f.isStatic && !f.getType.isZST) {
+      val srcValueOrAddr = t match {
+        case t: SignatureType.InstantiatedType =>
+          UniversalGeneric.GetField(f, t, f.getType.instantiate(t.instantiatedTypeParameters, Seq.empty))(src)
+        case _ => GetField(f)(src)
+      }
 
-    } else {
-      for (f <- asClassType(t).getFields if !f.isStatic && !f.getType.isZST) {
-        val srcValueOrAddr = t match {
+      if (f.isAJFlat) {
+        val fieldType = f.getType ensuring(_.isRecord, f)
+        // TODO: generic
+        val dstAddr = GetField(f)(dst)
+        copyRecord(fieldType, dstAddr, srcValueOrAddr)
+
+      } else {
+        t match {
           case t: SignatureType.InstantiatedType =>
-            UniversalGeneric.GetField(f, t, f.getType.instantiate(t.instantiatedTypeParameters, Seq.empty))(src)
-          case _ => GetField(f)(src)
-        }
-
-        if (f.isAJFlat) {
-          val fieldType = f.getType ensuring(_.isRecord, f)
-          // TODO: generic
-          val dstAddr = GetField(f)(dst)
-          copyRecord(fieldType, dstAddr, srcValueOrAddr)
-
-        } else {
-          t match {
-            case t: SignatureType.InstantiatedType =>
-              UniversalGeneric.PutField(f, t, f.getType.instantiate(t.instantiatedTypeParameters, Seq.empty))(dst, srcValueOrAddr)
-            case _ => PutField(f)(dst, srcValueOrAddr)
-          }
+            UniversalGeneric.PutField(f, t, f.getType.instantiate(t.instantiatedTypeParameters, Seq.empty))(dst, srcValueOrAddr)
+          case _ => PutField(f)(dst, srcValueOrAddr)
         }
       }
     }
-  }
-
-  private def copyRecordStandalone(refType: SignatureType, dst: Node, src: Node): Unit = {
-    assert(refType.isRecord, refType)
-    assert(isStandalone)
-
-    def isCopyable(dst: Node, src: Node): Boolean =  (dst, src) match {
-      case (_: StackAlloc, _) => true
-      case (_, _: StackAlloc) => true
-      case _ => false
-    }
-
-    if (isCopyable(dst, src)) {
-      CopyStructure.primitive(refType)(maybeDerivedPtrBase(dst), dst, maybeDerivedPtrBase(src), src)
-    } else {
-      val temp = StackAlloc.Local(refType)
-      CopyStructure.primitive(refType)(DerivedPtr.Local(), temp,  maybeDerivedPtrBase(src), src)
-      CopyStructure.primitive(refType)(maybeDerivedPtrBase(dst), dst, DerivedPtr.Local(), temp)
-    }
-  }
-
-  private def maybeDerivedPtrBase(rcv: Node): Node = rcv match {
-    case rcv if rcv.tpe.isTraceableRefType => rcv
-    case rcv: Param if rootMethod.hasMutRecordParameter && rcv.num == rootMethod.getMutRecordArgIdx =>
-      rootMethodParam(rootMethod.getMutObjectArgIdx)
-    case rcv: ArrayGet if rcv.arrayType.isRecordArray => rcv.array
-    case rcv: RecordArrayGet => rcv.array
-    case rcv: FieldSeqOperation => rcv.baseRef
-    case rcv: Phi =>
-      val args = Phi.transitiveValueArgs(rcv).filterNot(_.isInstanceOf[NoValue])
-      ScalaCollections.singleton(args) match {
-        case Some(arg) => maybeDerivedPtrBase(arg)
-        case None => notImplemented(s"non-trivial phi function: $rcv, leaf args: $args")
-      }
-    case rcv => DerivedPtr.Local()
   }
 
   /** Splits ArrayFill to a series of ArrayPut operations. */
@@ -506,7 +467,11 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
       assert(!arrayType.getArrayElemType.isZST, "there should be no array filling for ZST array")
       if (arrayType.isRecordArray) {
         val addr = ArrayGet(arrayType)(array, index)
-        copyRecord(arrayType.getArrayElemType, addr, value)
+        if (isStandalone) {
+          CopyStructure(arrayType.getArrayElemType)(array, addr, arrayFill.valueBase, value)
+        } else {
+          copyRecord(arrayType.getArrayElemType, addr, value)
+        }
       } else {
         ArrayPut(arrayType, arrayFill.enrichedElemType)(array, index, value)
       }
@@ -1049,12 +1014,6 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
       DirectCall(Com.Huawei.Excelsior.Aj.Lang.Half.f2h)(cast.arg)
 
     case _ => shouldNotReachHere("lowering of unexpected cast " + cast)
-  }
-
-  private[lowering] def lowerCopyStructure(n: CopyStructure): Unit = {
-    assert(n.structureType.isRecord)
-    assert(!n.structureType.isDeferred)
-    copyRecord(n.structureType, n.dst, n.src)
   }
 
   private[lowering] def lowerLockWrapper(n: LockWrapper): Node = (n, rootMethod.hasManagedExecEnv) match {

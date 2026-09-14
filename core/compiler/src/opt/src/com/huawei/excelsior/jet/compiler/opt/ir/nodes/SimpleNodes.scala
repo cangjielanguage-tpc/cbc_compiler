@@ -1945,26 +1945,22 @@ trait SimpleNodes { self: Universe with Nodes =>
     def srcBase_=(x: Node): Unit = updateArg(4, x)
     def src_=(x: Node): Unit = updateArg(5, x)
 
-    def isPrimitive: Boolean = proto.primitive
-
     def structureType = proto.structureType
   }
 
   object CopyStructure {
-    case class Proto private[CopyStructure](structureType: SignatureType, primitive: Boolean)
+    case class Proto private[CopyStructure](structureType: SignatureType)
       extends FixedArgs[CopyStructure](ControlType, MemoryType, TRefType, ValueType(structureType), TRefType, ValueType(structureType))(ControlType)
         with ControlMemoryTagged[CopyStructure] {
 
       override def newInstance() = new CopyStructure(this)
     }
 
-    def proto(x: SignatureType) = Prototype.intern(Proto(x, false))
+    def proto(x: SignatureType) = Prototype.intern(Proto(x))
 
     def apply(x: SignatureType)(dstBase: Node, dst: Node, srcBase: Node, src: Node) = proto(x)(dstBase, dst, srcBase, src)
 
     def unapply(x: CopyStructure) = Some(x.structureType, x.dstBase, x.dst, x.srcBase, x.src)
-
-    def primitive(x: SignatureType) = Prototype.intern(Proto(x, true))
   }
 
   class CopyStructureCBC private(proto: CopyStructureCBC.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {

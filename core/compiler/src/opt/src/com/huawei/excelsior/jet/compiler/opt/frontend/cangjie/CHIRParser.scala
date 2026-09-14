@@ -1973,7 +1973,8 @@ trait CHIRParser
         if (arrayType.getArrayElemType.isZST) {
           stats.count(StatsKind.ArrayZeroingElimination, "Unit array zeroing eliminated on parsing", array)
         } else {
-          AJArrayFill(arrayType, arrayType.getArrayElemType)(array, value)
+          AJArrayFill(arrayType, arrayType.getArrayElemType)(array, value,
+            if (arrayType.isRecordArray) maybeDerivedPtrBase(value) else DerivedPtr.Local())
         }
 
       case e: CHIR.RawArrayLiteralInit =>

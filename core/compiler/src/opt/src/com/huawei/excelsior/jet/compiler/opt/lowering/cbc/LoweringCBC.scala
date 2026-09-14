@@ -11,7 +11,6 @@ package com.huawei.excelsior.jet.compiler.opt.lowering.cbc
 import com.huawei.excelsior.common.CodeHelpers.{shouldNotCallThis, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.assembler.AsmType.*
-import com.huawei.excelsior.jet.compiler.Env.isStandalone
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
 import com.huawei.excelsior.jet.compiler.opt.lowering.arch64.LoweringArch64
@@ -60,8 +59,6 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
     case _: WriteBarrier | _: VerificationWriteBarrier => super.shouldBeLoweredCases(node)
 
     case _: Switch => COMPLEX
-
-    case cs: CopyStructure if isStandalone && !cs.isPrimitive => COMPLEX
 
     case node @ IDivRemByConstOp(_) if !node.isDiv => FLOATING
 
