@@ -23,7 +23,6 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
   private val Exception = pkg.getDef("_CNat9ExceptionE").get.tpe
   private val eprintlnFunc = pkg.getFunc("_CNat8eprintlnHRNat6StringE").get
   private val handleExFunc = pkg.getFunc("_CNat15handleExceptionHCNat9ExceptionE").get
-  private val getCmdLineArgsFunc = pkg.getFunc("_CNat18getCommandLineArgsHv").get
 
   def gen(): CHIR.Func = {
     new CHIR.Func {
@@ -113,6 +112,7 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
         val (userMainCallExprs, userMainCallArgs) = if (userMain.tpe.paramTypes.isEmpty) {
           (Seq.empty, Seq.empty)
         } else {
+          val getCmdLineArgsFunc = pkg.getFunc("_CNat18getCommandLineArgsHv").get
           val ArrOfStr = pkg.getDef("_CNat5ArrayIRNat6StringEE").get.tpe
           (Seq((lv(7, ArrOfStr), apply(getCmdLineArgsFunc, Seq.empty))), Seq(7))
         }
