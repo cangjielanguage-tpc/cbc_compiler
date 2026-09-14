@@ -2,16 +2,15 @@ package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.common.CodeHelpers
 import com.huawei.excelsior.jet.compiler.chir.CHIRCJEntryGenerator.*
+import CHIRDSL.Ref
 
 import scala.collection.mutable
 
 object CHIRCJEntryGenerator {
   val name = "cj_entry"
-  private val getEx = CHIR.GetException
   private val Bool = CHIR.BuiltinType.Boolean
   private val Unit = CHIR.BuiltinType.Unit
   private val Int64 = CHIR.BuiltinType.Int64
-  private val Exit = CHIR.Exit
 }
 
 class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
@@ -26,8 +25,7 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
 
   def gen(): CHIR.Func = {
     new CHIR.Func {
-      private given g: bg.Raw = bg.Raw()
-      private val retValIdx = 2
+      private var _retVal: CHIR.LocalVar = _
 
       def tpe: CHIR.FuncType = new CHIR.FuncType {
         def paramTypes: Seq[CHIR.Type] = Seq.empty
@@ -45,116 +43,100 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
       def kind: CHIR.Func.Kind = CHIR.Func.Kind.Default
       def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
 
-      lazy val body: Option[CHIR.BlockGroup] = {
-        val exCatchBlock = g.bb(3)(
-          exprs = Seq(
-            (lv(8, ref(Object)), getEx),
-            (lv(9, ref(Object)), intrinsic(CHIR.Intrinsic.Kind.BeginCatch, 8)),
-            (lv(11, Bool),       iof(9, ref(OOM))),
-          ),
-          terminator = br(
-            condIdx = 11,
-            g.bb(8)(
-              exprs = Seq(
-                (lv(10, ref(OOM)), cast(9)),
-                (lv(12, String),   const("An exception has occurred:    Out of memory")),
-                (lv(13, Unit),     apply(eprintlnFunc, Seq(12))),
-                (lv(14, Int64),    const(1L)),
-                (lv(15, Unit),     st(14, 2)),
-              ),
-              terminator = Exit
-            ),
-            g.bb(9)(
-              exprs = Seq(
-                (lv(17, Bool), iof(9, ref(Error))),
-              ),
-              terminator = br(
-                condIdx = 17,
-                g.bb(12)(
-                  exprs = Seq(
-                    (lv(16, ref(Error)), cast(9)),
-                    // TODO write detailed message field value as printStackTrace is not available?
-                    (lv(18, String),     const("An error has occurred: ")),
-                    (lv(19, Unit),       apply(eprintlnFunc, Seq(18))),
-                    (lv(20, Int64),      const(1L)),
-                    (lv(21, Unit),       st(20, 2)),
-                  ),
-                  terminator = Exit
-                ),
-                g.bb(13)(
-                  exprs = Seq(
-                    (lv(23, Bool), iof(9, ref(Exception))),
-                  ),
-                  terminator = br(
-                    condIdx = 23,
-                    g.bb(16)(
-                      exprs = Seq(
-                        (lv(22, ref(Exception)), cast(9)),
-                        (lv(24, Unit),           apply(handleExFunc, argsIndices = Seq(22))),
-                        (lv(25, Int64),          const(1L)),
-                        (lv(26, Unit),           st(25, 2)),
-                      ),
-                      terminator = Exit
-                    ),
-                    g.bb(17)(
-                      exprs = Seq(
-                      ),
-                      terminator = throwEx(9)
-                    ),
-                  )
-                ),
-              )
-            )
-          ),
-          isLandingPadBlock = true
-        )
+      val body: Option[CHIR.BlockGroup] = Some(genBlockGroup(pkg) { gen =>
 
-        val (userMainCallExprs, userMainCallArgs) = if (userMain.tpe.paramTypes.isEmpty) {
-          (Seq.empty, Seq.empty)
+        // Reserve blocks for main CFG path
+        val callPkgInit = gen.entryBlock
+        val callPkgLitInit = gen.newBlock()
+        val callMain = gen.newBlock()
+        val saveMainRes = gen.newBlock()
+        val catchBlock = gen.newXBlock()
+
+        // Call pkg init
+
+        gen.startBlock(callPkgInit)
+        _retVal = gen.local(Ref(Int64), gen.alloc(Int64))
+                  gen.local(Unit,       gen.tryApply(pkg.packageInitFunc, thisType = None)(callPkgLitInit, catchBlock))
+
+        // Call pkg literal init
+
+        gen.startBlock(callPkgLitInit)
+        gen.local(Unit, gen.tryApply(pkg.packageInitLiteralFunc, thisType = None)(callMain, catchBlock))
+
+        // Call main
+
+        gen.startBlock(callMain)
+        val userMainArgs = if (userMain.tpe.paramTypes.isEmpty) {
+          Seq.empty
         } else {
           val getCmdLineArgsFunc = pkg.getFunc("_CNat18getCommandLineArgsHv").get
           val ArrOfStr = pkg.getDef("_CNat5ArrayIRNat6StringEE").get.tpe
-          (Seq((lv(7, ArrOfStr), apply(getCmdLineArgsFunc, Seq.empty))), Seq(7))
+          val args = gen.local(ArrOfStr, gen.apply(getCmdLineArgsFunc, thisType = None))
+          Seq(args)
+        }
+        val mainRes = gen.local(Int64, gen.tryApply(userMain, thisType = None, userMainArgs*)(saveMainRes, catchBlock))
+
+        // Save main result
+
+        gen.startBlock(saveMainRes)
+        gen.local(Unit, gen.st(mainRes, _retVal))
+        gen.local(Unit, gen.exit())
+
+        // Start exception handler
+
+        gen.startBlock(catchBlock)
+        val rawEx = gen.local(Ref(Object), gen.getException())
+        val ex    = gen.local(Ref(Object), gen.intrinsic(CHIR.Intrinsic.Kind.BeginCatch, rawEx))
+
+        def handleException(tpe: CHIR.Type, checkBlock: CHIRDSL.Block, fallthroughBlock: CHIRDSL.Block)(handler: CHIR.Value => Unit): Unit = {
+          val handlerBlock = gen.newBlock()
+
+          // Check if exception is instance of given type
+          gen.startBlock(checkBlock)
+          val isException = gen.local(Bool, gen.iof(ex, tpe))
+                            gen.local(Unit, gen.br(isException, handlerBlock, fallthroughBlock))
+
+          // Cast and handle exception if it is of given type
+          gen.startBlock(handlerBlock)
+          val except = gen.local(tpe,   gen.cast(ex))
+                       handler(except)
+          val res    = gen.local(Int64, gen.const(Int64, 1L))
+                       gen.local(Unit,  gen.st(res, _retVal))
+                       gen.local(Unit,  gen.exit())
+
+          // fallthrough otherwise
         }
 
-        g.entry(
-          exprs = Seq(
-            (lv(retValIdx, ref(Int64)), alloc(Int64)),
-          ),
-          terminator = (lv(4, Unit), tryApply(pkg.packageInitFunc, Seq.empty,
-            g.bb(5)(
-              exprs = Seq(
-              ),
-              terminator = (lv(5, Unit), tryApply(pkg.packageInitLiteralFunc, Seq.empty,
-                g.bb(6)(
-                  exprs = userMainCallExprs,
-                  terminator = (lv(6, Int64), tryApply(userMain, userMainCallArgs,
-                    g.bb(7)(
-                      exprs = Seq(
-                        (lv(27, Unit), st(6, 2))
-                      ),
-                      terminator = Exit,
-                    ),
-                    exCatchBlock
-                  )),
-                  isLandingPadBlock = false
-                ),
-                exCatchBlock
-              )),
-              isLandingPadBlock = false
-            ),
-            exCatchBlock
-          ))
-        )
+        val checkOOM = catchBlock
+        val checkError = gen.newBlock()
+        val checkException = gen.newBlock()
+        val rethrow = gen.newBlock()
 
-        Some(g.build())
-      }
+        handleException(Ref(OOM), checkOOM, checkError) { _ =>
+          val msg = gen.local(String, gen.const(String, "An exception has occurred:    Out of memory"))
+                    gen.local(Unit,   gen.apply(eprintlnFunc, thisType = None, msg))
+        }
+
+        handleException(Ref(Error), checkError, checkException) { _ =>
+          // TODO write detailed message field value as printStackTrace is not available?
+          val msg = gen.local(String,     gen.const(String, "An error has occurred: "))
+                    gen.local(Unit,       gen.apply(eprintlnFunc, thisType = None, msg))
+        }
+
+        handleException(Ref(Exception), checkException, rethrow) { except =>
+          gen.local(Unit, gen.apply(handleExFunc, thisType = None, except))
+        }
+
+        // Rethrow if not OOM, Error or Exception
+        gen.startBlock(rethrow)
+        gen.local(Unit, gen.raise(ex, exceptionBlock = None))
+      })
 
       def params: Seq[CHIR.Parameter] = Seq.empty
 
       def retVal: Option[CHIR.LocalVar] = {
         val _ = body.get // just to ensure, that body is generated before the method is called
-        Some(g(retValIdx).asInstanceOf[CHIR.LocalVar])
+        Some(_retVal)
       }
 
       def annotations: Seq[CHIR.Annotation] = Seq.empty
@@ -163,183 +145,190 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
     }
   }
+}
 
-  private trait HasResultVar extends CHIR.HasResultVar {
-    def resultTpe_=(tpe: CHIR.Type): Unit
-    def resultVar_=(v: CHIR.LocalVar): Unit
+def genBlockGroup(pkg: CHIR.Package)(action: CHIRBodyGen => Unit): CHIR.BlockGroup = {
+  val gen = CHIRBodyGen(pkg)
+  action(gen)
+  gen.finish()
+}
+
+class CHIRBodyGen(pkg: CHIR.Package) {
+
+  private val blocks = mutable.ArrayBuffer.empty[CHIR.Block]
+  val entryBlock: CHIRDSL.Block = newBlock()
+
+  private var curBlock: CHIRDSL.Block = _
+
+  def finish(): CHIRDSL.BlockGroup = CHIRDSL.BlockGroup(blocks.toSeq, entryBlock)
+
+  def newBlock(): CHIRDSL.Block = CHIRDSL.Block()
+
+  def newXBlock(): CHIRDSL.Block = {
+    val b = newBlock()
+    b.setIsLandingPad()
+    b
   }
 
-  private trait ValueProvider(deps: Int*) {
-    def blockGroup: bg.Raw
-
-    deps.foreach(blockGroup.indexVal)
+  def startBlock(b: CHIRDSL.Block): Unit = {
+    assert(!b.frozen)
+    curBlock = b
   }
 
-  private class alloc(val allocatedType: CHIR.Type) extends CHIR.Allocate {}
+  def local(tpe: CHIR.Type, expr: CHIR.Expression): CHIR.LocalVar = {
+    assert(!curBlock.frozen)
 
-  private class tryApply(callee: CHIR.Func, argsIndices: Seq[Int], succBlock: CHIR.Block, errBlock: CHIR.Block)
-                        (implicit b: bg.Raw) extends apply(callee, argsIndices) with CHIR.TryApply {
-    def successors: Seq[CHIR.Block] = Seq(succBlock, errBlock)
-  }
+    val loc = CHIRDSL.LocalVar(tpe, expr)
 
-  private class apply(val callee: CHIR.Func, argsIndices: Seq[Int], val thisType: Option[CHIR.Type] = None)
-                     (implicit val blockGroup: bg.Raw) extends ValueProvider(argsIndices: _*) with CHIR.Apply with HasResultVar {
-    def args: Seq[CHIR.Value] = argsIndices.map(blockGroup.apply)
-    def instantiatedTypeArgs: Seq[CHIR.Type] = Seq.empty
-
-    var resultTpe: CHIR.Type = _
-    var resultVar: CHIR.LocalVar = _
-  }
-
-  private class invoke(val callee: CHIR.Func, val thisType: CHIR.Type, argsIndices: Int*)(implicit val blockGroup: bg.Raw)
-    extends ValueProvider(argsIndices: _*) with CHIR.Invoke with HasResultVar {
-
-    def thisArg: CHIR.Value = args.head
-    def args: Seq[CHIR.Value] = argsIndices.map(blockGroup.apply)
-    def instantiatedTypeArgs: Seq[CHIR.Type] = Seq.empty
-
-    var resultTpe: CHIR.Type = _
-    var resultVar: CHIR.LocalVar = _
-  }
-
-  private class st(valueIdx: Int, locationIdx: Int)(implicit val blockGroup: bg.Raw) extends ValueProvider(valueIdx, locationIdx) with CHIR.Store {
-    def value: CHIR.Value = blockGroup(valueIdx)
-    def location: CHIR.Value = blockGroup(locationIdx)
-  }
-
-  private class intrinsic(val kind: CHIR.Intrinsic.Kind, argsIndices: Int*)(implicit val blockGroup: bg.Raw) extends ValueProvider(argsIndices: _*)
-    with CHIR.Intrinsic with HasResultVar {
-    def args: Seq[CHIR.Value] = argsIndices.map(blockGroup.apply)
-
-    var resultTpe: CHIR.Type = _
-    var resultVar: CHIR.LocalVar = _
-  }
-
-  private class iof(objIdx: Int, val testType: CHIR.Type)(implicit val blockGroup: bg.Raw) extends ValueProvider(objIdx) with CHIR.InstanceOf with HasResultVar {
-    def obj: CHIR.Value = blockGroup(objIdx)
-
-    var resultTpe: CHIR.Type = _
-    var resultVar: CHIR.LocalVar = _
-  }
-
-  private class cast(valueIdx: Int)(implicit val blockGroup: bg.Raw) extends ValueProvider(valueIdx) with CHIR.StaticCast with HasResultVar {
-    def value: CHIR.Value = blockGroup(valueIdx)
-
-    def targetTpe: CHIR.Type = resultTpe
-
-    var resultTpe: CHIR.Type = _
-    var resultVar: CHIR.LocalVar = _
-  }
-
-  private class const(var literal: CHIR.Literal) extends CHIR.Constant with HasResultVar {
-    var resultTpe: CHIR.Type = _
-    var resultVar: CHIR.LocalVar = _
-  }
-
-  object const {
-    private[CHIRCJEntryGenerator] def apply(str: String): const = {
-      new const(new CHIR.StringLiteral {
-        def value: String = str
-        def tpe: CHIR.Type = String
-      })
+    expr match {
+      case expr: CHIRDSL.HasResultVar =>
+        expr.resultTpe = tpe
+        expr.resultVar = loc
+      case _ => // do nothing
     }
 
-    private[CHIRCJEntryGenerator] def apply(i: Long): const = {
-      new const(new CHIR.IntLiteral {
-        def value: Long = i
-        def tpe: CHIR.Type = Int64
-      })
+    expr match {
+      case expr: CHIR.Terminator => curBlock.setTerminator(expr)
+      case _ => curBlock.addExpr(expr)
+    }
+
+    loc
+  }
+
+  def getException(): CHIR.Expression = CHIR.GetException
+
+  def apply(callee: CHIR.Func, thisType: Option[CHIR.Type], args: CHIR.Value*): CHIR.Apply = {
+    CHIRDSL.Apply(callee, thisType, args)
+  }
+
+  def intrinsic(kind: CHIR.Intrinsic.Kind, args: CHIR.Value*): CHIR.Intrinsic = {
+    CHIRDSL.Intrinsic(kind, args)
+  }
+
+  def iof(obj: CHIR.Value, tpe: CHIR.Type): CHIR.InstanceOf = {
+    CHIRDSL.InstanceOf(obj, tpe)
+  }
+
+  def cast(value: CHIR.Value): CHIR.StaticCast = {
+    CHIRDSL.StaticCast(value)
+  }
+
+  def const(tpe: CHIR.Type, value: String): CHIR.Constant = {
+    CHIRDSL.Constant(CHIRDSL.StringLiteral(tpe, value))
+  }
+
+  def const(tpe: CHIR.Type, value: Long): CHIR.Constant = {
+    CHIRDSL.Constant(CHIRDSL.IntLiteral(tpe, value))
+  }
+
+  def st(value: CHIR.Value, location: CHIR.Value): CHIR.Store = {
+    CHIRDSL.Store(value, location)
+  }
+
+  def alloc(allocatedType: CHIR.Type): CHIR.Allocate = {
+    CHIRDSL.Allocate(allocatedType)
+  }
+
+  // Terminators
+
+  def br(cond: CHIR.Value, trueBlock: CHIR.Block, falseBlock: CHIR.Block): CHIR.Branch = {
+    CHIRDSL.Branch(cond, trueBlock, falseBlock)
+  }
+
+  def exit(): CHIR.Terminator = CHIR.Exit
+
+  def raise(exceptionValue: CHIR.Value, exceptionBlock: Option[CHIR.Block]): CHIR.RaiseException = {
+    CHIRDSL.RaiseException(exceptionValue, exceptionBlock)
+  }
+
+  def tryApply(callee: CHIR.Func, thisType: Option[CHIR.Type], args: CHIR.Value*)(succBlock: CHIR.Block, errBlock: CHIR.Block): CHIR.TryApply = {
+    CHIRDSL.TryApply(callee, thisType, args)(succBlock, errBlock)
+  }
+}
+
+object CHIRDSL {
+
+  case class Ref(baseType: CHIR.Type) extends CHIR.RefType
+
+  trait HasResultVar extends CHIR.HasResultVar {
+    var resultTpe: CHIR.Type = _
+    var resultVar: CHIR.LocalVar = _
+  }
+
+  case class BlockGroup(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block) extends CHIR.BlockGroup
+
+  class Block() extends CHIR.Block {
+    private val exprs = mutable.ArrayBuffer.empty[CHIR.Expression]
+    private var term: CHIR.Terminator = _
+    private var isLandingPad = false
+
+    def frozen = term != null
+
+    def addExpr(expr: CHIR.Expression): Unit = exprs += expr
+    def setTerminator(expr: CHIR.Terminator): Unit = term = expr
+    def setIsLandingPad(): Unit = isLandingPad = true
+
+    def expressions: Seq[CHIR.Expression] = {
+      assert(frozen)
+      exprs.toSeq :+ term
+    }
+
+    def nonTerminatorExpressions: Seq[CHIR.Expression] = {
+      assert(frozen)
+      exprs.toSeq
+    }
+
+    def terminator: CHIR.Terminator = {
+      assert(frozen)
+      term
+    }
+
+    def isLandingPadBlock: Boolean = {
+      assert(frozen)
+      isLandingPad
     }
   }
 
-  private final class br(condIdx: Int, val trueBlock: CHIR.Block, val falseBlock: CHIR.Block)(implicit val blockGroup: bg.Raw) extends ValueProvider(condIdx) with CHIR.Branch {
-    def condition: CHIR.Value = blockGroup(condIdx)
-    def successors: Seq[CHIR.Block] = Seq(trueBlock, falseBlock)
+  case class LocalVar(tpe: CHIR.Type, associatedExpr: CHIR.Expression) extends CHIR.LocalVar
+
+  case class Intrinsic(kind: CHIR.Intrinsic.Kind, args: Seq[CHIR.Value]) extends CHIR.Intrinsic with HasResultVar
+
+  case class InstanceOf(obj: CHIR.Value, testType: CHIR.Type) extends CHIR.InstanceOf with HasResultVar
+
+  case class StaticCast(value: CHIR.Value) extends CHIR.StaticCast with HasResultVar {
+    def targetTpe = resultTpe
   }
 
-  private final class throwEx(exValIdx: Int)(implicit val blockGroup: bg.Raw) extends ValueProvider(exValIdx) with CHIR.RaiseException {
-    def exceptionValue: CHIR.Value = blockGroup(exValIdx)
-    def exceptionBlock: Option[CHIR.Block] = None
-    def successors: Seq[CHIR.Block] = Seq.empty
+  case class Constant(literal: CHIR.Literal) extends CHIR.Constant with HasResultVar
+
+  case class StringLiteral(tpe: CHIR.Type, value: String) extends CHIR.StringLiteral
+
+  case class IntLiteral(tpe: CHIR.Type, value: Long) extends CHIR.IntLiteral
+
+  case class Apply(callee: CHIR.Func, thisType: Option[CHIR.Type], args: Seq[CHIR.Value]) extends CHIR.Apply with HasResultVar {
+    def instantiatedTypeArgs = Seq.empty
   }
 
-  private final class lv(idx: Int, val tpe: CHIR.Type)(implicit blockGroup: bg.Raw) extends CHIR.LocalVar {
-    blockGroup.indexVal(idx, this)
+  case class Store(value: CHIR.Value, location: CHIR.Value) extends CHIR.Store
 
-    var associatedExpr: CHIR.Expression = _
+  case class Allocate(allocatedType: CHIR.Type) extends CHIR.Allocate
+
+  // Terminators
+
+  case class TryApply(callee: CHIR.Func, thisType: Option[CHIR.Type], args: Seq[CHIR.Value])(succBlock: CHIR.Block, errBlock: CHIR.Block)
+    extends CHIR.TryApply with HasResultVar {
+    def successors = Seq(succBlock, errBlock)
+
+    def instantiatedTypeArgs = Seq.empty
   }
 
-  private final class ref(val baseType: CHIR.Type) extends CHIR.RefType {}
-
-  private final class bb(val id: Int, val exprs: Seq[(lv, CHIR.Expression)], val isLandingPadBlock: Boolean = false) extends CHIR.Block {
-    for ((v, expr) <- exprs if v != null) {
-      v.associatedExpr = expr
-      expr match {
-        case e: HasResultVar =>
-          e.resultTpe = v.tpe
-          e.resultVar = v
-        case _ => // do nothing
-      }
-    }
-
-    def nonTerminatorExpressions: Seq[CHIR.Expression] = expressions.init
-    def terminator: CHIR.Terminator = expressions.last.asInstanceOf[CHIR.Terminator]
-    def expressions: Seq[CHIR.Expression] = exprs.map(_._2)
+  case class Branch(condition: CHIR.Value, trueBlock: CHIR.Block, falseBlock: CHIR.Block) extends CHIR.Branch {
+    def successors = Seq(trueBlock, falseBlock)
   }
 
-  private final class bg(val blocks: Seq[CHIR.Block], val entryBlock: CHIR.Block) extends CHIR.BlockGroup {}
-
-  private object bg {
-    class Raw {
-      private var eb: bb = _
-      private val vals = mutable.HashMap.empty[Int, CHIR.Value]
-      private val bblocks = mutable.HashMap.empty[Int, bb]
-
-      private val verified = false
-
-      private object ValueStub extends CHIR.Value {}
-
-      def entry(exprs: Seq[(lv, CHIR.Expression)], terminator: CHIR.Terminator): bb = {
-        entry(exprs, (null, terminator))
-      }
-
-      def entry(exprs: Seq[(lv, CHIR.Expression)], terminator: (lv, CHIR.Terminator)): bb = {
-        assert(eb == null, "entry block was alreayd set")
-        eb = bb(0)(exprs, terminator, false)
-        eb
-      }
-
-      def bb(idx: Int)(exprs: Seq[(lv, CHIR.Expression)], terminator: CHIR.Terminator, isLandingPadBlock: Boolean = false): bb = {
-        bb(idx)(exprs, (null, terminator), isLandingPadBlock)
-      }
-
-      def bb(idx: Int)(exprs: Seq[(lv, CHIR.Expression)], terminator: (lv, CHIR.Terminator), isLandingPadBlock: Boolean): bb = {
-        val b = new bb(idx, exprs :+ terminator, isLandingPadBlock)
-        val res = bblocks.put(idx, b)
-        if (res.isDefined) {
-          throw new IllegalArgumentException(s"bb with idx '$idx' already exists")
-        }
-        b
-      }
-
-      def apply(idx: Int): CHIR.Value = vals(idx).ensuring(_ != ValueStub, s"value with idx '$idx' was not set")
-
-      def indexVal(idx: Int): Unit = vals.getOrElseUpdate(idx, ValueStub)
-
-      def indexVal(idx: Int, v: CHIR.Value): Unit = {
-        if (vals.put(idx, v).getOrElse(ValueStub) != ValueStub) {
-          throw new IllegalArgumentException(s"Value with idx '$idx' already exists")
-        }
-      }
-
-      def build(): bg = {
-        assert(eb != null, "entry block was not set")
-        for ((idx, v) <- vals) {
-          assert(v != ValueStub, s"value with idx '$idx' was not set")
-        }
-        new bg(bblocks.values.toSeq, eb)
-      }
-    }
+  case class RaiseException(exceptionValue: CHIR.Value, exceptionBlock: Option[CHIR.Block]) extends CHIR.RaiseException {
+    def successors = exceptionBlock.toSeq
   }
+
 }
 
