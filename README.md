@@ -134,6 +134,13 @@ $ sbt jar
 
 The resulting compiler jar will be located at [core/compiler/target/aot/aot.jar](core/compiler/target/aot/aot.jar).
 
+### Supported CHIR versions
+
+| CHIR version | CBC option          | Notes                    |
+|--------------|---------------------|--------------------------|
+| `100`        | None                | Default version          |
+| `1203`       | `-CHIRVersion=1203` | Cangjie `1.2.0-beta.rc3` |
+
 ### Test
 
 Unit tests for all components can be run using `sbt test` command.

@@ -741,6 +741,8 @@ trait CHIRParser
                   case CHIR.Binary.Kind.Exp => Pow(l, r)
                   case x => shouldNotReachHere(s"unexpected wrapping binary expression: ${e.kind}")
                 }
+              case CHIR.OverflowStrategy.Checked =>
+                shouldNotReachHere("checked binary expression")
               case CHIR.OverflowStrategy.Throwing =>
                 val width = sig.toAsm.width
                 val normalizedArgs = Seq(l, r) map { n =>
@@ -1125,9 +1127,12 @@ trait CHIRParser
           case ValueSig(sig) => sig
         }
 
-        val func = methodArgVal
-        val name = resolver.symName(func)
-        val (gsig, _, _, _) = resolver.functionSig(func.tpe, hasReceiver = !isStatic)
+        val name = resolver.symName(methodArgVal)
+        val funcType = methodArgVal match {
+          case func: CHIR.Func => func.tpe
+          case sig: CHIR.FuncSig => sig.tpe
+        }
+        val (gsig, _, _, _) = resolver.functionSig(funcType, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
           if (g.isTypeVariable && !i.isTypeVariable && !i.isInstanceOf[SignatureType.Box]) SignatureType.Box(i) else i
@@ -1222,6 +1227,7 @@ trait CHIRParser
         val saturatingCast = e match {
           case e: CHIR.NumericCast => e.overflowStrategy match {
             case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na => false
+            case CHIR.OverflowStrategy.Checked => shouldNotReachHere("checked type cast")
             case CHIR.OverflowStrategy.Throwing => false // TODO: do we need to support it?
             case CHIR.OverflowStrategy.Saturating => true
           }
