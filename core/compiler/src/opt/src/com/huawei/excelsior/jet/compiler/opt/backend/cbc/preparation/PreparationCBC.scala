@@ -141,17 +141,6 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
           case use => shouldNotReachHere(use)
         }
       }
-    } else {
-      for {
-        n <- all[RecordArrayGet].toList
-        m <- Node.rematerializeCompletely(n)
-      } {
-        m.singleUse match {
-          case use: (FieldChainRead | FieldChainWrite | CopyStructureCBC) => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
-          case _: CopyStructure =>
-          case use => shouldNotReachHere(use)
-        }
-      }
     }
   }
 }

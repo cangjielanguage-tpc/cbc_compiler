@@ -31,7 +31,6 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
     case _: Evacuate                              => new CustomForm(Seq(ir1Set))
     case _: (NewArray | BitcodeDeferred.NewArray) => new CustomForm(Seq(ir2Set))
     case _: CopyStructureCBC                      => new CustomForm(Seq(copyStructureCbcSet, copyStructureCbcSet))
-    case _: RecordArrayGet                        => new CustomForm(Seq(copyStructureDependentSet, copyStructureDependentSet))
     case _: MutFunc.Combine                       => new CustomForm(Seq(copyStructureDependentSet, copyStructureDependentSet))
 
     case _: MutFunc.Offset    => mutFuncArgForm
@@ -62,7 +61,7 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
       | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | AbstractNullCheck | SingletonObject | LoadTailParam
       | GetField | FieldChainRead | PutField | FieldChainWrite | ExtractEnrichment | DepriveOperation | EnrichOperation
       | CopyStructure | CopyStructureCBC | Throw | CheckedOp | EndLocalUnmovable
-      | MutFuncArgNode | MutFunc.Combine | RecordArrayGet | Return | UniversalGeneric.ConvertHolder | BulldozerHint 
+      | MutFuncArgNode | MutFunc.Combine | Return | UniversalGeneric.ConvertHolder | BulldozerHint
       | LoadTypeInfoGeneric | GenericTypeArg
       | LoadFieldSeq | StoreFieldSeq | GetFieldSeqRef | LoadStaticFieldSeq | StoreStaticFieldSeq | GetStaticFieldSeqRef
       | LoadFieldSeqGeneric | StoreFieldSeqGeneric | GetFieldSeqRefGeneric) => true

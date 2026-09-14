@@ -18,7 +18,6 @@ trait MutPairsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
     case p: GetFieldSeqRef => !valueOf(p.baseRef).producer.isInstanceOf[DerivedPtr.BaseHandle]
     case p: GetFieldSeqRefGeneric => !valueOf(p.baseRef).producer.isInstanceOf[DerivedPtr.BaseHandle]
     case p: ArrayGet => p.arrayType.isRecordArray
-    case p: RecordArrayGet => true
     case p: Param => p.num match {
       case _ if !rootMethod.isCangjieMut => false // no mut parameters in non-mut-function
       case _ if p.num == rootMethod.getMutRecordArgIdx => true
@@ -88,7 +87,6 @@ trait MutPairsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
           case GetFieldSeqRef(_, base, _) => pairs += base -> value
           case GetFieldSeqRefGeneric(_, base, _, _) => pairs += base -> value
           case p: ArrayGet if p.arrayType.isRecordArray => pairs += p.array -> value
-          case RecordArrayGet(array, _) => pairs += array -> value
           case p: Param =>
             if (p.num == rootMethod.getMutRecordArgIdx)
               derivedParams ::= value

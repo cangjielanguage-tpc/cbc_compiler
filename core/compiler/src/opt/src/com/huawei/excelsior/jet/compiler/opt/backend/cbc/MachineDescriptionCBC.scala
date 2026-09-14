@@ -135,8 +135,6 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
             true
         }
 
-      case (Edge(_, FieldChainWrite(_: RecordArrayGet, _, _)), _) => false // TODO: support movi for ISA12
-
       case (Edge(sa: HasFrameSlot, _: InitStringRecord), _) => typedFrameSlot(sa.kind).nonEmpty
       case (Edge(sa: HasFrameSlot, gf: (GetField | FieldChainRead)), _) if gf.obj == sa => typedFrameSlot(sa.kind).nonEmpty
       case (Edge(sa: HasFrameSlot, pf: (PutField | FieldChainWrite)), _) if pf.obj == sa => typedFrameSlot(sa.kind).nonEmpty
@@ -254,7 +252,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | AssignGeneric | InstanceOfGeneric | NewGeneric
       | AtomicOps.AtomicNode | DerivedPtr.Local | DerivedPtr.Global) => true
 
-    case _: (TypeTest | CallTarget | MutFuncArgNode | RecordArrayGet) => true // always grouped with another node
+    case _: (TypeTest | CallTarget | MutFuncArgNode) => true // always grouped with another node
 
     case AnyInstanceOf(tpe, _) => true
 
@@ -290,7 +288,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
          _: BitFieldExtract | _: ArrayLength | _: GetField | _: FieldChainRead | _: GetStatic | _: CatchCBC |
          _: DepriveOperation | _: EnrichOperation | _: ExtractEnrichment | _: Neg | _: CheckedOp |
          _: ArrayGet | _: FieldAddr | _: CheckCast | _: BitcodeDeferred.CheckCast |
-         _: CFuncWrapperAddr | _: LoadMemory | _: MutFunc.Combine | _: RecordArrayGet =>
+         _: CFuncWrapperAddr | _: LoadMemory | _: MutFunc.Combine =>
       resRegs(node)
 
     case node: BitcodeDeferred.FieldOp if !node.hasInValue =>

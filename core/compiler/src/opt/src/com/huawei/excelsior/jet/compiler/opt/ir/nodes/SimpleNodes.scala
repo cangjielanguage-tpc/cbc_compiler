@@ -1965,7 +1965,6 @@ trait SimpleNodes { self: Universe with Nodes =>
 
   class CopyStructureCBC private(proto: CopyStructureCBC.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {
     require(!env.enabled(UseIsa12) || !(proto.hasStaticDst && proto.hasStaticSrc)) // both dst and src cannot be static fields in the same time
-    require(!env.enabled(UseIsa12) || !(dst.isInstanceOf[RecordArrayGet] && src.isInstanceOf[RecordArrayGet])) // both dst and src cannot be record arrays in the same time
 
     def dst = arg(2)
     def src = arg(3)
@@ -1973,8 +1972,8 @@ trait SimpleNodes { self: Universe with Nodes =>
     def dstFields = proto.dstFields
     def srcFields = proto.srcFields
 
-    def hasComplexDst = proto.hasStaticDst || dst.isInstanceOf[RecordArrayGet]
-    def hasComplexSrc = proto.hasStaticSrc || src.isInstanceOf[RecordArrayGet]
+    def hasComplexDst = proto.hasStaticDst
+    def hasComplexSrc = proto.hasStaticSrc
 
     def structureType = proto.structureType
   }

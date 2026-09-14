@@ -1638,28 +1638,6 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
     def unapply(node: ArrayGet) = Some((node.inCtrl, node.inMemory, node.array, node.idx))
   }
 
-  /* CBC-specific node that starts sequential memory accesses from record array. */
-  class RecordArrayGet private(proto: RecordArrayGet.Proto) extends FloatingNodeWithFixedArgs(proto) with ProducesValue {
-    def arrayArgIdx = 0
-    def array = arg(arrayArgIdx)
-
-    def idxArgIdx = 1
-    def idx = arg(idxArgIdx)
-
-    def arrayType = proto.arrayType
-  }
-
-  object RecordArrayGet {
-    case class Proto private[RecordArrayGet](arrayType: SignatureType) extends FixedArgs[RecordArrayGet](TRefType, AddrIntType)(ValueType(arrayType.getArrayElemType)) {
-      def newInstance() = new RecordArrayGet(this)
-    }
-
-    def proto(arrayType: SignatureType) = Prototype.intern(Proto(arrayType))
-    def apply(arrayType: SignatureType)(array: Node, idx: Node): Node = proto(arrayType)(array, idx)
-    def unapply(n: RecordArrayGet) = Some(n.array, n.idx)
-  }
-
-
   class ArrayPut private (proto: ArrayPut.Proto) extends NodeWithFixedArgs(proto) with ArrayPutOperation
     with TypedArrayOperation {
 
