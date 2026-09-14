@@ -468,7 +468,7 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
       if (arrayType.isRecordArray) {
         val addr = ArrayGet(arrayType)(array, index)
         if (isStandalone) {
-          CopyStructure(arrayType.getArrayElemType)(array, addr, arrayFill.valueBase, value)
+          CopyStructure(arrayType.getArrayElemType)(array, addr, arrayFill.valueBaseRef, value)
         } else {
           copyRecord(arrayType.getArrayElemType, addr, value)
         }

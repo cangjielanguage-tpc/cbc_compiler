@@ -1750,7 +1750,7 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
     def array = arg(2)
     def value = arg(valueArgIdx)
 
-    def valueBase = arg(4)
+    def valueBaseRef = arg(4)
 
     private def valueArgIdx = 3
     def isFillValue(e: Edge) = e.targetArgIndex == valueArgIdx
