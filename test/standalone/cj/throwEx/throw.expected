@@ -1,0 +1,5 @@
+An exception has occurred:
+IllegalArgumentException: bad args
+	 at default::main()(unknown:0)
+	 at default::$mainInvoke()(unknown:0)
+	 at default::cj_entry()(unknown:0)
