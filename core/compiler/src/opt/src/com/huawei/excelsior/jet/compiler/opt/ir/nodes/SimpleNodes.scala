@@ -216,19 +216,28 @@ trait SimpleNodes { self: Universe with Nodes =>
     object SecondArg extends EdgeMatcher[Pow](1)
   }
 
-  class CheckedOp(proto: CheckedOp.Proto) extends BinaryOp(proto) with SpinalNode with CanThrow with ProducesValue {
-    def throwProc: RTSProc = (kind, managed) match {
-      case (CheckedOp.Kind.ADD, true) => RTSProc.JR_ThrowAJAddOverflowException
-      case (CheckedOp.Kind.SUB, true) => RTSProc.JR_ThrowAJSubOverflowException
-      case (CheckedOp.Kind.MUL, true) => RTSProc.JR_ThrowAJMulOverflowException
-      case (CheckedOp.Kind.DIV, true) => RTSProc.JR_ThrowAJDivOverflowException
-      case (CheckedOp.Kind.POW, true) => shouldNotReachHere("not implemented")
-      case (CheckedOp.Kind.ADD, false) => RTSProc.JR_ThrowManualAJAddOverflowException
-      case (CheckedOp.Kind.SUB, false) => RTSProc.JR_ThrowManualAJSubOverflowException
-      case (CheckedOp.Kind.MUL, false) => RTSProc.JR_ThrowManualAJMulOverflowException
-      case (CheckedOp.Kind.DIV, false) => RTSProc.JR_ThrowManualAJDivOverflowException
-      case (CheckedOp.Kind.POW, false) => RTSProc.JR_ThrowManualAJMulOverflowException
+  class CheckedUnary(proto: CheckedUnary.Proto) extends NodeWithFixedArgs(proto) with SpinalNode with CanThrow with ProducesValue {
+    def asmType = proto.asmType
+    def kind = proto.kind
+    def signed = proto.asmType.signed
+    def value = arg(2)
+  }
+
+  object CheckedUnary {
+    enum Kind:
+      case Neg
+
+    case class Proto private[CheckedUnary](keyType: Type, asmType: AsmType, kind: CheckedUnary.Kind)
+      extends FixedArgs[CheckedUnary](ControlType, MemoryType, keyType)(keyType) with ControlValueTagged[CheckedUnary] {
+      def newInstance() = new CheckedUnary(this)
     }
+
+    def apply(tpe: Type, asmType: AsmType, kind: CheckedUnary.Kind) = Prototype.intern(Proto(tpe, asmType, kind))
+    def unapply(n: CheckedUnary): Option[Node] = Some(n.arg)
+  }
+
+  class CheckedOp(proto: CheckedOp.Proto) extends BinaryOp(proto) with SpinalNode with CanThrow with ProducesValue {
+    def throwProc: RTSProc = null // TODO: remove uses
 
     def width = proto.width
     def signed = proto.signed
@@ -239,7 +248,7 @@ trait SimpleNodes { self: Universe with Nodes =>
 
   object CheckedOp {
     enum Kind:
-      case ADD, SUB, MUL, DIV, POW
+      case ADD, SUB, MUL, DIV, POW, LSHIFT, RSHIFT
     import Kind._
 
     def normalizeArg(tpe: Type, from: Width, signed: Boolean, x: Node): Node = BitFieldExtract.BFX(tpe, 0, from.nbits, signed, x)

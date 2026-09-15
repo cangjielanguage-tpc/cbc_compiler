@@ -238,7 +238,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   protected def freeOfTemporals(node: Node) = node match {
     case _ if noCodeShouldBeGenerated(node) => true
 
-    case _: (BlockEnd | CheckedOp | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Transfer | FieldChainRead
+    case _: (BlockEnd | CheckedOp | CheckedUnary | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Transfer | FieldChainRead
       | Add | Sub | IDivRemOp | Mul | Pow | Cmp | CondVal | FDiv | MathIntrinsic | LogicalBinaryOp | GetField | PutField
       | BitcodeDeferred.FieldOp | Shift | GetStatic | PutStatic | ValueConvert | ReinterpretCast | LoadTailParam
       | New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | DivisorCheck | Evacuate | BitFieldExtract

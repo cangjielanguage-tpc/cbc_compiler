@@ -51,6 +51,7 @@ trait XSitesToolbox extends RecordSlotsLiveness { self: Universe with BackEnd wi
         case _: GCPoint => rootMethod.hasManagedExecEnv
         case x: NullCheck => x.canThrow
         case x: DivisorCheck => x.canThrow
+        case x: CheckedUnary => x.canThrow
         case x: CheckedOp => x.canThrow
         case x: ArrayIndexCheck => x.canThrow
         case x: ArrayStoreCheck => x.canThrow
@@ -84,6 +85,7 @@ trait XSitesToolbox extends RecordSlotsLiveness { self: Universe with BackEnd wi
       case _ => assert(!preCall.hasImplicitCheck); XSiteKind.PRE_CALL
     }
     case _: DivisorCheck => XSiteKind.CALL
+    case _: CheckedUnary => XSiteKind.CALL
     case _: CheckedOp => XSiteKind.CALL
     case _: ArrayIndexCheck => XSiteKind.CALL
     case _: ArrayStoreCheck => XSiteKind.CALL

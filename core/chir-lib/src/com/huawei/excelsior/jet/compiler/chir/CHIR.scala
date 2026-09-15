@@ -311,6 +311,7 @@ object CHIR {
   trait Unary extends Expression with HasResultVar {
     def operand: Value
     def kind: Unary.Kind
+    def overflowStrategy: OverflowStrategy
   }
 
   object Unary {

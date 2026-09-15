@@ -272,7 +272,7 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
       case SUB => lowerCheckedSub(n)
       case MUL => lowerCheckedMul(n)
       case DIV => lowerCheckedDiv(n)
-      case POW => notImplemented("not implemented")
+      case POW | LSHIFT | RSHIFT => notImplemented("not implemented")
     }
   }
 

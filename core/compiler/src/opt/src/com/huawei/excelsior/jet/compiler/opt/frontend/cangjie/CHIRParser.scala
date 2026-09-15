@@ -655,7 +655,12 @@ trait CHIRParser
         }
 
         val n = e.kind match {
-          case CHIR.Unary.Kind.Neg => Neg(tpe)(arg)
+          case CHIR.Unary.Kind.Neg => e.overflowStrategy match {
+            case CHIR.OverflowStrategy.Wrapping => Neg(tpe)(arg)
+            case CHIR.OverflowStrategy.Throwing => CheckedUnary(tpe, sig.toAsm, CheckedUnary.Kind.Neg)(arg)
+            case CHIR.OverflowStrategy.Saturating => Neg(tpe)(arg) // TODO: support properly
+            case s => shouldNotReachHere(s"Unexpected overflow strategy $s")
+          }
           case CHIR.Unary.Kind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
           case CHIR.Unary.Kind.BitNot => Xor(arg, IntegralConst(tpe)(-1))
         }
@@ -749,11 +754,8 @@ trait CHIRParser
                   case CHIR.Binary.Kind.Div => CheckedOp(tpe, width, CheckedOp.Kind.DIV, signed, method.isManaged)(normalizedArgs: _*)
                   case CHIR.Binary.Kind.Mod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(normalizedArgs: _*)
                   case CHIR.Binary.Kind.Exp => CheckedOp(tpe, width, CheckedOp.Kind.POW, signed, method.isManaged)(normalizedArgs: _*)
-
-                  case CHIR.Binary.Kind.And | CHIR.Binary.Kind.Or | CHIR.Binary.Kind.Xor |
-                       CHIR.Binary.Kind.LShift | CHIR.Binary.Kind.RShift =>
-                    notImplemented(s"throwing binary expression: ${e.kind}")
-
+                  case CHIR.Binary.Kind.LShift => CheckedOp(tpe, width, CheckedOp.Kind.LSHIFT, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.Binary.Kind.RShift => CheckedOp(tpe, width, CheckedOp.Kind.RSHIFT, signed, method.isManaged)(normalizedArgs: _*)
                   case x => shouldNotReachHere(s"unexpected throwing binary expression: ${e.kind}")
                 }
 

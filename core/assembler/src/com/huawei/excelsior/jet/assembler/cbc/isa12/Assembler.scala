@@ -90,6 +90,10 @@ object Assembler {
     case USub
     case UMul
     case Pow
+    case Lsh
+    case Rsh // logical right shift
+    case Ash // arithmetic right shift
+    case Neg
 
     inline def opc: Int = ordinal
     inline def format(width: Width): Int = p(s2(opc), freeBits = 2) | s2(width.opc)
