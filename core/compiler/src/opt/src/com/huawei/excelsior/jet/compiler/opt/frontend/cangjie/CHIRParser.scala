@@ -955,14 +955,14 @@ trait CHIRParser
             writeBarrier()
             staticField match {
               case None =>
-                if (needsCopy(lastField.fieldType)) {
+                if (!lastField.fieldType.isVariableSizeType && needsCopy(lastField.fieldType)) {
                   val addr = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
                   StoreFieldSeq(maybeDerivedPtrBase(mem), mem, arg, fields*)
                 }
               case Some(sf) =>
-                if (needsCopy(lastField.fieldType)) {
+                if (!lastField.fieldType.isVariableSizeType && needsCopy(lastField.fieldType)) {
                   val addr = GetStaticFieldSeqRef(DerivedPtr.Global(), fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
@@ -1645,7 +1645,7 @@ trait CHIRParser
             } else {
               val n = state(localVar) match {
                 case mem @ GetFieldSeqRef(fields, _, base) =>
-                  if (needsCopy(mem.resType)) {
+                  if (!mem.resType.isVariableSizeType && needsCopy(mem.resType)) {
                     val res = StackAlloc.Local(mem.resType)
                     copy(mem.resType, res, mem)
                     res
@@ -1653,7 +1653,7 @@ trait CHIRParser
                     LoadFieldSeq(maybeDerivedPtrBase(mem), base, fields*)
                   }
                 case mem @ GetStaticFieldSeqRef(fields) =>
-                  if (needsCopy(mem.resType)) {
+                  if (!mem.resType.isVariableSizeType && needsCopy(mem.resType)) {
                     val res = StackAlloc.Local(mem.resType)
                     copy(mem.resType, res, mem)
                     res

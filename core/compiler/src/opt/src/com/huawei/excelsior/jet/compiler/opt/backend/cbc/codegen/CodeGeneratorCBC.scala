@@ -276,7 +276,27 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       addXSite(n)
 
       val adapter = asm.adapter
-      val fieldRefs = n.fields
+
+      val fieldRefs = n.fields.takeWhile(_.isInstanceOf[CangjieReferenceNode])
+      val resultTypeInfo = n.fields.drop(fieldRefs.size)
+      require(fieldRefs.nonEmpty)
+      require(resultTypeInfo.size <= 1 && (resultTypeInfo.isEmpty || n.resType.isVariableSizeType))
+
+      def resultTI: IR = {
+        require(resultTypeInfo.size == 1)
+        val IReg(ti) = resultTypeInfo.head
+        ti
+      }
+
+      def indexReference(idx: Int, refType: SignatureType, fieldType: SignatureType): CangjieIndexReference = {
+        val t = refType match {
+          case t: SignatureType.OptionLikeEnum =>
+            require(!t.isNullableOption)
+            SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
+          case t => t
+        }
+        CangjieIndexReference(idx, t, fieldType)
+      }
 
       def getBaseLocation(n: Node): IR | StackSlot.Typed = n match {
         case IReg(r) => r
@@ -294,14 +314,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       def constrFieldRef(frs: Seq[Node]): CbcFileFormat.FieldReference = {
         val adaptedRefs = frs.map {
           case fr: FieldReferenceNode => fr.field
-          case fr: ConstIndexFieldReference =>
-            val refType = fr.refType match {
-              case t: SignatureType.OptionLikeEnum =>
-                require(!t.isNullableOption)
-                SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
-              case t => t
-            }
-            CangjieIndexReference(fr.idx, refType, fr.fieldType)
+          case fr: FieldReferenceNodeGeneric => fr.field
+          case fr: ConstIndexFieldReference => indexReference(fr.idx, fr.refType, fr.fieldType)
+          case fr: ConstIndexGeneric => indexReference(fr.idx, fr.refType, fr.fieldType)
           case _ => shouldNotReachHere("not const field")
         }.map(adapter.field)
 
@@ -311,116 +326,105 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
       }
 
-      // TODO: merge non-generic lea-s into one lea with multi field reference
+      def isPlainField(field: Node): Boolean = field match {
+        case _: FieldReferenceNode | _: ConstIndexFieldReference => true
+        case _ => false
+      }
+
       @tailrec
       def genLeaChain(scratch: IR, base: IR, fields: Seq[Node]): Unit = {
         if (fields.isEmpty) return
 
-        fields.head match {
-          case fr: CangjieReferenceNodeGeneric =>
-            val IReg(ti) = fr.typeInfo
-            asm.leaGeneric(scratch, base, ti, constrFieldRef(Seq(fr)))
-          case fr =>
-            asm.lea(scratch, base, constrFieldRef(Seq(fr)))
+        val (plain, rest) = fields.span(isPlainField)
+        if (plain.nonEmpty) {
+          asm.lea(scratch, base, constrFieldRef(plain))
+          genLeaChain(scratch, scratch, rest)
+        } else {
+          fields.head match {
+            case fr: IndexFieldReference =>
+              val IReg(idx) = fr.idx
+              asm.index(scratch, base, idx, fr.refType.toCbc)
+            case fr: IndexFieldReferenceGeneric =>
+              val IReg(idx) = fr.idx
+              val IReg(ti) = fr.typeInfo
+              asm.index(scratch, base, idx, ti)
+            case fr: CangjieReferenceNodeGeneric =>
+              val IReg(ti) = fr.typeInfo
+              asm.leaGeneric(scratch, base, ti, constrFieldRef(Seq(fr)))
+            case fr => shouldNotReachHere(s"Unexpected field reference: $fr")
+          }
+          genLeaChain(scratch, scratch, fields.tail)
         }
-        genLeaChain(scratch, scratch, fields.tail)
+      }
+
+      // None denotes a static base; typed slots stay intact for direct ld/st.
+      val baseLocation: Option[IR | StackSlot.Typed] = n match {
+        case op: InstanceFieldSeqOperation => Some(getBaseLocation(op.base))
+        case _ =>
+          require(fieldRefs.size == 1 || !fieldRefs.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference)
+          None
+      }
+
+      def genAddress(dst: IR, fields: Seq[Node]): Unit = baseLocation match {
+        case Some(base: IR) => genLeaChain(dst, base, fields)
+        case Some(_: StackSlot.Typed) => notImplemented("lea for typed slots")
+        case None =>
+          val (plain, rest) = fields.span(isPlainField)
+          require(plain.nonEmpty, "A static chain must start with a fixed-layout static field")
+          val IReg(baseRef) = n.baseRef
+          asm.leaStatic(dst, baseRef, constrFieldRef(plain))
+          genLeaChain(dst, dst, rest)
+      }
+
+      def genAccess(store: Boolean, value: Node): Unit = {
+        if (store) {
+          maybeImmValue(value).foreach { x =>
+            shouldNotReachHere(s"Field seq stores with imm are not supported: $x")
+          }
+        }
+        val Reg(reg) = value
+
+        // Generic ld/st currently accept only NoneFieldReference, so consume
+        // the whole address for them. Otherwise, fold the plain suffix into ld/st.
+        val suffixSize = if (n.resType.isVariableSizeType) 0 else fieldRefs.reverseIterator.takeWhile(isPlainField).size
+        val (prefix, suffix) = fieldRefs.splitAt(fieldRefs.size - suffixSize)
+        val field = if (suffix.nonEmpty) constrFieldRef(suffix) else NoneFieldReference(n.resType.toCbc)
+
+        if (prefix.isEmpty) {
+          baseLocation match {
+            case Some(base: IR) =>
+              if (store) asm.st(reg, base, field) else asm.ld(reg, base, field)
+            case Some(slot: StackSlot.Typed) =>
+              if (store) asm.st(reg, slot, field) else asm.ld(reg, slot, field)
+            case None =>
+              if (store) asm.st(reg, field) else asm.ld(reg, field)
+          }
+        } else {
+          genAddress(IR1, prefix)
+          val IReg(baseRef) = n.baseRef
+          if (n.resType.isVariableSizeType) {
+            if (store) asm.st(reg, baseRef, IR1, resultTI, NoneFieldReference())
+            else asm.ld(reg, baseRef, IR1, resultTI, NoneFieldReference())
+          } else {
+            if (store) asm.st(reg, baseRef, IR1, field)
+            else asm.ld(reg, baseRef, IR1, field)
+          }
+          addXSite(n)
+          saveGCState(n)
+        }
+        if (store) addXSite(n)
       }
 
       n match {
-        // TODO: add generation ld instruction for sequence non-generic fields
-        // ld dst, [base | slot], [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
-        case n: LoadFieldSeq =>
-          // lea.g IR1, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
-          // ...
-          // lea.g IR1, IR1,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
-          // ld.g  dst, baseRef, IR1, tiN, None()                 (or non-generic ld)
-          val Reg(dst) = n
-          getBaseLocation(n.base) match {
-            case slot: StackSlot.Typed => notImplemented("lea for typed slots")
-            case base: IR =>
-              genLeaChain(IR1, base, fieldRefs)
-              val IReg(baseRef) = n.baseRef
-              if (n.resType.isVariableSizeType) {
-                val IReg(ti) = fieldRefs.last
-                asm.ld(dst, baseRef, IR1, ti, NoneFieldReference())
-              } else {
-                val fieldRef = constrFieldRef(Seq(fieldRefs.last)).asInstanceOf[FieldReferenceWithType]
-                asm.ld(dst, baseRef, IR1, NoneFieldReference(fieldRef.fieldType))
-              }
-          }
-          addXSite(n)
-          saveGCState(n)
-
-        // TODO: add generation ld instruction for sequence non-generic fields
-        case n: LoadStaticFieldSeq =>
-          // ld dst, [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
-          val Reg(dst) = n
-          assert(fieldRefs.size == 1 || !fieldRefs.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fieldRefs)
-          asm.ld(dst, constrFieldRef(fieldRefs))
-
-        // TODO: add generation ld instruction for sequence non-generic fields
-        // lea dst, base, [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
-        case n: GetFieldSeqRef =>
-
-          // lea.g dst, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
-          // ...
-          // lea.g dst, dst,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
+        case _: GetFieldSeqRef | _: GetStaticFieldSeqRef =>
           val IReg(dst) = n
-          getBaseLocation(n.base) match {
-            case _: StackSlot.Typed => notImplemented("lea for typed slots")
-            case base: IR => genLeaChain(dst, base, fieldRefs)
-          }
-        case n: GetStaticFieldSeqRef =>
-          // lea dst, base, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
-          val IReg(dst) = n
-          val IReg(dstBaseRef) = n.baseRef
-          require(fieldRefs.size == 1 || !fieldRefs.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fieldRefs)
-          asm.leaStatic(dst, dstBaseRef, constrFieldRef(fieldRefs))
-        case n: StoreFieldSeq =>
-          // st src, [base | slot], [Single(fr) | ConstIndex(idx) | Multi(fr1, fr2, ... frN)]
-          maybeImmValue(n.inValue) match {
-            case Some(x) => shouldNotReachHere(s"Field seq stores with imm are not supported: $x")
-            case None =>
-              val Reg(src) = n.inValue
-              getBaseLocation(n.base) match {
-                case base: IR => asm.st(src, base, constrFieldRef(fieldRefs))
-                case slot: StackSlot.Typed => asm.st(src, slot, constrFieldRef(fieldRefs))
-              }
-          }
-        case n: StoreStaticFieldSeq =>
-          // st src, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
-          assert(fieldRefs.size == 1 || !fieldRefs.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fieldRefs)
-          maybeImmValue(n.inValue) match {
-            case Some(x) => shouldNotReachHere(s"Field seq stores with imm are not supported: $x")
-            case None =>
-              val Reg(src) = n.inValue
-              asm.st(src, constrFieldRef(fieldRefs))
-          }
-          addXSite(n)
-
-        // TODO: add generation ld instruction for sequence non-generic fields
-        // st src, [Single(fr) | Multi(fr1, fr2, ... frN)] where fr/fr1 - static field ref
-        case n: StoreFieldSeq =>
-          // lea.g IR1, base, ti1, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
-          // ...
-          // lea.g IR1, IR1,  tiN, [Single(fr) | ConstIndex(idx)] (or non-generic lea)
-          // st.g  src, baseRef, IR1, tiN, None()                 (or non-generic st)
-          val Reg(src) = n.inValue
-          getBaseLocation(n.base) match {
-            case slot: StackSlot.Typed => notImplemented("lea for typed slots")
-            case base: IR =>
-              genLeaChain(IR1, base, fieldRefs)
-              val IReg(baseRef) = n.baseRef
-              if (n.resType.isVariableSizeType) {
-                val IReg(ti) = fieldRefs.last
-                asm.st(src, baseRef, IR1, ti, NoneFieldReference())
-              } else {
-                val fieldRef = constrFieldRef(Seq(fieldRefs.last)).asInstanceOf[FieldReferenceWithType]
-                asm.st(src, baseRef, IR1, NoneFieldReference(fieldRef.fieldType))
-              }
-          }
-          addXSite(n)
-          saveGCState(n)
+          genAddress(dst, fieldRefs)
+        case _: LoadFieldSeq | _: LoadStaticFieldSeq =>
+          genAccess(store = false, n)
+        case op: StoreFieldSeq =>
+          genAccess(store = true, op.inValue)
+        case op: StoreStaticFieldSeq =>
+          genAccess(store = true, op.inValue)
       }
     }
 

@@ -29,6 +29,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
   final def needXSiteImpl(node: Node): Boolean = node match {
     case _: New | _: NewArray | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => true // can throw and not lowered to calls
     case _: InterfaceCastCBC => true
+    case n: LoadStaticFieldSeq if n.resType.isVariableSizeType => true
     case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeq |
          _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric |
          _: AssignGeneric | _: NewGeneric => true
@@ -41,6 +42,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
   override def xSiteKind(node: Node): XSiteKind = node match {
     case _: New | _: NewArray | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => XSiteKind.CALL
     case _: InterfaceCastCBC => XSiteKind.CALL
+    case n: LoadStaticFieldSeq if n.resType.isVariableSizeType => XSiteKind.CALL
     case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeq |
          _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric |
          _: AssignGeneric | _: NewGeneric => XSiteKind.CALL
