@@ -127,20 +127,4 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
       }
     }
   }
-
-  override def prepareRecordArrayGet(): Unit = {
-    if (isStandalone) {
-      for {
-        n <- all[ArrayGet].toList
-        if n.arrayType.isRecordArray
-        m <- Node.rematerializeCompletely(n)
-      } {
-        m.singleUse match {
-          case use: InstanceFieldSeqOperation => m.attachToGroup(use, Group.AttachReason.RECORD_ARRAY_GET)
-          case _: CopyStructure =>
-          case use => shouldNotReachHere(use)
-        }
-      }
-    }
-  }
 }
