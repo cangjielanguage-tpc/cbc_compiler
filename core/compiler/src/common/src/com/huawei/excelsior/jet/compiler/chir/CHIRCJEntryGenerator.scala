@@ -117,7 +117,7 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
 
         handleException(dsl.Ref(Error), checkError, checkException) { _ =>
           // TODO write detailed message field value as printStackTrace is not available?
-          val msg = gen.local(String,     gen.const(String, "An error has occurred: "))
+          val msg = gen.local(String,     gen.const(String, "An error has occurred:"))
                     gen.local(Unit,       gen.apply(eprintlnFunc, thisType = None, msg))
         }
 
