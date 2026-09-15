@@ -92,6 +92,10 @@ object CHIRDSL {
       Allocate(allocatedType)
     }
 
+    def invoke(callee: CHIR.Func, thisType: CHIR.Type, thisArg: CHIR.Value, allArgs: CHIR.Value*): CHIR.Invoke = {
+      Invoke(callee, thisType, thisArg, allArgs)
+    }
+
     // Terminators
 
     def br(cond: CHIR.Value, trueBlock: CHIR.Block, falseBlock: CHIR.Block): CHIR.Branch = {

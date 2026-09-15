@@ -19,6 +19,7 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
   private val Error = pkg.getDef("_CNat5ErrorE").get.tpe
   private val Exception = pkg.getDef("_CNat9ExceptionE").get.tpe
   private val eprintlnFunc = pkg.getFunc("_CNat8eprintlnHRNat6StringE").get
+  private val errToString = pkg.getFunc("_CNat5Error8toStringHv").get
   private val handleExFunc = pkg.getFunc("_CNat15handleExceptionHCNat9ExceptionE").get
 
   def gen(): CHIR.Func = {
@@ -115,10 +116,9 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
                     gen.local(Unit,   gen.apply(eprintlnFunc, thisType = None, msg))
         }
 
-        handleException(dsl.Ref(Error), checkError, checkException) { _ =>
-          // TODO write detailed message field value as printStackTrace is not available?
-          val msg = gen.local(String,     gen.const(String, "An error has occurred: "))
-                    gen.local(Unit,       gen.apply(eprintlnFunc, thisType = None, msg))
+        handleException(dsl.Ref(Error), checkError, checkException) { except =>
+          val errStr = gen.local(String, gen.invoke(errToString, thisType = dsl.Ref(Error), thisArg = except, allArgs = except))
+                       gen.local(Unit,   gen.apply(eprintlnFunc, thisType = None, errStr))
         }
 
         handleException(dsl.Ref(Exception), checkException, rethrow) { except =>
