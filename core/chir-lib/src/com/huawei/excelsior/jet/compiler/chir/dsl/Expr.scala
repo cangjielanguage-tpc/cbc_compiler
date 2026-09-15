@@ -24,6 +24,10 @@ final class Store(val value: CHIR.Value, val location: CHIR.Value) extends CHIR.
 
 final class Allocate(val allocatedType: CHIR.Type) extends CHIR.Allocate
 
+final class Invoke(val callee: CHIR.Func, val thisType: CHIR.Type, val thisArg: CHIR.Value, val args: Seq[CHIR.Value]) extends CHIR.Invoke with HasResultVar {
+  def instantiatedTypeArgs: Seq[CHIR.Type] = Seq.empty
+}
+
 // Terminators
 
 final class TryApply(val callee: CHIR.Func, val thisType: Option[CHIR.Type], val args: Seq[CHIR.Value])(succBlock: CHIR.Block, errBlock: CHIR.Block)

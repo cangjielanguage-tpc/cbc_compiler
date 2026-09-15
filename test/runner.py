@@ -124,7 +124,7 @@ class TestSuite:
     async def run_cjc(self, file: str, output_file: str, output_type: str = None,
                       additional_args: list[str] = [], use_tool_sh: bool = True, cwd=None, log=None):
         assert '.' in file
-        cjc_args = []
+        cjc_args = ["--fobf-layout", "--fno-obf-export-symbols", "--fobf-line-number", "--fobf-source-path"]
         cjc_args += additional_args
 
         if output_type is not None:
@@ -334,7 +334,8 @@ class StandaloneTestSuite(TestSuite):
                 launcher_err = io.StringIO()
                 with open(actual_file, "w") as test_output:
                     res = await run_in_env(True, env, cmd, log=test_output, stderr_log=launcher_err)
-                    test_output.write(f"{res}\n")
+                    err_res = launcher_err.getvalue()
+                    test_output.write(f"{res}\n" if not err_res else err_res)
                 if await self.check_result(test_name, custom_actual=actual_file) != 0:
                     err = launcher_err.getvalue().strip()
                     if err:
