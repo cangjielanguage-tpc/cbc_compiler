@@ -1642,47 +1642,47 @@ trait CHIRParser
               // nothing to do
               state(e) = Void()
 
-              } else {
-                val n = state(localVar) match {
-                  case mem @ GetFieldSeqRef(fields, _, base) =>
-                    if (needsCopy(mem.resType)) {
-                      val res = StackAlloc.Local(mem.resType)
-                      copy(mem.resType, res, mem)
-                      res
-                    } else {
-                      LoadFieldSeq(maybeDerivedPtrBase(mem), base, fields*)
-                    }
-                  case mem @ GetStaticFieldSeqRef(fields) =>
-                    if (needsCopy(mem.resType)) {
-                      val res = StackAlloc.Local(mem.resType)
-                      copy(mem.resType, res, mem)
-                      res
-                    } else {
-                      LoadStaticFieldSeq(DerivedPtr.Global(), fields*)
-                    }
-                  case mem =>
-                    if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive) {
-                      mem
-                    } else {
-                      LoadMemory(sig.toAsm, sig, atomic = false)(mem)
-                    }
-                }
-                state(e) = n
-              }
-            case globalVar: CHIR.GlobalVar =>
-              val field = staticFieldRef(globalVar)
-              val n = if (field.fieldType.isZST) {
-                Void()
-              } else if (needsCopy(field.fieldType)) {
-                val local = StackAlloc.Local(field.fieldType)
-                val addr = GetStaticFieldSeqRef(DerivedPtr.Global(), field)
-                copy(field.fieldType, local, addr)
-                local
-              } else {
-                LoadStaticFieldSeq(DerivedPtr.Global(), field)
+            } else {
+              val n = state(localVar) match {
+                case mem @ GetFieldSeqRef(fields, _, base) =>
+                  if (needsCopy(mem.resType)) {
+                    val res = StackAlloc.Local(mem.resType)
+                    copy(mem.resType, res, mem)
+                    res
+                  } else {
+                    LoadFieldSeq(maybeDerivedPtrBase(mem), base, fields*)
+                  }
+                case mem @ GetStaticFieldSeqRef(fields) =>
+                  if (needsCopy(mem.resType)) {
+                    val res = StackAlloc.Local(mem.resType)
+                    copy(mem.resType, res, mem)
+                    res
+                  } else {
+                    LoadStaticFieldSeq(DerivedPtr.Global(), fields*)
+                  }
+                case mem =>
+                  if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive) {
+                    mem
+                  } else {
+                    LoadMemory(sig.toAsm, sig, atomic = false)(mem)
+                  }
               }
               state(e) = n
-          }
+            }
+          case globalVar: CHIR.GlobalVar =>
+            val field = staticFieldRef(globalVar)
+            val n = if (field.fieldType.isZST) {
+              Void()
+            } else if (needsCopy(field.fieldType)) {
+              val local = StackAlloc.Local(field.fieldType)
+              val addr = GetStaticFieldSeqRef(DerivedPtr.Global(), field)
+              copy(field.fieldType, local, addr)
+              local
+            } else {
+              LoadStaticFieldSeq(DerivedPtr.Global(), field)
+            }
+            state(e) = n
+        }
 
       case e: CHIR.Store =>
         val valueVar = e.value
@@ -1873,7 +1873,7 @@ trait CHIRParser
                         // nothing to do
 
                       } else if (needsCopy(payloadType)) {
-                              val addr = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, payloadChain*)
+                        val addr = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, payloadChain*)
                         copy(payloadType, addr, x)
 
                       } else {

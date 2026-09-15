@@ -173,8 +173,8 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   /////////////////////////////////////////////////////////////////////////////
 
   override protected def volatileRegistersOnAnyExit(node: Node, file: RegFile): ResourceSet = (node match {
-    case lfsg: LoadFieldSeqGeneric  if file == IREG && lfsg.fields.size > 1 => ir1Set
-    case sfsg: StoreFieldSeqGeneric if file == IREG && sfsg.fields.size > 1 => ir1Set
+    case lfsg: LoadFieldSeq if lfsg.resType.isVariableSizeType && file == IREG && lfsg.fields.size > 1 => ir1Set
+    case sfsg: StoreFieldSeq if sfsg.resType.isVariableSizeType && file == IREG && sfsg.fields.size > 1 => ir1Set
 
     case cp: CopyStructureCBC if file == IREG => {
       if      (cp.hasComplexDst && cp.hasComplexSrc) stdTmp1StdTmp2Set
