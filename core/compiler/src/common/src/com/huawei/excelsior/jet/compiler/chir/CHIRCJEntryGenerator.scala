@@ -162,7 +162,11 @@ class CHIRBodyGen(pkg: CHIR.Package) {
 
   def finish(): CHIRDSL.BlockGroup = CHIRDSL.BlockGroup(blocks.toSeq, entryBlock)
 
-  def newBlock(): CHIRDSL.Block = CHIRDSL.Block()
+  def newBlock(): CHIRDSL.Block = { 
+    val b = CHIRDSL.Block()
+    blocks += b
+    b
+  }
 
   def newXBlock(): CHIRDSL.Block = {
     val b = newBlock()
@@ -257,7 +261,7 @@ object CHIRDSL {
 
   case class BlockGroup(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block) extends CHIR.BlockGroup
 
-  class Block() extends CHIR.Block {
+  class Block extends CHIR.Block {
     private val exprs = mutable.ArrayBuffer.empty[CHIR.Expression]
     private var term: CHIR.Terminator = _
     private var isLandingPad = false
