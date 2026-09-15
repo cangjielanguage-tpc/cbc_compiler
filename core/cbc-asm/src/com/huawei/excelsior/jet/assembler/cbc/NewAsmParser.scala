@@ -1073,9 +1073,9 @@ private object InstructionParser {
   instr("st.static.f") { (a, s) => a.st(s.freg, fieldPath(s)) }
   instr("st.typed.f") { (a, s) => a.st(s.freg, s.ts, fieldPath(s)) }
   instr("st.g") { (a, s) => a.st(s.ireg, s.ireg, s.ireg, s.ireg, NoneFieldReference()) }
-  instr("lea") { (a, s) => a.instr { a.lea(s.ireg, s.ireg, fieldPath(s)) } }
+  instr("lea") { (a, s) => a.lea(s.ireg, s.ireg, fieldPath(s)) }
   instr("lea.g") { (a, s) => a.leaGeneric(s.ireg, s.ireg, s.ireg, s.field) }
-  instr("copy") { (a, s) => a.instr { a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) } }
+  instr("copy") { (a, s) => a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
 
   // memory access - uslot
   instr("ld.uslot.s8")  { (a, s) => a.loadUntyped(s.ireg, LD_S8, s.us) }

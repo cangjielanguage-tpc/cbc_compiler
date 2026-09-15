@@ -1,7 +1,7 @@
 ;strict
 @main_type "default"
 
-; TODO add variants of memexprs with copying when they are supported
+; TODO add variants of fieldops with copying when they are supported
 
 @aot_deps "aot"
 
