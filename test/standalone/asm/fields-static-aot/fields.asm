@@ -6,8 +6,10 @@
 @aot.static fieldName    = "_CN3aot13testStaticVarE"
 @aot.static refFieldName = "_CN3aot10testRefVarE"
 @aot.direct testFuncName = "_CN3aot10testAssignHl"
+@aot.direct packageInit  = "_CGP3aotiiHv"
 
-@method_ref testAssign = aot@aref testSum(I64)I64 #testFuncName
+@method_ref testAssign     = aot@aref testSum(I64)I64 #testFuncName
+@method_ref packageInitRef = aot@aref packageInit()Unit #packageInit
 
 @field_ref gFieldRef   = aot@aref testStaticVar I64                  #fieldName
 @field_ref refFieldRef = aot@aref testRefVar    std.core:Object@aref #refFieldName
@@ -16,6 +18,8 @@
 
   @method main()I64
     @code
+      call.direct IR1, #packageInitRef
+
       movi.64 IR1, 40
       st.static IR1, #gFieldRef
 

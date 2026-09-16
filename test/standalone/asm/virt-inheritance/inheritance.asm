@@ -4,6 +4,7 @@
 
 @aot_deps "aot:cangjie-std-core"
 @aot.direct qwerty_data = "_CN3aot6qwertyHCNY_1AE"
+@aot.direct packageInit = "_CGP3aotiiHv"
 
 @type std.core:Object
   @flags PUBLIC AOT
@@ -33,11 +34,14 @@
   @end
 @end
 
-@method_ref qwerty = aot:A@aref qwerty()I64 #qwerty_data
+@method_ref qwerty         = aot:A@aref qwerty()I64 #qwerty_data
+@method_ref packageInitRef = aot@aref packageInit()Unit #packageInit
 
 @type default
   @method main()I64
     @code
+      call.direct IR1, #packageInitRef
+
       newobj default:Child@ref
       call.direct IR1, #qwerty
       @dead IR1
