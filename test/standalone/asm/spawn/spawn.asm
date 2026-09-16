@@ -45,7 +45,7 @@
 @end
 
 @type default
-  @method cj_entry()I64
+  @method main()I64
     @code
       call.direct IR1, #init
 

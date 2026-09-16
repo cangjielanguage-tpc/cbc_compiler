@@ -56,7 +56,7 @@
 @end
 
 @type default
-  @method cj_entry()I64
+  @method main()I64
     @saved_iregs IR11, IR12
     @code
       newobj default:Generic[I64]@ref

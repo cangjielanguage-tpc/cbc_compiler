@@ -18,7 +18,7 @@
 @field_ref rec_i32  = aot:Foo@arec i32 I32 #i32_Idx
 
 @type default
-  @method cj_entry()I64
+  @method main()I64
     @typed_slots aot:Foo@arec
 
     @code
