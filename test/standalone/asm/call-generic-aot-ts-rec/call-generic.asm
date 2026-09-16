@@ -43,7 +43,7 @@
 
 @type default
 
-  @method cj_entry()I64
+  @method main()I64
     @saved_iregs IR12
     @typed_slots aot:Foo[I64]@rec
 

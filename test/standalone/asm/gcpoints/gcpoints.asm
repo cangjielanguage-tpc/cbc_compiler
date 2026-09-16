@@ -9,7 +9,7 @@
 
 @type default
 
-  @method cj_entry()I64
+  @method main()I64
     @code
       call.direct IR1, #testGcPoint
       movi.64 IR1, 0x10000
