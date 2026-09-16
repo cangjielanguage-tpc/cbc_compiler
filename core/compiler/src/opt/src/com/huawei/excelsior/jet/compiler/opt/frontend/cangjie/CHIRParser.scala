@@ -756,6 +756,9 @@ trait CHIRParser
                   case CHIR.Binary.Kind.Exp => CheckedOp(tpe, width, CheckedOp.Kind.POW, signed, method.isManaged)(normalizedArgs: _*)
                   case CHIR.Binary.Kind.LShift => CheckedOp(tpe, width, CheckedOp.Kind.LSHIFT, signed, method.isManaged)(normalizedArgs: _*)
                   case CHIR.Binary.Kind.RShift => CheckedOp(tpe, width, CheckedOp.Kind.RSHIFT, signed, method.isManaged)(normalizedArgs: _*)
+                  case CHIR.Binary.Kind.Or  => Or(l, r)
+                  case CHIR.Binary.Kind.And => And(l, r)
+                  case CHIR.Binary.Kind.Xor => Xor(l, r)
                   case x => shouldNotReachHere(s"unexpected throwing binary expression: ${e.kind}")
                 }
 
