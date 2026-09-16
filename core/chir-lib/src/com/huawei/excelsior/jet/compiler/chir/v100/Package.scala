@@ -16,6 +16,7 @@ import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.*
 
 import java.nio.ByteBuffer
 import scala.reflect.ClassTag
+import scala.collection.mutable
 
 trait CHIRItemProvider {
   def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T]
@@ -44,6 +45,9 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   private val _values = Array.fill[CHIR.Value](pkg.valuesLength)(null)
   private val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
   private val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
+  
+  private val _funcs = mutable.HashMap.empty[String, CHIR.Func]
+  private val _defs = mutable.HashMap.empty[String, CHIR.CustomTypeDef]
 
   def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T] = {
     if (id <= 0) {
@@ -135,7 +139,10 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case v: Parameter => ParameterImpl(v)
           case v: LocalVar => LocalVarImpl(v)
           case v: GlobalVar => GlobalVarImpl(v, id)
-          case v: Function => FuncImpl(v, id)
+          case v: Function =>
+            val f = FuncImpl(v, id)
+            _funcs.put(f.identifier, f)
+            f
           case v: Block => BlockImpl(v)
           case v: BlockGroup => BlockGroupImpl(v)
         }
@@ -211,7 +218,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case e: UnaryExpressionBase => new UnaryImpl(e)
           case e: Expression => e.kind match {
             case CHIRExprKind.Goto => new GotoImpl(e)
-            case CHIRExprKind.Exit => new ExitImpl(e)
+            case CHIRExprKind.Exit => CHIR.Exit
             case CHIRExprKind.RaiseException => new RaiseExceptionImpl(e)
             case CHIRExprKind.StaticCast => new StaticCastImpl(e)
             case CHIRExprKind.Box => new BoxImpl(e)
@@ -246,12 +253,14 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case CustomTypeDefElem.ClassDef => new ClassDef
           case CustomTypeDefElem.ExtendDef => new ExtendDef
         }
-        _customDefs(i) = pkg.defs(obj, i) match {
+        val d = pkg.defs(obj, i) match {
           case t: EnumDef => EnumDefImpl(t)
           case t: ClassDef => ClassDefImpl(t)
           case t: StructDef => StructDefImpl(t)
           case t: ExtendDef => ExtendDefImpl(t)
         }
+        _customDefs(i) = d
+        _defs.put(d.identifier, d)
       }
       Some(_customDefs(i)).collect {
         case t: T => t
@@ -260,7 +269,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   }
 
   def typeDefs: Iterator[CHIR.CustomTypeDef] = {
-    (1 to pkg.defsLength()).iterator.map { id =>
+    (1 to pkg.defsLength).iterator.map { id =>
       getDef[CHIR.CustomTypeDef](id).get
     }
   }
@@ -272,7 +281,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   def packageInitLiteralFunc: CHIR.Func = getValue[CHIR.Func](pkg.packageLiteralInitFunc).get
 
   def values: Iterator[CHIR.Value] = {
-    (1 to pkg.valuesLength()).iterator.map { id =>
+    (1 to pkg.valuesLength).iterator.map { id =>
       getValue[CHIR.Value](id).get
     }
   }
@@ -280,5 +289,20 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   def function(idx: Int): CHIR.Func = {
     getValue[CHIR.Func](idx).get
   }
-}
 
+  def getFunc(identifier: String): Option[CHIR.Func] = {
+    val id = "@" + identifier
+    _funcs.get(id).orElse {
+      values collectFirst {
+        case t: CHIR.Func if t.identifier == id => t
+      }
+    }
+  }
+
+  def getDef(identifier: String): Option[CHIR.CustomTypeDef] = {
+    val id = "@" + identifier
+    _defs.get(id).orElse {
+      typeDefs.find(_.identifier == id)
+    }
+  }
+}

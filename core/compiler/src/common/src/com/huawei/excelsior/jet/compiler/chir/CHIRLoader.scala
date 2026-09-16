@@ -26,7 +26,21 @@ object CHIRLoader {
 
   def getCHIRResolver(source: String)(implicit env: Environment): CHIRResolver = {
     parsedCHIR.get(source).flatMap(_.get).getOrElse {
-      implicit val pkg: CHIR.Package = CHIR.newPackage(source, env.valueOf(CHIRVersion))
+      val pkg: CHIR.Package = CHIR.newPackage(source, env.valueOf(CHIRVersion))
+      val cjEntryId = pkg.values.length
+      implicit val delegate: CHIR.Package = new CHIR.Package {
+        private lazy val cjEntry = pkg.getFunc("user.main").map(CHIRCJEntryGenerator(pkg, cjEntryId, _).gen())
+
+        def name: String = pkg.name
+        def typeDefs: Iterator[CHIR.CustomTypeDef] = pkg.typeDefs
+        def values: Iterator[CHIR.Value] = pkg.values ++ cjEntry.map(Iterator.single).getOrElse(Iterator.empty)
+        def function(idx: Int): CHIR.Func = if idx != cjEntryId then pkg.function(idx) else cjEntry.get
+        def packageInitFunc: CHIR.Func = pkg.packageInitFunc
+        def packageInitLiteralFunc: CHIR.Func = pkg.packageInitLiteralFunc
+        def getFunc(identifier: String): Option[CHIR.Func] = if identifier != CHIRCJEntryGenerator.name then pkg.getFunc(identifier) else cjEntry
+        def getDef(identifier: String): Option[CHIR.CustomTypeDef] = pkg.getDef(identifier)
+      }
+
       val resolver = CHIRResolver()
       parsedCHIR.put(source, new SoftReference(resolver))
       resolver

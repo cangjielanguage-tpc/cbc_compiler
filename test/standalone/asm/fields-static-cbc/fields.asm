@@ -6,8 +6,10 @@
 @aot.instance xFieldOrd = 0
 @aot.instance yFieldOrd = 1
 @aot.direct checkObjName = "_CN3aot8checkObjHCNY_5PointE"
+@aot.direct packageInit  = "_CGP3aotiiHv"
 
-@method_ref checkObj = aot@aref checkObj(aot:Point@aref)I64 #checkObjName
+@method_ref checkObj       = aot@aref checkObj(aot:Point@aref)I64 #checkObjName
+@method_ref packageInitRef = aot@aref packageInit()Unit #packageInit
 
 @field_ref xPointRef   = aot:Point@aref x I64 #xFieldOrd
 @field_ref yPointRef   = aot:Point@aref y I64 #yFieldOrd
@@ -31,6 +33,8 @@
 
   @method main()I64
     @code
+      call.direct IR1, #packageInitRef
+
       newobj aot:Point@aref
       movi.64 IR2, 123
       st.ref.field IR2, IR1, #xPointRef
