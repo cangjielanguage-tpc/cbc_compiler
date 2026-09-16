@@ -18,7 +18,7 @@ extend<T, K> Foo<Pair<T, Pair<T, K>>> <: I<T, K> {
   }
 }
 
-main() {
+main(): Int32 {
   let list = ArrayList<Object>()
   list.add(Foo<Pair<Int64, Pair<Int64, Int32>>>(0))
   list.add(Foo<Pair<Int64, Pair<Int32, Int32>>>(1))
@@ -36,4 +36,5 @@ main() {
       case _ => println("not matched")
     }
   }
+  0
 }
