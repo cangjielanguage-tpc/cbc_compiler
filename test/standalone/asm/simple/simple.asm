@@ -2,7 +2,7 @@
 @main_type "default"
 
 @type default
-  @method cj_entry()I64
+  @method main()I64
     @code
       movi.64 IR3, 0x1
       movi.64 IR1, 0x0

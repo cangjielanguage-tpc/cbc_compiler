@@ -61,6 +61,11 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       val wrappedMethod = annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
       val v = wrappedMethod.getOrElse(_v)
       val (id, identifier, srcName) = v match {
+        // rename main-related functions to let interpreter start from "main" entry point
+        case v: CHIR.Func if v.identifier == "@user.main" => (v.id, "user.main.invoke", "user.main.invoke")
+        case v: CHIR.Func if v.kind == CHIR.Func.Kind.MainEntry => (v.id, "user.main", "user.main")
+        case v: CHIR.Func if v.identifier == CHIRCJEntryGenerator.name => (v.id, "main", "main")
+
         case v: CHIR.Func => (v.id, v.identifier, v.srcCodeIdentifier)
         case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
       }

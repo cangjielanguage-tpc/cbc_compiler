@@ -19,7 +19,7 @@
 
 @type default
 
-  @method cj_entry()I64
+  @method main()I64
     @code
       newobj aot:Foo@aref
 

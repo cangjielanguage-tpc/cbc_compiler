@@ -14,7 +14,7 @@
 
 @type default
 
-  @method cj_entry()I64
+  @method main()I64
     @code
       movi.64 IR1, 40
       st.static IR1, #gFieldRef
