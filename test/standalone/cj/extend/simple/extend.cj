@@ -26,8 +26,9 @@ extend Baz <: I {
 var bar: I = Bar()
 var baz: I = Baz()
 
-main() {
+main(): Int32 {
   bar.foo()
   baz.foo()
+  0
 }
 
