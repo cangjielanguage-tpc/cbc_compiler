@@ -6,8 +6,7 @@ func foo<T>(x: T): Foo<T> {
   Foo(x)
 }
 
-main(): Int64 {
+main() {
   println(foo<String>("test").x)
   println(foo<Int64>(123).x)
-  0
 }

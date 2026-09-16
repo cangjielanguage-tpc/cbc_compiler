@@ -55,7 +55,6 @@ main() {
 	//}
 
 	printResult(n, result.load(), check.load())
-  0
 }
 
 func printResult(n: Int64, result: Int64, check: Int64) {

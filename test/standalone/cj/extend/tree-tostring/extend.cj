@@ -53,5 +53,4 @@ main() {
   println()
   printTreeStatic(empty)
   printTreeStatic(tree)
-  0
 }

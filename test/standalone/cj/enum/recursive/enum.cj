@@ -7,6 +7,5 @@ enum EE {
 main() {
     var b1 = EE.Num(Num)
     println(b1.one())
-    0
 }
 

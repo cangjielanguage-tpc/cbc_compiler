@@ -1,7 +1,7 @@
 import aot
 
-public func entryPoint(): Int64 {
-    return aot.testPrint(42)
+public func entryPoint() {
+    aot.testPrint(42)
 }
 
 main() {

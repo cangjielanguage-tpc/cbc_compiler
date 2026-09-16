@@ -15,5 +15,4 @@ func testInterf(x: aot.I): Unit {
 main() {
   testVirt(aot.B())
   testInterf(aot.B())
-  0
 }

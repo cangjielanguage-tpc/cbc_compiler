@@ -296,10 +296,9 @@ func testOverflow16(): Unit {
     }
 }
 
-main() : Int64 {
+main() {
     test8()
     testOverflow8()
     test16()
     testOverflow16()
-    0
 }

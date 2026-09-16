@@ -9,7 +9,7 @@ struct TestStruct {
     }
 }
 
-unsafe main(): Int64 {
+unsafe main() {
     let structPointer = LibC.malloc<TestStruct>(count: 1)
     structPointer.write(TestStruct(a: 43, b: 44))
     var value = structPointer.read()
@@ -33,5 +33,4 @@ unsafe main(): Int64 {
 
     LibC.free<TestStruct>(structPointer)
     LibC.free<Int64>(primitivePointer)
-    return 0
 }

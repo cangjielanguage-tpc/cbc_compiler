@@ -24,7 +24,7 @@ func add_test_wide_neg_imm32(a: Int32): Int32 {
 }
 
 
-main() : Int32 {
+main() {
     let test_imm32 = add_test_wide_imm32(20)
     println(test_imm32)
     let test_imm16 = add_test_wide_imm16(42)
@@ -35,5 +35,4 @@ main() : Int32 {
     println(test_imm64u)
     let test_neg_imm32 = add_test_wide_neg_imm32(1)
     println(test_neg_imm32)
-    0
 }

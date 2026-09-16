@@ -25,5 +25,4 @@ public class B<T> <: I<T> {
 main() {
     g_I = B<S>(S())
     aot.invokeI()
-    return 0
 }

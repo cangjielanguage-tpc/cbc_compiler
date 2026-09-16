@@ -55,5 +55,4 @@ main() {
   gc(heavy: true)
   println(holder.apply(7))
   println(holder.sentinelSum())
-  0
 }

@@ -60,5 +60,4 @@ main(){
     //}
     print(spectralnorm(n).format("9.9").toString())
     println()
-    0
 }

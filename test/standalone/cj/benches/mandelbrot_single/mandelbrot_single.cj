@@ -91,5 +91,5 @@ main(){
     }
     bos.flush()
     f.close()
-    return 0
+    println("ok")
 }

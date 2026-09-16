@@ -11,5 +11,4 @@ func test2(y: Int64): Unit {
 main() {
   test1()
   test2(42)
-  0
 }

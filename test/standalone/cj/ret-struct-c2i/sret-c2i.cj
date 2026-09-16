@@ -20,5 +20,4 @@ func test1(): Unit {
 
 main() {
   test1()
-  0
 }

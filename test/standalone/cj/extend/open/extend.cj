@@ -15,5 +15,4 @@ extend C {
 
 main() {
   C().bar()
-  0
 }

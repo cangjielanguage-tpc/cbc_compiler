@@ -13,7 +13,6 @@ main() {
     ref()
     optionRef()
     complex()
-    0
 }
 
 func bool() {

@@ -158,7 +158,6 @@ main(){
         i++
     }
     print(energy().format("9.9")+"\n")
-    return 0
 }
 
 

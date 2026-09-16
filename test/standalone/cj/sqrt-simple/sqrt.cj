@@ -13,5 +13,4 @@ main() {
   println(mysqrt(1.400318))
   println(mysqrt(0.0))
   println(mysqrt(9.0))
-  0
 }

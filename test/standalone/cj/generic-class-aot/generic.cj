@@ -10,5 +10,4 @@ main() {
   println(obj.getX())
   println(obj.getY())
   println(obj.getZ())
-  0
 }

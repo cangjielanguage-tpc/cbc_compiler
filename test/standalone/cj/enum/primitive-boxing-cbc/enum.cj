@@ -19,5 +19,4 @@ main() {
     println(name(direction))
   }
 
-  0
 }

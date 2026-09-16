@@ -29,6 +29,5 @@ func foo(a: Int64, b: Float64, c: String, d: Object): Unit {
 
 main() {
   foo(42, 3.5, "foo", Object())
-  0
 }
 

@@ -42,5 +42,4 @@ main() {
   let c = Child()
   test(TestInterface(c, c))
   test(TestChild(c))
-  0
 }

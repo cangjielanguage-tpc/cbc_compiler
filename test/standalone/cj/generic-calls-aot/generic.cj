@@ -25,7 +25,5 @@ main() {
   aot.C<Int64, String>().instanceFuncG(42, "foo", "bar", 3.5)
   aot.C<String, Object>().instanceFuncG("bar", Object(), 3.5, "foo")
   aot.C<Object, Int64>().instanceFuncG(Object(), 42, Object(), 3.5)
-
-  0
 }
 

@@ -1,6 +1,5 @@
 package aot
 
-public func testPrint(num: Int64): Int64 {
+public func testPrint(num: Int64): Unit {
     println("Your number is ${num}")
-    return 0
 }

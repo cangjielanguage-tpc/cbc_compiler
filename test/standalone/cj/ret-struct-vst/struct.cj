@@ -30,9 +30,8 @@ func test3() {
   println(s.j)
 }
 
-main(): Int64 {
+main() {
   test1()
   test2()
   test3()
-  0
 }

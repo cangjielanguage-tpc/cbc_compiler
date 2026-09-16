@@ -71,5 +71,4 @@ main() {
     println(obj.tester.state)
     println(localTester.state)
     println(globalTester.state)
-    return 0
 }

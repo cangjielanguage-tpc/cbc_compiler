@@ -2,14 +2,13 @@ import a
 import b
 import c
 
-main(): Int64 {
+main() {
   c.testCA(c.CA())
   c.testCB(c.CB())
   c.testA(MA())
   c.testB(MB())
   c.testCA(MCA())
   c.testCB(MCB())
-  0
 }
 
 public open class MA <: a.A {

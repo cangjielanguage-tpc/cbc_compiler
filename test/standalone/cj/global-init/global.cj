@@ -12,6 +12,5 @@ class Once {
 }
 var res = Once().foo()
 main() {
-  0
 }
 

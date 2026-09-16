@@ -2,7 +2,7 @@ import a
 import b
 import c
 
-main(): Int64 {
+main() {
   c.testCA(c.CA())
   c.testCB(c.CB())
   c.testA(MA())
@@ -11,7 +11,6 @@ main(): Int64 {
   c.testCB(MCB())
   testAString(c.CA())
   testAString(MA())
-  0
 }
 
 func testAString(x: a.A<String>) {

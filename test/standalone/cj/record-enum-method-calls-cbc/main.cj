@@ -30,7 +30,7 @@ enum Payload {
     }
 }
 
-main(): Int64 {
+main() {
     let point = Point(20, 22)
     println(point.sum())
 
@@ -41,6 +41,4 @@ main(): Int64 {
     let value = Payload.Value(37)
     println(empty.getOrDefault(5))
     println(value.getOrDefault(5))
-
-    0
 }

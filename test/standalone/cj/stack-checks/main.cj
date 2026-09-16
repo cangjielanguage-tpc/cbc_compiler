@@ -61,5 +61,4 @@ main() {
     println(test.state)
     println(res.x)
     println(res.y)
-    return 0
 }

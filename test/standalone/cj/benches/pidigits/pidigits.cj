@@ -94,5 +94,5 @@ main(){
         print("\t")
         println(n)
     }
-    0
+    println("ok")
 }

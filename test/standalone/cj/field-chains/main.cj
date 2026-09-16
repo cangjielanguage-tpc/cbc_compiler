@@ -108,7 +108,7 @@ func modifyStructByValue(v: Vector2D): Unit {
     v2.translate(10, 10)
 }
 
-main(): Int64 {
+main() {
     var v1 = Vector2D(10, 20)
     var v2 = v1
 
@@ -196,6 +196,5 @@ main(): Int64 {
     complexGenericHeap.payload.item.vec.x = g_counter
     assertEq(complexGenericHeap.payload.item.vec.x, 126, 802)
 
-    println("Finished")
-    return 0
+    println("ok")
 }

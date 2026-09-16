@@ -38,5 +38,4 @@ main() {
   println(checkOptionalIs<String, Any>(Some(A("foo"))))
   println(checkOptionalIs<String, Any>(Some(Some("foo"))))
   println(checkOptionalIs<String, Any>(Some("foo")))
-  0
 }

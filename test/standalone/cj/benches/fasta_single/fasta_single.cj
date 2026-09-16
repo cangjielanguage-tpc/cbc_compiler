@@ -122,6 +122,5 @@ main(){
 
     bos.flush()
     out.close()
-    0
 }
 

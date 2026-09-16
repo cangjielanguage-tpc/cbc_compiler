@@ -11,5 +11,4 @@ func baz<T>(x: T): Int64 {
 
 main() {
   println(baz("foo"))
-  0
 }

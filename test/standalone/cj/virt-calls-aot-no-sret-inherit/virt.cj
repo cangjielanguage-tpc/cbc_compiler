@@ -40,5 +40,4 @@ main() {
 
   testInterf(aot.B())
   testInterf(C())
-  0
 }

@@ -2,12 +2,11 @@ import a
 import b
 import c
 
-main(): Int64 {
+main() {
   c.testCA(c.CA())
   c.testCB(c.CB())
   c.testA(MA())
   c.testB(MB())
-  0
 }
 
 public struct MA <: a.A {

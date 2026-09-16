@@ -16,5 +16,4 @@ func printSquares(arr: Array<Int64>): Unit {
 main() {
   let arr = createSquares(10)
   printSquares(arr)
-  0
 }

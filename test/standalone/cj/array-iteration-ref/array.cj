@@ -19,5 +19,4 @@ func printSquares(arr: Array<Wrapper>): Unit {
 main() {
   let arr = createSquares(10)
   printSquares(arr)
-  0
 }

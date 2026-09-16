@@ -25,5 +25,4 @@ main() {
   println()
   printToString(Empty)
   printToString(Node(5, Node(2, Empty, Empty), Node(7, Node(6, Empty, Empty), Empty)))
-  0
 }

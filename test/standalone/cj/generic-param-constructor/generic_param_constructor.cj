@@ -9,5 +9,5 @@ func lol<T>(s: T) {
 main() {
   C("Hoho!")
   lol("haha")
-  0
+  println("ok")
 }

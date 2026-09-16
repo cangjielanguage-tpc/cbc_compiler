@@ -2,12 +2,11 @@ import a
 import b
 import c
 
-main(): Int64 {
+main() {
   c.testCA(c.CA.A)
   c.testCB(c.CB.D(None))
   c.testA(MAA)
   c.testB(MBB(None))
-  0
 }
 
 public enum MA <: a.A {

@@ -317,10 +317,9 @@ func testOverflow32(): Unit {
     }
 }
 
-main() : Int64 {
+main() {
     test64()
     testOverflow64()
     test32()
     testOverflow32()
-    0
 }

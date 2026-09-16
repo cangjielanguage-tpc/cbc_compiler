@@ -17,9 +17,8 @@ func unwrap<T>(value: Option<T>): T {
   value.getOrThrow()
 }
 
-main(): Int64 {
+main() {
   let node = unwrap(Some(RequestNode("request-1", 42)))
   println(node.requestId)
   println(node.timestamp)
-  0
 }
