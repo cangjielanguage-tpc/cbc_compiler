@@ -20,7 +20,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.{S
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.RegGroup.{DivCheck, NullCheck}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.{LivenessAnalyzer, LivenessInfoCollector, Assembler as OldAssembler}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{FloatOperations, Opcode, RegGroup, RegSymGroup, low4, scut4}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{FloatMathOperaions, FloatOperations, Opcode, RegGroup, RegSymGroup, low4, scut4}
 import com.huawei.excelsior.jet.assembler.{AsmEmitter, AsmType, Fixup, Label, Symbol, Width as AsmWidth}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
 import xscala.util.MathUtils
@@ -253,6 +253,13 @@ trait ForkedAssembler {
   private def floatOperation(w: AsmWidth, op: FloatOperations, r1: FR | IR, r2: FR | IR, r3: FR | IR): Unit =
     floatOperation(Width(w), op, r1, r2, r3)
 
+  def fmathunary(op: FloatMathOperaions, w: AsmWidth, d: FR, s: FR): Unit = instr {
+    stream
+      .opc8(if Width(w) == W32 then Opcode.FMathUn32 else Opcode.FMathUn64)
+      .bits(_.w4(op).w4(FILLER))
+      .bits(_.w4(d).w4(s))
+  }
+
   def fadd(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Add, d, l, r)
   def fsub(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Sub, d, l, r)
   def fmul(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Mul, d, l, r)
@@ -261,8 +268,8 @@ trait ForkedAssembler {
   def fneg(d: FR, s: FR, w: AsmWidth): Unit  = fneg(d, d, s, w)
   def fsqrt(d: FR, s: FR, w: AsmWidth): Unit = fsqrt(d, d, s, w)
   def fabs(d: FR, s: FR, w: AsmWidth): Unit  = fabs(d, d, s, w)
-  def fmov(d: FR, s: FR, w: Width): Unit     = floatOperation(w, FloatOperations.Mov, d, d, s)
 
+  def fmov(d: FR, s: FR, w: Width): Unit     = floatOperation(w, FloatOperations.Mov, d, d, s)
   def fmov(frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit  = floatOperation(w, FloatOperations.Mov, frd2, frd1, frs)
   def fneg(frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit  = floatOperation(w, FloatOperations.Neg, frd2, frd1, frs)
   def fabs(frd2: FR, frd1: FR, frs: FR, w: AsmWidth): Unit  = floatOperation(w, FloatOperations.Abs, frd2, frd1, frs)
@@ -997,6 +1004,13 @@ trait ForkedAssembler {
     markLoadStoreValue(src, fr, load = false)
   }
 
+  def zeroval(dst: Rg, ti: IR) = instr {
+    analyzer.usePrim(ti)
+    stream
+      .opc8(Opcode.ZeroVal)
+      .bits(_.w4(dst).w4(ti))
+  }
+
   // endregion
 }
 
@@ -1232,6 +1246,9 @@ object Assembler {
     case St_Derived
     case St_Generic
     case LoadTailParam
+    case ZeroVal
+    case FMathUn32
+    case FMathUn64
   }
 
   enum MemOpcode extends Ordinal {
@@ -1294,6 +1311,11 @@ object Assembler {
     case I2f
     case F2i
     case Pow
+  }
+
+  enum FloatMathOperaions extends Ordinal {
+    case SIN
+    case COS
   }
 
   @nowarn("msg=match may not be exhaustive")
