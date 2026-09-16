@@ -646,7 +646,10 @@ trait CHIRParser
         val n = e.kind match {
           case CHIR.Unary.Kind.Neg => e.overflowStrategy match {
             case CHIR.OverflowStrategy.Wrapping => Neg(tpe)(arg)
-            case CHIR.OverflowStrategy.Throwing => CheckedUnary(tpe, sig.toAsm, CheckedUnary.Kind.Neg)(arg)
+            case CHIR.OverflowStrategy.Throwing => sig match {
+              case _: Integral => CheckedUnary(tpe, sig.toAsm, CheckedUnary.Kind.Neg)(arg)
+              case _ => Neg(tpe)(arg)
+            }
             case CHIR.OverflowStrategy.Saturating => Neg(tpe)(arg) // TODO: support properly
             case s => shouldNotReachHere(s"Unexpected overflow strategy $s")
           }
@@ -1412,6 +1415,8 @@ trait CHIRParser
             val elemType = arrayType.getArrayElemType
             val n = if (elemType.isZST) {
               Void()
+            } else if (elemType.isVariableSizeType) {
+                notImplemented("ArrayGet of generic array is not supported")
             } else {
               val get = ArrayGet(arrayType)(obj, idx)
               if (needsCopy(elemType)) {
@@ -1541,6 +1546,16 @@ trait CHIRParser
                 state(e) = MathIntrinsic(kind)(x, y)
             }
 
+          case CHIR.Intrinsic.Kind.Sin =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_SIN)(x)
+            }
+
+          case CHIR.Intrinsic.Kind.Cos =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_COS)(x)
+            }
+
           case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>
             e.args.map(state.apply) match {
               case Seq(x) =>
@@ -1610,6 +1625,8 @@ trait CHIRParser
               Void()
             } else if (sig.isRecord) {
               StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
+            } else if (sig.isVariableSizeType) {
+              ZeroValueGeneric(loadTypeInfo(sig))
             } else {
               ZeroValueNode(ValueType.fromSig(sig))
             }
@@ -1737,11 +1754,11 @@ trait CHIRParser
               if (!sig.isVariableSizeType && needsCopy(sig)) {
                 value match {
                   case ZeroValueNode() =>
-                  // TODO: zeroing?
+                    val zeroRec = StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
+                    copy(sig, mem, zeroRec)
                   case _ =>
                     copy(sig, mem, value)
                 }
-
               } else {
                 mem match {
                   case GetFieldSeqRef(fields, _, base) =>
@@ -2307,11 +2324,11 @@ trait CHIRParser
       val elemType = arrayType.getArrayElemType
       if (elemType.isZST) {
         // nop
-
+      } else if (elemType.isVariableSizeType) {
+        notImplemented("ArrayPut to generic array is not supported")
       } else if (needsCopy(elemType)) {
         val addr = ArrayGet(arrayType)(obj, idx)
         copy(elemType, addr, value)
-
       } else {
         ArrayPut(arrayType)(obj, idx, value)
       }

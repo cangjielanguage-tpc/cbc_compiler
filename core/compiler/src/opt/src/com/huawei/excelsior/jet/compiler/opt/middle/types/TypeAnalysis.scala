@@ -194,6 +194,7 @@ trait TypeAnalysis extends OptExtraInfo with CallTargetInfos { self: Universe =>
   // Protected only for unit-tests, should not be used anywhere else directly.
   protected def calculateOneType(n: Node): ReferenceApprox = n match {
     case _: AnyNull => RefNull
+    case _: ZeroValueGeneric => RefNull
 
     case n: Param =>
       if (isStandalone) {
