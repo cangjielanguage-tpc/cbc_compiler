@@ -218,8 +218,7 @@ class UnaryImpl(e: UnaryExpressionBase)(implicit provider: CHIRItemProvider) ext
   def kind: Unary.Kind = e.base.kind match {
     case CHIRExprKind.BitNot => Unary.Kind.BitNot
     case CHIRExprKind.Not => Unary.Kind.Not
-    // TODO: Support CHIRExprKind.TryNeg when checked unary negation is implemented.
-    case CHIRExprKind.Neg => Unary.Kind.Neg
+    case CHIRExprKind.Neg | CHIRExprKind.TryNeg => Unary.Kind.Neg
   }
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.base.resultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.resultLocalVar).get
