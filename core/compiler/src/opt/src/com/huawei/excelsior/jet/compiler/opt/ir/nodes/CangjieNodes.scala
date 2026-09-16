@@ -13,6 +13,9 @@ import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, SignatureType}
 
+import java.lang.Double.doubleToRawLongBits
+import java.lang.Float.floatToRawIntBits
+
 trait CangjieNodes { self: Universe =>
 
   sealed trait FieldSeqOperation extends Node {
@@ -375,6 +378,37 @@ trait CangjieNodes { self: Universe =>
     def proto(receiverType: Type) = Prototype.intern(Proto(receiverType))
 
     def apply(receiver: Node): Node = proto(receiver.tpe)(receiver)
+  }
+
+  class ZeroValueGeneric private(proto: ZeroValueGeneric.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def ti = arg(0)
+  }
+
+  object ZeroValueGeneric {
+    class Proto extends FixedArgs[ZeroValueGeneric](AddrType)(TRefType) {
+      def newInstance() = new ZeroValueGeneric(this)
+    }
+
+    def apply(arg: Node): Node = Prototype.intern(Proto())(arg)
+  }
+
+  object ZeroValueNode {
+    /** Return constant zero value node for given `tpe`. */
+    def apply(tpe: Type): Node = tpe match {
+      case _: StructureType => AnyNull(tpe)
+      case LongType => LConst(0L)
+      case IntType => IConst(0)
+      case FloatType => FConst(0.0f)
+      case DoubleType => DConst(0.0)
+    }
+
+    def unapply(node: Node): Boolean = node match {
+      case _: AnyNull | LConst(0L) | IConst(0) => true
+      case FConst(fc) => floatToRawIntBits(fc) == 0
+      case DConst(dc) => doubleToRawLongBits(dc) == 0L
+      case _: ZeroValueGeneric => true
+      case _ => false
+    }
   }
 
   class LoadTypeInfo private(proto: LoadTypeInfo.Proto)

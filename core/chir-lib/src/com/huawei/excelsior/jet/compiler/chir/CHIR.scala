@@ -424,6 +424,8 @@ object CHIR {
       case ObjectZeroValue
       case Sqrt
       case Pow
+      case Sin
+      case Cos
     }
   }
 
