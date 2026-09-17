@@ -573,6 +573,27 @@ compiler/CHIR/CHIR2HLIR/generic/call31.cj
 # bug 87 (Unexpected EnumCast from@OptionLikeEnum(_, _, x), to@Tuple(Seq(Boolean, y))) where x != y)
 compiler/CHIR/CHIR2HLIR/matchPattern/tuple_exhaustive_03.cj
 
+# bug 81 (CHIR.GetRTTI could have explicit parameter (not always ReceiverParam))
+compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
+
+# bug 82 (CHIR.GetRTTIStatic could have explicit parameter)
+compiler/CHIR/InvokeStatic/ongeneric.cj
+compiler/CHIR/UG/VTable/staticMethod/staticMethod01.cj
+compiler/Sema/call/call_generic_upper_04.cj
+compiler/Sema/call/call_generic_upper_02.cj
+compiler/Sema/const_evaluation/ok_interface.cj
+compiler/Sema/generics/generic_upperbound_reference_09.cj
+compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_6.cj
+compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_8.cj
+compiler/Sema/generics/generic_static_functions/access_by_parameter_class_2.cj
+compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_2.cj
+compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_7.cj
+compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic09.cj
+compiler/Sema/typealias/import_alias/typeaslias.cj
+
+# bug 88 (joining unrelated types com.huawei.excelsior.jet.compiler.opt.ir.Types$ValueType$@29d81c22 and ControlType)
+compiler/CHIR/UG/VTable/fromHLT/PerThreadMemUsage.cj
+
 # bug 9 (Support runtime intrsinsics/calls in CBC)
 ## VARRAY_GET
 compiler/CodegenCJNative/array/array_1.cj
