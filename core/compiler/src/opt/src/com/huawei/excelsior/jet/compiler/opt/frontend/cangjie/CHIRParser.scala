@@ -22,7 +22,7 @@ import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
 import com.huawei.excelsior.jet.compiler.opt.middle.{ContextTypesRecalculation, DCEComponent, UCEComponent}
 import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, FailArrayAcquireRawData, FailSaturatingArithmetic, PackageInitFromMain}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CangjieEnumWrapper, fromSymType}
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CangjieEnumWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.ScalaCollections.*
@@ -1567,7 +1567,8 @@ trait CHIRParser
             val args = e.args
             val array = state(args.head)
             val ValueSig(arrayType: SignatureType.CangjieArray) = args.head
-            state(e) = CJIntrinsic.acquireRawData(arrayType.elemType)(array)
+            val stackAlloc = StackAlloc.Local(AddrUInt)
+            state(e) = CJIntrinsic.acquireRawData(arrayType.elemType)(array, stackAlloc)
 
           case CHIR.Intrinsic.Kind.ArrayReleaseRawData =>
             val args = e.args

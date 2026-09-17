@@ -11,9 +11,10 @@ package com.huawei.excelsior.jet.compiler.opt.ir.nodes
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
+
 import PartialFunction.condOpt
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.STATIC
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CPointer, CangjieArray, Void}
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CPointer, CangjieArray, Void}
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, MethodReference, MethodSignature, MethodType, SignatureType}
 
 trait CangjieNodes { self: Universe =>
@@ -865,7 +866,15 @@ trait CangjieNodes { self: Universe =>
       Call(mreference)(target +: args: _*)
     }
 
-    def acquireRawData(arrayElemType: SignatureType)(array: Node): Node = intrinsic(IntrinsicType.AcquireRawData, arrayElemType)(array)
+    // StackAlloc node is needed, because the instrinsic `MCC_AcquireRawData` that this intrinsic calls into
+    // gets bool* isCopy as a parameter. At the time of writing this have yet to find example of actual usages
+    // of this param after it has been set. Here is what CJ runtime doc says about this intrinsic:
+    //
+    // > Return the raw pointer of input array object, isCopy records whether memory copy occurs.
+    // > If GC is running, try to copy the payload of array and return the copy data pointer, isCopy set true
+    // > If copy failed, just return the content pointer of real array, isCopy set false,
+    // > but can't return until GC finish current work.
+    def acquireRawData(arrayElemType: SignatureType)(array: Node, stackAlloc: Node): Node = intrinsic(IntrinsicType.AcquireRawData, arrayElemType)(array, stackAlloc)
     def releaseRawData(elemType: SignatureType)(array: Node, cpointer: Node): Node = intrinsic(IntrinsicType.ReleaseRawData, elemType)(array, cpointer)
 
     def unapply(call: Call): Option[IntrinsicType] = condOpt(call.target) {
@@ -878,18 +887,8 @@ trait CangjieNodes { self: Universe =>
     case ReleaseRawData
 
     def signature(elemType: SignatureType): MethodSignature = this match {
-      case IntrinsicType.AcquireRawData =>  MethodSignature(CangjieArray(elemType))(CPointer(elemType))
+      case IntrinsicType.AcquireRawData =>  MethodSignature(CangjieArray(elemType), CPointer(AddrUInt))(CPointer(elemType))
       case IntrinsicType.ReleaseRawData =>  MethodSignature(CangjieArray(elemType), CPointer(elemType))(SignatureType.Void)
-    }
-
-    def args: Seq[Type] = this match {
-      case IntrinsicType.AcquireRawData => Seq(TRefType, AddrType) // Array and its typeinfo since it's always generic
-      case IntrinsicType.ReleaseRawData => Seq(TRefType, AddrType, AddrType) // Array, CPointer and theirs typeinfo
-    }
-
-    def res: Type = this match {
-      case IntrinsicType.AcquireRawData => AddrType
-      case IntrinsicType.ReleaseRawData => VoidType
     }
   }
 }
