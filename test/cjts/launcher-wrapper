@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR=$(dirname "$0")
+
+executable="$1"
+shift
+
+cbc_file="${executable}.cbc"
+
+if [ -f "$cbc_file" ]; then
+    "$SCRIPT_DIR/../tools/bin/launcher" "$cbc_file" "${@}"
+else
+    "$executable" "${@}"
+fi

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR=$(dirname "$0")
+
+# Find cjc output: -o <out>
+out=""
+
+i=0
+while [[ $i -lt $# ]]; do
+    arg="${!i}"
+
+    if [[ "$arg" == "-o" ]]; then
+        next_index=$((i+1))
+        next="${!next_index}"
+        out="$next"
+        i=$((i+2))
+        continue
+    fi
+
+    i=$((i+1))
+done
+
+cjc "${@:2}"
+
+if [ -n "$out" ] && compgen -G "*.chir" > /dev/null; then
+  if [[ "$out" != *.a ]]; then
+    java -jar $SCRIPT_DIR/../tools/bin/cbc-compiler.jar *.chir +genlibrary -outputname="$out"
+  fi
+fi
+
