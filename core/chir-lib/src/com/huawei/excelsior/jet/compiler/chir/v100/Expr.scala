@@ -5,11 +5,11 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR.{Binary, Intrinsic, Unary}
 import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.{toSeq, toTypeSeq, toValueSeq}
 
-class AllocateImpl(e: AllocateBase)(implicit provider: CHIRItemProvider) extends CHIR.Allocate {
+class AllocateImpl(val e: AllocateBase)(implicit val provider: CHIRItemProvider) extends CHIR.Allocate {
   def allocatedType: CHIR.Type = provider.getType[CHIR.Type](e.allocatedType).get
 }
 
-final class TryAllocateImpl(e: AllocateBase)(implicit provider: CHIRItemProvider) extends AllocateImpl(e) with CHIR.TryAllocate {
+final class TryAllocateImpl(allocation: AllocateBase)(implicit provider: CHIRItemProvider) extends AllocateImpl(allocation) with CHIR.TryAllocate {
   lazy val successors: Seq[CHIR.Block] = takeLastTwoBlocks(mapOperands(e.base))
 }
 
@@ -30,7 +30,7 @@ final class TryApplyImpl(e: ApplyBase)(implicit provider: CHIRItemProvider) exte
 
 class BinaryImpl(e: BinaryExpressionBase)(implicit provider: CHIRItemProvider) extends CHIR.Binary {
   private val ex = e.base
-  protected lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.size >= 2) // at least left and right operands should be here
+  lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.size >= 2) // at least left and right operands should be here
 
   def kind: Binary.Kind = ex.kind match {
     case CHIRExprKind.Add | CHIRExprKind.TryAdd => Binary.Kind.Add
@@ -161,15 +161,19 @@ final class MultiBranchImpl(e: MultiBranch)(implicit provider: CHIRItemProvider)
   def successors: Seq[CHIR.Block] = defaultBlock +: normalBlocks
 }
 
-trait CastImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Cast {
-  protected lazy val operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty) // at least operand should be here
+trait CastImpl extends CHIR.Cast {
+  def e: Expression
+  implicit def provider: CHIRItemProvider
+  
+  lazy val operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty)
 
   def value: CHIR.Value = operands.head
   def targetTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
 }
 
-class NumericCastImpl(e: NumericCastBase)(implicit provider: CHIRItemProvider) extends CastImpl(e.base) with CHIR.NumericCast {
-  def overflowStrategy: CHIR.OverflowStrategy = mapOverflowStrategy(e.overflowStrategy)
+class NumericCastImpl(n: NumericCastBase)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.NumericCast {
+  val e: Expression = n.base
+  def overflowStrategy: CHIR.OverflowStrategy = mapOverflowStrategy(n.overflowStrategy)
 }
 
 final class TryNumericCastImpl(e: NumericCastBase)(implicit provider: CHIRItemProvider) extends NumericCastImpl(e) with CHIR.TryNumericCast {
@@ -177,7 +181,7 @@ final class TryNumericCastImpl(e: NumericCastBase)(implicit provider: CHIRItemPr
 }
 
 class RawArrayAllocateImpl(e: RawArrayAllocateBase)(implicit provider: CHIRItemProvider) extends CHIR.RawArrayAllocate {
-  protected lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.nonEmpty) // at least size should be here
+  lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.nonEmpty) // at least size should be here
 
   def elementType: CHIR.Type = provider.getType[CHIR.Type](e.elementType).get
   def size: CHIR.Value = operands.head
@@ -188,7 +192,7 @@ final class TryRawArrayAllocateImpl(e: RawArrayAllocateBase)(implicit provider: 
 }
 
 class SpawnImpl(e: SpawnBase)(implicit provider: CHIRItemProvider) extends CHIR.Spawn {
-  protected lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.nonEmpty)  // at least obj should be here
+  lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.nonEmpty)  // at least obj should be here
 
   def obj: CHIR.Value = operands.head
   def executeClosure: Option[CHIR.Func] = provider.getValue[CHIR.Func](e.executeClosure)
@@ -206,7 +210,7 @@ final class StoreElementRefImpl(e: StoreElementRef)(implicit provider: CHIRItemP
 }
 
 class UnaryImpl(e: UnaryExpressionBase)(implicit provider: CHIRItemProvider) extends CHIR.Unary {
-  protected lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.nonEmpty) // at least operand should be here
+  lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.nonEmpty) // at least operand should be here
 
   def operand: CHIR.Value = operands.head
   def kind: Unary.Kind = e.base.kind match {
@@ -238,19 +242,19 @@ final class RaiseExceptionImpl(e: Expression)(implicit provider: CHIRItemProvide
   def successors: Seq[CHIR.Block] = exceptionBlock.toSeq
 }
 
-final class StaticCastImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CastImpl(e) with CHIR.StaticCast {
+final class StaticCastImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.StaticCast {
 }
 
-final class BoxImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CastImpl(e) with CHIR.Box {
+final class BoxImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.Box {
 }
 
-final class UnboxToValueImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CastImpl(e) with CHIR.UnboxToValue {
+final class UnboxToValueImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.UnboxToValue {
 }
 
-final class CastToConcreteImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CastImpl(e) with CHIR.CastToConcrete {
+final class CastToConcreteImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.CastToConcrete {
 }
 
-final class CastToGenericImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CastImpl(e) with CHIR.CastToGeneric {
+final class CastToGenericImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.CastToGeneric {
 }
 
 final class LoadImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Load {
