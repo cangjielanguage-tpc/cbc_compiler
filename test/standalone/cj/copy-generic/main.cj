@@ -1,7 +1,7 @@
 public struct A<T> {
     let a: T
     let b: T
-    public inti(a: T, b: T) {
+    public init(a: T, b: T) {
         this.a = a
         this.b = b
     }
@@ -16,6 +16,7 @@ public open class B<T> {
         this.b = b
     }
 
+    // TODO: support generation copy generic instruction
     public func copyToFirst(): Unit {
         a = b
     }
