@@ -5,12 +5,15 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR.{HasAnnotations, HasAttribute
 import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.{toSeq, toTypeSeq}
 
-trait HasAnnotationsImpl(b: Base)(using provider: CHIRItemProvider) extends HasAnnotations {
+trait HasAnnotationsImpl extends HasAnnotations {
+  def base: Base
+  implicit def provider: CHIRItemProvider
+  
   lazy val annotations: Seq[CHIR.Annotation] = {
-    val annos = b.annosVector
+    val annos = base.annosVector
     (0 until annos.length).collect {
-      case i if b.annosType(i) != Annotation.NONE =>
-        val obj = b.annosType(i) match {
+      case i if base.annosType(i) != Annotation.NONE =>
+        val obj = base.annosType(i) match {
           case Annotation.needCheckArrayBound => new NeedCheckArrayBound
           case Annotation.needCheckCast => new NeedCheckCast
           case Annotation.debugLocationInfoForWarning => new DebugLocation
@@ -48,19 +51,25 @@ final class WrappedRawMethodImpl(w: WrappedRawMethod)(using provider: CHIRItemPr
   def rawMethod: CHIR.Func = provider.getValue[CHIR.Func](w.rawMethod).get
 }
 
-trait HasAttributesImpl(attrs: Long) extends HasAttributes {
-  def attributes: Seq[CHIR.Attribute] = {
+trait HasAttributesImpl extends HasAttributes {
+  def attrs: Long
+
+  lazy val attributes: Seq[CHIR.Attribute] = {
     CHIR.Attribute.values.toIndexedSeq.filter { attr =>
       (attrs & (1L << attr.ordinal)) != 0L
     }
   }
 }
 
-trait HasDeclaringDefImpl(gv: GlobalValue)(using provider: CHIRItemProvider) extends HasDeclaringDef {
+trait HasDeclaringDefImpl extends HasDeclaringDef {
+  def gv: GlobalValue
+  implicit def provider: CHIRItemProvider
+
   def declaringDef: Option[CHIR.CustomTypeDef] = provider.getDef[CHIR.CustomTypeDef](gv.declaredParent)
 }
 
-final class InstanceVarImpl(m: MemberVarInfo)(using provider: CHIRItemProvider) extends CHIR.InstanceVar with HasAttributesImpl(m.attributes) {
+final class InstanceVarImpl(m: MemberVarInfo)(using provider: CHIRItemProvider) extends CHIR.InstanceVar with HasAttributesImpl {
+  val attrs: Long = m.attributes
   def tpe: CHIR.Type = provider.getType[CHIR.Type](m.`type`).get
   def name: String = m.name
 }
@@ -70,7 +79,8 @@ final class VTableImpl(v: VTableInType)(using provider: CHIRItemProvider) extend
   def vMethods: Seq[CHIR.VMethod] = v.virtualMethodsVector.toSeq
 }
 
-final class VMethodImpl(v: VirtualMethodInfo)(using provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl(v.attributes) {
+final class VMethodImpl(v: VirtualMethodInfo)(using provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl {
+  val attrs: Long = v.attributes
   def name: String = v.funcName
   def sig: CHIR.FuncType = provider.getType[CHIR.FuncType](v.sigType).get
   def instance: CHIR.Func = provider.getValue[CHIR.Func](v.instance).get

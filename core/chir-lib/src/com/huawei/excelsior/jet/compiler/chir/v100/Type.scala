@@ -8,20 +8,23 @@ final class BoxTypeImpl(b: Type)(using provider: CHIRItemProvider) extends CHIR.
   def baseType: CHIR.Type = provider.getType[CHIR.Type](b.argTys(0)).get
 }
 
-trait CustomTypeImpl(c: CustomType)(using provider: CHIRItemProvider) extends CHIR.CustomType {
-  def typeDef: CHIR.CustomTypeDef = provider.getDef[CHIR.CustomTypeDef](c.customTypeDef).get
-  def genericTypeParams = c.base.argTysVector.toTypeSeq[CHIR.Type]
+trait CustomTypeImpl extends CHIR.CustomType {
+  def ct: CustomType
+  implicit def provider: CHIRItemProvider
+
+  def typeDef: CHIR.CustomTypeDef = provider.getDef[CHIR.CustomTypeDef](ct.customTypeDef).get
+  def genericTypeParams = ct.base.argTysVector.toTypeSeq[CHIR.Type]
 }
 
-final class ClassTypeImpl(c: CustomType)(using provider: CHIRItemProvider) extends CustomTypeImpl(c) with CHIR.ClassType {
+final class ClassTypeImpl(val ct: CustomType)(using val provider: CHIRItemProvider) extends CustomTypeImpl with CHIR.ClassType {
   override def typeDef: CHIR.ClassDef = super.typeDef.asInstanceOf[CHIR.ClassDef]
 }
 
-final class EnumTypeImpl(c: CustomType)(using provider: CHIRItemProvider) extends CustomTypeImpl(c) with CHIR.EnumType {
+final class EnumTypeImpl(val ct: CustomType)(using val provider: CHIRItemProvider) extends CustomTypeImpl with CHIR.EnumType {
   override def typeDef: CHIR.EnumDef = super.typeDef.asInstanceOf[CHIR.EnumDef]
 }
 
-final class StructTypeImpl(c: CustomType)(using provider: CHIRItemProvider) extends CustomTypeImpl(c) with CHIR.StructType {
+final class StructTypeImpl(val ct: CustomType)(using val provider: CHIRItemProvider) extends CustomTypeImpl with CHIR.StructType {
   override def typeDef: CHIR.StructDef = super.typeDef.asInstanceOf[CHIR.StructDef]
 }
 

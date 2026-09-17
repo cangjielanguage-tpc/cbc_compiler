@@ -5,11 +5,13 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
 import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.{toExprSeq, toTypeSeq, toValueSeq}
 
-final class FuncImpl(f: Function, val id: Long)(using provider: CHIRItemProvider) extends CHIR.Func
-  with HasAnnotationsImpl(f.base.base.base) with HasAttributesImpl(f.base.base.base.attributes) with HasDeclaringDefImpl(f.base) {
+final class FuncImpl(f: Function, val id: Long)(using val provider: CHIRItemProvider) extends CHIR.Func
+  with HasAnnotationsImpl with HasAttributesImpl with HasDeclaringDefImpl {
 
-  private val gv = f.base
+  val gv: GlobalValue = f.base
   private val v = gv.base
+  val base: Base = v.base
+  val attrs: Long = base.attributes
 
   def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.`type`).get
   def identifier: String = v.identifier
@@ -51,12 +53,13 @@ final class BlockImpl(b: Block)(using provider: CHIRItemProvider) extends CHIR.B
   def isLandingPadBlock: Boolean = b.isLandingPadBlock
 }
 
-final class GlobalVarImpl(g: GlobalVar, val id: Long)(using provider: CHIRItemProvider) extends CHIR.GlobalVar
-  with HasAnnotationsImpl(g.base.base.base) with HasAttributesImpl(g.base.base.base.attributes) with HasDeclaringDefImpl(g.base) {
+final class GlobalVarImpl(g: GlobalVar, val id: Long)(using val provider: CHIRItemProvider) extends CHIR.GlobalVar
+  with HasAnnotationsImpl with HasAttributesImpl with HasDeclaringDefImpl {
 
-  private val gv = g.base
+  val gv: GlobalValue = g.base
   private val v = gv.base
-  private val b = v.base
+  val base: Base = v.base
+  val attrs: Long = base.attributes
 
   def identifier: String = v.identifier
   def srcCodeIdentifier: String = gv.srcCodeIdentifier
@@ -74,29 +77,38 @@ final class ParameterImpl(p: Parameter)(using provider: CHIRItemProvider) extend
   def tpe: CHIR.Type = provider.getType[CHIR.Type](p.base.`type`).get
 }
 
-trait LiteralImpl(l: LiteralValue)(using provider: CHIRItemProvider) extends CHIR.Literal {
-  def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`).get
+trait LiteralImpl extends CHIR.Literal {
+  def lv: LiteralValue
+  implicit def provider: CHIRItemProvider
+
+  def tpe: CHIR.Type = provider.getType[CHIR.Type](lv.base.`type`).get
 }
 
-final class NullLiteralImpl(n: NullLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.NullLiteral {
+final class NullLiteralImpl(n: NullLiteral)(using val provider: CHIRItemProvider) extends LiteralImpl with CHIR.NullLiteral {
+  val lv: LiteralValue = n.base
 }
 
-final class IntLiteralImpl(n: IntLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.IntLiteral {
+final class IntLiteralImpl(n: IntLiteral)(using val provider: CHIRItemProvider) extends LiteralImpl with CHIR.IntLiteral {
+  val lv: LiteralValue = n.base
   def value: Long = n.`val`
 }
 
-final class FloatLiteralImpl(n: FloatLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.FloatLiteral {
+final class FloatLiteralImpl(n: FloatLiteral)(using val provider: CHIRItemProvider) extends LiteralImpl with CHIR.FloatLiteral {
+  val lv: LiteralValue = n.base
   def value: Double = n.`val`
 }
 
-final class BoolLiteralImpl(n: BoolLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.BoolLiteral {
+final class BoolLiteralImpl(n: BoolLiteral)(using val provider: CHIRItemProvider) extends LiteralImpl with CHIR.BoolLiteral {
+  val lv: LiteralValue = n.base
   def value: Boolean = n.`val`
 }
 
-final class RuneLiteralImpl(n: RuneLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.RuneLiteral {
+final class RuneLiteralImpl(n: RuneLiteral)(using val provider: CHIRItemProvider) extends LiteralImpl with CHIR.RuneLiteral {
+  val lv: LiteralValue = n.base
   def value: Long = n.`val`
 }
 
-final class StringLiteralImpl(n: StringLiteral)(using provider: CHIRItemProvider) extends LiteralImpl(n.base) with CHIR.StringLiteral {
+final class StringLiteralImpl(n: StringLiteral)(using val provider: CHIRItemProvider) extends LiteralImpl with CHIR.StringLiteral {
+  val lv: LiteralValue = n.base
   def value: String = n.`val`
 }
