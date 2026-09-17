@@ -61,7 +61,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       }
     }
 
-    // Write fake intrinsics package
+    // Write fake intrinsics type
     val typeBuilder = builder.newTypeBuilder()
     typeBuilder.setName("VERYFAKEINTRINSICSTYPE")
 

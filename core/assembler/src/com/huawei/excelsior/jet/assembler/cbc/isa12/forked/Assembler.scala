@@ -1014,8 +1014,6 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
 
   def callInterf(rd: IR, methodId: Symbol): Unit = callInterf(rd, adapter.method(methodId))
 
-  def callIntrinsic(rd: IR, methodReference: MethodReference, intrinsicSymbol: String) = ???
-
   def newobj(sig_idx: Symbol): Unit = {
     newobj(adapter.sigType(sig_idx))
   }

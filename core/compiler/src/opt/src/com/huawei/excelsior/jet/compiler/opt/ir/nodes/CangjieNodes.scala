@@ -858,6 +858,10 @@ trait CangjieNodes { self: Universe =>
     def apply(allocType: SignatureType)(allocTypeInfo: Node) = proto(allocType)(allocTypeInfo)
   }
 
+  // Factory for cangjie intrinsics that should be generated as call to some runtime function.
+  //
+  // To add new intrinsic you need to add it to `IntrinsicType` enum, add case to `signature` func, then
+  // add the function you want your intrinsic to call to `CodeGeneratorCBC` in `intrinsicCall`
   object CJIntrinsic {
     def intrinsic(intrinsic: IntrinsicType, arrayElemType: SignatureType)(args: Node*) = {
       val mt = MethodType(intrinsic.signature(arrayElemType))
@@ -866,6 +870,8 @@ trait CangjieNodes { self: Universe =>
       Call(mreference)(target +: args: _*)
     }
 
+    // Calls CJ_MCC_AcquireRawData
+    //
     // StackAlloc node is needed, because the instrinsic `MCC_AcquireRawData` that this intrinsic calls into
     // gets bool* isCopy as a parameter. At the time of writing this have yet to find example of actual usages
     // of this param after it has been set. Here is what CJ runtime doc says about this intrinsic:
@@ -875,6 +881,8 @@ trait CangjieNodes { self: Universe =>
     // > If copy failed, just return the content pointer of real array, isCopy set false,
     // > but can't return until GC finish current work.
     def acquireRawData(arrayElemType: SignatureType)(array: Node, stackAlloc: Node): Node = intrinsic(IntrinsicType.AcquireRawData, arrayElemType)(array, stackAlloc)
+
+    // Calls CJ_MCC_ReleaseRawData
     def releaseRawData(elemType: SignatureType)(array: Node, cpointer: Node): Node = intrinsic(IntrinsicType.ReleaseRawData, elemType)(array, cpointer)
 
     def unapply(call: Call): Option[IntrinsicType] = condOpt(call.target) {
