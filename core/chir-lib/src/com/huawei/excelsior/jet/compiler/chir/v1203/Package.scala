@@ -15,8 +15,8 @@ import com.huawei.excelsior.jet.compiler.chir.v1203.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v1203.CHIRUtils.*
 
 import java.nio.ByteBuffer
-import scala.collection.mutable
 import scala.reflect.ClassTag
+import scala.collection.mutable
 
 trait CHIRItemProvider {
   def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T]
@@ -45,6 +45,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
   private val _values = Array.fill[CHIR.Value](pkg.valuesLength)(null)
   private val _exprs = Array.fill[CHIR.Expression](pkg.exprsLength)(null)
   private val _customDefs = Array.fill[CHIR.CustomTypeDef](pkg.defsLength)(null)
+
   private val _funcs = mutable.HashMap.empty[String, CHIR.Func]
   private val _defs = mutable.HashMap.empty[String, CHIR.CustomTypeDef]
 
