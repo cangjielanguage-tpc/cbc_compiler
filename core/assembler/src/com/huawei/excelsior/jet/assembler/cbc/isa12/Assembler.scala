@@ -100,9 +100,9 @@ object Assembler {
     inline def format(resW: Width, argW: Width): Int = p(s2(opc), freeBits = 2) | p(s1(resW.opcCommon), 1) | s1(argW.opcCommon)
   }
 
-  /** Saturating arithmetic family. Signed/unsigned variant is selected by the
-    * sign of the instruction width, not by the op itself (unlike `Checked`,
-    * where UAdd/USub/UMul carry the unsignedness in the op code).
+  /** Saturating arithmetic family. Mirrors the `Checked` family layout:
+    * signedness of add/sub/mul/div/mod is carried by the op code
+    * (UAdd/USub/UMul/UDiv/UMod are the unsigned variants).
     */
   enum Saturating {
     case Add
@@ -112,7 +112,14 @@ object Assembler {
     case Mod
     case Pow
     case Lsh
-    case Rsh // logical right shift; shift amount is signed (as in `Checked`)
+    case Rsh // logical right shift on unsigned, arithmetic on signed
+    case UAdd
+    case USub
+    case UMul
+    case UDiv
+    case UMod
+    case ULsh
+    case URsh
 
     inline def opc: Int = ordinal
     inline def format(width: Width): Int = p(s2(opc), freeBits = 2) | s2(width.opc)
