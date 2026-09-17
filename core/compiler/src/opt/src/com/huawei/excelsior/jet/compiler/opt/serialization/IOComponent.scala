@@ -88,6 +88,7 @@ trait IOComponent extends BinaryIO { self: Universe =>
     AcquireRawData, ReleaseRawData,
     CFuncWrapperAddr.Proto,
     CheckedOp.Proto,
+    SaturatingOp.Proto,
     BitcodeDeferred.New.Proto, BitcodeDeferred.NewArray.Proto,
     BitcodeDeferred.InstanceOf.Proto, BitcodeDeferred.CheckCast.Proto,
     BitcodeDeferred.InvokeTarget.Proto, BitcodeDeferred.GetField, BitcodeDeferred.PutField,
