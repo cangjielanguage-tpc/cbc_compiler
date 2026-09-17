@@ -987,7 +987,7 @@ trait ForkedAssembler {
     }
   }
 
-  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = {
+  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = instr {
     stream
       .opc8(Opcode.Copy)
       .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
@@ -996,7 +996,7 @@ trait ForkedAssembler {
   }
 
 // Unused. TODO: support copying in generic context
-  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = {
+  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = instr {
     stream
       .opc8(Opcode.CopyGeneric)
       .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
@@ -1004,7 +1004,7 @@ trait ForkedAssembler {
       .bits(_.w4(analyzer.usePrim(ti)).w4(0))
   }
 
-  def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = {
+  def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = instr {
     stream
       .opc8(Opcode.Index)
       .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
@@ -1013,7 +1013,7 @@ trait ForkedAssembler {
   }
 
 // Unused. TODO: support element access for generic arrays
-  def index(dst: IR, src: IR, idx: IR, ti: IR): Unit = {
+  def index(dst: IR, src: IR, idx: IR, ti: IR): Unit = instr {
     stream
       .opc8(Opcode.IndexGeneric)
       .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
