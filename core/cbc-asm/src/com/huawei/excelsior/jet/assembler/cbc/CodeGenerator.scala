@@ -143,6 +143,20 @@ class CodeGenerator extends isa12.forked.Assembler with SymbolAdapter {
   def cusub_64(dst: IR, src1: IR, src2: IR): Unit = cusub(dst, src1, src2, Width.W64)
   def cumul_64(dst: IR, src1: IR, src2: IR): Unit = cumul(dst, src1, src2, Width.W64)
 
+  def sadd_32(dst: IR, src1: IR, src2: IR): Unit = sadd(dst, src1, src2, Width.W32)
+  def ssub_32(dst: IR, src1: IR, src2: IR): Unit = ssub(dst, src1, src2, Width.W32)
+  def smul_32(dst: IR, src1: IR, src2: IR): Unit = smul(dst, src1, src2, Width.W32)
+  def sdiv_32(dst: IR, src1: IR, src2: IR): Unit = sdiv(dst, src1, src2, Width.W32)
+  def smod_32(dst: IR, src1: IR, src2: IR): Unit = smod(dst, src1, src2, Width.W32)
+  def spow_32(dst: IR, src1: IR, src2: IR): Unit = spow(dst, src1, src2, Width.W32)
+
+  def sadd_64(dst: IR, src1: IR, src2: IR): Unit = sadd(dst, src1, src2, Width.W64)
+  def ssub_64(dst: IR, src1: IR, src2: IR): Unit = ssub(dst, src1, src2, Width.W64)
+  def smul_64(dst: IR, src1: IR, src2: IR): Unit = smul(dst, src1, src2, Width.W64)
+  def sdiv_64(dst: IR, src1: IR, src2: IR): Unit = sdiv(dst, src1, src2, Width.W64)
+  def smod_64(dst: IR, src1: IR, src2: IR): Unit = smod(dst, src1, src2, Width.W64)
+  def spow_64(dst: IR, src1: IR, src2: IR): Unit = spow(dst, src1, src2, Width.W64)
+
   def caddi_32 (dst: IR, src1: IR, src2: Long): Unit = caddi (dst, src1, src2, Width.W32)
   def csubi_32 (dst: IR, src1: IR, src2: Long): Unit = csubi (dst, src1, src2, Width.W32)
   def cmuli_32 (dst: IR, src1: IR, src2: Long): Unit = cmuli (dst, src1, src2, Width.W32)

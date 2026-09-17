@@ -961,6 +961,22 @@ private object InstructionParser {
   instr("cumul.64") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("cpow.64")  { (a, s) => a.cpow(s.ireg, s.ireg, s.ireg, Width.W64) }
 
+  // 32-bit saturating arithmetic
+  instr("sadd.32") { (a, s) => a.sadd(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("ssub.32") { (a, s) => a.ssub(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("smul.32") { (a, s) => a.smul(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("sdiv.32") { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("smod.32") { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("spow.32") { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W32) }
+
+  // 64-bit saturating arithmetic
+  instr("sadd.64") { (a, s) => a.sadd(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("ssub.64") { (a, s) => a.ssub(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("smul.64") { (a, s) => a.smul(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("sdiv.64") { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("smod.64") { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("spow.64") { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W64) }
+
   // 32-bit checked immediate arithmetic
   instr("caddi.32")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("csubi.32")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W32) }
