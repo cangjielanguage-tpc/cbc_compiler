@@ -1567,8 +1567,8 @@ trait CHIRParser
             val args = e.args
             val array = state(args.head)
             val ValueSig(arrayType: SignatureType.CangjieArray) = args.head
-            val stackAlloc = StackAlloc.Local(AddrUInt)
-            state(e) = CJIntrinsic.acquireRawData(arrayType.elemType)(array, stackAlloc)
+            val isCopy = StackAlloc.Local(AddrUInt)
+            state(e) = CJIntrinsic.acquireRawData(arrayType.elemType)(array, isCopy)
 
           case CHIR.Intrinsic.Kind.ArrayReleaseRawData =>
             val args = e.args

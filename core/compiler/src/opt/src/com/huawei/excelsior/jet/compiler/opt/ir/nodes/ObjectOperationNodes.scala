@@ -2116,15 +2116,15 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
   }
 
   class CJIntrinsicTarget (proto: CJIntrinsicTarget.Proto) extends CallTarget(proto) {
-    def target: IntrinsicType = proto.target
+    def target: CJIntrinsicType = proto.target
   }
 
   object CJIntrinsicTarget {
-    case class Proto private[CJIntrinsicTarget](target: IntrinsicType) extends CallTarget.Proto[CJIntrinsicTarget]() {
+    case class Proto private[CJIntrinsicTarget](target: CJIntrinsicType) extends CallTarget.Proto[CJIntrinsicTarget]() {
       override def newInstance(): CJIntrinsicTarget = new CJIntrinsicTarget(this)
     }
 
-    def apply(target: IntrinsicType) = Prototype.intern(Proto(target))
+    def apply(target: CJIntrinsicType) = Prototype.intern(Proto(target))
   }
 
   class DAICallTarget private(proto: DAICallTarget.Proto) extends CallTarget(proto) {

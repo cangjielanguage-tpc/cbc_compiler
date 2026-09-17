@@ -858,45 +858,48 @@ trait CangjieNodes { self: Universe =>
     def apply(allocType: SignatureType)(allocTypeInfo: Node) = proto(allocType)(allocTypeInfo)
   }
 
-  // Factory for cangjie intrinsics that should be generated as call to some runtime function.
-  //
-  // To add new intrinsic you need to add it to `IntrinsicType` enum, add case to `signature` func, then
-  // add the function you want your intrinsic to call to `CodeGeneratorCBC` in `intrinsicCall`
+  /** Factory for cangjie intrinsics that should be generated as call to some runtime function.
+   *
+   * To add new intrinsic you need to add it to `CJIntrinsicType` enum, add case to `signature` func, then
+   * add the function you want your intrinsic to call to `CodeGeneratorCBC` in `intrinsicCall`
+   */
   object CJIntrinsic {
-    def intrinsic(intrinsic: IntrinsicType, arrayElemType: SignatureType)(args: Node*) = {
+    def intrinsic(intrinsic: CJIntrinsicType, arrayElemType: SignatureType)(args: Node*) = {
       val mt = MethodType(intrinsic.signature(arrayElemType))
-      val mreference = new MethodReference(mt, STATIC)
+      val mr = new MethodReference(mt, STATIC)
       val target = CJIntrinsicTarget(intrinsic)()
-      Call(mreference)(target +: args: _*)
+      Call(mr)(target +: args: _*)
     }
 
-    // Calls CJ_MCC_AcquireRawData
-    //
-    // StackAlloc node is needed, because the instrinsic `MCC_AcquireRawData` that this intrinsic calls into
-    // gets bool* isCopy as a parameter. At the time of writing this have yet to find example of actual usages
-    // of this param after it has been set. Here is what CJ runtime doc says about this intrinsic:
-    //
-    // > Return the raw pointer of input array object, isCopy records whether memory copy occurs.
-    // > If GC is running, try to copy the payload of array and return the copy data pointer, isCopy set true
-    // > If copy failed, just return the content pointer of real array, isCopy set false,
-    // > but can't return until GC finish current work.
-    def acquireRawData(arrayElemType: SignatureType)(array: Node, stackAlloc: Node): Node = intrinsic(IntrinsicType.AcquireRawData, arrayElemType)(array, stackAlloc)
+    /** `extern "C" void* MCC_AcquireRawData(const ArrayRef array, bool* isCopy)`
+     * {{{
+     * // Return the raw pointer of input array object, isCopy records whether memory copy occurs.
+     * // If GC is running, try to copy the payload of array and return the copy data pointer, isCopy set true
+     * // If copy failed, just return the content pointer of real array, isCopy set false,
+     * // but can't return until GC finish current work.
+     * }}}
+     */
+    def acquireRawData(arrayElemType: SignatureType)(array: Node, isCopy: Node): Node = intrinsic(CJIntrinsicType.AcquireRawData, arrayElemType)(array, isCopy)
 
-    // Calls CJ_MCC_ReleaseRawData
-    def releaseRawData(elemType: SignatureType)(array: Node, cpointer: Node): Node = intrinsic(IntrinsicType.ReleaseRawData, elemType)(array, cpointer)
+    /** `extern "C" void MCC_ReleaseRawData(ArrayRef array, void* rawPtr)`
+     * {{{
+     * // Release the raw pointer
+     * }}}
+     */
+    def releaseRawData(elemType: SignatureType)(array: Node, cpointer: Node): Node = intrinsic(CJIntrinsicType.ReleaseRawData, elemType)(array, cpointer)
 
-    def unapply(call: Call): Option[IntrinsicType] = condOpt(call.target) {
+    def unapply(call: Call): Option[CJIntrinsicType] = condOpt(call.target) {
       case intrinsicTarget: CJIntrinsicTarget => intrinsicTarget.target
     }
   }
 
-  enum IntrinsicType {
+  enum CJIntrinsicType {
     case AcquireRawData
     case ReleaseRawData
 
     def signature(elemType: SignatureType): MethodSignature = this match {
-      case IntrinsicType.AcquireRawData =>  MethodSignature(CangjieArray(elemType), CPointer(AddrUInt))(CPointer(elemType))
-      case IntrinsicType.ReleaseRawData =>  MethodSignature(CangjieArray(elemType), CPointer(elemType))(SignatureType.Void)
+      case CJIntrinsicType.AcquireRawData =>  MethodSignature(CangjieArray(elemType), CPointer(AddrUInt))(CPointer(elemType))
+      case CJIntrinsicType.ReleaseRawData =>  MethodSignature(CangjieArray(elemType), CPointer(elemType))(SignatureType.Void)
     }
   }
 }
