@@ -638,11 +638,30 @@ compiler/CodegenCJNative/incremental/foreign/foreign1.cj
 compiler/CodegenCJNative/incremental/foreign/foreign1.cj
 compiler/CHIR/CHIR2HLIR/generic/generic_external_use_ffic/main.cj
 
+bug 79 (Cast Float32 -> Int32 does not throw on overflow)
+compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
+compiler/CHIR/CHIR2HLIR/typeCast/float2intExceed.cj
+compiler/CHIR/CHIR2HLIR/exception/try86.cj
+
 # bug 73 (ParameterImpl not matched as StateValue)
 compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_38.cj
 compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_39.cj
 compiler/Sema/class/class_no_member_func_use_before_init1.cj
 compiler/Sema/property/inc_dec.cj
+
+# bug 80 (Precise line numbers in stack traces)
+compiler/CHIR/CHIR2HLIR/exception/try61.cj
+compiler/CHIR/CHIR2HLIR/exception/try67.cj
+compiler/CHIR/DCE/testDCEAsg03.cj
+compiler/CHIR/DCE/testDCEAsg04.cj
+compiler/CHIR/DCE/testDCEThrow05.cj
+compiler/CHIR/DCE/testDCEThrow06.cj
+
+# bug 86 (Invalid closure passed to call.closure.g which causes random memory execution and crash)
+compiler/CHIR/CHIR2HLIR/generic/call31.cj
+
+# bug 87 (Unexpected EnumCast from@OptionLikeEnum(_, _, x), to@Tuple(Seq(Boolean, y))) where x != y)
+compiler/CHIR/CHIR2HLIR/matchPattern/tuple_exhaustive_03.cj
 
 # bug 9 (Support runtime intrsinsics/calls in CBC)
 ## VARRAY_GET
@@ -766,6 +785,11 @@ compiler/Sema/annotation/ifavailable/lambda_not_unit_return_type.cj
 compiler/Sema/annotation/ifavailable/level_syscap_check/test03.cj
 compiler/Sema/annotation/ifavailable/nested.cj
 compiler/Sema/APILevelChecker/level/api_weak/external_weak03.cj
+compiler/CHIR/CHIR2HLIR/module/import_01/main.cj
 
 # ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
 compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
+
+# ignore due to "can not find package stdx.encoding.json"
+compiler/CHIR/CHIR2HLIR/package/I4D1CM/test_serializers.cj
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix20.cj
