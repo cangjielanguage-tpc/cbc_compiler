@@ -896,7 +896,7 @@ trait ForkedAssembler {
     }
   }
 
-  def lea(dst: IR, base: IR, fr: FieldReference): Unit = {
+  def lea(dst: IR, base: IR, fr: FieldReference): Unit = instr {
     stream
       .opc8(Opcode.Lea)
       .bits(_.w4(dst).w4(base))
