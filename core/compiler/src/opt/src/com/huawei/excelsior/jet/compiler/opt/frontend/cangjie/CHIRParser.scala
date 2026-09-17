@@ -1564,15 +1564,18 @@ trait CHIRParser
             }
 
           case CHIR.Intrinsic.Kind.ArrayAcquireRawData =>
-            if (env.enabled(FailArrayAcquireRawData)) {
-              notImplemented("ARRAY_ACQUIRE_RAW_DATA intrinsic")
-            }
-            state(e) = LConst(123456789)
+            val args = e.args
+            val array = state(args.head)
+            val ValueSig(arrayType: SignatureType.CangjieArray) = args.head
+            state(e) = CJIntrinsic.acquireRawData(arrayType.elemType)(array)
 
           case CHIR.Intrinsic.Kind.ArrayReleaseRawData =>
-            if (env.enabled(FailArrayAcquireRawData)) {
-              notImplemented("ARRAY_RELEASE_RAW_DATA intrinsic")
+            val args = e.args
+            val (array, cpointer) = args match {
+              case Seq(array, cpointer) => (state(array), state(cpointer))
             }
+            val ValueSig(arrayType: SignatureType.CangjieArray) = args.head
+            state(e) = CJIntrinsic.releaseRawData(arrayType.elemType)(array, cpointer)
 
           case CHIR.Intrinsic.Kind.ObjectZeroValue =>
             val sig = resolver.typeSig(e.resultTpe)

@@ -11,7 +11,10 @@ package com.huawei.excelsior.jet.compiler.opt.ir.nodes
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
-import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, SignatureType}
+import PartialFunction.condOpt
+import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.STATIC
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CPointer, CangjieArray, Void}
+import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, MethodReference, MethodSignature, MethodType, SignatureType}
 
 trait CangjieNodes { self: Universe =>
 
@@ -852,5 +855,41 @@ trait CangjieNodes { self: Universe =>
 
     def proto(allocType: SignatureType) = Prototype.intern(Proto(allocType))
     def apply(allocType: SignatureType)(allocTypeInfo: Node) = proto(allocType)(allocTypeInfo)
+  }
+
+  object CJIntrinsic {
+    def intrinsic(intrinsic: IntrinsicType, arrayElemType: SignatureType)(args: Node*) = {
+      val mt = MethodType(intrinsic.signature(arrayElemType))
+      val mreference = new MethodReference(mt, STATIC)
+      val target = CJIntrinsicTarget(intrinsic)()
+      Call(mreference)(target +: args: _*)
+    }
+
+    def acquireRawData(arrayElemType: SignatureType)(array: Node): Node = intrinsic(IntrinsicType.AcquireRawData, arrayElemType)(array)
+    def releaseRawData(elemType: SignatureType)(array: Node, cpointer: Node): Node = intrinsic(IntrinsicType.ReleaseRawData, elemType)(array, cpointer)
+
+    def unapply(call: Call): Option[IntrinsicType] = condOpt(call.target) {
+      case intrinsicTarget: CJIntrinsicTarget => intrinsicTarget.target
+    }
+  }
+
+  enum IntrinsicType {
+    case AcquireRawData
+    case ReleaseRawData
+
+    def signature(elemType: SignatureType): MethodSignature = this match {
+      case IntrinsicType.AcquireRawData =>  MethodSignature(CangjieArray(elemType))(CPointer(elemType))
+      case IntrinsicType.ReleaseRawData =>  MethodSignature(CangjieArray(elemType), CPointer(elemType))(SignatureType.Void)
+    }
+
+    def args: Seq[Type] = this match {
+      case IntrinsicType.AcquireRawData => Seq(TRefType, AddrType) // Array and its typeinfo since it's always generic
+      case IntrinsicType.ReleaseRawData => Seq(TRefType, AddrType, AddrType) // Array, CPointer and theirs typeinfo
+    }
+
+    def res: Type = this match {
+      case IntrinsicType.AcquireRawData => AddrType
+      case IntrinsicType.ReleaseRawData => VoidType
+    }
   }
 }

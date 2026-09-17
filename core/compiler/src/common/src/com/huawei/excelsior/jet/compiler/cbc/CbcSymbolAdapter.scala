@@ -40,6 +40,15 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
   }
 
+  def adaptIntrinsic(methodReference: MethodReference, intrinsicSymbol: String): CbcFileFormat.MethodReference = {
+    val aotData = DirectCallAotData(intrinsicSymbol)
+    val sig = methodReference.methodType.signature.toCbc
+    // TODO: add flags if needed
+    val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
+    val refType = CbcFileFormat.AotTypeSignature.ref("VERYFAKEINTRINSICSTYPE")
+    CbcFileFormat.MethodReference(intrinsicSymbol, refType, sig, MethodRefFlags(flags), Some(aotData))
+  }
+
   def adapt(symbol: Symbol): CbcFileFormat.BytecodeReference = symbol match {
     case symbol: CodeSigSymbol => symbol.sig.toCbc
     case symbol: MethodReference =>

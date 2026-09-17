@@ -61,6 +61,10 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       }
     }
 
+    // Write fake intrinsics package
+    val typeBuilder = builder.newTypeBuilder()
+    typeBuilder.setName("VERYFAKEINTRINSICSTYPE")
+
     var mainPkgName: String = null
     for (t <- pkgDefs) {
       val hasCBCMembers = (t.getDeclaredMethods ++ t.getDeclaredFields).exists(_.getCHIRDef.nonEmpty)

@@ -12,7 +12,7 @@ import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHe
 import com.huawei.excelsior.jet.assembler.AsmType.*
 import com.huawei.excelsior.jet.assembler.Width.{W32, W64}
 import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, *}
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{ConstIndexFieldReference, FieldReferenceWithType, MultiFieldReference, NoneFieldReference, SingleFieldReference}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{ConstIndexFieldReference, DirectCallAotData, FieldReferenceWithType, MultiFieldReference, NoneFieldReference, SingleFieldReference}
 import com.huawei.excelsior.jet.assembler.cbc.Local.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
@@ -961,6 +961,15 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
       }
 
+      def intrinsicCall(tp: IntrinsicType): Unit = {
+        def intrinsicSymbol: String = tp match {
+          case IntrinsicType.AcquireRawData => "CJ_MCC_AcquireRawData"
+          case IntrinsicType.ReleaseRawData => "CJ_MCC_ReleaseRawData"
+        }
+        val intrinsicRef = asm.adapter.asInstanceOf[CbcSymbolAdapter].adaptIntrinsic(targetRef, intrinsicSymbol)
+        asm.callDirect(resultReg, intrinsicRef)
+      }
+
       if (!realICallGenerated) {
         call match {
           case UniversalGeneric.InvokeMethodWithGenericContext(mr) => genericCall(mr)
@@ -968,6 +977,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           case AnyDirectCall(_) => directCall()
           case DirectCall(method) if !targetRef.hasMethod => directCCall(method)
           case AnyVirtualCall() => virtualCall()
+          case CJIntrinsic(intrinsicType) => intrinsicCall(intrinsicType)
           case _ =>
             val IReg(targetReg) = call.target
             asm.callIndirect(targetReg, call.methodType)
