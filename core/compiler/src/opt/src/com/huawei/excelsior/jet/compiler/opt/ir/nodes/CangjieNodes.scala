@@ -11,7 +11,11 @@ package com.huawei.excelsior.jet.compiler.opt.ir.nodes
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
-import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, SignatureType}
+
+import PartialFunction.condOpt
+import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.STATIC
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CPointer, CangjieArray, Void}
+import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, MethodReference, MethodSignature, MethodType, SignatureType}
 
 trait CangjieNodes { self: Universe =>
 
@@ -852,5 +856,49 @@ trait CangjieNodes { self: Universe =>
 
     def proto(allocType: SignatureType) = Prototype.intern(Proto(allocType))
     def apply(allocType: SignatureType)(allocTypeInfo: Node) = proto(allocType)(allocTypeInfo)
+  }
+
+  /** Factory for cangjie intrinsics that should be generated as call to some runtime function.
+   *
+   * To add new intrinsic you need to add it to `CJIntrinsicType` enum and add case to `signature` func
+   */
+  object CJIntrinsic {
+    def intrinsic(intrinsic: CJIntrinsicType, arrayElemType: SignatureType)(args: Node*) = {
+      val mt = MethodType(intrinsic.signature(arrayElemType))
+      val mr = new MethodReference(mt, STATIC)
+      val target = CJIntrinsicTarget(intrinsic)()
+      Call(mr)(target +: args: _*)
+    }
+
+    /** `extern "C" void* MCC_AcquireRawData(const ArrayRef array, bool* isCopy)`
+     * {{{
+     * // Return the raw pointer of input array object, isCopy records whether memory copy occurs.
+     * // If GC is running, try to copy the payload of array and return the copy data pointer, isCopy set true
+     * // If copy failed, just return the content pointer of real array, isCopy set false,
+     * // but can't return until GC finish current work.
+     * }}}
+     */
+    def acquireRawData(arrayElemType: SignatureType)(array: Node, isCopy: Node): Node = intrinsic(CJIntrinsicType.AcquireRawData, arrayElemType)(array, isCopy)
+
+    /** `extern "C" void MCC_ReleaseRawData(ArrayRef array, void* rawPtr)`
+     * {{{
+     * // Release the raw pointer
+     * }}}
+     */
+    def releaseRawData(elemType: SignatureType)(array: Node, cpointer: Node): Node = intrinsic(CJIntrinsicType.ReleaseRawData, elemType)(array, cpointer)
+
+    def unapply(call: Call): Option[CJIntrinsicType] = condOpt(call.target) {
+      case intrinsicTarget: CJIntrinsicTarget => intrinsicTarget.target
+    }
+  }
+
+  enum CJIntrinsicType(val name: String) {
+    case AcquireRawData extends CJIntrinsicType("CJ_MCC_AcquireRawData")
+    case ReleaseRawData extends CJIntrinsicType("CJ_MCC_ReleaseRawData")
+
+    def signature(elemType: SignatureType): MethodSignature = this match {
+      case CJIntrinsicType.AcquireRawData =>  MethodSignature(CangjieArray(elemType), CPointer(AddrUInt))(CPointer(elemType))
+      case CJIntrinsicType.ReleaseRawData =>  MethodSignature(CangjieArray(elemType), CPointer(elemType))(SignatureType.Void)
+    }
   }
 }

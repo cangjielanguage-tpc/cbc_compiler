@@ -22,7 +22,7 @@ import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
 import com.huawei.excelsior.jet.compiler.opt.middle.{ContextTypesRecalculation, DCEComponent, UCEComponent}
 import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, FailArrayAcquireRawData, FailSaturatingArithmetic, PackageInitFromMain}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{CangjieEnumWrapper, fromSymType}
+import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CangjieEnumWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.ScalaCollections.*
@@ -1564,15 +1564,19 @@ trait CHIRParser
             }
 
           case CHIR.Intrinsic.Kind.ArrayAcquireRawData =>
-            if (env.enabled(FailArrayAcquireRawData)) {
-              notImplemented("ARRAY_ACQUIRE_RAW_DATA intrinsic")
-            }
-            state(e) = LConst(123456789)
+            val args = e.args
+            val array = state(args.head)
+            val ValueSig(arrayType: SignatureType.CangjieArray) = args.head
+            val isCopy = StackAlloc.Local(AddrUInt)
+            state(e) = CJIntrinsic.acquireRawData(arrayType.elemType)(array, isCopy)
 
           case CHIR.Intrinsic.Kind.ArrayReleaseRawData =>
-            if (env.enabled(FailArrayAcquireRawData)) {
-              notImplemented("ARRAY_RELEASE_RAW_DATA intrinsic")
+            val args = e.args
+            val (array, cpointer) = args match {
+              case Seq(array, cpointer) => (state(array), state(cpointer))
             }
+            val ValueSig(arrayType: SignatureType.CangjieArray) = args.head
+            state(e) = CJIntrinsic.releaseRawData(arrayType.elemType)(array, cpointer)
 
           case CHIR.Intrinsic.Kind.ObjectZeroValue =>
             val sig = resolver.typeSig(e.resultTpe)
