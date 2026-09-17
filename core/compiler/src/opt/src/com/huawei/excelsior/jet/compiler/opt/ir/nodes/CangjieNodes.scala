@@ -860,8 +860,7 @@ trait CangjieNodes { self: Universe =>
 
   /** Factory for cangjie intrinsics that should be generated as call to some runtime function.
    *
-   * To add new intrinsic you need to add it to `CJIntrinsicType` enum, add case to `signature` func, then
-   * add the function you want your intrinsic to call to `CodeGeneratorCBC` in `intrinsicCall`
+   * To add new intrinsic you need to add it to `CJIntrinsicType` enum and add case to `signature` func
    */
   object CJIntrinsic {
     def intrinsic(intrinsic: CJIntrinsicType, arrayElemType: SignatureType)(args: Node*) = {
@@ -893,9 +892,9 @@ trait CangjieNodes { self: Universe =>
     }
   }
 
-  enum CJIntrinsicType {
-    case AcquireRawData
-    case ReleaseRawData
+  enum CJIntrinsicType(val name: String) {
+    case AcquireRawData extends CJIntrinsicType("CJ_MCC_AcquireRawData")
+    case ReleaseRawData extends CJIntrinsicType("CJ_MCC_ReleaseRawData")
 
     def signature(elemType: SignatureType): MethodSignature = this match {
       case CJIntrinsicType.AcquireRawData =>  MethodSignature(CangjieArray(elemType), CPointer(AddrUInt))(CPointer(elemType))

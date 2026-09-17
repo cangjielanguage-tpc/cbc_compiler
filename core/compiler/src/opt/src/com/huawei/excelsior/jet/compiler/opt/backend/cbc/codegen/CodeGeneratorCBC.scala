@@ -962,11 +962,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       def intrinsicCall(tp: CJIntrinsicType): Unit = {
-        def intrinsicSymbol: String = tp match {
-          case CJIntrinsicType.AcquireRawData => "CJ_MCC_AcquireRawData"
-          case CJIntrinsicType.ReleaseRawData => "CJ_MCC_ReleaseRawData"
-        }
-        val intrinsicRef = asm.adapter.asInstanceOf[CbcSymbolAdapter].adaptIntrinsic(targetRef, intrinsicSymbol)
+        val intrinsicRef = asm.adapter.asInstanceOf[CbcSymbolAdapter].adaptIntrinsic(targetRef, tp.name)
         asm.callDirect(resultReg, intrinsicRef)
       }
 
