@@ -43,6 +43,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
   private val typeDefs = Worklist.from(allClasses.filter(x => !x.isCangjiePackage && x.isInCurrentCompilationSet))
   private val pkgDefs = allClasses.filter(_.isCangjiePackage)
   private val methodsCode = mutable.LinkedHashMap.empty[Method, Code]
+  
 
   private def isFunctionalType(t: Type): Boolean = {
     fromSymType(t).isCangjieClosure
@@ -51,6 +52,8 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
   def cbcPackageName(aotName: String): String = {
     "$P$" + aotName
   }
+  
+  val intrinsicsTypeName: String = "VERYFAKEINTRINSICSTYPE"
 
   def generate(output: Path, generationTarget: GenerationTarget = CBC): Unit = {
     val builder = CbcFileFormat.newBuilder()
@@ -63,7 +66,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
 
     // Write fake intrinsics type
     val typeBuilder = builder.newTypeBuilder()
-    typeBuilder.setName("VERYFAKEINTRINSICSTYPE")
+    typeBuilder.setName(intrinsicsTypeName)
 
     var mainPkgName: String = null
     for (t <- pkgDefs) {

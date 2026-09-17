@@ -45,7 +45,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
     val sig = methodReference.methodType.signature.toCbc
     // TODO: add flags if needed
     val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
-    val refType = CbcFileFormat.AotTypeSignature.ref("VERYFAKEINTRINSICSTYPE")
+    val refType = CbcFileFormat.AotTypeSignature.ref(CbcFileEncoderAdapter.intrinsicsTypeName)
     CbcFileFormat.MethodReference(intrinsicSymbol, refType, sig, MethodRefFlags(flags), Some(aotData))
   }
 
