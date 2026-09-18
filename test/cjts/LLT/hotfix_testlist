@@ -404,31 +404,6 @@ compiler/Sema/lambda/lambda05.cj
 compiler/Sema/lambda/lambda06.cj
 compiler/Sema/match/bugfix/match_001.cj
 
-# bug 62 (Instantiate constructors for generic ClassBasedEnum to support copy-to-Tuple in match expressions)
-compiler/CHIR/CHIR2HLIR/enum/enum_03.cj
-compiler/CHIR/CHIR2HLIR/enum/enum_10.cj
-compiler/CHIR/CHIR2HLIR/intNative/match_native.cj
-compiler/CodegenCJNative/enum/01_NON_EXHAUSTIVE_ASSOCIATED/main_04.cj
-compiler/CodegenCJNative/enum/04_EXHAUSTIVE_ASSOCIATED_OPTION_LIKE/main_06.cj
-compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_02.cj
-compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_05.cj
-compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_06/main_06.cj
-compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_07.cj
-compiler/CodegenCJNative/enum/enum_self_dependent2.cj
-compiler/CodegenCJNative/generic/generic_enum1.cj
-compiler/CodegenCJNative/generic/generic_enum.cj
-compiler/CodegenCJNative/generic/generic_enum_in_record.cj
-compiler/CodegenCJNative/generic/generic_enum_multi_inst.cj
-compiler/CodegenCJNative/LegacyTests/generic_enum.cj
-compiler/Sema/enum/enum11_1.cj
-compiler/Sema/enum/enum11_2.cj
-compiler/Sema/enum/enum13.cj
-compiler/Sema/Extend/autobox_match1.cj
-compiler/Sema/Extend/autobox_match2.cj
-compiler/Sema/generics/instantiation_rearrange_02/test.cj
-compiler/Sema/PatternMatching/EnumPattern/usertype_03.cj
-compiler/Sema/PatternMatching/EnumPattern/usertype_05.cj
-
 # bug 59 (Cannot compile code with zeroValue<T> in generic context)
 compiler/CodegenCJNative/trycatch/zerovalue.cj
 compiler/CodegenCommon/zeroValue/zeroValue_01.cj
@@ -526,11 +501,6 @@ compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_6.cj
 compiler/Sema/forin/forin14.cj
 compiler/Sema/typealias/overload_and_alias1/main.cj
 
-# bug 71 (Unexpected Param[Record] in InstanceOf)
-compiler/CHIR/CHIR2HLIR/array/array_21.cj
-compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
-compiler/CodegenCHIR/tryCatch/rawArray/rawArray_01.cj
-
 # bug 78 (not found function: native_entry)
 compiler/CodegenCJNative/LegacyTests/native.cj
 compiler/FFI/CFFI/record/small_15.cj
@@ -546,12 +516,6 @@ bug 79 (Cast Float32 -> Int32 does not throw on overflow)
 compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
 compiler/CHIR/CHIR2HLIR/typeCast/float2intExceed.cj
 compiler/CHIR/CHIR2HLIR/exception/try86.cj
-
-# bug 73 (ParameterImpl not matched as StateValue)
-compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_38.cj
-compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_39.cj
-compiler/Sema/class/class_no_member_func_use_before_init1.cj
-compiler/Sema/property/inc_dec.cj
 
 # bug 80 (Precise line numbers in stack traces)
 compiler/CHIR/CHIR2HLIR/exception/try61.cj
