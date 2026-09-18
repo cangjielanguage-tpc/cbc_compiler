@@ -320,6 +320,22 @@ compiler/Sema/enum/enum22_test/enum22_test.cj
 compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_005.cj
 compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
 
+# bug: #48 (Do not pass generic terms to CreateTypeInfo)
+compiler/CodegenCJNative/record/record_4.cj
+compiler/CHIR/CHIR2HLIR/matchPattern/enum_exhaustive_04.cj
+compiler/CodegenCJNative/enum/enum_get_tag.cj
+compiler/CodegenCJNative/generic/generic_record.cj
+compiler/CodegenCJNative/reflect/reflect_08.cj
+compiler/Sema/Extend/default_implement/default_implement_06.cj
+compiler/Sema/box/option_box_assign_00.cj
+compiler/Sema/call/variadic_static_generic_01.cj
+compiler/Sema/function/member_func_overload_0.cj
+compiler/Sema/functionlinkage/used_internal_decl_02/test.cj
+compiler/Sema/generics/pkgs0028_generic_import_ai_demo/main.cj
+compiler/Sema/generics/pkgs0029_generic_class_ai_demo/main.cj
+compiler/Sema/generics/tupleClone.cj
+compiler/Sema/typealias/typealias23.cj
+
 # bug 55 (Incorrect dispatch for "specialized and inherited twice" generic interface)
 compiler/Sema/interface/generic_interface_inheritance
 
