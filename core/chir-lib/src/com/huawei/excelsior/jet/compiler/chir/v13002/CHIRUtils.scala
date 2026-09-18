@@ -6,11 +6,11 @@
  * See https://cangjie-lang.cn/pages/LICENSE for license information.
  */
 
-package com.huawei.excelsior.jet.compiler.chir.v100
+package com.huawei.excelsior.jet.compiler.chir.v13002
 
 import com.google.flatbuffers.{IntVector, LongVector}
 import com.huawei.excelsior.jet.compiler.chir.CHIR
-import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.{EnumCtorInfo, MemberVarInfo, VTableInType, VirtualMethodInfo}
+import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.{EnumCtorInfo, MemberVarInfo, VTableInType, VirtualMethodInfo}
 
 import scala.reflect.ClassTag
 

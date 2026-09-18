@@ -1,8 +1,8 @@
-package com.huawei.excelsior.jet.compiler.chir.v100
+package com.huawei.excelsior.jet.compiler.chir.v13002
 
 import com.huawei.excelsior.jet.compiler.chir.*
-import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
-import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.{toSeq, toTypeSeq, toValueSeq}
+import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.v13002.CHIRUtils.{toSeq, toTypeSeq, toValueSeq}
 
 abstract class CustomTypeDefImpl(d: CustomTypeDef)(using val provider: CHIRItemProvider) extends CHIR.CustomTypeDef
   with HasAnnotationsImpl with HasAttributesImpl {
