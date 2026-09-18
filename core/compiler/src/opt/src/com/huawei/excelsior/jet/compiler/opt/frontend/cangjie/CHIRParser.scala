@@ -1295,7 +1295,7 @@ trait CHIRParser
           case (from: ClassBasedEnum, to: Tuple) =>
             val ctors = from.info.constructors
             val targetCtor = to.params.tail // first element is tag
-            val idx = ctors.indexWhere(_.params == targetCtor) // TODO: instantiate
+            val idx = ctors.indexWhere(_.params.map(_.instantiate(from.params, Seq.empty)) == targetCtor)
             assert(idx >= 0)
             val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
             val enumType = if (from.params.isEmpty) {
