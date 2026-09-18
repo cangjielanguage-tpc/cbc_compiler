@@ -565,6 +565,11 @@ compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_7.
 compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic09.cj
 compiler/Sema/typealias/import_alias/typeaslias.cj
 
+# bug 84 (ZeroSizedEnum in match expression)
+compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
+compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_03.cj
+compiler/CodegenCJNative/LegacyTests/enum_nest.cj
+
 # bug 88 (joining unrelated types com.huawei.excelsior.jet.compiler.opt.ir.Types$ValueType$@29d81c22 and ControlType)
 compiler/CHIR/UG/VTable/fromHLT/PerThreadMemUsage.cj
 
