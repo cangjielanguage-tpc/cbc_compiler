@@ -138,7 +138,7 @@ The resulting compiler jar will be located at [core/compiler/target/aot/aot.jar]
 
 | CHIR version | CBC option          | Notes                    |
 |--------------|---------------------|--------------------------|
-| `100`        | None                | Default version          |
+| `13002`      | None                | Cangjie `1.3.0-alpha.02` |
 | `1203`       | `-CHIRVersion=1203` | Cangjie `1.2.0-beta.rc3` |
 
 ### Test
