@@ -81,6 +81,7 @@ final class GetElementRefImpl(e: GetElementRef)(implicit provider: CHIRItemProvi
 }
 
 final class GetRTTIStaticImpl(e: GetRTTIStatic)(implicit provider: CHIRItemProvider) extends CHIR.GetRTTIStatic {
+  def rttiType: CHIR.Type = provider.getType[CHIR.Type](e.rttiType).get
 }
 
 final class InstanceOfImpl(e: InstanceOf)(implicit provider: CHIRItemProvider) extends CHIR.InstanceOf {

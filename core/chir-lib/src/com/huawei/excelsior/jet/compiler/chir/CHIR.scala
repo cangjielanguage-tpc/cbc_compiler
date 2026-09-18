@@ -383,6 +383,7 @@ object CHIR {
   }
 
   trait GetRTTIStatic extends Expression {
+    def rttiType: Type
   }
 
   trait GetRTTI extends Expression {
