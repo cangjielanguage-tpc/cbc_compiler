@@ -16,7 +16,8 @@ final class StringLiteral(val tpe: CHIR.Type, val value: String) extends CHIR.St
 
 final class IntLiteral(val tpe: CHIR.Type, val value: Long) extends CHIR.IntLiteral
 
-final class Apply(val callee: CHIR.Func, val thisType: Option[CHIR.Type], val args: Seq[CHIR.Value]) extends CHIR.Apply with HasResultVar {
+final class Apply(val callee: CHIR.Func, val thisType: Option[CHIR.Type], val thisArgOpt: Option[CHIR.Value], val args: Seq[CHIR.Value]) extends CHIR.Apply with HasResultVar {
+  def thisArg: CHIR.Value = thisArgOpt.get
   def instantiatedTypeArgs = Seq.empty
 }
 
@@ -24,16 +25,18 @@ final class Store(val value: CHIR.Value, val location: CHIR.Value) extends CHIR.
 
 final class Allocate(val allocatedType: CHIR.Type) extends CHIR.Allocate
 
-final class Invoke(val callee: CHIR.Func, val thisType: CHIR.Type, val thisArg: CHIR.Value, val args: Seq[CHIR.Value]) extends CHIR.Invoke with HasResultVar {
+final class Invoke(val callee: CHIR.Func, val thisType: CHIR.Type, val thisArgOpt: Option[CHIR.Value], val args: Seq[CHIR.Value]) extends CHIR.Invoke with HasResultVar {
+  def thisArg: CHIR.Value = thisArgOpt.get
   def instantiatedTypeArgs: Seq[CHIR.Type] = Seq.empty
 }
 
 // Terminators
 
-final class TryApply(val callee: CHIR.Func, val thisType: Option[CHIR.Type], val args: Seq[CHIR.Value])(succBlock: CHIR.Block, errBlock: CHIR.Block)
+final class TryApply(val callee: CHIR.Func, val thisType: Option[CHIR.Type], val thisArgOpt: Option[CHIR.Value], val args: Seq[CHIR.Value])(succBlock: CHIR.Block, errBlock: CHIR.Block)
   extends CHIR.TryApply with HasResultVar {
   def successors = Seq(succBlock, errBlock)
 
+  def thisArg: CHIR.Value = thisArgOpt.get
   def instantiatedTypeArgs = Seq.empty
 }
 

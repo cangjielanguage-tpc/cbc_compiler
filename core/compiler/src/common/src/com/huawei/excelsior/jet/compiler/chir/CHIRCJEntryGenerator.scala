@@ -55,12 +55,12 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
 
         gen.startBlock(callPkgInit)
         _retVal = gen.local(dsl.Ref(Int64), gen.alloc(Int64))
-                  gen.local(Unit,           gen.tryApply(pkg.packageInitFunc, thisType = None)(callPkgLitInit, catchBlock))
+                  gen.local(Unit,           gen.tryApplyStatic(pkg.packageInitFunc)(callPkgLitInit, catchBlock))
 
         // Call pkg literal init
 
         gen.startBlock(callPkgLitInit)
-        gen.local(Unit, gen.tryApply(pkg.packageInitLiteralFunc, thisType = None)(callMain, catchBlock))
+        gen.local(Unit, gen.tryApplyStatic(pkg.packageInitLiteralFunc)(callMain, catchBlock))
 
         // Call main
 
@@ -70,10 +70,10 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
         } else {
           val getCmdLineArgsFunc = pkg.getFunc("_CNat18getCommandLineArgsHv").get
           val ArrOfStr = pkg.getDef("_CNat5ArrayIRNat6StringEE").get.tpe
-          val args = gen.local(ArrOfStr, gen.apply(getCmdLineArgsFunc, thisType = None))
+          val args = gen.local(ArrOfStr, gen.applyStatic(getCmdLineArgsFunc))
           Seq(args)
         }
-        val mainRes = gen.local(Int64, gen.tryApply(userMain, thisType = None, userMainArgs*)(saveMainRes, catchBlock))
+        val mainRes = gen.local(Int64, gen.tryApplyStatic(userMain, userMainArgs*)(saveMainRes, catchBlock))
 
         // Save main result
 
@@ -113,16 +113,16 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
 
         handleException(dsl.Ref(OOM), checkOOM, checkError) { _ =>
           val msg = gen.local(String, gen.const(String, "An exception has occurred:    Out of memory"))
-                    gen.local(Unit,   gen.apply(eprintlnFunc, thisType = None, msg))
+                    gen.local(Unit,   gen.applyStatic(eprintlnFunc, msg))
         }
 
         handleException(dsl.Ref(Error), checkError, checkException) { except =>
-          val errStr = gen.local(String, gen.invoke(errToString, thisType = dsl.Ref(Error), thisArg = except, allArgs = except))
-                       gen.local(Unit,   gen.apply(eprintlnFunc, thisType = None, errStr))
+          val errStr = gen.local(String, gen.invoke(errToString, thisType = dsl.Ref(Error), thisArg = Some(except), allArgs = except))
+                       gen.local(Unit,   gen.applyStatic(eprintlnFunc, errStr))
         }
 
         handleException(dsl.Ref(Exception), checkException, rethrow) { except =>
-          gen.local(Unit, gen.apply(handleExFunc, thisType = None, except))
+          gen.local(Unit, gen.applyStatic(handleExFunc, except))
         }
 
         // Rethrow if not OOM, Error or Exception
