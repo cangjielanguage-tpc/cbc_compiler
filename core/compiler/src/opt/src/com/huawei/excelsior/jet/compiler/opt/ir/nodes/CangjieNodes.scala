@@ -372,16 +372,17 @@ trait CangjieNodes { self: Universe =>
 
   class SMutRecArg private(proto: SMutRecArg.Proto) extends FloatingNodeWithFixedArgs(proto) {
     def receiver: Node = arg(0)
+    def recordType = proto.recordType
   }
 
   object SMutRecArg {
-    class Proto private[SMutRecArg](receiverType: Type) extends FixedArgs[SMutRecArg](receiverType)(AddrType) {
+    class Proto private[SMutRecArg](receiverType: Type, val recordType: SignatureType) extends FixedArgs[SMutRecArg](receiverType)(AddrType) {
       def newInstance() = new SMutRecArg(this)
     }
 
-    def proto(receiverType: Type) = Prototype.intern(Proto(receiverType))
+    def proto(receiverType: Type, recordType: SignatureType) = Prototype.intern(Proto(receiverType, recordType))
 
-    def apply(receiver: Node): Node = proto(receiver.tpe)(receiver)
+    def apply(receiver: Node, recordType: SignatureType): Node = proto(receiver.tpe, recordType)(receiver)
   }
 
   class ZeroValueGeneric private(proto: ZeroValueGeneric.Proto) extends FloatingNodeWithFixedArgs(proto) {

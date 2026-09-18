@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.opt.frontend.cangjie
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.AsmType
+import com.huawei.excelsior.jet.assembler.AsmType.{I32, PTR}
 import com.huawei.excelsior.jet.compiler.{PreparationRequired, RTSProc, Stage, StatsKind}
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
@@ -68,7 +69,7 @@ trait CHIRParser
         from.sigType.getRawObjectSize == to.sigType.getRawObjectSize, s"inconsistent record type size: cast $from -> $to")
       ReinterpretCast(from, to)(n)
 
-    case (from @ (_: RecordAddrType | AddrType), to @ (_: RecordAddrType | AddrType)) =>
+    case (from @ (_: RecordAddrType | AddrType | VoidType), to @ (_: RecordAddrType | AddrType)) =>
       // Such casts are needed to convert @C structs to/from C pointers.
       ReinterpretCast(from, to)(n)
 
@@ -947,7 +948,14 @@ trait CHIRParser
         val chirPath = e.path
 
         host match {
-          case _: SignatureType.ZeroSizedEnum | _: SignatureType.PrimitiveBasedEnum => shouldNotReachHere(host)
+          case _: SignatureType.PrimitiveBasedEnum => shouldNotReachHere(host)
+
+          case _: SignatureType.ZeroSizedEnum =>
+            val res = chirPath match {
+              case Seq(0) => IConst(0) // UInt32 type
+            }
+            state(e) = res
+
           case host: SignatureType.OptionLikeEnum if host.isNullableOption =>
             val res = chirPath match {
               case Seq(0) =>
@@ -1367,6 +1375,9 @@ trait CHIRParser
 
           case (from: UnionBasedEnum, to: Tuple) =>
             ReinterpretCast(fromTpe, toTpe)(value)
+
+          case (from: ZeroSizedEnum, to: Tuple) =>
+            self.Void()
 
           case (from: ZeroSizedEnum, UInt32) =>
             IConst(0)
@@ -1907,7 +1918,7 @@ trait CHIRParser
             import SignatureType.*
             (resolver.typeSig(resTpe): @unchecked) match {
               case _: ZeroSizedEnum =>
-              // nothing to do
+                state(e) = self.Void()
 
               case _: PrimitiveBasedEnum =>
                 state(e) = e.elementValues.map(state.apply) match {
@@ -2216,8 +2227,8 @@ trait CHIRParser
 
           Seq(abiRetVal)
         case Receiver => receiver.map(adjustArg(_, receiverType.get, target.methodType.parameterType(target.methodType.getReceiverArgIdx))) ensuring (_.nonEmpty)
-        case SMutRecord => Seq(SMutRecArg(receiver.get))
-        case SMutObject => Seq(SMutObjectArg(SMutRecArg(receiver.get)))
+        case SMutRecord => Seq(SMutRecArg(receiver.get, target.refType.sigType))
+        case SMutObject => Seq(SMutObjectArg(SMutRecArg(receiver.get, target.refType.sigType)))
         case OuterTypeInfo =>
           val t = outerTypeInfo.get
           if (t.isCangjieClosure) {
@@ -2480,7 +2491,7 @@ trait CHIRParser
             rcv.baseRef
           }
         case rcv: FieldSeqOperation => DerivedPtr.Global()
-        case rcv: StackAlloc => DerivedPtr.Local()
+        case rcv: (StackAlloc | NoValue)  => DerivedPtr.Local()
         case rcv: Param =>
           assert(rcv.num == rootMethod.getMutRecordArgIdx)
           rootMethodParam(rootMethod.getMutObjectArgIdx)
@@ -2488,7 +2499,11 @@ trait CHIRParser
       n.replaceBy(actual)
     }
     for (n <- all[SMutRecArg]) {
-      n.replaceBy(n.receiver)
+      val actual = n.receiver match {
+        case _: NoValue => StackAlloc.Local(n.recordType)
+        case n => n
+      }
+      n.replaceBy(actual)
     }
   }
 

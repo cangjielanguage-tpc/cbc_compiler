@@ -36,8 +36,8 @@ trait SpecialSteps { self: Universe with BackEnd =>
     object NopCast {
       def unapply(node: Cast) = cond(node) {
         case ReinterpretCast(ThinType, AddrType, _) | ReinterpretCast(AddrType, ThinType, _) |
-             ReinterpretCast(AddrType | IntraReferenceType, _: RecordAddrType, _) |
-             ReinterpretCast(_: RecordAddrType, AddrType | IntraReferenceType, _) |
+             ReinterpretCast(AddrType | IntraReferenceType | VoidType, _: RecordAddrType, _) |
+             ReinterpretCast(_: RecordAddrType | VoidType, AddrType | IntraReferenceType, _) |
              ReinterpretCast(_: RecordAddrType, _: RecordAddrType, _) => true
         case ReinterpretCast(EopType.Any, _: EopType, _) => true // required for rich decomposition and write barrier lowering
         case ReinterpretCast(EopType.Plain, EopType.Null, _) => true

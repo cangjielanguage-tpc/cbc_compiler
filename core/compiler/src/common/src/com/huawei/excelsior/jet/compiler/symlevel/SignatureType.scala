@@ -265,8 +265,10 @@ sealed abstract class SignatureType extends Signature {
     case _: CangjieEnum => false
   }
 
-  final def isZST: Boolean = this match {
+  final def isZST(implicit typeProvider: TypeProvider): Boolean = this match {
     case Void | Unit | Nothing | _: ZeroSizedEnum => true
+    case x: Tuple => x.params.forall(_.isZST)
+    case x: Record => asClassType(x.symType).getDeclaredFields.forall(_.getType.isZST)
     case _ => false
   }
 
