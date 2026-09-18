@@ -1171,7 +1171,12 @@ trait CHIRParser
         } else {
           MAK.VIRTUAL
         }
-        val target = new MethodReference(method, mak, CompiledType(refType), vnum)
+        val _target = new MethodReference(method, mak, CompiledType(refType), vnum)
+        val target = if (lparams.nonEmpty) {
+          _target.toInstantiatedMethodReference(lparams, refType)
+        } else {
+          _target
+        }
 
         val args = sourceArgVals.map(state.apply)
         val call = callMethod(target, Some(refType), Some(thisType), retType, isigParams, args, thisTypeInfo)
