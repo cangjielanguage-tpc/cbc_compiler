@@ -570,6 +570,23 @@ compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_03.cj
 compiler/CodegenCJNative/LegacyTests/enum_nest.cj
 
+# bug 85 (Unexpected DerivedPtrLocal for StoreFieldSeqGeneric.baseRef)
+compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
+compiler/CodegenCJNative/enum/04_EXHAUSTIVE_ASSOCIATED_OPTION_LIKE/main_08.cj
+compiler/CodegenCJNative/import/record_generic_import/main.cj
+compiler/Sema/Extend/generic/generic_param_pass.cj
+compiler/Sema/box/option_box_assign_00.cj
+compiler/Sema/generics/enum7.cj
+compiler/Sema/generics/enum8.cj
+compiler/Sema/generics/function_generics_list.cj
+compiler/Sema/generics/pkgs0019_record_test/main.cj
+compiler/Sema/generics/pkgs0020_record_test2/main.cj
+compiler/Sema/generics/pkgs0018_multi_packages_rhombus_import/pkgs0018004a.cj
+compiler/Sema/generics/pkgs0020_record_test3/main.cj
+compiler/Sema/generics/pkgs0024_RecordTypeArgs/pkgs0024_RecordTypeArgs.cj
+compiler/Sema/generics/pkgs0021_record_test/main.cj
+compiler/Sema/generics/pkgs0024_typeArgs/pkgs0024_typeArgs.cj
+
 # bug 88 (joining unrelated types com.huawei.excelsior.jet.compiler.opt.ir.Types$ValueType$@29d81c22 and ControlType)
 compiler/CHIR/UG/VTable/fromHLT/PerThreadMemUsage.cj
 
