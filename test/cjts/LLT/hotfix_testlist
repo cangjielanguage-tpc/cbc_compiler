@@ -595,6 +595,7 @@ compiler/CHIR/UG/VTable/fromHLT/PerThreadMemUsage.cj
 
 # bug 9 (Support runtime intrsinsics/calls in CBC)
 ## VARRAY_GET
+compiler/CodegenCJNative/incremental/global_var/test.info
 compiler/CodegenCJNative/array/array_1.cj
 compiler/CodegenCJNative/enum/05_EXHAUSTIVE_ASSOCIATED_NONREF/main_03.cj
 compiler/Sema/const_evaluation/ok_varray.cj
