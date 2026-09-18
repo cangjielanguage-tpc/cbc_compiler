@@ -20,37 +20,15 @@ compiler/Sema
 # Float16
 compiler/CodegenCJNative/LegacyTests/typesFp16.cj
 
-# not implemented: saturating type cast to non-integral types (integer2char);
-# saturating arithmetic ops and integral saturating casts are implemented,
-# the whole overflow/overflow_typecast blocks are enabled again (kanban #35)
+# not implemented: Integral -> Rune cast check (silently wraps, OverflowException never raised)
 compiler/CodegenCommon/typecast/integer2char_invalid_int16.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_int32.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_int64.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_int8.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_uint16.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_uint32.cj
-compiler/CodegenCommon/typecast/integer2char_valid_int16.cj
-compiler/CodegenCommon/typecast/integer2char_valid_int32.cj
-compiler/CodegenCommon/typecast/integer2char_valid_int64.cj
-compiler/CodegenCommon/typecast/integer2char_valid_int8.cj
-compiler/CodegenCommon/typecast/integer2char_valid_uint16.cj
-compiler/CodegenCommon/typecast/integer2char_valid_uint32.cj
-compiler/CodegenCommon/typecast/integer2char_valid_uint64.cj
-compiler/CodegenCommon/typecast/integer2char_valid_uint8.cj
-compiler/CHIROpt/NoSideEffectMarker/testRoundOpt.cj
-compiler/CodegenCHIR/tryCatch/div_num.cj
-compiler/CodegenCommon/class/hashSet.cj
-compiler/Sema/Extend/generic/primitive_default_implement.cj
-compiler/Sema/box/option_box_with_extend_box_01.cj
-compiler/Sema/function/overloaded_int_literal_00.cj
-compiler/CHIR/CHIR2HLIR/HLIR2LLVM/importStdNoFrom/src/a.cj
-compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
-compiler/CHIR/NoSideEffectMark/noSideEffect01.cj
 
-# not implemented: saturating float-to-int type cast (integral saturating
-# casts are implemented and their tests are enabled again); float2uintExceed
-# and FPToSI entries may actually belong to bug 79 (throwing float2int), kept
-# here until verified
+# not implemented: saturating float-to-int type cast
 compiler/CHIR/CHIR2HLIR/typeCast/float2uintExceed.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642Int8_2.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_01.cj
@@ -117,6 +95,7 @@ compiler/CodegenCJNative/record/override_primitive_generic_return_with_concrete_
 
 # not implemented: FLOAT16
 compiler/CHIR/CHIR2HLIR/array/array_09.cj
+compiler/CHIR/NoSideEffectMark/noSideEffect01.cj
 compiler/CHIR/CHIR2HLIR/core/box.cj
 compiler/CHIR/CHIR2HLIR/print/print01.cj
 compiler/CHIR/CHIR2HLIR/print/print04.cj
@@ -255,6 +234,7 @@ compiler/Sema/record/primaryConstructor/primaryConstructor10.cj
 
 # bug: #20 (Support extend with interface in interprete)
 compiler/CHIR/AST2CHIR/BaseUseCase/extend/extend_interface4.cj
+compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
 compiler/CHIR/CHIR2HLIR/extend/extend_primitive_overload_operator.cj
 compiler/CHIR/Generic/testGeneric09.cj
 compiler/CHIR/UG/VTable/extend/extend1/main.cj
