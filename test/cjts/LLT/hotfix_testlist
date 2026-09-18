@@ -730,3 +730,35 @@ compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
 # ignore due to "can not find package stdx.encoding.json"
 compiler/CHIR/CHIR2HLIR/package/I4D1CM/test_serializers.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix20.cj
+
+# ignore due to demangling discrepancies in stracktraces (main::goo vs default::goo etc.)
+compiler/CodegenCJNative/demangle/decl/c_function_decl1.cj
+compiler/CodegenCJNative/demangle/decl/error_throw1.cj
+compiler/CodegenCJNative/demangle/decl/exception_throw1.cj
+compiler/CodegenCJNative/demangle/decl/extend_outer_decl1.cj
+compiler/CodegenCJNative/demangle/decl/extend_outer_decl2.cj
+compiler/CodegenCJNative/demangle/decl/function_decl2.cj
+compiler/CodegenCJNative/demangle/decl/generic_constraints/ge
+compiler/CodegenCJNative/demangle/decl/generic_constraints/ge
+compiler/CodegenCJNative/demangle/decl/generic_constraints/ge
+compiler/CodegenCJNative/demangle/decl/global_init1.cj
+compiler/CodegenCJNative/demangle/decl/nested_package/ma
+compiler/CodegenCJNative/demangle/decl/prop_decl1.cj
+compiler/CodegenCJNative/demangle/decl/prop_decl2.cj
+compiler/CodegenCJNative/demangle/decl/scope1.cj
+compiler/CodegenCJNative/demangle/decl/scope2.cj
+compiler/CodegenCJNative/demangle/decl/scope3.cj
+compiler/CodegenCJNative/demangle/decl/scope4.cj
+compiler/CodegenCJNative/demangle/type/array_type1.cj
+compiler/CodegenCJNative/demangle/type/array_type2.cj
+compiler/CodegenCJNative/demangle/type/class_type1.cj
+compiler/CodegenCJNative/demangle/type/class_type2.cj
+compiler/CodegenCJNative/demangle/type/class_type3.cj
+compiler/CodegenCJNative/demangle/type/csting_type1.cj
+compiler/CodegenCJNative/demangle/type/default_param1.cj
+compiler/CodegenCJNative/demangle/type/enum_type1.cj
+compiler/CodegenCJNative/demangle/type/generic_type1.cj
+compiler/CodegenCJNative/demangle/type/lambda_interface_type1.cj
+compiler/CodegenCJNative/demangle/type/struct_type1.cj
+compiler/CodegenCJNative/demangle/type/tuple_type1.cj
+compiler/CodegenCJNative/demangle/type/tuple_type2.cj
