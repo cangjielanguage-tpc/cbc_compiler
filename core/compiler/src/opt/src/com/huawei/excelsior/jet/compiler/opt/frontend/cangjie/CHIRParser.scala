@@ -1648,13 +1648,13 @@ trait CHIRParser
 
       case e: CHIR.Load =>
         e.location match {
-          case localVar: CHIR.LocalVar =>
-            val sig = resolver.typeSig(localVar.tpe)
+          case loc: (CHIR.LocalVar | CHIR.Parameter) =>
+            val ValueSig(sig) = loc
             if (sig.isZST) {
               // nothing to do
               state(e) = Void()
             } else {
-              val n = state(localVar) match {
+              val n = state(loc) match {
                 case mem @ GetFieldSeqRef(fields, _, base) =>
                   if (needsCopy(mem.resType)) {
                     val res = StackAlloc.Local(mem.resType)
@@ -1688,8 +1688,8 @@ trait CHIRParser
               }
               state(e) = n
             }
-          case globalVar: CHIR.GlobalVar =>
-            val field = staticFieldRef(globalVar)
+          case loc: CHIR.GlobalVar =>
+            val field = staticFieldRef(loc)
             val n = if (field.fieldType.isZST) {
               Void()
             } else if (needsCopy(field.fieldType)) {
@@ -1708,12 +1708,12 @@ trait CHIRParser
         val ValueSig(sig) = valueVar
         val value = state(valueVar)
         e.location match {
-          case localVar: CHIR.LocalVar =>
+          case loc: (CHIR.LocalVar | CHIR.Parameter) =>
             if (sig.isZST) {
               // nothing to do
 
             } else {
-              val mem = state(localVar)
+              val mem = state(loc)
               writeBarrier()
               if (!sig.isVariableSizeType && needsCopy(sig)) {
                 value match {
@@ -1733,15 +1733,15 @@ trait CHIRParser
                     StoreStaticFieldSeq(fields)(DerivedPtr.Global(), value)
                   case mem =>
                     if (sig.isTraceableReference || sig.isPrimitive || sig.isVariableSizeType) {
-                      state(localVar) = value
+                      state(loc) = value
                     } else {
                       shouldNotReachHere(sig.toJETSignature)
                     }
                 }
               }
             }
-          case globalVar: CHIR.GlobalVar =>
-            val staticField = staticFieldRef(globalVar)
+          case loc: CHIR.GlobalVar =>
+            val staticField = staticFieldRef(loc)
             if (sig.isZST) {
               // nothing to do
 
