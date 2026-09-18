@@ -635,6 +635,32 @@ compiler/FFI/CFFI/type_cast/type_cast_5.cj
 compiler/FFI/CFFI/type_cast/type_cast_8.cj
 compiler/FFI/CFFI/type_cast/type_cast_10.cj
 
+# bug 90 (genericTypeInfoParam called in method with no genericFuncParams)
+compiler/CHIR/CHIR2HLIR/extend/extend_instantiate_01.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_extend04.cj
+compiler/CHIR/UG/VTable/generic/static/interface_enum01.cj
+compiler/Sema/class/static_init/static_init_01.cj
+compiler/Sema/class/static_init/static_init_01_O2.cj
+compiler/Sema/enum/enum17_generic_enum_memberFunc.cj
+compiler/Sema/enum/enum18_generic_staticFunc.cj
+compiler/Sema/enum/enum19_generic_staticFunc_newTypeParam.cj
+compiler/Sema/enum/enum23_test/enum23_test.cj
+compiler/Sema/enum/enum33_test/main.cj
+compiler/Sema/enum/enum44.cj
+compiler/Sema/enum/enum_circular_syn_01.cj
+compiler/Sema/Extend/default_implement/default_implement_01/main.cj
+compiler/Sema/Extend/default_implement/default_implement_16.cj
+compiler/Sema/Extend/default_implement/multi_default_impl_07.cj
+compiler/Sema/Extend/extend_instantiate3.cj
+compiler/Sema/Extend/extend_interface_static1.cj
+compiler/Sema/Extend/extend_interface_static2.cj
+compiler/Sema/function/overrode_by_diff_inst02.cj
+compiler/Sema/generics/generic_member05/main.cj
+compiler/Sema/generics/generic_member06/main.cj
+compiler/Sema/generics/generic_static_field_prop/generic_static_prop06.cj
+compiler/Sema/record/static_init/static_init_01.cj
+compiler/Sema/type_infer/infer_member_access_with_enum_ctor_succ.cj
+
 # uses --debug-annotations
 compiler/CHIR/ComputeAnnotations
 
