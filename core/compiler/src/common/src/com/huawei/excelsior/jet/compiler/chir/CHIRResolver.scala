@@ -363,14 +363,14 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   private val enumKindByEnumDef = mutable.HashMap.empty[CHIR.EnumDef, EnumKind]
   def enumKind(enumDef: CHIR.EnumDef): EnumKind = enumKindByEnumDef.getOrElseUpdate(enumDef, {
     val ctorSigs = enumDef.ctors.map(_.tpe)
-    val ctors = ctorSigs.map(_.paramTypes)
-    val noParams = ctors.forall(_.isEmpty)
+    val ctorParams = ctorSigs.map(_.paramTypes)
+    val noParams = ctorParams.forall(_.isEmpty)
 
-    def zstParams = ctors.forall(_.forall(isZST))
+    def zstParams = ctorParams.forall(_.forall(isZST))
 
-    def hasRefParams = ctors.exists(_.exists(t => isReferenceType(t) || isTraceableStruct(t)))
+    def hasRefParams = ctorParams.exists(_.exists(t => isReferenceType(t) || isTraceableStruct(t)))
 
-    lazy val optionLikeParam = ScalaCollections.singleton(ctors.flatten)
+    lazy val optionLikeParam = ScalaCollections.singleton(ctorParams.flatten)
 
     def nonGenericEnum = enumDef.tpe.genericTypeParams.isEmpty
 
@@ -383,13 +383,13 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       }
 
     } else { // exhaustive
-      if (ctors.size == 1 && zstParams) {
+      if (ctorParams.size == 1 && zstParams) {
         EnumKind.ZeroSized
 
       } else if (noParams) {
         EnumKind.PrimitiveBased
 
-      } else if (ctors.size == 2 && optionLikeParam.nonEmpty) {
+      } else if (ctorParams.size == 2 && optionLikeParam.nonEmpty) {
         EnumKind.OptionLike(optionLikeParam.get)
 
       } else if (!hasRefParams && nonGenericEnum) {

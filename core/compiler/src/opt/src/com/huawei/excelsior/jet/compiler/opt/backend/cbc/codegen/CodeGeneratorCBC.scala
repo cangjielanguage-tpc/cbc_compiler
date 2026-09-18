@@ -253,7 +253,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               assert(cast.isFP != arg.isFP)
               asm.mov(to, from, reference = cast.tpe.isTraceableRefType.ensuring(!_))
 
-            case _ => shouldNotReachHere(s"source or dest resource wasn't matched to any reg: (${cast.resource}, ${arg.resource})")
+            case _ => shouldNotReachHere(s"source or dest resource wasn't matched to any reg: ($cast, ${cast.resource}, ${arg.resource})")
           }
 
         case ValueConvert(fromType, toType, arg) =>
@@ -261,7 +261,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case (Reg(to), Reg(from)) =>
               asm.convert(toType, fromType, to, from)
 
-            case _ => shouldNotReachHere(s"source or dest resource wasn't matched to any reg: (${cast.resource}, ${cast.arg.resource})")
+            case _ => shouldNotReachHere(s"source or dest resource wasn't matched to any reg: ($cast, ${cast.resource}, ${cast.arg.resource})")
           }
       }
     }

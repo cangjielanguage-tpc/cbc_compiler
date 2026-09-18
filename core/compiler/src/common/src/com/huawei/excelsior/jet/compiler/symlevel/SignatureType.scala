@@ -265,6 +265,7 @@ sealed abstract class SignatureType extends Signature {
 
   final def isZST: Boolean = this match {
     case Void | Unit | Nothing | _: ZeroSizedEnum => true
+    case x: Tuple => x.params.forall(_.isZST)
     case _ => false
   }
 

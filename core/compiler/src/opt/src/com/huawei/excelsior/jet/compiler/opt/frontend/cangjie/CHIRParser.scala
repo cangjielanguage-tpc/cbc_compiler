@@ -955,7 +955,14 @@ trait CHIRParser
         val chirPath = e.path
 
         host match {
-          case _: SignatureType.ZeroSizedEnum | _: SignatureType.PrimitiveBasedEnum => shouldNotReachHere(host)
+          case _: SignatureType.PrimitiveBasedEnum => shouldNotReachHere(host)
+
+          case _: SignatureType.ZeroSizedEnum =>
+            val res = chirPath match {
+              case Seq(0) => IConst(0) // UInt32 type
+            }
+            state(e) = res
+
           case host: SignatureType.OptionLikeEnum if host.isNullableOption =>
             val res = chirPath match {
               case Seq(0) =>
@@ -998,7 +1005,9 @@ trait CHIRParser
             val fields = fieldChain(host, chirPath)
 
             val lastField = fields.last
-            val n = if (lastField.fieldType.isZST) {
+            val n = if (lastField.fieldType.isZST ||
+              // TODO consider moving the predicate under SignatureType.isZST?  
+              asClassType(lastField.fieldType.symType).getDeclaredFields.forall(_.getType.isZST)) {
               // do nothing
               Void()
 
@@ -1300,6 +1309,9 @@ trait CHIRParser
 
           case (from: UnionBasedEnum, to: Tuple) =>
             ReinterpretCast(fromTpe, toTpe)(value)
+
+          case (from: ZeroSizedEnum, to: Tuple) =>
+            self.Void()
 
           case (from: ZeroSizedEnum, UInt32) =>
             IConst(0)
@@ -1826,7 +1838,7 @@ trait CHIRParser
             import SignatureType.*
             (resolver.typeSig(resTpe): @unchecked) match {
               case _: ZeroSizedEnum =>
-              // nothing to do
+                state(e) = self.Void()
 
               case _: PrimitiveBasedEnum =>
                 state(e) = e.elementValues.map(state.apply) match {
