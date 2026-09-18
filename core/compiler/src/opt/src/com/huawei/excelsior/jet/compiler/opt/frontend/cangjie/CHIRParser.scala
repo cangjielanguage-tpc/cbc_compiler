@@ -1932,7 +1932,9 @@ trait CHIRParser
       case e: (CHIR.UnboxToValue | CHIR.CastToConcrete) =>
         val base = state(e.value)
         val baseType = resolver.typeSig(e.targetTpe)
-        val value = if (baseType.isRecord) {
+        val value = if (baseType.isZST) {
+          Void()
+        } else if (baseType.isRecord) {
           baseType match {
             case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
               base
@@ -2183,14 +2185,14 @@ trait CHIRParser
             // TODO: prepareSRet
             val memType = ReferenceType.cangjieStdCoreObject.sigType
             val obj = LoadMemory(memType.toAsm, memType, atomic = false)(abiRetVal)
-            if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && (retType.isTraceableReference || retType.isTypeVariable)) {
+            if (retType.isZST) {
+              Void()
+            } else if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && (retType.isTraceableReference || retType.isTypeVariable)) {
               obj
+            } else if (retType.isRecord) {
+              UnboxRec(retType)(loadTypeInfo(retType), obj)
             } else {
-              if (retType.isRecord) {
-                UnboxRec(retType)(loadTypeInfo(retType), obj)
-              } else {
-                Unbox(retType)(loadTypeInfo(retType), obj)
-              }
+              Unbox(retType)(loadTypeInfo(retType), obj)
             }
 
           case _ =>
