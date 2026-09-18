@@ -273,39 +273,6 @@ compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
 compiler/CodegenCommon/atexit/atexit_09_Exception.cj
 compiler/CodegenCommon/atexit/atexit_12_MultipleExceptions.cj
 
-# bug 40 (Static interface call in not actually direct in case it is implemented in subinterface)
-compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_40.cj
-compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_41.cj
-compiler/CHIR/Class/testClass07.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic01.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic06.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic07.cj
-compiler/Sema/interface/interface_default_impl/prop_call_unimpl_static_func.cj
-compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_005.cj
-compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
-compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
-compiler/Sema/class/class_static_member_func_inheritance_2.cj
-compiler/Sema/class/interface_no_override_modifier_2.cj
-compiler/Sema/class/interface_static_member_func_inheritance_1.cj
-compiler/CHIR/CHIR2HLIR/typeAlias/typealias_use_20.cj
-compiler/CHIR/UG/VTable/generic/static/interface_extend01.cj
-compiler/CodegenCJNative/LegacyTests/class_static.cj
-compiler/CodegenCJNative/record/implement_interfaces/record_interface_box.cj
-compiler/Sema/Extend/default_implement/default_implement_00/main.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_01.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_03.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_04.cj
-compiler/Sema/class/class_inheritance_5.cj
-compiler/Sema/class/class_redef_1.cj
-compiler/Sema/class/class_static_member_func_inheritance_1.cj
-compiler/Sema/class/interface_access_control/toplevel_interface_access_control1/main.cj
-compiler/Sema/class/interface_member_variable_check_04.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic02.cj
-compiler/CHIR/InvokeStatic/invokeStaticRtti.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_02.cj
-compiler/Sema/interface/interface_default_impl/static_defaule_impl_class.cj
-compiler/Sema/interface/interface_default_impl/static_func_call_unimpl_prop.cj
-
 # bug 67 (C-struct getRetByValArgIdx crash)
 compiler/FFI/CFFI/record/small_0.cj
 compiler/FFI/CFFI/record/small_1.cj
@@ -361,32 +328,6 @@ compiler/CHIR/CHIR2HLIR/overflow_typecast/uint32/uinttouint32.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint64/inttouint64.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/inttouint8.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/uinttouint8.cj
-
-# bug 81 (CHIR.GetRTTI could have explicit parameter (not always ReceiverParam))
-compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
-
-# bug 82 (CHIR.GetRTTIStatic could have explicit parameter)
-compiler/CHIR/InvokeStatic/ongeneric.cj
-compiler/CHIR/UG/VTable/staticMethod/staticMethod01.cj
-compiler/Sema/call/call_generic_upper_04.cj
-compiler/Sema/call/call_generic_upper_02.cj
-compiler/Sema/const_evaluation/ok_interface.cj
-compiler/Sema/generics/generic_upperbound_reference_09.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_6.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_8.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_class_2.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_2.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_7.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic09.cj
-compiler/Sema/typealias/import_alias/typeaslias.cj
-compiler/CHIR/StaticAbstractMark/import3/main.cj
-compiler/CHIR/StaticAbstractMark/import5/main.cj
-compiler/CHIR/StaticAbstractMark/main.cj
-compiler/CHIR/UG/StaticFunc/funcAsVar01.cj
-compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
-compiler/CodegenCJNative/vfe/vfe_01.cj
-compiler/Sema/function/interface_def_val.cj
-compiler/Sema/generics/generic_static_field_prop/generic_static_nested_func.cj
 
 # bug 84 (ZeroSizedEnum in match expression)
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
@@ -614,22 +555,6 @@ compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.
 # bug 134 (Incorrect TypeInfo creation of Boxes)
 compiler/CodegenCommon/enum/enum_fix_02.cj
 
-# bug 103 (static interface call with generic upper bound)
-compiler/Sema/Extend/interface_default_implement/static_default_impl_call_non_impl_pass.cj
-compiler/Sema/function/defaultParameter6.cj
-compiler/Sema/generics/generic_member10/main.cj
-compiler/Sema/generics/in_package_inst_1.cj
-compiler/Sema/generics/instantiation_rearrange_01/test.cj
-compiler/Sema/generics/rearrange_multi_impl/main.cj
-compiler/Sema/interface/abstract_static_generic_function_01.cj
-compiler/Sema/interface/abstract_static_generic_function_02.cj
-compiler/CodegenCJNative/generic/generic_class_static_var.cj
-compiler/CodegenCJNative/generic/generic_interface_static.cj
-compiler/Sema/Extend/default_implement/default_implement_05.cj
-compiler/Sema/call/call13.cj
-compiler/Sema/concurrency/spawn10.cj
-compiler/Sema/typealias/typealias_partial_infer_03.cj
-
 # bug 104 (properly support generic struct copy)
 compiler/CodegenCJNative/generic/generic_function1.cj
 compiler/CodegenCJNative/interface/GenericRecordExtendInterfaceGenericConstraint.cj
@@ -710,10 +635,6 @@ compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass02.cj
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
 compiler/Sema/class/class_no_override_modifier_6.cj
 compiler/Sema/Extend/default_implement/default_implement_04.cj
-
-# bug 121 (matching on property function fails with assertion failure)
-compiler/CodegenCommon/licm/licm_00.cj
-compiler/Sema/generics/instantiation/O2_part_gi/disable_instance_in_open.cj
 
 # bug 122 (fail to resolve method)
 compiler/CHIR/UG/VTable/generic/static/class_class02.cj
