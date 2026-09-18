@@ -502,12 +502,6 @@ compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
 compiler/CHIR/CHIR2HLIR/typeCast/float2intExceed.cj
 compiler/CHIR/CHIR2HLIR/exception/try86.cj
 
-# bug 73 (ParameterImpl not matched as StateValue)
-compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_38.cj
-compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_39.cj
-compiler/Sema/class/class_no_member_func_use_before_init1.cj
-compiler/Sema/property/inc_dec.cj
-
 # bug 80 (Precise line numbers in stack traces)
 compiler/CHIR/CHIR2HLIR/exception/try61.cj
 compiler/CHIR/CHIR2HLIR/exception/try67.cj
