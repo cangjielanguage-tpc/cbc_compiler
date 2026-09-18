@@ -1134,11 +1134,7 @@ trait CHIRParser
         }
 
         val name = resolver.symName(methodArgVal)
-        val funcType = methodArgVal match {
-          case func: CHIR.Func => func.tpe
-          case sig: CHIR.FuncSig => sig.tpe
-        }
-        val (gsig, _, _, _) = resolver.functionSig(funcType, hasReceiver = !isStatic)
+        val (gsig, _, _, _) = resolver.functionSig(methodArgVal.tpe, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
           if (g.isTypeVariable && !i.isTypeVariable && !i.isInstanceOf[SignatureType.Box]) SignatureType.Box(i) else i
