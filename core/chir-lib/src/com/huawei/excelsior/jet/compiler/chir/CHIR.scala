@@ -4,11 +4,11 @@ import com.huawei.excelsior.common.CodeHelpers.*
 
 object CHIR {
 
-  val defaultVersion = 100
+  val defaultVersion = 13002
   val releaseBeta120Rc3Version = 1203
 
   def newPackage(source: String, version: Int): Package = version match {
-    case CHIR.defaultVersion => new v100.PackageImpl(source)
+    case CHIR.defaultVersion => new v13002.PackageImpl(source)
     case CHIR.releaseBeta120Rc3Version => new v1203.PackageImpl(source)
     case _ => notImplemented("unsupported CHIR version", version)
   }
