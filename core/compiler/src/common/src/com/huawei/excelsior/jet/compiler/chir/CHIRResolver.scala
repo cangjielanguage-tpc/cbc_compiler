@@ -47,7 +47,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     res
   }
 
-  def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.Func | CHIR.GlobalVar | CHIR.FuncSig): String = {
+  def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.GlobalVar | CHIR.FuncSig): String = {
     def typeDefName(v: CHIR.CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
       if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
@@ -208,7 +208,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   @tailrec
-  private def withGenericParams[T](v: CHIR.CustomTypeDef | CHIR.Type | CHIR.Func | CHIR.FuncSig | CHIR.VMethod)(action: Seq[CHIR.Type] => T): T = (v: @unchecked) match {
+  private def withGenericParams[T](v: CHIR.CustomTypeDef | CHIR.Type | CHIR.FuncSig | CHIR.VMethod)(action: Seq[CHIR.Type] => T): T = (v: @unchecked) match {
     case v: CHIR.ExtendDef => action(v.genericTypeParams)
     case v: CHIR.CustomTypeDef => action(v.tpe.asInstanceOf[CHIR.CustomType].genericTypeParams)
     case v: CHIR.CustomType => withGenericParams(v.typeDef)(action)
