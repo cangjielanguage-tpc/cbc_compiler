@@ -1046,6 +1046,11 @@ trait CHIRParser
 
         val thisType = e.thisType.map(resolver.typeSig)
 
+        val declClass = func.declaringDef
+          .flatMap(resolver.symType)
+          .map(asClassType)
+          .getOrElse(resolver.findClass(func.packageName).get)
+
         def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
           val cparams = refType match {
             case refType: SignatureType.InstantiatedType => refType.instantiatedTypeParameters
@@ -1058,14 +1063,21 @@ trait CHIRParser
             refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
         }
 
-        val declClass = func.declaringDef
-          .flatMap(resolver.symType)
-          .map(asClassType)
-          .getOrElse(resolver.findClass(func.packageName).get)
+        def refineByCHIRData(refType: SignatureType, chirThisType: Option[CHIR.Value]): SignatureType = chirThisType match {
+          case Some(ValueSig(sig)) => sig match {
+            case itype: SignatureType.InstantiatedType 
+              if asClassType(itype) == declClass && refType.containsTypeVariables => 
+              refType.instantiate(itype.instantiatedTypeParameters, Seq.empty)
+            case _ => refType
+          }
+          case _ => refType
+        }
 
-        val thisTypeForRefining = thisType.filter(t => t.isRecord || t.isReference)
-        val declType = Closure(thisTypeForRefining)(refineSuperTypes).find(asClassType(_) == declClass)
+        val thisTypeForRefining = thisType.filter(t => t.isRecord || t.isReference || t.isEnum)
+        var declType = Closure(thisTypeForRefining)(refineSuperTypes).find(asClassType(_) == declClass)
           .getOrElse(SignatureType.fromSymType(declClass))
+
+        declType = refineByCHIRData(declType, e.args.headOption)
 
         val name = resolver.symName(func)
         val _target = calcMethodRef(declClass, declType, name, func)
