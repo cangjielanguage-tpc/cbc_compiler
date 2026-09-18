@@ -429,6 +429,10 @@ compiler/Sema/generics/instantiation_rearrange_02/test.cj
 compiler/Sema/PatternMatching/EnumPattern/usertype_03.cj
 compiler/Sema/PatternMatching/EnumPattern/usertype_05.cj
 
+# bug 59 (Cannot compile code with zeroValue<T> in generic context)
+compiler/CodegenCJNative/trycatch/zerovalue.cj
+compiler/CodegenCommon/zeroValue/zeroValue_01.cj
+
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
 
