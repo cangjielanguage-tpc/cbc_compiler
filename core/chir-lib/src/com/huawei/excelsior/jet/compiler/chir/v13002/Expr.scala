@@ -88,6 +88,7 @@ final class GetElementRefImpl(g: GetElementRef)(implicit provider: CHIRItemProvi
 
 final class GetRTTIStaticImpl(g: GetRTTIStatic)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetRTTIStatic {
   val e: Expression = g.base
+  def rttiType: CHIR.Type = provider.getType[CHIR.Type](g.rttiType).get
 }
 
 final class InstanceOfImpl(i: InstanceOf)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.InstanceOf {
