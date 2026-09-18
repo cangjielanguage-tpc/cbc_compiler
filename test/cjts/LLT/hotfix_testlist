@@ -20,15 +20,9 @@ compiler/Sema
 # Float16
 compiler/CodegenCJNative/LegacyTests/typesFp16.cj
 
-# not implemented: Saturating arithmetic
-compiler/CHIR/CHIR2HLIR/overflow
-compiler/CodegenCHIR/overflow
-compiler/CodegenCommon/overflow/case_3.cj
-compiler/CodegenCommon/overflow/case_4.cj
-compiler/CodegenCommon/overflow/case_6.cj
-compiler/CodegenCommon/overflow/case_7.cj
-compiler/CodegenCommon/overflow/case_8.cj
-compiler/CodegenCommon/overflow/overflow_02.cj
+# not implemented: saturating type cast to non-integral types (integer2char);
+# saturating arithmetic ops and integral saturating casts are implemented,
+# the whole overflow/overflow_typecast blocks are enabled again (kanban #35)
 compiler/CodegenCommon/typecast/integer2char_invalid_int16.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_int32.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_int64.cj
@@ -53,25 +47,10 @@ compiler/CHIR/CHIR2HLIR/HLIR2LLVM/importStdNoFrom/src/a.cj
 compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
 compiler/CHIR/NoSideEffectMark/noSideEffect01.cj
 
-# not implemented: saturating type cast
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int16/inttoint16.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int16/uinttoint16.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int32/inttoint32.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int32/uinttoint32.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int64/inttoint64.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int64/uinttoint64.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int8/inttoint8.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int8/uinttoint8.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/test_uint16_2_int32_saturating_1.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/test_uint16_2_int32_saturating_2.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint16/inttouint16.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint16/uinttouint16.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint32/inttouint32.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint32/uinttouint32.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint64/inttouint64.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint64/uinttouint64.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/inttouint8.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/uinttouint8.cj
+# not implemented: saturating float-to-int type cast (integral saturating
+# casts are implemented and their tests are enabled again); float2uintExceed
+# and FPToSI entries may actually belong to bug 79 (throwing float2int), kept
+# here until verified
 compiler/CHIR/CHIR2HLIR/typeCast/float2uintExceed.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642Int8_2.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_01.cj
