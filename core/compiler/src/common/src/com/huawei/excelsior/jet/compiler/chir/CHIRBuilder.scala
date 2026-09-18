@@ -343,6 +343,14 @@ object CHIRBuilder {
     // Fill symlevel type vtable
     // -----------------------------------------------
 
+    // Static methods have no receiver parameter from which to recover their owner.
+    // Their vtable entries retain the original declaring type after specialization.
+    val staticAbstractOwners = pkg.typeDefs.flatMap(_.vtables).flatMap(_.vMethods)
+      .filter(m => m.instance.declaringDef.isEmpty &&
+        m.instance.attributes.contains(CHIR.Attribute.Abstract) &&
+        m.instance.attributes.contains(CHIR.Attribute.Static))
+      .map(m => m.instance -> m.parentType).toMap
+
     def restoreGlobalAbstractFunc(m: CHIR.Func, symType: SymClassType): Method = {
       val name = resolver.symName(m)
       val modifiers = resolver.symModifiers(m)
@@ -387,6 +395,11 @@ object CHIRBuilder {
                 Seq.empty
               } else {
                 val symImpl = if (resolver.isGlobalAbstractFunc(impl)) {
+                  val t = if (impl.attributes.contains(CHIR.Attribute.Static)) {
+                    staticAbstractOwners.getOrElse(impl, symType)
+                  } else {
+                    symType
+                  }
                   restoreGlobalAbstractFunc(impl, symType)
                 } else {
                   virtMethods(impl)

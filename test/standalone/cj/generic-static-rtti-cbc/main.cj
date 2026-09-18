@@ -1,0 +1,76 @@
+// Regression test for GetRTTIStatic on a class generic parameter.
+
+interface Factory<M> {
+  static func create(): M
+}
+
+var creations: Int64 = 0
+
+class Product <: Factory<Product> {
+  Product(public let id: Int64) {}
+
+  public static func create(): Product {
+    creations += 1
+    Product(11)
+  }
+}
+
+class OtherProduct <: Factory<OtherProduct> {
+  OtherProduct(public let id: Int64) {}
+
+  public static func create(): OtherProduct {
+    creations += 1
+    OtherProduct(22)
+  }
+}
+
+class GenericProduct<T> <: Factory<GenericProduct<T>> {
+  public let value: ?T
+
+  GenericProduct() { value = None }
+
+  public static func create(): GenericProduct<T> {
+    creations += 1
+    GenericProduct<T>()
+  }
+}
+
+class Holder<M> where M <: Factory<M> {
+  public Holder(public var value: ?M) {}
+
+  public func getOrCreate(): M {
+    if (let Some(value) <- value) {
+      value
+    } else {
+      M.create()
+    }
+  }
+}
+
+main(): Int64 {
+  var holder = Holder<Product>(None)
+  let product = holder.getOrCreate()
+  println(product.id)
+  println(creations)
+  if (product.id != 11 || creations != 1) { return 1 }
+
+  var cached = Holder<Product>(Some(Product(33)))
+  let cachedProduct = cached.getOrCreate()
+  println(cachedProduct.id)
+  println(creations)
+  if (cachedProduct.id != 33 || creations != 1) { return 2 }
+
+  var other = Holder<OtherProduct>(None)
+  let otherProduct = other.getOrCreate()
+  println(otherProduct.id)
+  println(creations)
+  if (otherProduct.id != 22 || creations != 2) { return 3 }
+
+  // The implementation needs GenericProduct<Int64>'s outer TI, not Factory's TI.
+  var generic = Holder<GenericProduct<Int64>>(None)
+  let genericProduct = generic.getOrCreate()
+  println(genericProduct.value.isSome())
+  println(creations)
+  if (genericProduct.value.isSome() || creations != 3) { return 4 }
+  0
+}
