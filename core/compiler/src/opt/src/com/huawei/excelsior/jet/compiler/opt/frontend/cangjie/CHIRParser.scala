@@ -1613,8 +1613,13 @@ trait CHIRParser
         // TODO: support debug
 
       case e: CHIR.GetRTTIStatic =>
-        assert(rootMethod.hasThisTypeInfoParameter)
-        state(e) = rootMethodParam(rootMethod.getThisTypeInfoArgIdx)
+        resolver.typeSig(e.rttiType) match {
+          case SignatureType.ThisTypeInfo =>
+            assert(rootMethod.hasThisTypeInfoParameter)
+            state(e) = rootMethodParam(rootMethod.getThisTypeInfoArgIdx)
+          case t =>
+            state(e) = loadTypeInfo(t)
+        }
 
       case e: CHIR.Constant =>
         def intConst(v: Long, l: CHIR.Literal): Node = {
