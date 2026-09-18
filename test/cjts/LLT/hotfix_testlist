@@ -538,7 +538,6 @@ compiler/CodegenCJNative/enum/06_EXHAUSTIVE_RECURSIVE/main_08.cj
 compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
 
 # bug 82 (CHIR.GetRTTIStatic could have explicit parameter)
-compiler/CHIR/InvokeStatic/ongeneric.cj
 compiler/CHIR/UG/VTable/staticMethod/staticMethod01.cj
 compiler/Sema/call/call_generic_upper_04.cj
 compiler/Sema/call/call_generic_upper_02.cj
