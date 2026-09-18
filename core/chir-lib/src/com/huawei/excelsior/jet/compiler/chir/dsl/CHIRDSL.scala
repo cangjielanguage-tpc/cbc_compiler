@@ -60,8 +60,12 @@ object CHIRDSL {
 
     def getException: CHIR.Expression = CHIR.GetException
 
-    def apply(callee: CHIR.Func, thisType: Option[CHIR.Type], args: CHIR.Value*): CHIR.Apply = {
-      Apply(callee, thisType, args)
+    def apply(callee: CHIR.Func, thisType: Option[CHIR.Type], thisArgOpt: Option[CHIR.Value], args: CHIR.Value*): CHIR.Apply = {
+      Apply(callee, thisType, thisArgOpt, args)
+    }
+
+    def applyStatic(callee: CHIR.Func, args: CHIR.Value*): CHIR.Apply = {
+      apply(callee, thisType = None, thisArgOpt = None, args*)
     }
 
     def intrinsic(kind: CHIR.Intrinsic.Kind, args: CHIR.Value*): CHIR.Intrinsic = {
@@ -92,7 +96,7 @@ object CHIRDSL {
       Allocate(allocatedType)
     }
 
-    def invoke(callee: CHIR.Func, thisType: CHIR.Type, thisArg: CHIR.Value, allArgs: CHIR.Value*): CHIR.Invoke = {
+    def invoke(callee: CHIR.Func, thisType: CHIR.Type, thisArg: Option[CHIR.Value], allArgs: CHIR.Value*): CHIR.Invoke = {
       Invoke(callee, thisType, thisArg, allArgs)
     }
 
@@ -108,8 +112,12 @@ object CHIRDSL {
       RaiseException(exceptionValue, exceptionBlock)
     }
 
-    def tryApply(callee: CHIR.Func, thisType: Option[CHIR.Type], args: CHIR.Value*)(succBlock: CHIR.Block, errBlock: CHIR.Block): CHIR.TryApply = {
-      TryApply(callee, thisType, args)(succBlock, errBlock)
+    def tryApply(callee: CHIR.Func, thisType: Option[CHIR.Type], thisArgOpt: Option[CHIR.Value], args: CHIR.Value*)(succBlock: CHIR.Block, errBlock: CHIR.Block): CHIR.TryApply = {
+      TryApply(callee, thisType, thisArgOpt, args)(succBlock, errBlock)
+    }
+
+    def tryApplyStatic(callee: CHIR.Func, args: CHIR.Value*)(succBlock: CHIR.Block, errBlock: CHIR.Block): CHIR.TryApply = {
+      tryApply(callee, thisType = None, thisArgOpt = None, args*)(succBlock, errBlock)
     }
   }
 }

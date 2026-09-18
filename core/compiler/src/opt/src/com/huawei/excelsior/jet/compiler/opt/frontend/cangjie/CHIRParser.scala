@@ -1043,26 +1043,28 @@ trait CHIRParser
 
         val thisType = e.thisType.map(resolver.typeSig)
 
-        def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
-          val cparams = refType match {
-            case refType: SignatureType.InstantiatedType => refType.instantiatedTypeParameters
-            case _ => Seq.empty
-          }
-          val lparams = Seq.empty
-
-          val refClass = asClassType(refType)
-          Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
-            refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
-        }
-
         val declClass = func.declaringDef
           .flatMap(resolver.symType)
           .map(asClassType)
           .getOrElse(resolver.findClass(func.packageName).get)
 
-        val thisTypeForRefining = thisType.filter(t => t.isRecord || t.isReference)
-        val declType = Closure(thisTypeForRefining)(refineSuperTypes).find(asClassType(_) == declClass)
-          .getOrElse(SignatureType.fromSymType(declClass))
+        val declType = thisType.filter(t => t.isRecord || t.isReference) match {
+          case Some(_) if declClass.isCangjieExtend =>
+            SignatureType.fromSymType(declClass)
+          case Some(t) =>
+            if (func.attributes.contains(Attribute.Static)) {
+              t
+            } else {
+              val argType = resolver.typeSig(e.thisArg match {
+                case arg: CHIR.LocalVar => arg.tpe
+                case arg: CHIR.GlobalVar => arg.tpe
+                case arg: CHIR.Parameter => arg.tpe
+              })
+              assert(asClassType(argType) == declClass, s"$argType != $declClass")
+              argType
+            }
+          case _ => SignatureType.fromSymType(declClass)
+        }
 
         val name = resolver.symName(func)
         val _target = calcMethodRef(declClass, declType, name, func)

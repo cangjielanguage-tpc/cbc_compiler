@@ -367,6 +367,7 @@ object CHIR {
   trait Apply extends Expression with HasResultVar {
     def callee: Func
     def thisType: Option[Type]
+    def thisArg: Value
     def instantiatedTypeArgs: Seq[Type]
     def args: Seq[Value]
   }
