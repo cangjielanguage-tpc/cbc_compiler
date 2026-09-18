@@ -747,9 +747,25 @@ compiler/CodegenCJNative/compitability/non_op_cls_add_mem_at_end
 # ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
 compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
 
-# ignore due to "can not find package stdx.encoding.json"
+# ignore due to "can not find package XXX"
 compiler/CHIR/CHIR2HLIR/package/I4D1CM/test_serializers.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix20.cj
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix17.cj
+compiler/CodegenCHIR/tryCatch/without_finally_00.cj
+compiler/CodegenCommon/tryCatch/without_finally_00.cj
+compiler/Sema/box/box_export/src/main.cj
+compiler/Sema/box/option_box_assign_01.cj
+compiler/Sema/effect/effect_perform_02.cj
+compiler/Sema/effect/effect_perform.cj
+compiler/Sema/effect/effect_test.cj
+compiler/Sema/effect/mistypedTryCatchFinally.cj
+compiler/Sema/effect/mistypedTryCatchHandle.cj
+compiler/Sema/effect/mistypedTryCatchTryHandle.cj
+compiler/Sema/effect/resume_throwing.cj
+compiler/Sema/effect/resume_unit.cj
+compiler/Sema/effect/resume_with.cj
+compiler/Sema/Extend/generic/extend_hashmap_serializat.cj
+compiler/Sema/lookup/bugfix2.cj
 
 # ignore due to demangling discrepancies in stracktraces (main::goo vs default::goo etc.)
 compiler/CodegenCJNative/demangle/decl/c_function_decl1.cj
