@@ -1258,14 +1258,24 @@ trait CHIRParser
             // Saturating casts must clamp to the target range *before* truncation.
             // No clamping is needed when the target range fully contains the
             // source range (widening casts and same-width same-signedness casts).
-            val needsClamp = saturatingCast && !(to.bits > from.bits || (to.bits == from.bits && to.signed == from.signed))
+            // Clamp analysis by source/target signedness:
+            //   signed -> signed,   narrowing: clamp to [to.min, to.max] (both bounds representable in src)
+            //   signed -> unsigned, narrowing: clamp negatives to 0; hi = 2^to.bits - 1 is either
+            //                                  not representable in src (same width) or unreachable
+            //   signed -> unsigned, widening:  hi unreachable; clamp negatives to 0
+            //   unsigned -> signed, same width: clamp hi to to.max (representable); lo unreachable
+            //   unsigned -> signed, narrowing: clamp hi to to.max; lo unreachable
+            //   unsigned -> unsigned, any:     clamp hi to to.max when narrowing; lo unreachable
+            val lowerNeeded = from.signed && (to.bits < from.bits || !to.signed)
+            val upperNeeded = (to.bits < from.bits) || (to.bits == from.bits && !from.signed && to.signed)
+            val needsClamp = saturatingCast && (lowerNeeded || upperNeeded)
             val clamped =
               if (!needsClamp) value
               else {
-                // min/max bounds of `to` expressed in the source type
-                val (lo, hi) =
-                  if (to.signed) (-(1L << (to.bits - 1)), (1L << (to.bits - 1)) - 1)
-                  else (0L, if (to.bits == 64) -1L else (1L << to.bits) - 1) // hi = -1 marks "no upper clamp" (unreachable for u64)
+                // min/max bounds of `to`; the comparisons follow the *source* signedness
+                val lo  = if (to.signed) -(1L << (to.bits - 1)) else 0L
+                val hi  = if (to.signed) (1L << (to.bits - 1)) - 1 else (if (to.bits == 64) -1L else (1L << to.bits) - 1)
+                val (loCond, hiCond) = if (from.signed) (Condition.LT, Condition.GT) else (Condition.ULT, Condition.UGT)
 
                 // Branchless clamp via condition masks:
                 //   c = (v > bound); mask = -c (all ones if over); v' = (v & ~mask) | (bound & mask)
@@ -1279,10 +1289,12 @@ trait CHIRParser
                 }
 
                 var v = value
-                if (hi != -1L || to.signed) {
-                  v = clampSide(v, hi, Condition.GT)
+                if (upperNeeded) {
+                  v = clampSide(v, hi, hiCond)
                 }
-                v = clampSide(v, lo, Condition.LT)
+                if (lowerNeeded) {
+                  v = clampSide(v, lo, loCond)
+                }
                 v
               }
             BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, clamped)
