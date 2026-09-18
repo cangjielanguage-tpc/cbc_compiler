@@ -411,13 +411,6 @@ compiler/CodegenCommon/zeroValue/zeroValue_01.cj
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
 
-# bug 57 (Unexpected value uses of Unbox[Unit])
-compiler/CHIR/CHIR2HLIR/lambda/lambda06.cj
-compiler/CHIR/CHIR2HLIR/lambda/lambda27.cj
-compiler/CodegenCJNative/array/array_asg.cj
-compiler/CodegenCJNative/record/lambda_member.cj
-compiler/Sema/generics/instantiationDeletion/enum_ctor_usage.cj
-
 # bug 69 (CHIR.Func cannot be found in vtables of declaringDef)
 compiler/CHIR/AST2CHIR/forin/benchmark_arraylist.cj
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
