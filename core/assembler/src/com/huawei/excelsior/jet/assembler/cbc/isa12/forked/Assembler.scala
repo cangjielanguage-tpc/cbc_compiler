@@ -377,7 +377,7 @@ trait ForkedAssembler {
 
   def convert(toType: AsmType, fromType: AsmType, to: Rg, from: Rg): Unit = instr {
     if (!fromType.isFloatingPoint) analyzer.usePrim(from.asInstanceOf[IR])
-    if (!toType.isFloatingPoint) analyzer.prim(to.asInstanceOf[IR])
+    if (!toType.isFloatingPoint) analyzer.trans(to.asInstanceOf[IR], from.asInstanceOf[IR])
     stream
       .opc8(Opcode.Cast)
       .bits(_.w4(toType).w4(fromType))
