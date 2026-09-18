@@ -481,11 +481,6 @@ compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_6.cj
 compiler/Sema/forin/forin14.cj
 compiler/Sema/typealias/overload_and_alias1/main.cj
 
-# bug 71 (Unexpected Param[Record] in InstanceOf)
-compiler/CHIR/CHIR2HLIR/array/array_21.cj
-compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
-compiler/CodegenCHIR/tryCatch/rawArray/rawArray_01.cj
-
 # bug 78 (not found function: native_entry)
 compiler/CodegenCJNative/LegacyTests/native.cj
 compiler/FFI/CFFI/record/small_15.cj

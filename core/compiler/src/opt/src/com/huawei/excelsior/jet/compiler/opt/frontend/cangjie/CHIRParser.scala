@@ -1185,11 +1185,25 @@ trait CHIRParser
       case e: CHIR.InstanceOf =>
         val tpe = resolver.typeSig(e.testType)
         val obj = state(e.obj)
-        val refTpe = if (tpe.isTraceableReference) tpe else SignatureType.Box(tpe)
-        state(e) = if (tpe.containsTypeVariables) {
-          InstanceOfGeneric(refTpe)(obj, loadTypeInfo(tpe))
+        val (refTpe, refObj) = if (tpe.isTraceableReference) {
+          (tpe, obj)
         } else {
-          InstanceOf(refTpe)(obj)
+          val ValueSig(objTpe) = e.obj
+          val ref = objTpe match {
+            case objTpe: SignatureType.OptionLikeEnum if objTpe.isTypeVariable => obj
+            case objTpe =>
+              if (objTpe.isTypeVariable || objTpe.isTraceableReference && !objTpe.isInstanceOf[SignatureType.OptionLikeEnum]) {
+                obj
+              } else {
+                Box(objTpe)(loadTypeInfo(objTpe), obj)
+              }
+          }
+          (SignatureType.Box(tpe), ref)
+        }
+        state(e) = if (tpe.containsTypeVariables) {
+          InstanceOfGeneric(refTpe)(refObj, loadTypeInfo(tpe))
+        } else {
+          InstanceOf(refTpe)(refObj)
         }
 
       case e: (CHIR.NumericCast | CHIR.StaticCast) =>
