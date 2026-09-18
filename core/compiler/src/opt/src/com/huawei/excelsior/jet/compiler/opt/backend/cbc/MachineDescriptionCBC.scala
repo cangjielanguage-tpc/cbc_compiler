@@ -246,8 +246,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | DepriveOperation | EnrichOperation | EnrichCBC | ExtractEnrichment | FieldChainWrite | Neg | MutFunc.Combine
       | CopyStructure | CopyStructureCBC | Throw | InterfaceCastCBC | CatchCBC | EndLocalUnmovable | DebugBreakpoint
       | LoadMemory | StoreMemory | InitStringRecord | ThisTypeInfoCBC | ThisTypeInfoByCBC
-      | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq | GetFieldSeqRef | GetStaticFieldSeqRef
-      | LoadFieldSeqGeneric | StoreFieldSeqGeneric | GetFieldSeqRefGeneric
+      | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq | GetFieldSeqRef | GetStaticFieldSeqRef | GetFieldSeqRefGeneric
       | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | UnboxLea
       | SpawnFuture | SpawnClosure
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
@@ -263,7 +262,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case _: (NewArrayFill | ArrayStoreCheck | ArrayFill
       | CheckCast | BitcodeDeferred.CheckCast
       | CoverageCounter | Call | ZeroRefs
-      | UniversalGeneric
+      | UniversalGeneric | LoadFieldSeqGeneric | StoreFieldSeqGeneric
       | CFuncWrapperAddr | FieldAddr | InitObj | StackZeroing) => false
   }
 
