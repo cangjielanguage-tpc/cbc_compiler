@@ -1088,6 +1088,11 @@ trait CHIRParser
             }
           case _ => false
         }
+        val isGenericStatic = e.thisArg match {
+          case x: CHIR.LocalVar if e.thisType.isInstanceOf[CHIR.GenericType] =>
+            x.associatedExpr.isInstanceOf[CHIR.GetRTTIStatic]
+          case _ => false
+        }
 
         val (thisTypeArgVal, sourceArgVals) = if (isStatic) {
           (argVals.headOption, argVals.tail)
@@ -1105,6 +1110,12 @@ trait CHIRParser
               // FIXME: erasure
               fromSymType(c)
             }
+          case t: SignatureType.TypeVariable if isGenericStatic =>
+            // GetRTTIStatic is represented by Unit in CHIR.  For a static
+            // call on a type parameter, the actual receiver type is instead
+            // carried by the type info argument and dispatch must start from
+            // one of the parameter's upper bounds.
+            t
           case _: SignatureType.TypeVariable =>
             val v = if (isStatic) thisTypeArgVal.get else sourceArgVals.head
             val ValueSig(sig) = v
@@ -1129,27 +1140,37 @@ trait CHIRParser
 
         val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
 
-        val vtable = asClassType(thisType).getCHIRVTable
-        assert(vtable != null, thisType)
+        val vtableTypes = if (isGenericStatic) {
+          e.thisType.asInstanceOf[CHIR.GenericType].upperBounds.map(resolver.typeSig)
+        } else {
+          Seq(thisType)
+        }
 
-        def findSlot(extDef: CHIRVTable.ExtDef): Option[(CHIRVTable.ExtDef, Int)] = {
-          val vnum = extDef.funcTable.indexWhere(m => m.name == name && m.originalSig.instantiate(genericParams(thisType), Seq.empty) == sig)
+        def findSlot(receiverType: SignatureType, extDef: CHIRVTable.ExtDef): Option[(CHIRVTable.ExtDef, Int)] = {
+          val vnum = extDef.funcTable.indexWhere(m => m.name == name && m.originalSig.instantiate(genericParams(receiverType), Seq.empty) == sig)
           Option.when(vnum >= 0)((extDef, vnum))
         }
 
-        val (extDef, vnum) = vtable.extDefs.collectFirst(findSlot.unlift).getOrElse {
-          shouldNotReachHere(s"could not find VTable slot for $name${sig.toJETSignature} in $vtable")
+        val (vtableType, extDef, vnum) = vtableTypes.iterator.flatMap { receiverType =>
+          val vtable = asClassType(receiverType).getCHIRVTable
+          assert(vtable != null, receiverType)
+          vtable.extDefs.collectFirst(Function.unlift((extDef: CHIRVTable.ExtDef) => findSlot(receiverType, extDef))).map {
+            case (extDef, vnum) => (receiverType, extDef, vnum)
+          }
+        }.nextOption.getOrElse {
+          shouldNotReachHere(s"could not find VTable slot for $name${sig.toJETSignature} in $vtableTypes")
         }
         val entry = extDef.funcTable(vnum)
 
-        val refType = extDef.extType.instantiate(genericParams(thisType), Seq.empty)
+        val refType = extDef.extType.instantiate(genericParams(vtableType), Seq.empty)
 
         // TODO: unify logic with calcMethodRef?
         val refClass = asClassType(refType)
         val method = entry.impl.getOrElse(refClass.findDeclaredMethodOrNull(xstr(name), gsig))
 
-        val mak = if (isStatic) {
-          // TODO: static virtual!
+        val mak = if (isGenericStatic) {
+          MAK.STATIC_VIRTUAL
+        } else if (isStatic) {
           MAK.STATIC
         } else {
           MAK.VIRTUAL
