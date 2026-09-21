@@ -18,6 +18,7 @@ class ApplyImpl(e: ApplyBase)(implicit provider: CHIRItemProvider) extends CHIR.
   private val ex = fc.base
   lazy val Seq(callee: CHIR.Func, args: _*) = mapOperands(ex)
   def thisType: Option[CHIR.Type] = provider.getType[CHIR.Type](fc.objType)
+  def thisArg: CHIR.Value = args.head
   def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.base.resultLocalVar).get
