@@ -1056,7 +1056,7 @@ trait CHIRParser
           .map(asClassType)
           .getOrElse(resolver.findClass(func.packageName).get)
 
-        val declType = thisType.filter(t => t.isRecord || t.isReference) match {
+        val declType = thisType.filter(t => t.isRecord || t.isReference || t.isEnum) match {
           case Some(_) if declClass.isCangjieExtend =>
             SignatureType.fromSymType(declClass)
           case Some(t) =>
