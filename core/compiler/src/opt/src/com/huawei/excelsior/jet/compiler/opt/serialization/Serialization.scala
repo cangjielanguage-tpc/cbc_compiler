@@ -329,6 +329,7 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: StoreFieldSeq => StoreFieldSeq.Proto
         case _: StoreFieldSeqGeneric => StoreFieldSeqGeneric.Proto
         case _: StoreStaticFieldSeq => StoreStaticFieldSeq.Proto
+        case _: ZeroValueGeneric => ZeroValueGeneric.Proto
         case _: LoadTypeInfo => LoadTypeInfo.Proto
         case _: LoadTypeInfoGeneric => LoadTypeInfoGeneric.Proto
         case _: GenericTypeArg => GenericTypeArg.Proto
