@@ -868,7 +868,6 @@ private trait ArgStream {
   def label: Label
   def cc: BranchOp
   def asmType: AsmType
-  def asmType2: AsmType
   def tk: BuiltinSignature
   def ldk: LoadAccessKind
   def stk: StoreAccessKind
