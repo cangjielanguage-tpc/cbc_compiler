@@ -926,6 +926,9 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
 
         case NewGeneric.Proto =>
           NewGeneric.proto(read.sigType())
+
+        case ZeroValueGeneric.Proto =>
+          ZeroValueGeneric.proto()
       }
     }
 

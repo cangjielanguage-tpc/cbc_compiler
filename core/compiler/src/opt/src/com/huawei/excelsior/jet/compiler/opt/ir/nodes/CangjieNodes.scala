@@ -389,11 +389,13 @@ trait CangjieNodes { self: Universe =>
   }
 
   object ZeroValueGeneric {
-    class Proto extends FixedArgs[ZeroValueGeneric](AddrType)(TRefType) {
+    case class Proto private[ZeroValueGeneric]() extends FixedArgs[ZeroValueGeneric](AddrType)(TRefType) {
       def newInstance() = new ZeroValueGeneric(this)
     }
 
-    def apply(arg: Node): Node = Prototype.intern(Proto())(arg)
+    def proto() = Prototype.intern(Proto())
+
+    def apply(arg: Node): Node = proto()(arg)
   }
 
   object ZeroValueNode {
