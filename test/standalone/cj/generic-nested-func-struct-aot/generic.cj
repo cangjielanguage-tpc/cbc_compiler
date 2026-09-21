@@ -1,6 +1,4 @@
-struct Pair<T> {
-  Pair(let a: T, let b: T) {}
-}
+import aot.*
 
 func foo<T>(x: T): Pair<T> {
   func test<T>(y: T): T {

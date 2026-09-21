@@ -1190,9 +1190,14 @@ trait CHIRParser
         } else {
           val ValueSig(objTpe) = e.obj
           val ref = objTpe match {
-            case objTpe: SignatureType.OptionLikeEnum if objTpe.isTypeVariable => obj
+            case objTpe: SignatureType.OptionLikeEnum =>
+              if (objTpe.someType.isTypeVariable) {
+                obj
+              } else {
+                Box(objTpe)(loadTypeInfo(objTpe), obj)
+              }
             case objTpe =>
-              if (objTpe.isTypeVariable || objTpe.isTraceableReference && !objTpe.isInstanceOf[SignatureType.OptionLikeEnum]) {
+              if (objTpe.isTypeVariable || objTpe.isTraceableReference) {
                 obj
               } else {
                 Box(objTpe)(loadTypeInfo(objTpe), obj)
@@ -1940,10 +1945,14 @@ trait CHIRParser
         val ValueSig(baseType) = v
         val base = state(v)
         val res = baseType match {
-          case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
-            base
+          case baseType: SignatureType.OptionLikeEnum =>
+            if (baseType.someType.isTypeVariable) {
+              base
+            } else {
+              Box(baseType)(loadTypeInfo(baseType), base)
+            }
           case _ =>
-            if (baseType.isTraceableReference && !baseType.isInstanceOf[SignatureType.OptionLikeEnum]) {
+            if (baseType.isVariableSizeType || baseType.isTraceableReference) {
               base
             } else {
               Box(baseType)(loadTypeInfo(baseType), base)
@@ -2209,7 +2218,7 @@ trait CHIRParser
             val obj = LoadMemory(memType.toAsm, memType, atomic = false)(abiRetVal)
             if (retType.isZST) {
               Void()
-            } else if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && (retType.isTraceableReference || retType.isTypeVariable)) {
+            } else if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && (retType.isTraceableReference || retType.isVariableSizeType)) {
               obj
             } else if (retType.isRecord) {
               UnboxRec(retType)(loadTypeInfo(retType), obj)
@@ -2333,11 +2342,19 @@ trait CHIRParser
     }
 
     private def allocTuple(tupleType: SignatureType.Tuple, args: Seq[Node]): Node = {
-      val mem = StackAlloc.Local(tupleType)
+      val mem = if (tupleType.isVariableSizeType) {
+        NewGeneric(tupleType)(loadTypeInfo(tupleType))
+      } else {
+        StackAlloc.Local(tupleType)
+      }
       for (((arg, i), sig) <- args.zipWithIndex zip tupleType.params) {
         val fieldRef = CangjieFieldReference(i, None, tupleType, sig)
         if (sig.isZST) {
           // Nothing to do
+
+        } else if (tupleType.isVariableSizeType) {
+          // TODO: use Box(tupleType) in fieldRef instead of explicit UnboxLea
+          StoreFieldSeqGeneric(Seq(fieldRef))(mem, UnboxLea(tupleType)(mem), arg, typeInfos(Seq(fieldRef)))
 
         } else if (needsCopy(sig)) {
           val tupleField = GetFieldSeqRef(Seq(fieldRef))(maybeDerivedPtrBase(mem), mem)
