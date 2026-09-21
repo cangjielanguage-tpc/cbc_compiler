@@ -247,7 +247,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genSaturatingOp(op: SaturatingOp): Unit = {
-      def satOp(kind: SaturatingOp.Kind, signed: Boolean): Saturating = (kind, signed) match {
+      val opcode = (op.kind, op.signed) match {
         case (SaturatingOp.Kind.ADD, true)  => Saturating.Add
         case (SaturatingOp.Kind.ADD, false) => Saturating.UAdd
         case (SaturatingOp.Kind.SUB, true)  => Saturating.Sub
@@ -265,7 +265,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case (SaturatingOp.Kind.SHR, false) => Saturating.URsh
       }
 
-      val opcode = satOp(op.kind, op.signed)
       (op, op.l, op.r) match {
         case (IReg(d), IReg(l), IntegralConst(r)) =>
           op.kind match {

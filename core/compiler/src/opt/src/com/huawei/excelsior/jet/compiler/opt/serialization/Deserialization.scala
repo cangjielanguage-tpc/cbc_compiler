@@ -565,7 +565,7 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
           CheckedOp(read.tpe(), read.enumeration(CheckedOp.Kind.fromOrdinal), read.asmType(), read.bool())
 
         case SaturatingOp.Proto =>
-          SaturatingOp(read.tpe(), read.enumeration(SaturatingOp.Kind.fromOrdinal), read.asmType())
+          SaturatingOp.proto(read.tpe(), read.enumeration(SaturatingOp.Kind.fromOrdinal), read.asmType())
 
         case Mul.Proto =>
           Mul.proto(read.tpe())
