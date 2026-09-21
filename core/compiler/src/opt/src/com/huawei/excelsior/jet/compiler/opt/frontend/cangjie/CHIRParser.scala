@@ -682,21 +682,26 @@ trait CHIRParser
 
         val n = (resSig: @unchecked) match {
           case Boolean =>
-            val unsigned = sig match {
-              case sig: Integral => !sig.signed
-              case _ => false
+            val cv = if (sig == Unit) {
+              True()
+            } else {
+              val unsigned = sig match {
+                case sig: Integral => !sig.signed
+                case _ => false
+              }
+              // Note: Cangjie does not have "unordered" floating point comparisons
+              val op = e.kind match {
+                case CHIR.Binary.Kind.Lt => if (unsigned) Condition.ULT else Condition.LT
+                case CHIR.Binary.Kind.Gt => if (unsigned) Condition.UGT else Condition.GT
+                case CHIR.Binary.Kind.Le => if (unsigned) Condition.ULE else Condition.LE
+                case CHIR.Binary.Kind.Ge => if (unsigned) Condition.UGE else Condition.GE
+                case CHIR.Binary.Kind.Eq => Condition.EQ
+                case CHIR.Binary.Kind.NotEq => Condition.NE
+                case x => shouldNotReachHere(s"unexpected boolean binary expression: ${e.kind}")
+              }
+              Cmp(tpe, op)(l, r)
             }
-            // Note: Cangjie does not have "unordered" floating point comparisons
-            val op = e.kind match {
-              case CHIR.Binary.Kind.Lt => if (unsigned) Condition.ULT else Condition.LT
-              case CHIR.Binary.Kind.Gt => if (unsigned) Condition.UGT else Condition.GT
-              case CHIR.Binary.Kind.Le => if (unsigned) Condition.ULE else Condition.LE
-              case CHIR.Binary.Kind.Ge => if (unsigned) Condition.UGE else Condition.GE
-              case CHIR.Binary.Kind.Eq => Condition.EQ
-              case CHIR.Binary.Kind.NotEq => Condition.NE
-              case x => shouldNotReachHere(s"unexpected boolean binary expression: ${e.kind}")
-            }
-            CondVal(Cmp(tpe, op)(l, r))
+            CondVal(cv)
 
           case resSig: FloatingPoint =>
             e.kind match {

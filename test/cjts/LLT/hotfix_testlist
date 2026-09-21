@@ -307,19 +307,6 @@ compiler/Sema/Extend/unbox_autobox_enumPattern_01.cj
 compiler/Sema/Extend/unbox_box_tuplePattern.cj
 compiler/Sema/Extend/unbox_enumPattern.cj
 
-# bug: #47 (Unsupported direct.call of enum method)
-compiler/CHIR/CHIR2HLIR/unaryExpr/unary_sub_with_suffix.cj
-compiler/CHIR/CallExpr/memberAccessCall/enumCtorAndMemCall.cj
-compiler/CHIR/CallExpr/staticFuncCall.cj
-compiler/CHIR/MemAccessExpr/enum.cj
-compiler/CodegenCJNative/as_func/enum/enum03.cj
-compiler/CodegenCJNative/as_func/enum/enum04.cj
-compiler/CodegenCJNative/as_func/enum/enum05.cj
-compiler/Sema/PatternMatching/EnumPattern/option_00.cj
-compiler/Sema/enum/enum22_test/enum22_test.cj
-compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_005.cj
-compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
-
 # bug: #48 (Do not pass generic terms to CreateTypeInfo)
 compiler/CodegenCJNative/record/record_4.cj
 compiler/CHIR/CHIR2HLIR/matchPattern/enum_exhaustive_04.cj
