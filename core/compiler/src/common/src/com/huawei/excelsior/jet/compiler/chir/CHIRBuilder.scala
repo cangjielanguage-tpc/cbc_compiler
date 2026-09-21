@@ -186,7 +186,8 @@ object CHIRBuilder {
           val ctorSigs = d.ctors.map(_.tpe)
           val ctors = ctorSigs.map(_.paramTypes).map(_.map(resolver.typeSig))
 
-          builder.setEnumInfo(symType, CangjieEnumInfo(ctors.map(CangjieEnumInfo.Constructor.apply)))
+          val kind = resolver.enumKind(d)
+          builder.setEnumInfo(symType, CangjieEnumInfo(kind, ctors.map(CangjieEnumInfo.Constructor.apply)))
 
           def addEnumField(clazz: SymClassType, name: String, sig: SignatureType): Unit = {
             val field = builder.addField(clazz, name, sig, null, Modifiers(Modifier.PUBLIC).value)
@@ -195,7 +196,7 @@ object CHIRBuilder {
             }
           }
 
-          resolver.enumKind(d) match {
+          kind match {
             case EnumKind.ClassBased =>
               addEnumField(symType, "tag", SignatureType.UInt32)
 

@@ -8,9 +8,10 @@
 
 package com.huawei.excelsior.jet.compiler.cangjie
 
+import com.huawei.excelsior.jet.compiler.chir.EnumKind
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType
 
-case class CangjieEnumInfo(constructors: Seq[CangjieEnumInfo.Constructor])
+case class CangjieEnumInfo(kind: EnumKind, constructors: Seq[CangjieEnumInfo.Constructor])
 
 object CangjieEnumInfo {
   case class Constructor(params: Seq[SignatureType])
