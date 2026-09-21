@@ -8,11 +8,20 @@
 
 package com.huawei.excelsior.jet.compiler.chir
 
-sealed abstract class EnumKind
+enum EnumKind(val id: Int) {
+  case ZeroSized                  extends EnumKind(0)
+  case PrimitiveBased             extends EnumKind(1)
+  case OptionLike(tpe: CHIR.Type) extends EnumKind(2)
+  case UnionBased                 extends EnumKind(3)
+  case ClassBased                 extends EnumKind(4)
+}
+
 object EnumKind {
-  case object ZeroSized extends EnumKind
-  case object PrimitiveBased extends EnumKind
-  case class OptionLike(tpe: CHIR.Type) extends EnumKind
-  case object UnionBased extends EnumKind
-  case object ClassBased extends EnumKind
+  def fromId(id: Int): EnumKind = id match {
+    case 0 => ZeroSized
+    case 1 => PrimitiveBased
+    case 2 => OptionLike(null) // null because sym level doesn't need frontend info
+    case 3 => UnionBased
+    case 4 => ClassBased
+  }
 }

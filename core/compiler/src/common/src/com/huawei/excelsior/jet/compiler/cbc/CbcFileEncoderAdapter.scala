@@ -20,6 +20,7 @@ import com.huawei.excelsior.jet.compiler.abi.XTableGenerator
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.GenerationTarget.CBC
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.{GenerationTarget, env}
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
+import com.huawei.excelsior.jet.compiler.chir.EnumKind
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.FINAL
@@ -161,9 +162,10 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
           case _: SignatureType.OptionLikeEnum => false
           case _ => base.isReference
         }
-        val ctors = t.getCangjieEnumInfo.constructors.map(_.params)
-        ctors match {
-          case Seq(Seq(base), Seq()) =>
+        val eInfo = t.getCangjieEnumInfo
+        val ctors = eInfo.constructors.map(_.params)
+        (eInfo.kind, ctors) match {
+          case (EnumKind.OptionLike(_), Seq(Seq(base), Seq())) =>
             builder.setEnumKind(TypeEnumKind.Option0)
             val enumType = if (isNullableOption(base)) {
               // Erase to avoid infinite recursion.
@@ -172,7 +174,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
               base.toCbc
             }
             builder.setSuperOrEnumType(enumType)
-          case Seq(Seq(), Seq(base)) =>
+          case (EnumKind.OptionLike(_), Seq(Seq(), Seq(base))) =>
             builder.setEnumKind(TypeEnumKind.Option1)
             val enumType = if (isNullableOption(base)) {
               // Erase to avoid infinite recursion.
@@ -181,12 +183,17 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
               base.toCbc
             }
             builder.setSuperOrEnumType(enumType)
-          case _ if ctors.forall(_.isEmpty) =>
+          case (EnumKind.ZeroSized, _) =>
+            builder.setEnumKind(TypeEnumKind.Primitive)
+            builder.setSuperOrEnumType(CbcFileFormat.BuiltinSignature.Unit)
+          case (EnumKind.PrimitiveBased, _) =>
             builder.setEnumKind(TypeEnumKind.Primitive)
             builder.setSuperOrEnumType(CbcFileFormat.BuiltinSignature.I32)
-          case _ =>
+          case (EnumKind.UnionBased, _) =>
             builder.setEnumKind(TypeEnumKind.Union)
             builder.setUnionFields(ctors.map(ps => CbcFileFormat.Tuple(Seq(CbcFileFormat.BuiltinSignature.U32) ++ ps.map(_.toCbc))))
+          case (EnumKind.ClassBased, _) => // consider as class
+          case _ => shouldNotReachHere(eInfo)  
         }
       }
 
@@ -210,7 +217,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       }
 
       val modifiers = t.getCJModifiers
-      if (t.isCangjieEnum) builder.addFlag(TypeFlag.ENUM)
+      if (t.isCangjieEnum && t.getCangjieEnumInfo.kind != EnumKind.ClassBased) builder.addFlag(TypeFlag.ENUM)
       else if (t.isInterface) builder.addFlag(TypeFlag.INTERFACE)
       else if (t.isRecord) builder.addFlag(TypeFlag.RECORD)
       if (t.isCangjieType && !modifiers.contains(Modifier.CJ_SEALED)) builder.addFlag(TypeFlag.SEALED)
