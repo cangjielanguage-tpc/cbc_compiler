@@ -1312,7 +1312,7 @@ object Assembler {
     case F2i
     case Pow
   }
-  
+
   enum FloatMathOperaions extends Ordinal {
     case SIN
     case COS
