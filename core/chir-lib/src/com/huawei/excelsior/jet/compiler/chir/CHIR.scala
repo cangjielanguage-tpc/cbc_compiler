@@ -391,6 +391,7 @@ object CHIR {
   }
 
   trait GetRTTI extends Expression {
+    def obj: Value
   }
 
   trait InstanceOf extends Expression with HasResultVar {

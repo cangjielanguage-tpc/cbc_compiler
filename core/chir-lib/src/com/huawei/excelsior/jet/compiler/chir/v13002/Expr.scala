@@ -317,7 +317,8 @@ final class TupleImpl(val e: Expression)(implicit provider: CHIRItemProvider) ex
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
-final class GetRTTIImpl(val e: Expression) extends ExpressionImpl with CHIR.GetRTTI {
+final class GetRTTIImpl(val e: Expression)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetRTTI {
+  lazy val Seq(obj: CHIR.Value) = mapOperands(e)
 }
 
 final class GetExceptionImpl(val e: Expression) extends ExpressionImpl with CHIR.GetException {
