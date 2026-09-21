@@ -481,7 +481,7 @@ private class FieldRefTable(pool: Pool[FieldReference]) extends Table[FieldRefer
     val idx = super.add(data)
     data match {
       case fr: SingleFieldReference =>
-        fr.refType match {
+        unFst(fr.refType) match {
           case _: AotTypeSignature => fr.aotData.get match {
             case x: StaticFieldAotData => staticFieldAotTable.add(idx, IndexedAotData(idx, x))
             case x: InstanceFieldAotData => instanceFieldAotTable.add(idx, IndexedAotData(idx, x))
@@ -618,13 +618,7 @@ private class ByteArrayPool extends Pool[ArraySeq[Byte]] { self: RawPool =>
 }
 
 private class SignaturePool extends Pool[Signature] { self: RawPool with PoolProvider =>
-  override def add(data: Signature): Offset = put {
-    output => if (data.isFixedSize) {
-        output.putW8(SignatureTag.Fst.tag)
-        output.putULEB(addImpl(data))
-      }
-  }
-  private def addImpl(data: Signature): Offset = put { output =>
+  override def add(data: Signature): Offset = put { output =>
     data match {
       case TypeSignature(name, Seq(), isReference, _) =>
         val stringOffs = strings.add(name)

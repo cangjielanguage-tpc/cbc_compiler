@@ -63,6 +63,70 @@ object CbcFileFormat {
     override def isFixedSize: Boolean = true
   }
 
+  def unFst(sig: Signature): Signature = sig match {
+    case Fst(sig) => sig
+    case sig => sig
+  }
+
+  private def appendFixedSizeTag(sig: Signature, isFixedSize: Boolean): Signature = {
+    if (isFixedSize) {
+      Fst(sig)
+    } else {
+      sig
+    }
+  }
+
+  object TypeSignature {
+    def ref(name: String, isFixedSize: Boolean = false) = typeSignature(name, Seq.empty, isReference = true, isFixedSize)
+    def rec(name: String, isFixedSize: Boolean) = typeSignature(name, Seq.empty, isReference = false, isFixedSize)
+    def typeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false): Signature = {
+      val ts = new TypeSignature(name, args, isReference, isFixedSize)
+      appendFixedSizeTag(ts, isFixedSize)
+    }
+  }
+
+  object AotTypeSignature {
+    def ref(name: String, isFixedSize: Boolean = false) = aotTypeSignature(name, Seq.empty, isReference = true, isFixedSize)
+    def rec(name: String, isFixedSize: Boolean) = aotTypeSignature(name, Seq.empty, isReference = false, isFixedSize)
+    def aotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false): Signature = {
+      val aots = new AotTypeSignature(name, args, isReference, isFixedSize)
+      appendFixedSizeTag(aots, isFixedSize)
+    }
+  }
+
+  object OptionSignature {
+    def optionSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false): Signature = {
+      val aots = new OptionSignature(name, args, isReference, isFixedSize)
+      aots
+      //appendFixedSizeTag(aots, isFixedSize)
+    }
+  }
+
+  object PrimitiveEnum {
+    def primitiveEnum(name: String, args: Seq[Signature]): Signature = {
+      appendFixedSizeTag(new PrimitiveEnum(name, args), true)
+    }
+  }
+
+  object UnionEnum {
+    def unionEnum(name: String, args: Seq[Signature]): Signature = {
+      appendFixedSizeTag(new UnionEnum(name, args), true)
+    }
+  }
+
+  object CangjieArray {
+    def cangjieArray(tpe: Signature): Signature = {
+      new CangjieArray(tpe)
+      //appendFixedSizeTag(new CangjieArray(tpe), true)
+    }
+  }
+
+  object Tuple {
+    def tuple(args: Seq[Signature]): Signature = {
+      appendFixedSizeTag(new Tuple(args), args.forall(_.isFixedSize))
+    }
+  }
+
   case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
   case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
   case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
@@ -122,16 +186,6 @@ object CbcFileFormat {
   object BuiltinSignature {
     def count: Int = BuiltinSignature.F64.id + 1
     def unapply(sig: BuiltinSignature): Option[Int] = Some(sig.id)
-  }
-
-  object TypeSignature {
-    def ref(name: String, isFixedSize: Boolean = false) = TypeSignature(name, Seq.empty, isReference = true, isFixedSize)
-    def rec(name: String, isFixedSize: Boolean) = TypeSignature(name, Seq.empty, isReference = false, isFixedSize)
-  }
-
-  object AotTypeSignature {
-    def ref(name: String, isFixedSize: Boolean = false) = AotTypeSignature(name, Seq.empty, isReference = true, isFixedSize)
-    def rec(name: String, isFixedSize: Boolean) = AotTypeSignature(name, Seq.empty, isReference = false, isFixedSize)
   }
 
   sealed trait Flag {
