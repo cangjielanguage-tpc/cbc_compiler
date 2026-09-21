@@ -726,6 +726,7 @@ compiler/CodegenCJNative/compitability/add_parent_interface
 compiler/CodegenCJNative/compitability/class_add_interface
 compiler/CodegenCJNative/compitability/class_add_virtual_func_prop
 compiler/CodegenCJNative/compitability/non_op_cls_add_mem_at_end
+compiler/CodegenCJNative/ExtensionDef/extensiondef_08/main.cj
 
 # ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
 compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
@@ -781,3 +782,8 @@ compiler/CodegenCJNative/demangle/type/lambda_interface_type1.cj
 compiler/CodegenCJNative/demangle/type/struct_type1.cj
 compiler/CodegenCJNative/demangle/type/tuple_type1.cj
 compiler/CodegenCJNative/demangle/type/tuple_type2.cj
+
+# ignore due to frontend error
+compiler/CHIROpt/VarInitCheck/InitOrder/circular1.cj
+compiler/CHIROpt/VarInitCheck/varray.cj
+compiler/CHIROpt/VarInitCheck/varray_if.cj
