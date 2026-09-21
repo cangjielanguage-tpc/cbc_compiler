@@ -567,24 +567,6 @@ trait Toolbox { self: Universe =>
     }
   }
 
-  object ZeroValueNode {
-    /** Return constant zero value node for given `tpe`. */
-    def apply(tpe: Type): Node = tpe match {
-      case _: StructureType => AnyNull(tpe)
-      case LongType         => LConst(0L)
-      case IntType          => IConst(0)
-      case FloatType        => FConst(0.0f)
-      case DoubleType       => DConst(0.0)
-    }
-
-    def unapply(node: Node): Boolean = node match {
-      case _: AnyNull | LConst(0L) | IConst(0) => true
-      case FConst(fc) => floatToRawIntBits(fc) == 0
-      case DConst(dc) => doubleToRawLongBits(dc) == 0L
-      case _ => false
-    }
-  }
-
   /** CFG edge is critical iff its source has more than one successor and its target has more than one predecessor. */
   def isCriticalEdge(edge: Edge): Boolean = cond(edge) {
     case Edge(source: ControlNode, target: Block) => target.predBlocks.size > 1 && source.block.succBlocks.size > 1

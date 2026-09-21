@@ -251,7 +251,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | SpawnFuture | SpawnClosure
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
       | AssignGeneric | InstanceOfGeneric | NewGeneric
-      | AtomicOps.AtomicNode | DerivedPtr.Local | DerivedPtr.Global) => true
+      | AtomicOps.AtomicNode | DerivedPtr.Local | DerivedPtr.Global | ZeroValueGeneric) => true
 
     case _: (TypeTest | CallTarget | MutFuncArgNode | RecordArrayGet) => true // always grouped with another node
 

@@ -225,6 +225,8 @@ sealed abstract class SignatureType extends Signature {
     case _: Reference => symType.isThinClass
   }
 
+  final def isEnum: Boolean = Wrapper.skip(this).isInstanceOf[CangjieEnum]
+  
   final def isReference: Boolean = Wrapper.skip(this) match {
     case _: Primitive | _: Record | _: ArraySlice | BString | _: CPointer | _: VArray |
          _: InstantiatedRecord | _: TypeVariable | ThisTypeInfo | _: Tuple => false
