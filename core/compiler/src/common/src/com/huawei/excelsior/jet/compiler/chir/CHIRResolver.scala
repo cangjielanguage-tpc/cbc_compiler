@@ -117,7 +117,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
   def functionSig(m: CHIR.Func, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
     val (sig, rcv, isCFunc, hasVarArg) = functionSig(m.tpe, hasReceiver)
-    if (m.srcCodeIdentifier == "$lambda") {
+    if (isGlobalGenericLambdaFunc(m)) {
       val cparams = Seq.tabulate(m.genericTypeParams.size)(SignatureType.LocalTypeVariable.apply)
       val lparams = Seq.empty
       val lsig = sig.instantiate(cparams, lparams)
@@ -256,9 +256,19 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       fillTypeVars(gTypes, local = false)
     }
     pkg.values foreach {
-      case d: CHIR.Func if d.srcCodeIdentifier != "$lambda" => fillTypeVars(d.genericTypeParams, local = true)
+      case d: CHIR.Func =>
+        // For some unknown reason cjc might create generic lambda functions as global functions
+        // with generic type params from lambda class, instead of creating independent generic param types
+        // for this global function, like it should do for any other regular global function.
+        if (!isGlobalGenericLambdaFunc(d)) {
+          fillTypeVars(d.genericTypeParams, local = true)
+        }
       case _ =>
     }
+  }
+
+  private def isGlobalGenericLambdaFunc(f: CHIR.Func): Boolean = {
+    f.genericTypeParams.exists(p => p.identifier.startsWith("$Cl"))
   }
 
   private def typeVariableSig(t: CHIR.GenericType): SignatureType.TypeVariable = {
