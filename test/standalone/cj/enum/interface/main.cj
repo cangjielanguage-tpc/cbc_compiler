@@ -2,7 +2,7 @@ enum Ord <: Comparable<Ord> {
         LT | EQ | GT
 
         public func compare(other: Ord): Ordering {
-                return Ordering.EQ
+            return Ordering.LT
         }
 }
 
