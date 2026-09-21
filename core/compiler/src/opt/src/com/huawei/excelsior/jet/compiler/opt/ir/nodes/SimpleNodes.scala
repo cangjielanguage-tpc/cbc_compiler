@@ -295,6 +295,44 @@ trait SimpleNodes { self: Universe with Nodes =>
     object SecondtValueArg extends EdgeMatcher[CheckedOp](3)
   }
 
+  class SaturatingOp(proto: SaturatingOp.Proto) extends BinaryOp(proto) with ControlledNode {
+    def width = proto.width
+    def signed = proto.signed
+    def asmType = proto.asmType
+    def kind = proto.kind
+  }
+
+  object SaturatingOp {
+    enum Kind:
+      case ADD, SUB, MUL, DIV, MOD, POW, SHL, SHR
+
+    case class Proto(keyType: Type, kind: Kind, asmType: AsmType)
+      extends BinaryOp.Controlled[SaturatingOp](keyType)(keyType) {
+
+      assert(keyType.isIntegralType)
+      def width = asmType.width
+      def signed = asmType.signed
+
+      override protected def newInstance() = new SaturatingOp(this)
+
+      override def apply(args: Node*) = {
+        val res = super.apply(args: _*)
+        res match {
+          case n @ SaturatingOp(SaturatingOp.Kind.ADD | SaturatingOp.Kind.MUL, _, _) if !areArgsSorted(n.l, n.r) => n.swapArgs()
+          case _ =>
+        }
+        res
+      }
+    }
+
+    def apply(tpe: Type, width: Width, kind: Kind, signed: Boolean)(l: Node, r: Node) = proto(tpe, kind, AsmType.integral(width, signed))(l, r)
+    def proto(tpe: Type, kind: Kind, asmType: AsmType) = Prototype.intern(new Proto(tpe, kind, asmType))
+
+    def normalizeArg(tpe: Type, from: Width, signed: Boolean, x: Node): Node = BitFieldExtract.BFX(tpe, 0, from.nbits, signed, x)
+
+    def unapply(op: SaturatingOp): Option[(Kind, Node, Node)] = Some((op.kind, op.l, op.r))
+  }
+
 
   trait MayHaveImplicitCheck extends Node {
     import Group.AttachReason.IMPLICIT_CHECK_ARG
@@ -2106,62 +2144,5 @@ trait SimpleNodes { self: Universe with Nodes =>
     object Pointer extends EdgeMatcher[ReleaseRawData](2)
 
     def unapply(n: ReleaseRawData) = Some(n.array, n.pointer)
-  }
-
-  class SaturatingOp(proto: SaturatingOp.Proto)
-    extends BinaryOp(proto) with ControlledNode {
-
-    def width = proto.width
-    def signed = proto.signed
-    def asmType = proto.asmType
-    def kind = proto.kind
-  }
-
-  object SaturatingOp {
-    enum Kind:
-      case ADD, SUB, MUL, DIV, MOD, POW, SHL, SHR
-
-    /** Marker singleton used by serialization as the proto id (the role the
-      * auto-generated companion plays for case class protos).
-      */
-    object Proto
-
-    // NOTE: deliberately NOT a case class: Scala 3 fails to synthesize
-    // `Mirror.Product` for case classes named `Proto` inside traits mixed into
-    // `Nodes` (E164: incompatible `fromProduct` override on `CheckedOp.Proto`).
-    // `equals`/`hashCode` are defined manually - that is the only case-class
-    // feature `Prototype.intern` relies upon.
-    class Proto(val keyType: Type, val kind: Kind, val asmType: AsmType)
-      extends BinaryOp.Controlled[SaturatingOp](keyType)(keyType) {
-
-      assert(keyType.isIntegralType)
-      def width = asmType.width
-      def signed = asmType.signed
-      override protected def newInstance() = new SaturatingOp(this)
-
-      override def apply(args: Node*) = {
-        val res = super.apply(args: _*)
-        res match {
-          case n @ SaturatingOp(SaturatingOp.Kind.ADD | SaturatingOp.Kind.MUL, _, _) if !areArgsSorted(n.l, n.r) => n.swapArgs()
-          case _ =>
-        }
-        res
-      }
-
-      override def equals(that: Any): Boolean = that match {
-        case p: SaturatingOp.Proto =>
-          p.keyType == keyType && p.kind == kind && p.asmType == asmType
-        case _ => false
-      }
-
-      override def hashCode: Int = (keyType, kind, asmType).hashCode
-    }
-
-    def apply(tpe: Type, width: Width, kind: Kind, signed: Boolean): Proto = apply(tpe, kind, AsmType.integral(width, signed))
-    def apply(tpe: Type, kind: Kind, asmType: AsmType): Proto = Prototype.intern(new Proto(tpe, kind, asmType))
-
-    def normalizeArg(tpe: Type, from: Width, signed: Boolean, x: Node): Node = BitFieldExtract.BFX(tpe, 0, from.nbits, signed, x)
-
-    def unapply(op: SaturatingOp): Option[(Kind, Node, Node)] = Some((op.kind, op.l, op.r))
   }
 }

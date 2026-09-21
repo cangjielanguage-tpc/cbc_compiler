@@ -663,8 +663,6 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
     def label: Label = comma(labels.get(stream.parseIdent()))
     def cc: BranchOp = comma(stream.parseCC())
     def asmType: AsmType = comma(stream.parseAsmType())
-
-    def asmType2: AsmType = comma(stream.parseAsmType())
     def tk: BuiltinSignature = comma(stream.parseTypeKind())
     def ldk: LoadAccessKind = comma(stream.parseLoadAccessKind())
     def stk: StoreAccessKind = comma(stream.parseStoreAccessKind())
@@ -929,7 +927,7 @@ private object InstructionParser {
 
   // conversions
   instr("i2i")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.ireg, s.ireg) }
-  instr("i2i.u")   { (a, s) => a.convertFromTo(s.asmType, s.asmType2, s.ireg, s.ireg) }
+  instr("i2i.u")   { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.ireg, s.ireg) }
   instr("i2f")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.ireg, s.freg) }
   instr("f2i")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.freg, s.ireg) }
   instr("f2f")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.freg, s.freg) }

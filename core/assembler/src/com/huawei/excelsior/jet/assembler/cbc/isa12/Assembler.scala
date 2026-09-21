@@ -100,10 +100,6 @@ object Assembler {
     inline def format(resW: Width, argW: Width): Int = p(s2(opc), freeBits = 2) | p(s1(resW.opcCommon), 1) | s1(argW.opcCommon)
   }
 
-  /** Saturating arithmetic family. Mirrors the `Checked` family layout:
-    * signedness of add/sub/mul/div/mod is carried by the op code
-    * (UAdd/USub/UMul/UDiv/UMod are the unsigned variants).
-    */
   enum Saturating {
     case Add
     case Sub

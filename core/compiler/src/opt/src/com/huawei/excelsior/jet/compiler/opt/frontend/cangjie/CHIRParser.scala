@@ -648,10 +648,8 @@ trait CHIRParser
             case CHIR.OverflowStrategy.Wrapping => Neg(tpe)(arg)
             case CHIR.OverflowStrategy.Throwing => CheckedUnary(tpe, sig.toAsm, CheckedUnary.Kind.Neg)(arg)
             case CHIR.OverflowStrategy.Saturating =>
-              // saturating neg == saturating sub from zero (clamps MIN to MAX,
-              // and unsigned values to zero)
-              val zero = IntegralConst(tpe)(0)
-              SaturatingOp(tpe, sig.toAsm.width, SaturatingOp.Kind.SUB, sig.toAsm.signed)(zero, arg)
+              // saturating neg == saturating sub from zero (clamps MIN to MAX, and unsigned values to zero)
+              SaturatingOp(tpe, sig.toAsm.width, SaturatingOp.Kind.SUB, sig.toAsm.signed)(IntegralConst(tpe)(0), arg)
             case s => shouldNotReachHere(s"Unexpected overflow strategy $s")
           }
           case CHIR.Unary.Kind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
@@ -757,9 +755,8 @@ trait CHIRParser
 
               case CHIR.OverflowStrategy.Saturating =>
                 val width = sig.toAsm.width
-                val normalizedArgs = Seq(l, r) map { n =>
-                  SaturatingOp.normalizeArg(n.tpe, width, signed, n)
-                }
+                val larg = SaturatingOp.normalizeArg(l.tpe, width, signed, l)
+                val rarg = SaturatingOp.normalizeArg(r.tpe, width, signed, r)
                 val kind = e.kind match {
                   case CHIR.Binary.Kind.Add    => SaturatingOp.Kind.ADD
                   case CHIR.Binary.Kind.Sub    => SaturatingOp.Kind.SUB
@@ -776,7 +773,7 @@ trait CHIRParser
                   // division saturates `min / -1` instead of overflowing.
                   DivisorCheck()(r)
                 }
-                SaturatingOp(tpe, width, kind, signed)(normalizedArgs: _*)
+                SaturatingOp(tpe, width, kind, signed)(larg, rarg)
             }
         }
         state(e) = adjustRes(n)
@@ -1189,7 +1186,7 @@ trait CHIRParser
         def toTpe = ValueType.fromSig(to)
 
         val saturatingCast = e match {
-          case nc: CHIR.NumericCast => nc.overflowStrategy match {
+          case e: CHIR.NumericCast => e.overflowStrategy match {
             case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na => false
             case CHIR.OverflowStrategy.Throwing => false // TODO: do we need to support it?
             case CHIR.OverflowStrategy.Saturating => true
