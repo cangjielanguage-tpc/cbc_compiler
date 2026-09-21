@@ -177,6 +177,7 @@ object Resources extends ImplicitSetsAndMaps {
     // Details about dirty workaround cause - JET-15875.
     // TODO: remove workaround when zeroValue<T> is reworked in Cangjie (see JET-15124 for details).
     case class Local(allocType: SignatureType, workaroundForNonZeroedTraceableRecords: Boolean = false)(implicit typeProvider: TypeProvider) extends Typed {
+      require(!allocType.isVariableSizeType, allocType)
       override def toString = s"Local($allocType)"
     }
 

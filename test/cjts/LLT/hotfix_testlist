@@ -346,39 +346,6 @@ compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_02.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_03.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_04.cj
 
-# bug 65 (Fix initTypeVars for nested generic functions)
-compiler/CHIR/CHIR2HLIR/HLIR2LLVM/operator_overload_02.cj
-compiler/CHIR/StaticAbstractMark/import3/main.cj
-compiler/CHIR/StaticAbstractMark/main.cj
-compiler/CHIR/UG/StaticFunc/funcAsVar01.cj
-compiler/CodegenCJNative/array/array_zero_value.cj
-compiler/CodegenCJNative/constant/const_var_in_local_func_05.cj
-compiler/CodegenCJNative/LegacyTests/generic_function.cj
-compiler/CodegenCJNative/LegacyTests/lambda_inside_method.cj
-compiler/CodegenCommon/interface/member_function_with_debug.cj
-compiler/CodegenCommon/licm/licm_00.cj
-compiler/CodegenCommon/overflow/cmpfuzz/test_4_main.cj
-compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
-compiler/Sema/capture/import_generic_func_01/main.cj
-compiler/Sema/class/class_inheritance_6.cj
-compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_5.cj
-compiler/Sema/constraint_check/expose7.cj
-compiler/Sema/function/defaultParameter_pkg_02/test.cj
-compiler/Sema/function/interface_def_val.cj
-compiler/Sema/function/nestedDefaultParameter4.cj
-compiler/Sema/function/nest_function_use_08.cj
-compiler/Sema/function/nest_function_use_09.cj
-compiler/Sema/function/static_function/static_partially_instantiate_import_02/main.cj
-compiler/Sema/generics/generic_func_with_default_param_01/main.cj
-compiler/Sema/generics/generic_member09/main.cj
-compiler/Sema/generics/generic_static_field_prop/generic_static_nested_func.cj
-compiler/Sema/generics/generic_upperbound_reference_01.cj
-compiler/Sema/generics/instantiation/instantiation004.cj
-compiler/Sema/generics/nested_generic_func/nested_generic_func_01.cj
-compiler/Sema/generics/nested_generic_func/nested_generic_func_02.cj
-compiler/Sema/generics/nested_generic_func/nested_generic_func_03.cj
-compiler/Sema/lambda/lambda_nest_generic.cj
-
 # bug 64 (Support Cmp(Constant(unit)))
 compiler/CHIR/CHIR2HLIR/class_and_interface/class_and_interface_12.cj
 compiler/CHIR/CHIR2HLIR/globalVariable/globalvariable05.cj
@@ -508,12 +475,6 @@ compiler/CHIR/DCE/testDCEThrow06.cj
 # bug 86 (Invalid closure passed to call.closure.g which causes random memory execution and crash)
 compiler/CHIR/CHIR2HLIR/generic/call31.cj
 
-# bug 87 (Unexpected EnumCast from@OptionLikeEnum(_, _, x), to@Tuple(Seq(Boolean, y))) where x != y)
-compiler/CHIR/CHIR2HLIR/matchPattern/tuple_exhaustive_03.cj
-compiler/CodegenCJNative/enum/04_EXHAUSTIVE_ASSOCIATED_OPTION_LIKE/main_02.cj
-compiler/CodegenCJNative/enum/06_EXHAUSTIVE_RECURSIVE/main_07.cj
-compiler/CodegenCJNative/enum/06_EXHAUSTIVE_RECURSIVE/main_08.cj
-
 # bug 81 (CHIR.GetRTTI could have explicit parameter (not always ReceiverParam))
 compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
 
@@ -553,9 +514,6 @@ compiler/Sema/generics/pkgs0020_record_test3/main.cj
 compiler/Sema/generics/pkgs0024_RecordTypeArgs/pkgs0024_RecordTypeArgs.cj
 compiler/Sema/generics/pkgs0021_record_test/main.cj
 compiler/Sema/generics/pkgs0024_typeArgs/pkgs0024_typeArgs.cj
-
-# bug 88 (joining unrelated types com.huawei.excelsior.jet.compiler.opt.ir.Types$ValueType$@29d81c22 and ControlType)
-compiler/CHIR/UG/VTable/fromHLT/PerThreadMemUsage.cj
 
 # bug 9 (Support runtime intrsinsics/calls in CBC)
 ## VARRAY_GET
