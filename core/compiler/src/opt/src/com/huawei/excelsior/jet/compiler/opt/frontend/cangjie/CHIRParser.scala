@@ -1164,18 +1164,21 @@ trait CHIRParser
           Seq(thisType)
         }
 
-        def findSlot(receiverType: SignatureType, extDef: CHIRVTable.ExtDef): Option[(CHIRVTable.ExtDef, Int)] = {
-          val vnum = extDef.funcTable.indexWhere(m => m.name == name && m.originalSig.instantiate(genericParams(receiverType), Seq.empty) == sig)
-          Option.when(vnum >= 0)((extDef, vnum))
-        }
-
-        val (vtableType, extDef, vnum) = vtableTypes.iterator.flatMap { receiverType =>
+        def findVTableSlot(receiverType: SignatureType): Option[(SignatureType, CHIRVTable.ExtDef, Int)] = {
           val vtable = asClassType(receiverType).getCHIRVTable
           assert(vtable != null, receiverType)
-          vtable.extDefs.collectFirst(Function.unlift((extDef: CHIRVTable.ExtDef) => findSlot(receiverType, extDef))).map {
-            case (extDef, vnum) => (receiverType, extDef, vnum)
+
+          vtable.extDefs.iterator.map { extDef =>
+            val vnum = extDef.funcTable.indexWhere { method =>
+              method.name == name && method.originalSig.instantiate(genericParams(receiverType), Seq.empty) == sig
+            }
+            (extDef, vnum)
+          }.collectFirst {
+            case (extDef, vnum) if vnum >= 0 => (receiverType, extDef, vnum)
           }
-        }.nextOption.getOrElse {
+        }
+
+        val (vtableType, extDef, vnum) = vtableTypes.iterator.collectFirst(findVTableSlot.unlift).getOrElse {
           shouldNotReachHere(s"could not find VTable slot for $name${sig.toJETSignature} in $vtableTypes")
         }
         val entry = extDef.funcTable(vnum)
