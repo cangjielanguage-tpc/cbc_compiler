@@ -561,9 +561,6 @@ compiler/Sema/generics/pkgs0024_RecordTypeArgs/pkgs0024_RecordTypeArgs.cj
 compiler/Sema/generics/pkgs0021_record_test/main.cj
 compiler/Sema/generics/pkgs0024_typeArgs/pkgs0024_typeArgs.cj
 
-# bug 88 (joining unrelated types com.huawei.excelsior.jet.compiler.opt.ir.Types$ValueType$@29d81c22 and ControlType)
-compiler/CHIR/UG/VTable/fromHLT/PerThreadMemUsage.cj
-
 # bug 9 (Support runtime intrsinsics/calls in CBC)
 ## VARRAY_GET
 compiler/CodegenCJNative/incremental/global_var/test.info

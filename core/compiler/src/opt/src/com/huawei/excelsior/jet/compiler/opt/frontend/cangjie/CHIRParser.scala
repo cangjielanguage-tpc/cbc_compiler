@@ -1458,7 +1458,7 @@ trait CHIRParser
               case Seq(obj, value, _) => (state(obj), state(value))
             }
             val Seq(field) = declaredFields(refType)
-            state(e) = AtomicOps.Store(obj.tpe, field)(obj, PutMemoryOperation.adjustValue(field.fieldType.toAsm, value))
+            AtomicOps.Store(obj.tpe, field)(obj, PutMemoryOperation.adjustValue(field.fieldType.toAsm, value))
 
           case CHIR.Intrinsic.Kind.AtomicCAS =>
             val args = e.args
