@@ -67,7 +67,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       }
       val aotData = symbol.accessKind match {
         case STATIC | SPECIAL | MUT => Option.when(symbol.method.getCHIRDef.isEmpty)(DirectCallAotData(symbol.method.getExportedName.toString))
-        case VIRTUAL => Option.when(refType.isInstanceOf[CbcFileFormat.AotTypeSignature])(InterfaceCallAotData(symbol.explicitVNum.get)) // TODO: improve if needed
+        case VIRTUAL | STATIC_VIRTUAL => Option.when(refType.isInstanceOf[CbcFileFormat.AotTypeSignature])(InterfaceCallAotData(symbol.explicitVNum.get)) // TODO: improve if needed
         case _ => notImplemented(symbol.accessKind)
       }
       val signature = symbol.method.getSignature.toCbc

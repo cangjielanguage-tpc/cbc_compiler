@@ -2199,7 +2199,7 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
     def apply(targetRef: MethodReference)(args: Node*) = {
       require(targetRef.hasMethod && targetRef.method.hasThisTypeInfoParameter)
       val tti = args(targetRef.method.getThisTypeInfoArgIdx)
-      require(cond(tti) { case _: (Param | ThisTypeInfoBy | ThisTypeInfoByCBC) => true })
+      require(cond(tti) { case _: (Param | GenericTypeArg | ThisTypeInfoBy | ThisTypeInfoByCBC) => true })
       val callTarget = InvokeVirtualStaticTarget(targetRef)(tti)
       Call(targetRef)(callTarget +: args: _*)
     }
