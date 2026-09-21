@@ -521,12 +521,6 @@ compiler/CHIR/DCE/testDCEThrow06.cj
 # bug 86 (Invalid closure passed to call.closure.g which causes random memory execution and crash)
 compiler/CHIR/CHIR2HLIR/generic/call31.cj
 
-# bug 87 (Unexpected EnumCast from@OptionLikeEnum(_, _, x), to@Tuple(Seq(Boolean, y))) where x != y)
-compiler/CHIR/CHIR2HLIR/matchPattern/tuple_exhaustive_03.cj
-compiler/CodegenCJNative/enum/04_EXHAUSTIVE_ASSOCIATED_OPTION_LIKE/main_02.cj
-compiler/CodegenCJNative/enum/06_EXHAUSTIVE_RECURSIVE/main_07.cj
-compiler/CodegenCJNative/enum/06_EXHAUSTIVE_RECURSIVE/main_08.cj
-
 # bug 81 (CHIR.GetRTTI could have explicit parameter (not always ReceiverParam))
 compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
 

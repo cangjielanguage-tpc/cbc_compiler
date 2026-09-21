@@ -1298,8 +1298,9 @@ trait CHIRParser
           case (Int32 | UInt32 | _: PrimitiveBasedEnum, Int32 | UInt32 | _: PrimitiveBasedEnum) =>
             value
 
-          case (from@OptionLikeEnum(_, _, x), to@Tuple(Seq(Boolean, y))) =>
-            assert(x == y, s"cast from $from to $to")
+          case (from @ OptionLikeEnum(_, _, x), to @ Tuple(Seq(Boolean, y))) =>
+            // Have to account for erasure in case of recursive option types
+            assert(x == y || (x == ReferenceType.cangjieStdCoreObject.sigType && y.isTraceableReference), s"cast from $from to $to")
             if (from.isNullableOption || x.isTypeVariable) {
               EnumCast(from)(value)
             } else {
