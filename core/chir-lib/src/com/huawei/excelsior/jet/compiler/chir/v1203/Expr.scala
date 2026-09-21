@@ -289,7 +289,8 @@ final class TupleImpl(e: Expression)(implicit provider: CHIRItemProvider) extend
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
-final class GetRTTIImpl(e: Expression) extends CHIR.GetRTTI {
+final class GetRTTIImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.GetRTTI {
+  lazy val Seq(obj: CHIR.Value) = mapOperands(e)
 }
 
 private def mapOverflowStrategy(os: Int): CHIR.OverflowStrategy = os match {

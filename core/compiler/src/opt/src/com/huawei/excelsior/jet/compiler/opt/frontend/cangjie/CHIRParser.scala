@@ -1088,6 +1088,11 @@ trait CHIRParser
             }
           case _ => false
         }
+        val isGenericStatic = e.thisArg match {
+          case x: CHIR.LocalVar if e.thisType.isInstanceOf[CHIR.GenericType] =>
+            x.associatedExpr.isInstanceOf[CHIR.GetRTTIStatic]
+          case _ => false
+        }
 
         val (thisTypeArgVal, sourceArgVals) = if (isStatic) {
           (argVals.headOption, argVals.tail)
@@ -1105,6 +1110,12 @@ trait CHIRParser
               // FIXME: erasure
               fromSymType(c)
             }
+          case t: SignatureType.TypeVariable if isGenericStatic =>
+            // GetRTTIStatic is represented by Unit in CHIR.  For a static
+            // call on a type parameter, the actual receiver type is instead
+            // carried by the type info argument and dispatch must start from
+            // one of the parameter's upper bounds.
+            t
           case _: SignatureType.TypeVariable =>
             val v = if (isStatic) thisTypeArgVal.get else sourceArgVals.head
             val ValueSig(sig) = v
@@ -1129,28 +1140,40 @@ trait CHIRParser
 
         val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
 
-        val vtable = asClassType(thisType).getCHIRVTable
-        assert(vtable != null, thisType)
-
-        def findSlot(extDef: CHIRVTable.ExtDef): Option[(CHIRVTable.ExtDef, Int)] = {
-          val vnum = extDef.funcTable.indexWhere(m => m.name == name && m.originalSig.instantiate(genericParams(thisType), Seq.empty) == sig)
-          Option.when(vnum >= 0)((extDef, vnum))
+        val vtableTypes = if (isGenericStatic) {
+          e.thisType.asInstanceOf[CHIR.GenericType].upperBounds.map(resolver.typeSig)
+        } else {
+          Seq(thisType)
         }
 
-        val (extDef, vnum) = vtable.extDefs.collectFirst(findSlot.unlift).getOrElse {
-          shouldNotReachHere(s"could not find VTable slot for $name${sig.toJETSignature} in $vtable")
+        def findVTableSlot(receiverType: SignatureType): Option[(SignatureType, CHIRVTable.ExtDef, Int)] = {
+          val vtable = asClassType(receiverType).getCHIRVTable
+          assert(vtable != null, receiverType)
+
+          vtable.extDefs.iterator.map { extDef =>
+            val vnum = extDef.funcTable.indexWhere { method =>
+              // TODO: instantiate method type parameters as well
+              method.name == name && method.originalSig.instantiate(genericParams(receiverType), Seq.empty) == sig
+            }
+            (extDef, vnum)
+          }.collectFirst {
+            case (extDef, vnum) if vnum >= 0 => (receiverType, extDef, vnum)
+          }
+        }
+
+        val (vtableType, extDef, vnum) = vtableTypes.iterator.collectFirst(findVTableSlot.unlift).getOrElse {
+          shouldNotReachHere(s"could not find VTable slot for $name${sig.toJETSignature} in $vtableTypes")
         }
         val entry = extDef.funcTable(vnum)
 
-        val refType = extDef.extType.instantiate(genericParams(thisType), Seq.empty)
+        val refType = extDef.extType.instantiate(genericParams(vtableType), Seq.empty)
 
         // TODO: unify logic with calcMethodRef?
         val refClass = asClassType(refType)
         val method = entry.impl.getOrElse(refClass.findDeclaredMethodOrNull(xstr(name), gsig))
 
         val mak = if (isStatic) {
-          // TODO: static virtual!
-          MAK.STATIC
+          MAK.STATIC_VIRTUAL
         } else {
           MAK.VIRTUAL
         }
@@ -2050,7 +2073,7 @@ trait CHIRParser
         }
 
       case e: CHIR.GetRTTI =>
-        state(e) = ThisTypeInfoBy(ReceiverParam())
+        state(e) = ThisTypeInfoBy(state(e.obj))
     }
 
     private def staticFieldRef(globalVar: CHIR.GlobalVar): CangjieReferenceNode = {
@@ -2218,6 +2241,9 @@ trait CHIRParser
       packageInitCheck(target.refClass)
 
       val call = if (target.methodType.hasThisTypeInfoParameter && target.accessKind == MAK.STATIC_VIRTUAL) {
+        if (target.refType.sigType.containsTypeVariables) {
+          SaveCallRefTypeInfo(loadTypeInfo(target.refType.sigType))
+        }
         InvokeVirtualStatic(target)(abiArgs: _*)
       } else {
         target.accessKind match {
