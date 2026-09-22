@@ -55,14 +55,14 @@ object CHIR {
   }
 
   trait Func extends Value with FuncSig with HasDeclaringDef with HasAnnotations with HasAttributes {
-    override def tpe: FuncType
+    def tpe: FuncType
     def id: Long
     def identifier: String
-    override def name: String = identifier
+    def name: String = identifier
     def srcCodeIdentifier: String
     def packageName: String
     def kind: Func.Kind
-    override def genericTypeParams: Seq[GenericType]
+    def genericTypeParams: Seq[GenericType]
     def body: Option[BlockGroup]
     def params: Seq[Parameter]
     def retVal: Option[LocalVar]
