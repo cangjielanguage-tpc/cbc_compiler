@@ -15,6 +15,9 @@
 
 @field_ref sret_flag = default@ref sret I64
 
+@field_ref index_ref_0 = [Box[I64]] 0 Box[I64]
+@field_ref index_ref_1 = [std.core:Object@aref] 0 std.core:Object@aref
+
 @type default:MyLambda
   @flags PUBLIC LAMBDA
   @super ()I64
@@ -60,9 +63,7 @@
 
       box IR1, IR2, I64
 
-      ms.hd.rec IR11
-        ms.const.idx 0, [Box[I64]]
-        ms.st IR2
+      st.field IR2, IR11, #index_ref_0
       @dead IR11, IR2, IR1
 
       movi.64 IR1, 0
@@ -201,9 +202,7 @@ no_sret_shift:
       call.closure.g ()%0
       @dead IR1, IR2, IR9
 
-      ms.hd.typed $1
-        ms.const.idx 0, [std.core:Object@aref]
-        ms.ld IR1
+      ld.typed IR1, $1, #index_ref_1
 
       unbox IR2, IR1, I64
       @dead IR1
@@ -246,9 +245,7 @@ has_sret_shift:
       call.closure.g ()%0
       @dead IR1, IR2, IR3
 
-      ms.hd.typed $1
-        ms.const.idx 0, [std.core:Object@aref]
-        ms.ld IR1
+      ld.typed IR1, $1, #index_ref_1
 
       unbox IR2, IR1, I64
       @dead IR1

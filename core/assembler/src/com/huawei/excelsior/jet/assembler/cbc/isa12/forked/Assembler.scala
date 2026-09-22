@@ -910,13 +910,16 @@ trait ForkedAssembler {
       .bits(_.w4(dst).w4(baseRef))
       .bits(_.w4(derived).w4(ti))
       .sym16(fr)
-    markMemBase(baseRef, fr)
+    analyzer.useRef(baseRef)
     analyzer.usePrim(derived)
     analyzer.usePrim(ti)
-    markLoadStoreValue(dst, fr, load = true)
+    dst match {
+      case r: IR => analyzer.ref(r)
+      case _ =>
+    }
   }
 
-  def lea(dst: IR, base: IR, fr: FieldReference): Unit = {
+  def lea(dst: IR, base: IR, fr: FieldReference): Unit = instr {
     stream
       .opc8(Opcode.Lea)
       .bits(_.w4(dst).w4(base))
@@ -940,7 +943,7 @@ trait ForkedAssembler {
       .bits(_.w4(dst).w4(dst))
       .bits(_.w4(base).w4(ti))
       .sym16(fr)
-    markMemBase(base, fr)
+    analyzer.useRef(base)
     analyzer.usePrim(ti)
     analyzer.prim(dst)
   }
@@ -998,10 +1001,46 @@ trait ForkedAssembler {
       .bits(_.w4(src).w4(base))
       .bits(_.w4(derived).w4(ti))
       .sym16(fr)
-    markMemBase(base, fr)
+    analyzer.useRef(base)
     analyzer.usePrim(derived)
     analyzer.usePrim(ti)
-    markLoadStoreValue(src, fr, load = false)
+    src match {
+      case r: IR => analyzer.useRef(r)
+      case _ =>
+    }
+  }
+
+  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = instr {
+    stream
+      .opc8(Opcode.Copy)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .sym16(sig)
+  }
+
+// Unused. TODO: support copying in generic context
+  def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyGeneric)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
+  def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = instr {
+    stream
+      .opc8(Opcode.Index)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(idx).w4(idx))
+      .sym16(sig)
+  }
+
+// Unused. TODO: support element access for generic arrays
+  def index(dst: IR, src: IR, idx: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.IndexGeneric)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(idx).w4(analyzer.usePrim(ti)))
   }
 
   def zeroval(dst: Rg, ti: IR) = instr {
@@ -1132,9 +1171,6 @@ object Assembler {
     case FMov64i
     case MovBP
     case BFX
-    case LoadTyped
-    case StoreTyped
-    case StoreTypedImm
     case Add32
     case Sub32
     case Mul32
@@ -1180,17 +1216,8 @@ object Assembler {
     case ArrayIndexCheck
     case Float32
     case Float64
-    case LoadStatic
-    case StoreStatic
-    case LoadField
-    case StoreField
     case LoadStackRec
     case Nop
-    case MemHeadReg
-    case MemHeadField
-    case MemHeadStatic
-    case MemHeadHandle
-    case MemHeadTyped
     case LoadUntyped
     case StoreUntyped
     case StoreUntypedImm
@@ -1246,29 +1273,13 @@ object Assembler {
     case St_Derived
     case St_Generic
     case LoadTailParam
+    case Copy
+    case CopyGeneric
+    case Index
+    case IndexGeneric
     case ZeroVal
     case FMathUn32
     case FMathUn64
-  }
-
-  enum MemOpcode extends Ordinal {
-    case Field1
-    case Field2
-    case Field3
-    case Field4
-    case Index
-    case Load
-    case Store
-    case StoreImm
-    case CopyRegTo
-    case CopyRegFrom
-    case ConstIndex
-    case FieldGeneric
-    case ConstIndexGeneric
-    case IndexGeneric
-    case LoadGeneric
-    case StoreGeneric
-    case Offset
   }
 
   enum RegSymGroup extends Ordinal {

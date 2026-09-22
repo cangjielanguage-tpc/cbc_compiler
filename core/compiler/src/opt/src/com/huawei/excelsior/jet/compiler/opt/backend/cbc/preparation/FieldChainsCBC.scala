@@ -22,21 +22,13 @@ import scala.collection.mutable.ListBuffer
 
 trait FieldChainsCBC extends FieldChains { self: Universe =>
 
-  private def transformObjForChainReplacement(obj: Node): Node = obj match {
-    case arrayGet: ArrayGet if arrayGet.arrayType.isRecordArray =>
-      assert(env.enabled(UseIsa12))
-      RecordArrayGet(arrayGet.arrayType)(arrayGet.array, arrayGet.idx)
-
-    case _ => obj
-  }
-
   def replaceChainRead(origin: FieldRead, obj: Node, chain: List[FieldRef]): Unit = {
     origin.replaceBy(FieldChainRead.proto(permanent(chain), chain.head.refType, chain.last.valueType)
-      .withExplicitArgs(origin.inCtrl, origin.inMemory, transformObjForChainReplacement(obj)))
+      .withExplicitArgs(origin.inCtrl, origin.inMemory, obj))
   }
 
   def replaceChainWrite(origin: FieldWrite, obj: Node, value: Node, chain: List[FieldRef]): Unit = replaceByCode(origin) {
-    FieldChainWrite(permanent(chain), chain.head.refType, chain.last.valueType)(transformObjForChainReplacement(obj), value)
+    FieldChainWrite(permanent(chain), chain.head.refType, chain.last.valueType)(obj, value)
   }
 
   def replaceOneChain(origin: Node, obj: Node, chain: List[FieldRef]): Unit = origin match {
@@ -94,14 +86,14 @@ trait FieldChainsCBC extends FieldChains { self: Universe =>
               ZeroRefs(localCopy)
             }
             CopyStructureCBC(copy.structureType, ValueType(copy.structureType), srcObj.tpe,
-              List.empty, permanent(srcChain), false, srcChain.headOption.exists(_.isStatic))(localCopy, transformObjForChainReplacement(srcObj))
+              List.empty, permanent(srcChain), false, srcChain.headOption.exists(_.isStatic))(localCopy, srcObj)
             CopyStructureCBC(copy.structureType, dstObj.tpe, ValueType(copy.structureType),
-              permanent(dstChain), List.empty, dstChain.headOption.exists(_.isStatic), false)(transformObjForChainReplacement(dstObj), localCopy)
+              permanent(dstChain), List.empty, dstChain.headOption.exists(_.isStatic), false)(dstObj, localCopy)
 
           case _ =>
             CopyStructureCBC(copy.structureType, dstObj.tpe, srcObj.tpe,
               permanent(dstChain), permanent(srcChain), dstChain.headOption.exists(_.isStatic), srcChain.headOption.exists(_.isStatic))(
-              transformObjForChainReplacement(dstObj), transformObjForChainReplacement(srcObj))
+              dstObj, srcObj)
         }
 
       }

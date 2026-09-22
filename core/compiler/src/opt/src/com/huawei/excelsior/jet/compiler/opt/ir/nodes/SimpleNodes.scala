@@ -1952,35 +1952,33 @@ trait SimpleNodes { self: Universe with Nodes =>
   // High-level copying node
 
   class CopyStructure private(proto: CopyStructure.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {
-    def dst = arg(2)
-    def src = arg(3)
-    def src_=(x: Node): Unit = updateArg(3, x)
-
-    def isPrimitive: Boolean = proto.primitive
+    def dstBaseRef = arg(2)
+    def dst = arg(3)
+    def srcBaseRef = arg(4)
+    def src = arg(5)
+    def srcBaseRef_=(x: Node): Unit = updateArg(4, x)
+    def src_=(x: Node): Unit = updateArg(5, x)
 
     def structureType = proto.structureType
   }
 
   object CopyStructure {
-    case class Proto private[CopyStructure](structureType: SignatureType, primitive: Boolean)
-      extends FixedArgs[CopyStructure](ControlType, MemoryType, ValueType(structureType), ValueType(structureType))(ControlType)
+    case class Proto private[CopyStructure](structureType: SignatureType)
+      extends FixedArgs[CopyStructure](ControlType, MemoryType, TRefType, ValueType(structureType), TRefType, ValueType(structureType))(ControlType)
         with ControlMemoryTagged[CopyStructure] {
 
       override def newInstance() = new CopyStructure(this)
     }
 
-    def proto(x: SignatureType) = Prototype.intern(Proto(x, false))
+    def proto(x: SignatureType) = Prototype.intern(Proto(x))
 
-    def apply(x: SignatureType)(dst: Node, src: Node) = proto(x)(dst, src)
+    def apply(x: SignatureType)(dstBaseRef: Node, dst: Node, srcBaseRef: Node, src: Node) = proto(x)(dstBaseRef, dst, srcBaseRef, src)
 
-    def unapply(x: CopyStructure) = Some(x.structureType, x.dst, x.src)
-
-    def primitive(x: SignatureType) = Prototype.intern(Proto(x, true))
+    def unapply(x: CopyStructure) = Some(x.structureType, x.dstBaseRef, x.dst, x.srcBaseRef, x.src)
   }
 
   class CopyStructureCBC private(proto: CopyStructureCBC.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {
     require(!env.enabled(UseIsa12) || !(proto.hasStaticDst && proto.hasStaticSrc)) // both dst and src cannot be static fields in the same time
-    require(!env.enabled(UseIsa12) || !(dst.isInstanceOf[RecordArrayGet] && src.isInstanceOf[RecordArrayGet])) // both dst and src cannot be record arrays in the same time
 
     def dst = arg(2)
     def src = arg(3)
@@ -1988,8 +1986,8 @@ trait SimpleNodes { self: Universe with Nodes =>
     def dstFields = proto.dstFields
     def srcFields = proto.srcFields
 
-    def hasComplexDst = proto.hasStaticDst || dst.isInstanceOf[RecordArrayGet]
-    def hasComplexSrc = proto.hasStaticSrc || src.isInstanceOf[RecordArrayGet]
+    def hasComplexDst = proto.hasStaticDst
+    def hasComplexSrc = proto.hasStaticSrc
 
     def structureType = proto.structureType
   }

@@ -25,8 +25,8 @@
       movi.64 IR2, 123
       movi.64 IR3, 321
       newobj aot:TestClass@aref
-      st.ref.field IR2, IR1, #xFieldRef
-      st.ref.field IR3, IR1, #yFieldRef
+      st.field IR2, IR1, #xFieldRef
+      st.field IR3, IR1, #yFieldRef
       @dead IR2 IR3
       ret.ref IR1
     @end

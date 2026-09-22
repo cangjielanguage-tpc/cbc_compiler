@@ -1,5 +1,7 @@
 @main_type "default"
 
+@field_ref index_ref_0 = [U8, I64] 1 I64
+
 @type std.core:Object
   @flags PUBLIC AOT
 @end
@@ -46,9 +48,9 @@
       load.type.info IR2, default:MyOption[I64]@uopt
       load.type.info IR5, I64
 
-      ms.hd.obj IR11
-        ms.field #first
-        ms.ld.g IR3, IR2
+      lea IR9, IR11, #first
+      ld.g IR3, IR11, IR9, IR2
+      @dead IR9
 
       tag.g IR4, IR3, IR5, default:MyOption[%0]@nopt
 
@@ -60,9 +62,9 @@
       load.type.info IR2, default:MyOption[std.core:Object@aref]@nopt
       load.type.info IR5, std.core:Object@aref
 
-      ms.hd.obj IR11
-        ms.field #second
-        ms.ld.g IR3, IR2
+      lea IR9, IR11, #second
+      ld.g IR3, IR11, IR9, IR2
+      @dead IR9
 
       tag.g IR4, IR3, IR5, default:MyOption[%0]@nopt
 
@@ -73,13 +75,11 @@
       load.type.info IR2, default:MyOption[std.core:Object@aref]@nopt
       load.type.info IR5, std.core:Object@aref
 
-      ms.hd.obj IR11
-        ms.field #second
-        ms.st IR11
+      st.field IR11, IR11, #second
 
-      ms.hd.obj IR11
-        ms.field #second
-        ms.ld.g IR3, IR2
+      lea IR9, IR11, #second
+      ld.g IR3, IR11, IR9, IR2
+      @dead IR9
 
       tag.g IR4, IR3, IR5, default:MyOption[%0]@nopt
       bcci.64 NE, IR4, 0, fail
@@ -94,15 +94,14 @@
       load.type.info IR5, I64
 
       ; store directly
-      ms.hd.obj IR11
-        ms.field #first
-        ms.const.idx 1, [U8, I64]
-        ms.st.imm 42
+      movi.64 IR9, 42
+      st.field IR9, IR11, #first, #index_ref_0
+      @dead IR9
 
       ; load boxed
-      ms.hd.obj IR11
-        ms.field #first
-        ms.ld.g IR3, IR2
+      lea IR9, IR11, #first
+      ld.g IR3, IR11, IR9, IR2
+      @dead IR9
 
       ; check for Some
       tag.g IR4, IR3, IR5, default:MyOption[%0]@nopt

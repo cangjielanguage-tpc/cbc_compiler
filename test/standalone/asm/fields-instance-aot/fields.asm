@@ -26,23 +26,23 @@
       mov.ref IR2, IR1
       @dead IR1
       newobj aot:Foo@aref
-      st.ref.field IR1, IR2, #fooFieldRef
+      st.field IR1, IR2, #fooFieldRef
       @dead IR1
       mov.ref IR1, IR2
       @dead IR2
 
       movi.64 IR2, 12
-      st.ref.field IR2, IR1, #xFieldRef
+      st.field IR2, IR1, #xFieldRef
 
       movi.64 IR3, 13
-      st.ref.field IR3, IR1, #yFieldRef
+      st.field IR3, IR1, #yFieldRef
 
       movi.64 IR4, 14
-      st.ref.field IR4, IR1, #zFieldRef
+      st.field IR4, IR1, #zFieldRef
 
-      ld.ref.field IR5, IR1, #xFieldRef
-      ld.ref.field IR6, IR1, #yFieldRef
-      ld.ref.field IR7, IR1, #zFieldRef
+      ld.field IR5, IR1, #xFieldRef
+      ld.field IR6, IR1, #yFieldRef
+      ld.field IR7, IR1, #zFieldRef
       add.64 IR13, IR5, IR6
       add.64 IR13, IR13, IR7
 
