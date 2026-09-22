@@ -19,7 +19,7 @@ import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.FloatMathOperaions.{COS, SIN}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{MemSpace, Assembler as ForkedISA12Assembler}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler as ForkedISA12Assembler
 import com.huawei.excelsior.jet.assembler.{AsmEmitter, AsmType, Label, Location, Segment, Symbol, Width}
 import com.huawei.excelsior.jet.compiler.NotImplementedFeature.CBC
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
@@ -541,8 +541,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    // TODO replace ArrayGet with FieldSeq operations
     private def genArrayGet(arrGet: ArrayGet): Unit = {
       addXSite(arrGet)
+      val adapter = asm.adapter
 
       val arrayType = arrGet.arrayType
       val elemType = arrayType.getArrayElemType
@@ -551,7 +553,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       (arrGet.array, arrGet.idx) match {
         case (IReg(arr), IReg(idx)) =>
           if (elemType.isRecord) {
-            asm.ldarrRecord(dst.asInstanceOf[IR], arr, idx, CodeSigSymbol(elemType))
+            // gc unsafe
+            asm.index(dst.asInstanceOf[IR], arr, idx, adapter.sigType(CodeSigSymbol(arrayType)))
           } else if (elemType.isTraceableReference) {
             asm.ldarrObj(dst, arr, idx)
           } else {
@@ -668,84 +671,14 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       addXSite(c)
 
       val adapter = asm.adapter
-      val builder = MemSpace.Builder()
 
-      def head(base: Option[Node], n: Node, fields: Seq[CangjieFieldReference]): Unit = n match {
-        case stack: HasFrameSlot => stack.slot match {
-          case slot: TypedFrameSlotCBC => builder.typed(slot.typedSlot)
-          case _ => shouldNotReachHere(stack)
-        }
-        case n @ ArrayGet(_, _, IReg(obj), IReg(idx)) =>
-          assert(n.arrayType.isRecordArray)
-          builder.obj(obj)
-            .index(idx, n.arrayType.getArrayElemType.toCbc, checked = false)
-        case IReg(r) =>
-          if (fields.head.refType.isTraceableReference) {
-            builder.obj(r)
-          } else {
-            base match {
-              case Some(base) =>
-                valueOf(base).producer match {
-                  case base: DerivedPtr.BaseHandle =>
-                    builder.rec(r)
-                  case _ =>
-                    val IReg(b) = base
-                    builder.handle(b, r)
-                }
-              case None =>
-                builder.rec(r)
-            }
+      (c.dstBaseRef, c.dst, c.srcBaseRef, c.src) match
+        case (IReg(dstBase), IReg(dst), IReg(srcBase), IReg(src))  =>
+          asm.copy(dstBase, dst, srcBase, src, adapter.sigType(CodeSigSymbol(c.structureType)))
+          if (valueOf(c.dstBaseRef).producer.isInstanceOf[DerivedPtr.Local]) {
+            mark(dst, LocalType.CLEARED)
           }
-      }
-
-      def fields(fields: Seq[CangjieFieldReference], typeInfos: Seq[Node] = Seq.empty): Unit = {
-        for ((f, i) <- fields.zipWithIndex) f.field match {
-          case Some(field) =>
-            builder.field(adapter.field(f))
-          case None =>
-            val refType = f.refType match {
-              case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
-              case t => t
-            }
-            builder.constIndex(f.idx.toInt, refType.toCbc)
-        }
-      }
-
-      (c.dst, c.src) match {
-
-        case (IReg(dst), IReg(src)) =>
-          assert(check(src, LocalType.CLEARED))
-          builder.rec(src).copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
-          mark(dst, LocalType.CLEARED)
-        case (IReg(dst), n) => {
-          n match {
-            case g: GetFieldSeqRef =>
-              head(Some(g.baseRef), g.base, g.fields)
-              fields(g.fields)
-            case g: GetStaticFieldSeqRef =>
-              builder.static(adapter.field(g.fields.head))
-              fields(g.fields.tail)
-            case n: FieldSeqOperation => head(Some(n.baseRef), n, Seq.empty)
-            case n => head(None, n, Seq.empty)
-          }
-          builder.copyRegTo(dst, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
-          mark(dst, LocalType.CLEARED)
-        }
-        case (n, IReg(src)) => {
-          assert(check(src, LocalType.CLEARED))
-          n match {
-            case g: GetFieldSeqRef =>
-              head(Some(g.baseRef), g.base, g.fields)
-              fields(g.fields)
-            case g: GetStaticFieldSeqRef =>
-              builder.static(adapter.field(g.fields.head))
-              fields(g.fields.tail)
-            case n: FieldSeqOperation => head(Some(n.baseRef), n, Seq.empty)
-            case n => head(None, n, Seq.empty)
-          }
-          builder.copyRegFrom(src, adapter.sigType(CodeSigSymbol(c.structureType))).gen(asm)
-        }
-      }
+        case _ => shouldNotReachHere(c)
     }
 
     private def genInitObj(obj: InitObj): Unit = obj.slot match {

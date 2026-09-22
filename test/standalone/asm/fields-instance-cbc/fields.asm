@@ -43,12 +43,12 @@
       movi.64 IR3, 3
       movi.64 IR4, 5
 
-      st.ref.field IR1, IR1, #bfr
-      st.ref.field IR2, IR1, #xfr
-      st.ref.field IR3, IR1, #yfr
-      st.ref.field IR4, IR1, #zfr
+      st.field IR1, IR1, #bfr
+      st.field IR2, IR1, #xfr
+      st.field IR3, IR1, #yfr
+      st.field IR4, IR1, #zfr
 
-      ld.ref.field IR5, IR1, #bfr
+      ld.field IR5, IR1, #bfr
       @dead IR1, IR2, IR3, IR4
 
       movi.64 IR1, 0x0
@@ -58,14 +58,14 @@
 
       @dead IR2, IR3, IR4
 
-      ld.ref.field IR5, IR5, #bfr
-      ld.ref.field IR5, IR5, #bfr
-      ld.ref.field IR5, IR5, #bfr
-      ld.ref.field IR5, IR5, #bfr
+      ld.field IR5, IR5, #bfr
+      ld.field IR5, IR5, #bfr
+      ld.field IR5, IR5, #bfr
+      ld.field IR5, IR5, #bfr
 
-      ld.ref.field IR2, IR5, #xfr
-      ld.ref.field IR3, IR5, #yfr
-      ld.ref.field IR4, IR5, #zfr
+      ld.field IR2, IR5, #xfr
+      ld.field IR3, IR5, #yfr
+      ld.field IR4, IR5, #zfr
 
       add.64 IR1, IR1, IR2
       add.64 IR1, IR1, IR3

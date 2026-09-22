@@ -1,5 +1,7 @@
 @main_type "default"
 
+@field_ref index_ref_0 = [Bool, default:MyOption[std.core:Object@aref]@nopt] 1 default:MyOption[std.core:Object@aref]@nopt
+
 @type std.core:Object
   @flags PUBLIC AOT
 @end
@@ -32,18 +34,15 @@
 
       ; store directly
       ; zero-initialized tag is Some for Option1
-      ms.hd.obj IR10
-        ms.field #first
-        ms.const.idx 1, [Bool, default:MyOption[std.core:Object@aref]@nopt]
-        ms.st IR10
+      st.field IR10, IR10, #first, #index_ref_0
 
       load.type.info IR11, default:MyOption[default:MyOption[std.core:Object@aref]@nopt]@uopt
       load.type.info IR12, default:MyOption[std.core:Object@aref]@nopt
       load.type.info IR13, std.core:Object@aref
 
-      ms.hd.obj IR10
-        ms.field #first
-        ms.ld.g IR2, IR11
+      lea IR9, IR10, #first
+      ld.g IR2, IR10, IR9, IR11
+      @dead IR9
 
       tag.g IR3, IR2, IR12, default:MyOption[%0]@nopt
       bcci.64 NE, IR3, 0, fail

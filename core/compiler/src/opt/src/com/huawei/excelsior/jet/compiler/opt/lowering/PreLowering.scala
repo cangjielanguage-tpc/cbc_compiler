@@ -524,7 +524,7 @@ trait PreLowering extends CompileTimeComputations with LiveRangesOptimization wi
     assert(rootMethod.getParamType(recordParamIdx).isRecord)
 
     allNodes foreach {
-      case n @ CopyStructure(_, Param(`recordParamIdx`), _) => insertCodeBefore(n) { GCPoint() }
+      case n @ CopyStructure(_, _, Param(`recordParamIdx`), _, _) => insertCodeBefore(n) { GCPoint() }
       case _ =>
     }
   }

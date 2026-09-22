@@ -12,16 +12,13 @@ import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.*
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Symbol, Width}
 import com.huawei.excelsior.jet.assembler.cbc.Register.{FR, IR}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W32, W64}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.MemSpace.Builder as MemBuilder
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{FlowAnalyzer, MemSpace, SymbolAdapter}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{FlowAnalyzer, SymbolAdapter}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
 
 import scala.collection.mutable
 
 class CodeGenerator extends isa12.forked.Assembler with SymbolAdapter {
   private val labels = mutable.Map.empty[String, Label]
-
-  private var memSpaceBuilder: Option[MemBuilder] = None
 
   private def getLabel(name: String): Label = labels.getOrElseUpdate(name, newLabel)
   def bind(target: String): Unit = {
@@ -208,18 +205,6 @@ class CodeGenerator extends isa12.forked.Assembler with SymbolAdapter {
   def init_const_string(ts: Long, string: String): Unit = initConstString(StackSlot.Typed(ts.toInt), BytecodeReferenceSymbol(StringLiteral(string)))
 
   // memory access
-  def ld_ref_field(rd: IR, rb: IR, field: FieldReference): Unit = MemSpace.Builder().obj(rb).field(field).load(rd).gen(this)
-  def ld_ref_field(rd: FR, rb: IR, field: FieldReference): Unit = MemSpace.Builder().obj(rb).field(field).load(rd).gen(this)
-  def st_ref_field(rs: IR, rb: IR, field: FieldReference): Unit = MemSpace.Builder().obj(rb).field(field).store(rs).gen(this)
-  def st_ref_field(rs: FR, rb: IR, field: FieldReference): Unit = MemSpace.Builder().obj(rb).field(field).store(rs).gen(this)
-  def ld_rec_field(rd: IR, rb: IR, field: FieldReference): Unit = MemSpace.Builder().rec(rb).field(field).load(rd).gen(this)
-  def ld_rec_field(rd: FR, rb: IR, field: FieldReference): Unit = MemSpace.Builder().rec(rb).field(field).load(rd).gen(this)
-  def st_rec_field(rs: IR, rb: IR, field: FieldReference): Unit = MemSpace.Builder().rec(rb).field(field).store(rs).gen(this)
-  def st_rec_field(rs: FR, rb: IR, field: FieldReference): Unit = MemSpace.Builder().rec(rb).field(field).store(rs).gen(this)
-  def ld_static(rd: IR, field: FieldReference): Unit = MemSpace.Builder().static(field).load(rd).gen(this)
-  def ld_static(rd: FR, field: FieldReference): Unit = MemSpace.Builder().static(field).load(rd).gen(this)
-  def st_static(rs: IR, field: FieldReference): Unit = MemSpace.Builder().static(field).store(rs).gen(this)
-  def st_static(rs: FR, field: FieldReference): Unit = MemSpace.Builder().static(field).store(rs).gen(this)
   def prepare_record(ts: Long): Unit = prepareRecord(StackSlot.Typed(ts.toInt))
 
   def ld_uslot(dst: IR, tk: CbcTypeKind, us: Long): Unit = loadUntyped(dst, tk, StackSlot.Untyped(us.toInt))
@@ -227,97 +212,6 @@ class CodeGenerator extends isa12.forked.Assembler with SymbolAdapter {
   def st_uslot(src: IR, tk: CbcTypeKind, us: Long): Unit = storeUntyped(src, tk, StackSlot.Untyped(us.toInt))
   def st_uslot(src: FR, tk: CbcTypeKind, us: Long): Unit = storeUntyped(src, tk, StackSlot.Untyped(us.toInt))
   def st_uslot(src: Long, us: Long): Unit = storeUntypedImm(src, StackSlot.Untyped(us.toInt))
-
-  def ld_tslot(dst: IR, ts: Long, field: FieldReference): Unit = MemSpace.Builder().typed(StackSlot.Typed(ts.toInt)).field(field).load(dst).gen(this)
-  def ld_tslot(dst: FR, ts: Long, field: FieldReference): Unit = MemSpace.Builder().typed(StackSlot.Typed(ts.toInt)).field(field).load(dst).gen(this)
-  def st_tslot(src: IR, ts: Long, field: FieldReference): Unit = MemSpace.Builder().typed(StackSlot.Typed(ts.toInt)).field(field).store(src).gen(this)
-  def st_tslot(src: FR, ts: Long, field: FieldReference): Unit = MemSpace.Builder().typed(StackSlot.Typed(ts.toInt)).field(field).store(src).gen(this)
-  def st_tslot(src: Long, ts: Long, field: FieldReference): Unit = MemSpace.Builder().typed(StackSlot.Typed(ts.toInt)).field(field).storeImm(src).gen(this)
-
-  // memory access openers
-  def mem_rec_head(rt: IR, rb: IR, mOpen: String): Unit = {
-    assert(mOpen == "{" && rt == IR.IRZ)
-    memSpaceBuilder = Some(MemBuilder().rec(rb))
-  }
-
-  def mem_obj_head(rt: IR, rb: IR, mOpen: String): Unit = {
-    assert(mOpen == "{" && rt == IR.IRZ)
-    memSpaceBuilder = Some(MemBuilder().obj(rb))
-  }
-
-  def mem_tslot(rt: IR, ts: Int, mOpen: String): Unit = {
-    assert(mOpen == "{" && rt == IR.IRZ)
-    memSpaceBuilder = Some(MemBuilder().typed(StackSlot.Typed(ts)))
-  }
-
-  def mem_field(rb: IR, field: FieldReference, mOpen: String): Unit = {
-    assert(mOpen == "{" && rb == IR.IRZ)
-    memSpaceBuilder = Some(MemBuilder().static(field))
-  }
-
-  // memory access modifiers
-  private def fieldRefFixups(fields: Array[Any]) = fields.map { case f: FieldReference => f } ensuring(_.length == fields.length)
-  def fieldseq(fields: Array[Any]): Unit = {
-    val builder = memSpaceBuilder.get
-    fieldRefFixups(fields).foreach(builder.field)
-  }
-
-  // memory access closers
-  def ld_fieldseq(rd: IR, fields: Array[Any], mClose: String): Unit = {
-    assert(mClose == "}")
-    val builder = memSpaceBuilder.get
-    fieldRefFixups(fields).foreach(builder.field)
-    builder.load(rd).gen(this)
-    memSpaceBuilder = None
-  }
-
-  def ld_fieldseq(rd: FR, fields: Array[Any], mClose: String): Unit = {
-    assert(mClose == "}")
-    val builder = memSpaceBuilder.get
-    fieldRefFixups(fields).foreach(builder.field)
-    builder.load(rd).gen(this)
-    memSpaceBuilder = None
-  }
-
-  def st_fieldseq(rv: IR, fields: Array[Any], mClose: String): Unit = {
-    assert(mClose == "}")
-    val builder = memSpaceBuilder.get
-    fieldRefFixups(fields).foreach(builder.field)
-    builder.store(rv).gen(this)
-    memSpaceBuilder = None
-  }
-
-  def st_fieldseq(rv: FR, fields: Array[Any], mClose: String): Unit = {
-    assert(mClose == "}")
-    val builder = memSpaceBuilder.get
-    fieldRefFixups(fields).foreach(builder.field)
-    builder.store(rv).gen(this)
-    memSpaceBuilder = None
-  }
-
-  def ld_reg(rx: IR, mClose: String): Unit = {
-    val builder = memSpaceBuilder.get
-    builder.load(rx).gen(this)
-    memSpaceBuilder = None
-  }
-
-  def ld_reg(rx: FR, mClose: String): Unit = {
-    val builder = memSpaceBuilder.get
-    builder.load(rx).gen(this)
-    memSpaceBuilder = None
-  }
-  
-  def st_reg(rx: IR, mClose: String): Unit = {
-    val builder = memSpaceBuilder.get
-    builder.store(rx).gen(this)
-    memSpaceBuilder = None
-  }
-  
-  def st_reg(rx: FR, mClose: String): Unit = {
-    val builder = memSpaceBuilder.get
-    builder.store(rx).gen(this)
-    memSpaceBuilder = None
-  }
 
   // calls
   def call_direct(mr: MethodReference, rd: IR): Unit = callDirect(rd, BytecodeReferenceSymbol(mr))

@@ -11,7 +11,7 @@ package com.huawei.excelsior.jet.compiler.opt.middle.explosion
 import com.huawei.excelsior.common.Arch.CBC
 import com.huawei.excelsior.jet.compiler.StatsKind
 import com.huawei.excelsior.jet.compiler.bytecode.Position
-import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
+import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.compiler.Env.targetArch
 import com.huawei.excelsior.jet.compiler.opt.CompilerPhases.CompilerPhase
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
@@ -436,7 +436,9 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
                       assignAt(inVal, vars(phi), inVal)
                     }
 
+                  // TODO: support CopyStructure explosion
                   case copy: CopyStructure =>
+                    notImplemented("explode for CopyStructure")
                     val field = (f: @unchecked) match {
                       case ObjField(field) => field
                       case ArraySliceField(name, _) => asClassType(copy.structureType).findField(xstr(name))
@@ -463,7 +465,7 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
                     def assignFlat(valueAddr: Node) = {
                       val dstAddr = readScalarOrAddr(_.dst)
                       insertCodeBefore(copy) {
-                        CopyStructure(field.getType)(dstAddr, valueAddr)
+                        CopyStructure(field.getType)(DerivedPtr.Local(), dstAddr, DerivedPtr.Local(), valueAddr)
                       }
                     }
 
