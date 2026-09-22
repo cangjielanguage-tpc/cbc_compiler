@@ -173,17 +173,17 @@ object CbcSignatureAdapter {
     case sig: SignatureType.LocalTypeVariable  => CbcFileFormat.FuncTypeVariable(sig.idx)
     case sig: SignatureType.ClassTypeVariable  => CbcFileFormat.ClassTypeVariable(sig.idx)
 
-    case sig: SignatureType.Tuple => CbcFileFormat.Tuple.tuple(sig.params.map(_.toCbc))
+    case sig: SignatureType.Tuple => CbcFileFormat.Tuple(sig.params.map(_.toCbc))
     case sig: SignatureType.Box => CbcFileFormat.Box(sig.base.toCbc)
 
     case sig: SignatureType.ZeroSizedEnum => CbcFileFormat.BuiltinSignature.Unit // TODO: ZST enum
-    case sig: SignatureType.PrimitiveBasedEnum => CbcFileFormat.PrimitiveEnum.primitiveEnum(sig.name, sig.params.map(_.toCbc))
-    case sig: SignatureType.UnionBasedEnum => CbcFileFormat.UnionEnum.unionEnum(sig.name, sig.params.map(_.toCbc))
+    case sig: SignatureType.PrimitiveBasedEnum => CbcFileFormat.PrimitiveEnum(sig.name, sig.params.map(_.toCbc))
+    case sig: SignatureType.UnionBasedEnum => CbcFileFormat.UnionEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.ClassBasedEnum =>
       if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.aotTypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
       else CbcFileFormat.TypeSignature.typeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
     case sig: SignatureType.OptionLikeEnum =>
-      CbcFileFormat.OptionSignature.optionSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
+      CbcFileFormat.OptionSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
 
     case sig: SignatureType.ArraySlice => notImplemented(sig)
     case sig: SignatureType.JavaArray => notImplemented(sig)

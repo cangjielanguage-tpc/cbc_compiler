@@ -654,12 +654,6 @@ private class SignaturePool extends Pool[Signature] { self: RawPool with PoolPro
       case CangjieArray(tpe) =>
         output.putW8(SignatureTag.CangjieArray.tag)
         output.putULEB(signatures.add(tpe))
-      case Nullable(tpe) =>
-        output.putW8(SignatureTag.Nullable.tag)
-        output.putULEB(signatures.add(tpe))
-      case NonNullable(tpe) =>
-        output.putW8(SignatureTag.NonNullable.tag)
-        output.putULEB(signatures.add(tpe))
       case CPointer(tpe) =>
         output.putW8(SignatureTag.CPointer.tag)
         output.putULEB(signatures.add(tpe))

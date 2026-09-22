@@ -95,41 +95,38 @@ object CbcFileFormat {
   }
 
   object OptionSignature {
-    def optionSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false): Signature = {
-      val aots = new OptionSignature(name, args, isReference, isFixedSize)
-      aots
-      //appendFixedSizeTag(aots, isFixedSize)
+    def apply(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false): Signature = {
+      appendFixedSizeTag(new OptionSignature(name, args, isReference, isFixedSize), isFixedSize)
     }
   }
 
   object PrimitiveEnum {
-    def primitiveEnum(name: String, args: Seq[Signature]): Signature = {
+    def apply(name: String, args: Seq[Signature]): Signature = {
       appendFixedSizeTag(new PrimitiveEnum(name, args), true)
     }
   }
 
   object UnionEnum {
-    def unionEnum(name: String, args: Seq[Signature]): Signature = {
+    def apply(name: String, args: Seq[Signature]): Signature = {
       appendFixedSizeTag(new UnionEnum(name, args), true)
     }
   }
 
   object CangjieArray {
-    def cangjieArray(tpe: Signature): Signature = {
-      new CangjieArray(tpe)
-      //appendFixedSizeTag(new CangjieArray(tpe), true)
+    def apply(tpe: Signature): Signature = {
+      appendFixedSizeTag(new CangjieArray(tpe), true)
     }
   }
 
   object Tuple {
-    def tuple(args: Seq[Signature]): Signature = {
+    def apply(args: Seq[Signature]): Signature = {
       appendFixedSizeTag(new Tuple(args), args.forall(_.isFixedSize))
     }
   }
 
-  case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
-  case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
-  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
+  case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean) extends Signature
+  case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean) extends Signature
+  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean) extends Signature
   case class PrimitiveEnum(name: String, args: Seq[Signature]) extends Signature {
     override def isReference = false
     override def isFixedSize: Boolean = true
@@ -150,29 +147,20 @@ object CbcFileFormat {
     override def isReference = true
     override def isFixedSize: Boolean = false
   }
-  case class Nullable(sig: Signature) extends Signature { // FIXME: remove
-    override def isReference = sig.isReference
-    override def isFixedSize: Boolean = sig.isFixedSize
-  }
-  case class NonNullable(sig: Signature) extends Signature {
-    override def isReference = sig.isReference
-    override def isFixedSize: Boolean = sig.isFixedSize
-  }
   case class VArray(sig: Signature, length: Long) extends Signature {
     override def isReference = false
-    override def isFixedSize: Boolean = sig.isFixedSize
+    override def isFixedSize: Boolean = true
   }
   case class CPointer(sig: Signature) extends Signature {
     override def isReference = false
-    override def isFixedSize: Boolean = sig.isFixedSize
+    override def isFixedSize: Boolean = true
   }
   case class Box(sig: Signature) extends Signature {
     override def isReference = true
-    override def isFixedSize: Boolean = sig.isFixedSize
+    override def isFixedSize: Boolean = true
   }
   case class Fst(sig: Signature) extends Signature {
     override def isReference = false
-    // It's false to stop recursion in the encoding
     override def isFixedSize: Boolean = false
   }
 
