@@ -199,13 +199,16 @@ class StandaloneTestSuite(TestSuite):
             case "asm":
                 compile_asm_to_obj = [java_cmd(), '-jar', self.asm_jar, dotasm(test_name)]
 
-                with open(f"{test_work_dir}/asm.out", "w") as asm_log:
+                with open(f"{test_work_dir}/asm.out", "w+") as asm_log:
                     asm_err = io.StringIO()
                     res = await run_in_env(True, env, compile_asm_to_obj, log=asm_log, stderr_log=asm_err)
                     if res != 0:
+                        asm_log.flush()
+                        asm_log.seek(0)
+                        asm_out = asm_log.read()
                         asm_msg = f"Standalone test asm error: {res}"
-                        if asm_log.getvalue().strip():
-                            asm_msg += asm_log.getvalue()
+                        if asm_out.strip():
+                            asm_msg += asm_out
                         if asm_err.getvalue().strip():
                             asm_msg += asm_err.getvalue()
                         await self.print_stderr(asm_msg)

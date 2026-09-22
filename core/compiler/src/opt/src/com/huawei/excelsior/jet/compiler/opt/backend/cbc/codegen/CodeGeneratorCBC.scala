@@ -17,7 +17,7 @@ import com.huawei.excelsior.jet.assembler.cbc.Local.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IR2}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, Saturating, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.FloatMathOperaions.{COS, SIN}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler as ForkedISA12Assembler
 import com.huawei.excelsior.jet.assembler.{AsmEmitter, AsmType, Label, Location, Segment, Symbol, Width}
@@ -244,6 +244,53 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           }
       }
       addXSite(op)
+    }
+
+    private def genSaturatingOp(op: SaturatingOp): Unit = {
+      val opcode = (op.kind, op.signed) match {
+        case (SaturatingOp.Kind.ADD, true)  => Saturating.Add
+        case (SaturatingOp.Kind.ADD, false) => Saturating.UAdd
+        case (SaturatingOp.Kind.SUB, true)  => Saturating.Sub
+        case (SaturatingOp.Kind.SUB, false) => Saturating.USub
+        case (SaturatingOp.Kind.MUL, true)  => Saturating.Mul
+        case (SaturatingOp.Kind.MUL, false) => Saturating.UMul
+        case (SaturatingOp.Kind.DIV, true)  => Saturating.Div
+        case (SaturatingOp.Kind.DIV, false) => Saturating.UDiv
+        case (SaturatingOp.Kind.MOD, true)  => Saturating.Mod
+        case (SaturatingOp.Kind.MOD, false) => Saturating.UMod
+        case (SaturatingOp.Kind.POW, true)  => Saturating.Pow
+        case (SaturatingOp.Kind.SHL, true)  => Saturating.Lsh
+        case (SaturatingOp.Kind.SHL, false) => Saturating.ULsh
+        case (SaturatingOp.Kind.SHR, true)  => Saturating.Rsh
+        case (SaturatingOp.Kind.SHR, false) => Saturating.URsh
+      }
+
+      (op, op.l, op.r) match {
+        case (IReg(d), IReg(l), IntegralConst(r)) =>
+          op.kind match {
+            case SaturatingOp.Kind.ADD => asm.satBinaryImm(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.MUL => asm.satBinaryImm(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.SHL => asm.satBinaryImm(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.SHR => asm.satBinaryImm(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.SUB => asm.satBinaryImm(opcode, op.width, d, l, r)
+            case _ => shouldNotReachHere(s"no immediate encoding for saturating ${op.kind}")
+          }
+
+        case (IReg(d), IReg(l), IReg(r)) =>
+          op.kind match {
+            // swap args of commutative ops to simplify instruction semantics to `mov d, l; d op= r`
+            case SaturatingOp.Kind.ADD if d == r && d != l => asm.satBinary(opcode, op.width, d, r, l)
+            case SaturatingOp.Kind.MUL if d == r && d != l => asm.satBinary(opcode, op.width, d, r, l)
+            case SaturatingOp.Kind.ADD => asm.satBinary(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.MUL => asm.satBinary(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.SHL => asm.satBinary(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.SHR => asm.satBinary(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.SUB => assert(d != r); asm.satBinary(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.DIV => assert(d != r); asm.satBinary(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.MOD => assert(d != r); asm.satBinary(opcode, op.width, d, l, r)
+            case SaturatingOp.Kind.POW => assert(d != r); assert(op.signed); asm.satBinary(opcode, op.width, d, l, r)
+          }
+      }
     }
 
     private def genCast(cast: Cast): Unit = {
@@ -1207,6 +1254,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: LogicalBinaryOp            => genLogical(x)
         case x: CheckedUnary               => genCheckedUnary(x)
         case x: CheckedOp                  => genCheckedOp(x)
+        case x: SaturatingOp               => genSaturatingOp(x)
         case x: ArithCommutativeOp         => genArithCommutativeOp(x)
         case x: BinaryOp                   => shouldNotReachHere(s"unexpected BinaryOp: $x")
         case x: Shift                      => genShift(x)

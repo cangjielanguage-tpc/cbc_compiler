@@ -295,6 +295,44 @@ trait SimpleNodes { self: Universe with Nodes =>
     object SecondtValueArg extends EdgeMatcher[CheckedOp](3)
   }
 
+  class SaturatingOp(proto: SaturatingOp.Proto) extends BinaryOp(proto) with ControlledNode {
+    def width = proto.width
+    def signed = proto.signed
+    def asmType = proto.asmType
+    def kind = proto.kind
+  }
+
+  object SaturatingOp {
+    enum Kind:
+      case ADD, SUB, MUL, DIV, MOD, POW, SHL, SHR
+
+    case class Proto(keyType: Type, kind: Kind, asmType: AsmType)
+      extends BinaryOp.Controlled[SaturatingOp](keyType)(keyType) {
+
+      assert(keyType.isIntegralType)
+      def width = asmType.width
+      def signed = asmType.signed
+
+      override protected def newInstance() = new SaturatingOp(this)
+
+      override def apply(args: Node*) = {
+        val res = super.apply(args: _*)
+        res match {
+          case n @ SaturatingOp(SaturatingOp.Kind.ADD | SaturatingOp.Kind.MUL, _, _) if !areArgsSorted(n.l, n.r) => n.swapArgs()
+          case _ =>
+        }
+        res
+      }
+    }
+
+    def apply(tpe: Type, width: Width, kind: Kind, signed: Boolean)(l: Node, r: Node) = proto(tpe, kind, AsmType.integral(width, signed))(l, r)
+    def proto(tpe: Type, kind: Kind, asmType: AsmType) = Prototype.intern(new Proto(tpe, kind, asmType))
+
+    def normalizeArg(tpe: Type, from: Width, signed: Boolean, x: Node): Node = BitFieldExtract.BFX(tpe, 0, from.nbits, signed, x)
+
+    def unapply(op: SaturatingOp): Option[(Kind, Node, Node)] = Some((op.kind, op.l, op.r))
+  }
+
 
   trait MayHaveImplicitCheck extends Node {
     import Group.AttachReason.IMPLICIT_CHECK_ARG

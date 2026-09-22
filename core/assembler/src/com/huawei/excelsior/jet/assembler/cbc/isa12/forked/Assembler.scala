@@ -14,7 +14,7 @@ import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, CbcTypeKind, Stack
 import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IRZ}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W16, W32, W64, W8}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Checked, Common, Width}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Checked, Common, Saturating, Width}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.{LD_F32, LD_F64, LD_REC, LD_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.{ST_F32, ST_F64, ST_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
@@ -176,6 +176,58 @@ trait ForkedAssembler {
 
   def cneg(dst: IR, src: IR, w: AsmWidth)  = csub(dst, IRZ, src, w)
   def cuneg(dst: IR, src: IR, w: AsmWidth) = cusub(dst, IRZ, src, w)
+
+  private def genSaturatingBinary(op: Saturating, w: AsmWidth, d: IR, l: IR, r: IR): Unit = instr {
+    analyzer.prim(d)
+    analyzer.usePrim(l)
+    analyzer.usePrim(r)
+    stream
+      .opc8(Opcode.ThreeAddress.saturatingBinary(Width(w)))
+      .bits(_.w4(op.ordinal).w4(d))
+      .bits(_.w4(l).w4(r))
+  }
+
+  def sadd(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.Add, w, d, l, r)
+  def ssub(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.Sub, w, d, l, r)
+  def smul(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.Mul, w, d, l, r)
+  def sdiv(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.Div, w, d, l, r)
+  def smod(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.Mod, w, d, l, r)
+  def spow(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.Pow, w, d, l, r)
+  def sslh(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.Lsh, w, d, l, r)
+  def ssrh(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.Rsh, w, d, l, r)
+  def suadd(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.UAdd, w, d, l, r)
+  def susub(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.USub, w, d, l, r)
+  def sumul(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.UMul, w, d, l, r)
+  def sudiv(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.UDiv, w, d, l, r)
+  def sumod(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.UMod, w, d, l, r)
+  def suslh(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.ULsh, w, d, l, r)
+  def susrh(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.URsh, w, d, l, r)
+
+  def sneg(dst: IR, src: IR, w: AsmWidth) = ssub(dst, IRZ, src, w)
+  def suneg(dst: IR, src: IR, w: AsmWidth) = susub(dst, IRZ, src, w)
+
+  def satBinary(op: Saturating, w: AsmWidth, d: IR, l: IR, r: IR): Unit = genSaturatingBinary(op, w, d, l, r)
+
+  def satBinaryImm(op: Saturating, w: AsmWidth, d: IR, l: IR, imm: Long): Unit = genSaturatingBinaryImm(op, w, d, l, imm)
+
+  private def genSaturatingBinaryImm(op: Saturating, w: AsmWidth, d: IR, l: IR, imm: Long): Unit = instr {
+    analyzer.trans(d, l)
+    stream
+      .opc8(Opcode.ThreeAddress.saturatingBinaryImm(Width(w)))
+      .bits(_.w4(op.ordinal).w4(d))
+      .bits(_.w4(l).w4(low4(imm)))
+      .sleb(scut4(imm))
+  }
+
+  def saddi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Add, w, d, l, imm)
+  def ssubi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Sub, w, d, l, imm)
+  def smuli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Mul, w, d, l, imm)
+  def suaddi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.UAdd, w, d, l, imm)
+  def susubi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.USub, w, d, l, imm)
+  def sumuli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.UMul, w, d, l, imm)
+  def sslhi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Lsh, w, d, l, imm)
+  def ssrhi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Rsh, w, d, l, imm)
+  def suslhi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.ULsh, w, d, l, imm)
 
   def atomicLoad(dst: IR, obj: IR, f: FieldReference): Unit = {
     analyzer.useRef(obj)
@@ -1280,6 +1332,14 @@ object Assembler {
     case ZeroVal
     case FMathUn32
     case FMathUn64
+    case SBin8
+    case SBin16
+    case SBin32
+    case SBin64
+    case SBinImm8
+    case SBinImm16
+    case SBinImm32
+    case SBinImm64
   }
 
   enum RegSymGroup extends Ordinal {
@@ -1401,6 +1461,20 @@ object Assembler {
         case W16 => Opcode.CBinaryImm16
         case W32 => Opcode.CBinaryImm32
         case W64 => Opcode.CBinaryImm64
+      }
+
+      def saturatingBinary(w: Width): Opcode = w match {
+        case W8  => Opcode.SBin8
+        case W16 => Opcode.SBin16
+        case W32 => Opcode.SBin32
+        case W64 => Opcode.SBin64
+      }
+
+      def saturatingBinaryImm(w: Width): Opcode = w match {
+        case W8  => Opcode.SBinImm8
+        case W16 => Opcode.SBinImm16
+        case W32 => Opcode.SBinImm32
+        case W64 => Opcode.SBinImm64
       }
     }
   }

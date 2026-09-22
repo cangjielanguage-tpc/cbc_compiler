@@ -20,7 +20,7 @@ import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimina
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
 import com.huawei.excelsior.jet.compiler.opt.middle.{ContextTypesRecalculation, DCEComponent, UCEComponent}
-import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, FailArrayAcquireRawData, FailSaturatingArithmetic, PackageInitFromMain}
+import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, FailArrayAcquireRawData, PackageInitFromMain}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CangjieEnumWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
@@ -650,7 +650,9 @@ trait CHIRParser
               case _: Integral => CheckedUnary(tpe, sig.toAsm, CheckedUnary.Kind.Neg)(arg)
               case _ => Neg(tpe)(arg)
             }
-            case CHIR.OverflowStrategy.Saturating => Neg(tpe)(arg) // TODO: support properly
+            case CHIR.OverflowStrategy.Saturating =>
+              // saturating neg == saturating sub from zero (clamps MIN to MAX, and unsigned values to zero)
+              SaturatingOp(tpe, sig.toAsm.width, SaturatingOp.Kind.SUB, sig.toAsm.signed)(IntegralConst(tpe)(0), arg)
             case s => shouldNotReachHere(s"Unexpected overflow strategy $s")
           }
           case CHIR.Unary.Kind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
@@ -760,44 +762,26 @@ trait CHIRParser
                 }
 
               case CHIR.OverflowStrategy.Saturating =>
-                val proc = e.kind match {
-                  case CHIR.Binary.Kind.Exp => assert(size == 64); RTSProc.CJ_saturatingPowI64
-                  case CHIR.Binary.Kind.Add => size match {
-                    case 8  => if (signed) RTSProc.CJ_saturatingAddI8  else RTSProc.CJ_saturatingAddU8
-                    case 16 => if (signed) RTSProc.CJ_saturatingAddI16 else RTSProc.CJ_saturatingAddU16
-                    case 32 => if (signed) RTSProc.CJ_saturatingAddI32 else RTSProc.CJ_saturatingAddU32
-                    case 64 => if (signed) RTSProc.CJ_saturatingAddI64 else RTSProc.CJ_saturatingAddU64
-                  }
-                  case CHIR.Binary.Kind.Sub => size match {
-                    case 8  => if (signed) RTSProc.CJ_saturatingSubI8  else RTSProc.CJ_saturatingSubU8
-                    case 16 => if (signed) RTSProc.CJ_saturatingSubI16 else RTSProc.CJ_saturatingSubU16
-                    case 32 => if (signed) RTSProc.CJ_saturatingSubI32 else RTSProc.CJ_saturatingSubU32
-                    case 64 => if (signed) RTSProc.CJ_saturatingSubI64 else RTSProc.CJ_saturatingSubU64
-                  }
-                  case CHIR.Binary.Kind.Mul => size match {
-                    case 8  => if (signed) RTSProc.CJ_saturatingMulI8  else RTSProc.CJ_saturatingMulU8
-                    case 16 => if (signed) RTSProc.CJ_saturatingMulI16 else RTSProc.CJ_saturatingMulU16
-                    case 32 => if (signed) RTSProc.CJ_saturatingMulI32 else RTSProc.CJ_saturatingMulU32
-                    case 64 => if (signed) RTSProc.CJ_saturatingMulI64 else RTSProc.CJ_saturatingMulU64
-                  }
-                  case CHIR.Binary.Kind.Div => size match {
-                    case 8  => if (signed) RTSProc.CJ_saturatingDivI8  else RTSProc.CJ_saturatingDivU8
-                    case 16 => if (signed) RTSProc.CJ_saturatingDivI16 else RTSProc.CJ_saturatingDivU16
-                    case 32 => if (signed) RTSProc.CJ_saturatingDivI32 else RTSProc.CJ_saturatingDivU32
-                    case 64 => if (signed) RTSProc.CJ_saturatingDivI64 else RTSProc.CJ_saturatingDivU64
-                  }
-                  case CHIR.Binary.Kind.Mod => size match {
-                    case 8  => if (signed) RTSProc.CJ_saturatingModI8  else RTSProc.CJ_saturatingModU8
-                    case 16 => if (signed) RTSProc.CJ_saturatingModI16 else RTSProc.CJ_saturatingModU16
-                    case 32 => if (signed) RTSProc.CJ_saturatingModI32 else RTSProc.CJ_saturatingModU32
-                    case 64 => if (signed) RTSProc.CJ_saturatingModI64 else RTSProc.CJ_saturatingModU64
-                  }
-                  case x => shouldNotReachHere(s"unexpected saturating binary expression: ${e.kind}")
+                val width = sig.toAsm.width
+                val larg = SaturatingOp.normalizeArg(l.tpe, width, signed, l)
+                val rarg = SaturatingOp.normalizeArg(r.tpe, width, signed, r)
+                val kind = e.kind match {
+                  case CHIR.Binary.Kind.Add    => SaturatingOp.Kind.ADD
+                  case CHIR.Binary.Kind.Sub    => SaturatingOp.Kind.SUB
+                  case CHIR.Binary.Kind.Mul    => SaturatingOp.Kind.MUL
+                  case CHIR.Binary.Kind.Div    => SaturatingOp.Kind.DIV
+                  case CHIR.Binary.Kind.Mod    => SaturatingOp.Kind.MOD
+                  case CHIR.Binary.Kind.Exp    => assert(size == 64); SaturatingOp.Kind.POW
+                  case CHIR.Binary.Kind.LShift => SaturatingOp.Kind.SHL
+                  case CHIR.Binary.Kind.RShift => SaturatingOp.Kind.SHR
+                  case x => shouldNotReachHere(s"unexpected saturating binary expression: ${x}")
                 }
-                if (env.enabled(FailSaturatingArithmetic)) {
-                  notImplemented("Saturating arithmetic")
+                if (e.kind == CHIR.Binary.Kind.Div || e.kind == CHIR.Binary.Kind.Mod) {
+                  // A zero divisor throws (ArithmeticException); saturating
+                  // division saturates `min / -1` instead of overflowing.
+                  DivisorCheck()(r)
                 }
-                IntegralConst(tpe)(123456789)
+                SaturatingOp(tpe, width, kind, signed)(larg, rarg)
             }
         }
         state(e) = adjustRes(n)
@@ -1235,13 +1219,19 @@ trait CHIRParser
 
         def toTpe = ValueType.fromSig(to)
 
-        e match {
+        val saturatingCast = e match {
           case e: CHIR.NumericCast => e.overflowStrategy match {
-            case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na => // ok
-            case CHIR.OverflowStrategy.Throwing => // TODO: do we need to support it?
-            case CHIR.OverflowStrategy.Saturating => notImplemented("saturating type cast")
+            case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na => false
+            case CHIR.OverflowStrategy.Throwing => false // TODO: do we need to support it?
+            case CHIR.OverflowStrategy.Saturating => true
           }
-          case _ => // do nothing
+          case _ => false
+        }
+        if (saturatingCast) {
+          (from, to) match {
+            case (_: Integral, _: Integral) => // clamped below where needed
+            case _ => notImplemented("saturating type cast")
+          }
         }
 
         val n = (from, to) match {
@@ -1262,7 +1252,49 @@ trait CHIRParser
             value
 
           case (from: Integral, to: Integral) =>
-            BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, value)
+            // Saturating casts must clamp to the target range *before* truncation.
+            // No clamping is needed when the target range fully contains the
+            // source range (widening casts and same-width same-signedness casts).
+            // Clamp analysis by source/target signedness:
+            //   signed -> signed,   narrowing: clamp to [to.min, to.max] (both bounds representable in src)
+            //   signed -> unsigned, narrowing: clamp negatives to 0; hi = 2^to.bits - 1 is either
+            //                                  not representable in src (same width) or unreachable
+            //   signed -> unsigned, widening:  hi unreachable; clamp negatives to 0
+            //   unsigned -> signed, same width: clamp hi to to.max (representable); lo unreachable
+            //   unsigned -> signed, narrowing: clamp hi to to.max; lo unreachable
+            //   unsigned -> unsigned, any:     clamp hi to to.max when narrowing; lo unreachable
+            val lowerNeeded = from.signed && (to.bits < from.bits || !to.signed)
+            val upperNeeded = (to.bits < from.bits) || (to.bits == from.bits && !from.signed && to.signed)
+            val needsClamp = saturatingCast && (lowerNeeded || upperNeeded)
+            val clamped =
+              if (!needsClamp) value
+              else {
+                // min/max bounds of `to`; the comparisons follow the *source* signedness
+                val lo  = if (to.signed) -(1L << (to.bits - 1)) else 0L
+                val hi  = if (to.signed) (1L << (to.bits - 1)) - 1 else (if (to.bits == 64) -1L else (1L << to.bits) - 1)
+                val (loCond, hiCond) = if (from.signed) (Condition.LT, Condition.GT) else (Condition.ULT, Condition.UGT)
+
+                // Branchless clamp via condition masks:
+                //   c = (v > bound); mask = -c (all ones if over); v' = (v & ~mask) | (bound & mask)
+                def clampSide(v: Node, bound: Long, cond: Condition): Node = {
+                  val boundC = IntegralConst(fromTpe)(bound)
+                  val c = CondVal(Cmp(fromTpe, cond)(v, boundC))
+                  val cW = BFX(fromTpe, 0, 32, signExtension = false, c)
+                  val mask = Sub(IntegralConst(fromTpe)(0), cW)
+                  val notMask = Xor(mask, IntegralConst(fromTpe)(-1))
+                  Or(And(notMask, v), And(mask, boundC))
+                }
+
+                var v = value
+                if (upperNeeded) {
+                  v = clampSide(v, hi, hiCond)
+                }
+                if (lowerNeeded) {
+                  v = clampSide(v, lo, loCond)
+                }
+                v
+              }
+            BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, clamped)
 
           case (from: Integral, UnicodeChar32) =>
             BFX(toTpe, 0, (from.bits min 32), signExtension = from.signed, value)
