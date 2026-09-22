@@ -78,7 +78,7 @@ class ABISignatureSuite extends CompilerSuite with TypesToolbox {
   val coreOption = {
     val sym = makeSymClass("std.core:Option", null)
     syms += sym
-    sym.setCangjieEnumInfo(CangjieEnumInfo(Seq(
+    sym.setCangjieEnumInfo(CangjieEnumInfo(CangjieEnumInfo.Kind.OptionLike, Seq(
       CangjieEnumInfo.Constructor(Seq(ctv(0))), // some
       CangjieEnumInfo.Constructor(Seq())        // none
     )))

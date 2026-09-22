@@ -8,11 +8,10 @@
 
 package com.huawei.excelsior.jet.compiler.chir
 
-sealed abstract class EnumKind
-object EnumKind {
-  case object ZeroSized extends EnumKind
-  case object PrimitiveBased extends EnumKind
-  case class OptionLike(tpe: CHIR.Type) extends EnumKind
-  case object UnionBased extends EnumKind
-  case object ClassBased extends EnumKind
+enum EnumKind {
+  case ZeroSized
+  case PrimitiveBased
+  case OptionLike(tpe: CHIR.Type)
+  case UnionBased
+  case ClassBased
 }

@@ -3465,9 +3465,11 @@ object pcOModule {
     def this(info: CangjieEnumInfo) = { this(); this.info = info }
 
     override def internalize(si: SymIO): Unit = {
-      info = CangjieEnumInfo(si.readSeq(() => CangjieEnumInfo.Constructor(si.readSeq(si.readSignatureType))))
+      info = CangjieEnumInfo(CangjieEnumInfo.Kind.fromOrdinal(si.readInt()), 
+        si.readSeq(() => CangjieEnumInfo.Constructor(si.readSeq(si.readSignatureType))))
     }
     override def externalize(si: SymIO): Unit = {
+      si.writeInt(info.kind.ordinal)
       si.writeSeq(info.constructors) { c =>
         si.writeSeq(c.params)(si.writeSignatureType)
       }
