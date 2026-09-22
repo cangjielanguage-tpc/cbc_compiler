@@ -12,6 +12,7 @@ import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker.NO_LLVM_INDEX
 import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
 import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTable, CangjieEnumInfo, UMLWriter}
+import com.huawei.excelsior.jet.compiler.chir.EnumKind
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.{ABSTRACT, PUBLIC, STATIC}
@@ -187,7 +188,14 @@ object CHIRBuilder {
           val ctors = ctorSigs.map(_.paramTypes).map(_.map(resolver.typeSig))
 
           val kind = resolver.enumKind(d)
-          builder.setEnumInfo(symType, CangjieEnumInfo(kind, ctors.map(CangjieEnumInfo.Constructor.apply)))
+          val symLevelKind = kind match {
+            case EnumKind.ZeroSized      => CangjieEnumInfo.Kind.ZeroSized
+            case EnumKind.PrimitiveBased => CangjieEnumInfo.Kind.PrimitiveBased
+            case EnumKind.OptionLike(_)  => CangjieEnumInfo.Kind.OptionLike
+            case EnumKind.UnionBased     => CangjieEnumInfo.Kind.UnionBased
+            case EnumKind.ClassBased     => CangjieEnumInfo.Kind.ClassBased
+          }
+          builder.setEnumInfo(symType, CangjieEnumInfo(symLevelKind, ctors.map(CangjieEnumInfo.Constructor.apply)))
 
           def addEnumField(clazz: SymClassType, name: String, sig: SignatureType): Unit = {
             val field = builder.addField(clazz, name, sig, null, Modifiers(Modifier.PUBLIC).value)
