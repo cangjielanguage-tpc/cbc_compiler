@@ -879,7 +879,7 @@ trait CHIRParser
 
         } else {
           staticField match {
-            case None => GetFieldSeqRef(maybeDerivedPtrBase(mem),mem, fields*)
+            case None => GetFieldSeqRef(maybeDerivedPtrBase(mem), fieldBase(host, mem), fields*)
             case Some(sf) => GetStaticFieldSeqRef(DerivedPtr.Global(), sf +: fields*)
           }
         }
@@ -922,10 +922,10 @@ trait CHIRParser
             staticField match {
               case None =>
                 if (!lastField.fieldType.isVariableSizeType && needsCopy(lastField.fieldType)) {
-                  val addr = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields*)
+                  val addr = GetFieldSeqRef(maybeDerivedPtrBase(mem), fieldBase(host, mem), fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
-                  StoreFieldSeq(maybeDerivedPtrBase(mem), mem, arg, fields*)
+                  StoreFieldSeq(maybeDerivedPtrBase(mem), fieldBase(host, mem), arg, fields*)
                 }
               case Some(sf) =>
                 if (!lastField.fieldType.isVariableSizeType && needsCopy(lastField.fieldType)) {
@@ -1005,13 +1005,13 @@ trait CHIRParser
               Void()
 
             } else {
-              val shouldCopy = needsCopy(lastField.fieldType)
+              val shouldCopy = !lastField.fieldType.isVariableSizeType && needsCopy(lastField.fieldType)
               val valueOrMem = staticField match {
                 case None =>
                   if (shouldCopy) {
-                    GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields*)
+                    GetFieldSeqRef(maybeDerivedPtrBase(mem), fieldBase(host, mem), fields*)
                   } else {
-                    LoadFieldSeq(maybeDerivedPtrBase(mem), mem, fields*)
+                    LoadFieldSeq(maybeDerivedPtrBase(mem), fieldBase(host, mem), fields*)
                   }
                 case Some(sf) =>
                   if (shouldCopy) {
@@ -2417,6 +2417,11 @@ trait CHIRParser
         IndexFieldReference(refType, fieldType)(idx)
       }
     }
+  }
+
+  private def fieldBase(host: SignatureType, mem: Node): Node = {
+    if (host.isVariableSizeType && mem.tpe == TRefType) UnboxLea(host)(mem)
+    else mem
   }
 
   private def maybeDerivedPtrBase(rcv: Node): Node = rcv match {

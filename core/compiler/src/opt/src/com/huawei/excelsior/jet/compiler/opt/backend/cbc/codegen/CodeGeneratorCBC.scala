@@ -371,7 +371,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
       }
 
-      // None denotes a static base; typed slots stay intact for direct ld/st.
       val baseLocation: Option[IR | StackSlot.Typed] = n match {
         case op: InstanceFieldSeqOperation => Some(getBaseLocation(op.base))
         case _ =>
@@ -398,30 +397,50 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
         val Reg(reg) = value
 
-        // Generic ld/st currently accept only NoneFieldReference, so consume
-        // the whole address for them. Otherwise, fold the plain suffix into ld/st.
         val suffixSize = if (n.resType.isVariableSizeType) 0 else fieldRefs.reverseIterator.takeWhile(isPlainField).size
         val (prefix, suffix) = fieldRefs.splitAt(fieldRefs.size - suffixSize)
-        val field = if (suffix.nonEmpty) constrFieldRef(suffix) else NoneFieldReference(n.resType.toCbc)
+        val field = if (suffix.nonEmpty) {
+          constrFieldRef(suffix)
+        } else {
+          NoneFieldReference(n.resType.toCbc)
+        }
 
         if (prefix.isEmpty) {
           baseLocation match {
             case Some(base: IR) =>
-              if (store) asm.st(reg, base, field) else asm.ld(reg, base, field)
+              if (store) {
+                asm.st(reg, base, field)
+              } else {
+                asm.ld(reg, base, field)
+              }
             case Some(slot: StackSlot.Typed) =>
-              if (store) asm.st(reg, slot, field) else asm.ld(reg, slot, field)
+              if (store) {
+                asm.st(reg, slot, field)
+              } else {
+                asm.ld(reg, slot, field)
+              }
             case None =>
-              if (store) asm.st(reg, field) else asm.ld(reg, field)
+              if (store) {
+                asm.st(reg, field)
+              } else {
+                asm.ld(reg, field)
+              }
           }
         } else {
           genAddress(IR1, prefix)
           val IReg(baseRef) = n.baseRef
           if (n.resType.isVariableSizeType) {
-            if (store) asm.st(reg, baseRef, IR1, resultTI, NoneFieldReference())
-            else asm.ld(reg, baseRef, IR1, resultTI, NoneFieldReference())
+            if (store) {
+              asm.st(reg, baseRef, IR1, resultTI, NoneFieldReference())
+            } else {
+              asm.ld(reg, baseRef, IR1, resultTI, NoneFieldReference())
+            }
           } else {
-            if (store) asm.st(reg, baseRef, IR1, field)
-            else asm.ld(reg, baseRef, IR1, field)
+            if (store) {
+              asm.st(reg, baseRef, IR1, field)
+            } else {
+              asm.ld(reg, baseRef, IR1, field)
+            }
           }
           addXSite(n)
           saveGCState(n)
