@@ -238,6 +238,9 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   protected def freeOfTemporals(node: Node) = node match {
     case _ if noCodeShouldBeGenerated(node) => true
 
+    case op: (LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq) =>
+      !FieldSeqOperation.hasGeneric(op.fields)
+
     case _: (BlockEnd | CheckedOp | CheckedUnary | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Transfer | FieldChainRead
       | Add | Sub | IDivRemOp | Mul | Pow | Cmp | CondVal | FDiv | MathIntrinsic | LogicalBinaryOp | GetField | PutField
       | BitcodeDeferred.FieldOp | Shift | GetStatic | PutStatic | ValueConvert | ReinterpretCast | LoadTailParam
@@ -246,13 +249,13 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | DepriveOperation | EnrichOperation | EnrichCBC | ExtractEnrichment | FieldChainWrite | Neg | MutFunc.Combine
       | CopyStructure | CopyStructureCBC | Throw | InterfaceCastCBC | CatchCBC | EndLocalUnmovable | DebugBreakpoint
       | LoadMemory | StoreMemory | InitStringRecord | ThisTypeInfoCBC | ThisTypeInfoByCBC
-      | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq | GetFieldSeqRef | GetStaticFieldSeqRef
+      | GetFieldSeqRef | GetStaticFieldSeqRef
       | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | UnboxLea
       | SpawnFuture | SpawnClosure
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
       | AssignGeneric | InstanceOfGeneric | NewGeneric
-      | AtomicOps.AtomicNode | DerivedPtr.Local | DerivedPtr.Global | ZeroValueGeneric) => true
-      | FieldReferenceNode | ConstIndexFieldReference | IndexFieldReference| FieldReferenceNodeGeneric | ConstIndexGeneric | IndexFieldReferenceGeneric) => true
+      | AtomicOps.AtomicNode | DerivedPtr.Local | DerivedPtr.Global | ZeroValueGeneric
+      | CangjieReferenceNode) => true
 
     case _: (TypeTest | CallTarget | MutFuncArgNode) => true // always grouped with another node
 
@@ -263,7 +266,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case _: (NewArrayFill | ArrayStoreCheck | ArrayFill
       | CheckCast | BitcodeDeferred.CheckCast
       | CoverageCounter | Call | ZeroRefs
-      | UniversalGeneric | LoadFieldSeqGeneric | StoreFieldSeqGeneric
+      | UniversalGeneric
       | CFuncWrapperAddr | FieldAddr | InitObj | StackZeroing) => false
   }
 

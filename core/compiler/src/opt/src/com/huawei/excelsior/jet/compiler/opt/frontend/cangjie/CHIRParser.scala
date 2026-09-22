@@ -1380,10 +1380,10 @@ trait CHIRParser
                     // nothing to do
                   case StackAlloc.Local(allocType) =>
                     // string
-                    val mem = GetStaticFieldSeqRef(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global())
+                    val mem = GetStaticFieldSeqRef(DerivedPtr.Global(), createFieldReferenceNode(field, SignatureType.fromSymType(declType), field.getType, Some(field.getFieldIndex)))
                     copy(allocType, mem, value)
                   case _ =>
-                    StoreStaticFieldSeq(Seq(CangjieFieldReference(field.getFieldIndex, Some(field), SignatureType.fromSymType(declType), field.getType)))(DerivedPtr.Global(), value)
+                    StoreStaticFieldSeq(DerivedPtr.Global(), value, createFieldReferenceNode(field, SignatureType.fromSymType(declType), field.getType, Some(field.getFieldIndex)))
                 }
               case _ =>
             }
@@ -2342,13 +2342,14 @@ trait CHIRParser
         StackAlloc.Local(tupleType)
       }
       for (((arg, i), sig) <- args.zipWithIndex zip tupleType.params) {
-        val fieldRef = ConstIndexFieldReference(i, tupleType, sig)
+        val fieldRef = createConstIndexNode(i, tupleType, sig)
         if (sig.isZST) {
           // Nothing to do
 
         } else if (tupleType.isVariableSizeType) {
           // TODO: use Box(tupleType) in fieldRef instead of explicit UnboxLea
-          StoreFieldSeqGeneric(Seq(fieldRef))(mem, UnboxLea(tupleType)(mem), arg, typeInfos(Seq(fieldRef)))
+          val fields = if (sig.isVariableSizeType) Seq(fieldRef, loadTypeInfo(sig)) else Seq(fieldRef)
+          StoreFieldSeq(mem, UnboxLea(tupleType)(mem), arg, fields*)
 
         } else if (needsCopy(sig)) {
           val tupleField = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fieldRef)
