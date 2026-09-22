@@ -94,6 +94,10 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
       // No constant folding for phies, it is covered with other optimizations
       false
 
+    case ValueConvert(U64, F32, LConst(v)) if v <= 0 => false // no converters yet
+    case ValueConvert(U64, F64, LConst(v)) if v <= 0 => false // no converters yet
+    case ValueConvert(F32, U64, _) | ValueConvert(F64, U64, _) => false // no converters yet
+    
     case _ =>
       // Node has non empty list of value arguments and all fo them are compile-time value nodes
       // Also, node may have SymlevelNode argument (e.g. InstanceOf)
