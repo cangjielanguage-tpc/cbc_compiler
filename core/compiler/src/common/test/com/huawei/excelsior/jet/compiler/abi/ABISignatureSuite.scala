@@ -12,7 +12,6 @@ import com.huawei.excelsior.common.Environment.{JC_STANDALONE, TARGET_CPU_ARCH, 
 import com.huawei.excelsior.common.LanguagePack
 import com.huawei.excelsior.jet.compiler.abi.cbc.PlatformCBC
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieEnumInfo
-import com.huawei.excelsior.jet.compiler.chir.EnumKind
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.{SpecialParamSet, SpecialParameter}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter.*
 import com.huawei.excelsior.jet.compiler.symlevel.{MethodSignature, SignatureType}
@@ -79,7 +78,7 @@ class ABISignatureSuite extends CompilerSuite with TypesToolbox {
   val coreOption = {
     val sym = makeSymClass("std.core:Option", null)
     syms += sym
-    sym.setCangjieEnumInfo(CangjieEnumInfo(EnumKind.OptionLike(null), Seq(
+    sym.setCangjieEnumInfo(CangjieEnumInfo(CangjieEnumInfo.Kind.OptionLike, Seq(
       CangjieEnumInfo.Constructor(Seq(ctv(0))), // some
       CangjieEnumInfo.Constructor(Seq())        // none
     )))
