@@ -1433,13 +1433,26 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.VArraySet =>
             val Seq(array, value, index) = e.args
             val ValueSig(arrayType: SignatureType.VArray) = array
-            vArrayPut(arrayType, state(array), state(index), state(value))
+            val base = array match {
+              case global: CHIR.GlobalVar =>
+                val field = staticFieldRef(global)
+                packageInitCheck(asClassType(field.refType))
+                GetStaticFieldSeqRef(DerivedPtr.Global(), field)
+              case _ => state(array)
+            }
+            vArrayPut(arrayType, base, state(index), state(value))
 
           case CHIR.Intrinsic.Kind.VArrayGet =>
             val array +: indices = e.args
             val ValueSig(initialType: SignatureType.VArray) = array
             var arrayType = initialType
-            var value = state(array)
+            var value = array match {
+              case global: CHIR.GlobalVar =>
+                val field = staticFieldRef(global)
+                packageInitCheck(asClassType(field.refType))
+                GetStaticFieldSeqRef(DerivedPtr.Global(), field)
+              case _ => state(array)
+            }
             for ((index, i) <- indices.zipWithIndex) {
               value = vArrayGet(arrayType, value, state(index))
               if (i + 1 < indices.size) arrayType = arrayType.elemType.asInstanceOf[SignatureType.VArray]
