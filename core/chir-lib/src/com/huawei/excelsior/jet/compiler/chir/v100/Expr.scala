@@ -103,6 +103,8 @@ class IntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) exten
     case IntrinsicKind.ARRAY_GET_UNCHECKED => Intrinsic.Kind.ArrayGetUnchecked
     case IntrinsicKind.ARRAY_GET_REF_UNCHECKED => Intrinsic.Kind.ArrayGetRefUnchecked
     case IntrinsicKind.ARRAY_GET => Intrinsic.Kind.ArrayGet
+    case IntrinsicKind.VARRAY_GET => Intrinsic.Kind.VArrayGet
+    case IntrinsicKind.VARRAY_SET => Intrinsic.Kind.VArraySet
     case IntrinsicKind.ARRAY_RELEASE_RAW_DATA => Intrinsic.Kind.ArrayReleaseRawData
     case IntrinsicKind.ARRAY_SET_UNCHECKED => Intrinsic.Kind.ArraySetUnchecked
     case IntrinsicKind.ARRAY_SET => Intrinsic.Kind.ArraySet
@@ -266,6 +268,18 @@ final class LoadImpl(e: Expression)(implicit provider: CHIRItemProvider) extends
 
 final class StoreImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Store {
   lazy val Seq(value: CHIR.Value, location: CHIR.Value) = mapOperands(e)
+}
+
+final class VArrayImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.VArray {
+  def elementValues: Seq[CHIR.Value] = mapOperands(e)
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
+}
+
+final class VArrayBuilderImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.VArrayBuilder {
+  lazy val Seq(size: CHIR.Value, initValue: CHIR.Value, initializer: CHIR.Value) = mapOperands(e)
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
 final class RawArrayLiteralInitImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.RawArrayLiteralInit {

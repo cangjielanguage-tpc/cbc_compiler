@@ -147,6 +147,7 @@ sealed abstract class SignatureType extends Signature {
   final def getArrayElemType  (implicit typeProvider: TypeProvider) = (this: @unchecked) match {
     case CangjieArray(elemType) => elemType
     case ArraySlice(elemType) => elemType
+    case VArray(elemType, _) => elemType
     case x: (JavaArray | JBCReference) => x.symType.getArrayElemType
   }
 
@@ -168,6 +169,7 @@ sealed abstract class SignatureType extends Signature {
     case x: Box => x.base.hasRefFields
     case _: ZeroSizedEnum | _: PrimitiveBasedEnum | _: UnionBasedEnum => false
     case x: OptionLikeEnum => x.someType.isTraceableReference || (x.someType.isRecord && x.someType.hasRefFields)
+    case x: VArray => x.length != 0 && (x.elemType.isTraceableReference || (x.elemType.isRecord && x.elemType.hasRefFields))
     case x => x.symType.hasRefFields
   }
 
@@ -261,7 +263,7 @@ sealed abstract class SignatureType extends Signature {
     case _: Reference | _: InstantiatedReference => symType.isDeferred
     case x: Tuple =>  x.params.exists(_.isDeferred)
     case x: Box => x.base.isDeferred
-    case _: VArray => require(!symType.isDeferred, "deferred VArrays are not support yet"); false
+    case _: VArray => assert(isStandalone || !symType.isDeferred); false
     case _: CangjieEnum => false
   }
 

@@ -407,6 +407,8 @@ object CHIR {
       case ArrayReleaseRawData
       case ArraySetUnchecked
       case ArraySet
+      case VArrayGet
+      case VArraySet
       case ArraySize
       case ArrayBuiltinCopyTo
       case AtomicFetchAnd
@@ -459,6 +461,16 @@ object CHIR {
   }
 
   object GetException extends Expression {
+  }
+
+  trait VArray extends Expression with HasResultVar {
+    def elementValues: Seq[Value]
+  }
+
+  trait VArrayBuilder extends Expression with HasResultVar {
+    def size: Value
+    def initValue: Value
+    def initializer: Value
   }
 
   trait RawArrayInitByValue extends Expression {
