@@ -82,7 +82,7 @@ final class VTableImpl(v: VTableInType)(using provider: CHIRItemProvider) extend
 final class VMethodImpl(v: VirtualMethodInfo)(using provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl {
   val attrs: Long = v.attributes
   def name: String = v.funcName
-  def sig: CHIR.FuncType = provider.getType[CHIR.FuncType](v.sigType).get
+  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.sigType).get
   def instance: CHIR.Func = provider.getValue[CHIR.Func](v.instance).get
   def genericTypeParams = v.methodGenericTypeParamsVector.toTypeSeq[CHIR.Type]
   def originalType: CHIR.FuncType = provider.getType[CHIR.FuncType](v.originalType).get

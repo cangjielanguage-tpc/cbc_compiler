@@ -395,7 +395,7 @@ object CHIRBuilder {
                 val isStatic = mods.contains(STATIC)
                 Seq(CHIRVTable.Entry(
                   m.name,
-                  resolver.functionSig(m.sig, hasReceiver = false)._1, // This signature does not ever contain receiver (TODO: verify it)
+                  resolver.functionSig(m.tpe, hasReceiver = false)._1, // This signature does not ever contain receiver (TODO: verify it)
                   lparams.map(resolver.typeSig),
                   Option(virtMethods(m.instance)),
                   mods,

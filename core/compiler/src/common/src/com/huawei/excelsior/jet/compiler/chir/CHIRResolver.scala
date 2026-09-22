@@ -206,7 +206,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   @tailrec
-  private def withGenericParams[T](v: CHIR.CustomTypeDef | CHIR.Type | CHIR.FuncSig | CHIR.VMethod)(action: Seq[CHIR.Type] => T): T = (v: @unchecked) match {
+  private def withGenericParams[T](v: CHIR.CustomTypeDef | CHIR.Type | CHIR.FuncSig)(action: Seq[CHIR.Type] => T): T = (v: @unchecked) match {
     case v: CHIR.ExtendDef => action(v.genericTypeParams)
     case v: CHIR.CustomTypeDef => action(v.tpe.asInstanceOf[CHIR.CustomType].genericTypeParams)
     case v: CHIR.CustomType => withGenericParams(v.typeDef)(action)
@@ -214,7 +214,6 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     case CHIR.BuiltinType.This => action(Seq.empty)
     case v: CHIR.Func => action(v.genericTypeParams)
     case v: CHIR.FuncSig => action(v.genericTypeParams)
-    case v: CHIR.VMethod => action(v.genericTypeParams)
   }
 
   def genericInfo(v: CHIR.CustomTypeDef | CHIR.Func): GenericInfo = withGenericParams(v) { params =>

@@ -266,11 +266,8 @@ object CHIR {
     def vMethods: Seq[VMethod]
   }
 
-  trait VMethod extends HasAttributes {
-    def name: String
-    def sig: FuncType
+  trait VMethod extends FuncSig with HasAttributes {
     def instance: Func
-    def genericTypeParams: Seq[Type]
     def originalType: FuncType
     def parentType: Type
     def returnType: Type
