@@ -144,7 +144,7 @@ class CbcFileEncoder(file: CbcFile) { self =>
   //          without destructing pools for strings/signatures ant etc.
   //       4. Advance `regionIndex` on index overflow and re-build following tables.
   // private var regionIndex = 0
-  private val signatures = new SignatureTable(signaturePool)
+  private val signatures = new SignatureTableWrapper(SignatureTable(signaturePool))
   private val fieldRefs = new FieldRefTable(fieldRefPool) with PoolView with GlobalPool
   private val methodRefs = new MethodRefTable(methodRefPool) with PoolView with GlobalPool
 
@@ -411,12 +411,12 @@ private trait Pool[Data] {
 private trait PoolProvider {
   def strings: Pool[String]
   def byteArrays: Pool[ArraySeq[Byte]]
-  def signatures: Table[Signature]
+  def signatures: SignatureTableWrapper
   def fields: Pool[Field]
   def methods: Pool[Method]
   def methodCodes: Pool[MethodCode]
-  def methodRefs: Table[MethodReference]
-  def fieldRefs: Table[FieldReference]
+  def methodRefs: DataTable[MethodReference]
+  def fieldRefs: DataTable[FieldReference]
   def directCallAotTable: AotTable
   def virtualCallAotTable: AotTable
   def interfaceCallAotTable: AotTable
@@ -424,11 +424,18 @@ private trait PoolProvider {
   def instanceFieldAotTable: AotTable
 }
 
+private trait Table[Data] {
+  def add(data: Data): Index
+  def size: Int
+  def serialize(out: DataOutput): Unit
+  def asByteArray(): Array[Byte]
+}
+
 /**
   * Represents a table of [[Data]] objects, which are stored in [[pool]].
   * Each object is referenced via [[Index]] to [[Offset]] in underlying [[pool]].
   */
-private class Table[Data](pool: Pool[Data]) {
+private class DataTable[Data](pool: Pool[Data]) extends Table[Data] {
   val map = mutable.Map.empty[Offset, Index]
 
   def add(data: Data): Index = {
@@ -451,14 +458,26 @@ private class Table[Data](pool: Pool[Data]) {
   }
 }
 
-private class SignatureTable(pool: Pool[Signature]) extends Table[Signature](pool) {
+private class SignatureTable(pool: Pool[Signature]) extends DataTable[Signature](pool) {
   override def add(data: Signature) = data match {
     case BuiltinSignature(id: Int) => id
     case _ => super.add(data) + BuiltinSignature.count
   }
 }
 
-private class MethodRefTable(pool: Pool[MethodReference]) extends Table[MethodReference](pool) {
+private class SignatureTableWrapper(val underlying: SignatureTable) extends Table[Signature] {
+  override def add(data: Signature): Index = if (data.isFixedSize) {
+    underlying.add(Fst(data))
+  } else {
+    underlying.add(data)
+  }
+
+  override def size: Index = underlying.size
+  override def serialize(out: DataOutput): Unit = underlying.serialize(out)
+  override def asByteArray(): Array[Byte] = underlying.asByteArray()
+}
+
+private class MethodRefTable(pool: Pool[MethodReference]) extends DataTable[MethodReference](pool) {
   self: RawPool with PoolProvider =>
 
   override def add(data: MethodReference): Index = {
@@ -473,7 +492,7 @@ private class MethodRefTable(pool: Pool[MethodReference]) extends Table[MethodRe
   }
 }
 
-private class FieldRefTable(pool: Pool[FieldReference]) extends Table[FieldReference](pool) {
+private class FieldRefTable(pool: Pool[FieldReference]) extends DataTable[FieldReference](pool) {
   self: RawPool with PoolProvider =>
 
   @nowarn("msg=match may not be exhaustive")
@@ -481,7 +500,7 @@ private class FieldRefTable(pool: Pool[FieldReference]) extends Table[FieldRefer
     val idx = super.add(data)
     data match {
       case fr: SingleFieldReference =>
-        unFst(fr.refType) match {
+        fr.refType match {
           case _: AotTypeSignature => fr.aotData.get match {
             case x: StaticFieldAotData => staticFieldAotTable.add(idx, IndexedAotData(idx, x))
             case x: InstanceFieldAotData => instanceFieldAotTable.add(idx, IndexedAotData(idx, x))
@@ -672,7 +691,7 @@ private class SignaturePool extends Pool[Signature] { self: RawPool with PoolPro
         output.putULEB(signatures.add(sig))
       case Fst(sig) =>
         output.putW8(SignatureTag.Fst.tag)
-        output.putULEB(signatures.add(sig))
+        output.putULEB(signatures.underlying.add(sig))
       case OptionSignature(name, args, _, _) => // TODO: add short form of encoding
         output.putW8(SignatureTag.Option.tag)
         output.putULEB(strings.add(name))

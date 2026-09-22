@@ -60,73 +60,22 @@ object CbcFileFormat {
     case F64 extends BuiltinSignature(0x13)
 
     override def isReference = false
-    override def isFixedSize: Boolean = true
-  }
-
-  def unFst(sig: Signature): Signature = sig match {
-    case Fst(sig) => sig
-    case sig => sig
-  }
-
-  private def appendFixedSizeTag(sig: Signature, isFixedSize: Boolean): Signature = {
-    if (isFixedSize) {
-      Fst(sig)
-    } else {
-      sig
-    }
+    override def isFixedSize: Boolean = false
   }
 
   object TypeSignature {
-    def ref(name: String, isFixedSize: Boolean = false) = typeSignature(name, Seq.empty, isReference = true, isFixedSize)
-    def rec(name: String, isFixedSize: Boolean) = typeSignature(name, Seq.empty, isReference = false, isFixedSize)
-    def typeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false): Signature = {
-      val ts = new TypeSignature(name, args, isReference, isFixedSize)
-      appendFixedSizeTag(ts, isFixedSize)
-    }
+    def ref(name: String, isFixedSize: Boolean = false) = TypeSignature(name, Seq.empty, isReference = true, isFixedSize)
+    def rec(name: String, isFixedSize: Boolean) = TypeSignature(name, Seq.empty, isReference = false, isFixedSize)
   }
 
   object AotTypeSignature {
-    def ref(name: String, isFixedSize: Boolean = false) = aotTypeSignature(name, Seq.empty, isReference = true, isFixedSize)
-    def rec(name: String, isFixedSize: Boolean) = aotTypeSignature(name, Seq.empty, isReference = false, isFixedSize)
-    def aotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false): Signature = {
-      val aots = new AotTypeSignature(name, args, isReference, isFixedSize)
-      appendFixedSizeTag(aots, isFixedSize)
-    }
+    def ref(name: String, isFixedSize: Boolean = false) = AotTypeSignature(name, Seq.empty, isReference = true, isFixedSize)
+    def rec(name: String, isFixedSize: Boolean) = AotTypeSignature(name, Seq.empty, isReference = false, isFixedSize)
   }
 
-  object OptionSignature {
-    def apply(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false): Signature = {
-      appendFixedSizeTag(new OptionSignature(name, args, isReference, isFixedSize), isFixedSize)
-    }
-  }
-
-  object PrimitiveEnum {
-    def apply(name: String, args: Seq[Signature]): Signature = {
-      appendFixedSizeTag(new PrimitiveEnum(name, args), true)
-    }
-  }
-
-  object UnionEnum {
-    def apply(name: String, args: Seq[Signature]): Signature = {
-      appendFixedSizeTag(new UnionEnum(name, args), true)
-    }
-  }
-
-  object CangjieArray {
-    def apply(tpe: Signature): Signature = {
-      appendFixedSizeTag(new CangjieArray(tpe), true)
-    }
-  }
-
-  object Tuple {
-    def apply(args: Seq[Signature]): Signature = {
-      appendFixedSizeTag(new Tuple(args), args.forall(_.isFixedSize))
-    }
-  }
-
-  case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean) extends Signature
-  case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean) extends Signature
-  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean) extends Signature
+  case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
+  case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
+  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
   case class PrimitiveEnum(name: String, args: Seq[Signature]) extends Signature {
     override def isReference = false
     override def isFixedSize: Boolean = true
@@ -137,7 +86,7 @@ object CbcFileFormat {
   }
   case class CangjieArray(tpe: Signature) extends Signature {
     override def isReference = true
-    override def isFixedSize: Boolean = true
+    override def isFixedSize: Boolean = false
   }
   case class Tuple(args: Seq[Signature]) extends Signature {
     override def isReference = false
