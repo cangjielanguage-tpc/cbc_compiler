@@ -1174,10 +1174,8 @@ trait CHIRParser
         val refClass = asClassType(refType)
         val method = entry.impl.getOrElse(refClass.findDeclaredMethodOrNull(xstr(name), gsig))
 
-        val mak = if (isGenericStatic) {
+        val mak = if (isStatic) {
           MAK.STATIC_VIRTUAL
-        } else if (isStatic) {
-          MAK.STATIC
         } else {
           MAK.VIRTUAL
         }
@@ -2143,7 +2141,7 @@ trait CHIRParser
         state(e) = mem
 
       case e: CHIR.GetRTTI =>
-        state(e) = ThisTypeInfoBy(ReceiverParam())
+        state(e) = ThisTypeInfoBy(state(e.obj))
     }
 
     private def staticFieldRef(globalVar: CHIR.GlobalVar): CangjieReferenceNode = {
@@ -2320,6 +2318,9 @@ trait CHIRParser
       packageInitCheck(target.refClass)
 
       val call = if (target.methodType.hasThisTypeInfoParameter && target.accessKind == MAK.STATIC_VIRTUAL) {
+        if (target.refType.sigType.containsTypeVariables) {
+          SaveCallRefTypeInfo(loadTypeInfo(target.refType.sigType))
+        }
         InvokeVirtualStatic(target)(abiArgs: _*)
       } else {
         target.accessKind match {
