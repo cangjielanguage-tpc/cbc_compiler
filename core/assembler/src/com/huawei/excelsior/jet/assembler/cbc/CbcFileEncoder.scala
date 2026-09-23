@@ -479,14 +479,20 @@ private class FieldRefTable(pool: Pool[FieldReference]) extends Table[FieldRefer
   @nowarn("msg=match may not be exhaustive")
   override def add(data: FieldReference): Index = {
     val idx = super.add(data)
+
+    def appendAotData(fr: SingleFieldReference): Unit = {
+      fr.aotData.get match {
+        case x: StaticFieldAotData => staticFieldAotTable.add(idx, IndexedAotData(idx, x))
+        case x: InstanceFieldAotData => instanceFieldAotTable.add(idx, IndexedAotData(idx, x))
+      }
+    }
+
     data match {
       case fr: SingleFieldReference =>
         fr.refType match {
-          case _: AotTypeSignature => fr.aotData.get match {
-            case x: StaticFieldAotData => staticFieldAotTable.add(idx, IndexedAotData(idx, x))
-            case x: InstanceFieldAotData => instanceFieldAotTable.add(idx, IndexedAotData(idx, x))
-          }
-          case _: (TypeSignature | OptionSignature | Tuple | PrimitiveEnum | UnionEnum) =>
+          case _: AotTypeSignature => appendAotData(fr)
+          case Box(_: AotTypeSignature) => appendAotData(fr)
+          case _: (TypeSignature | OptionSignature | Tuple | PrimitiveEnum | UnionEnum | Box) =>
         }
       case _ => // has no associated AOT data
     }

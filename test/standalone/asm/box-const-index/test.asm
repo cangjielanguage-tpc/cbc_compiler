@@ -5,7 +5,7 @@
 @type default
   @method main()I64
     @code
-      newobj default@ref
+      newobj Box[[I64, I64]]
       ld.field IR1, IR1, #boxed_tuple_ref
       ret.64 IR1
     @end
