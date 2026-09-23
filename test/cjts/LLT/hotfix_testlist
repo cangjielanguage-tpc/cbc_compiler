@@ -214,6 +214,7 @@ compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generi
 compiler/Sema/interface/interface_default_impl/prop_call_unimpl_static_func.cj
 compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_005.cj
 compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
+compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
 
 # bug: #46 (CBC-compiler generated call.interf.g to "non-boxed" method which is absent in method table)
 compiler/CHIR/CHIR2HLIR/record/mut/record_mut_ok_6.cj
