@@ -595,7 +595,7 @@ trait CangjieNodes { self: Universe =>
     case class Proto private[NewNoneOptionGeneric](optionType: SignatureType.OptionLikeEnum)
       extends FixedArgs[NewNoneOptionGeneric](ControlType, MemoryType, AddrType, AddrType)(TRefType)
         with ControlMemoryValueTagged[NewNoneOptionGeneric] {
-      assert(optionType.someType.isTypeVariable, optionType)
+      assert(optionType.someType.isVariableSizeType, optionType)
 
       def newInstance() = new NewNoneOptionGeneric(this)
     }
@@ -617,7 +617,7 @@ trait CangjieNodes { self: Universe =>
     case class Proto private[NewSomeOptionGeneric](optionType: SignatureType.OptionLikeEnum)
       extends FixedArgs[NewSomeOptionGeneric](ControlType, MemoryType, AddrType, AddrType, TRefType)(TRefType)
         with ControlMemoryValueTagged[NewSomeOptionGeneric] {
-      assert(optionType.someType.isTypeVariable, optionType)
+      assert(optionType.someType.isVariableSizeType, optionType)
 
       def newInstance() = new NewSomeOptionGeneric(this)
     }

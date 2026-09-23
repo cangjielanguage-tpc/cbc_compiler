@@ -1924,7 +1924,7 @@ trait CHIRParser
                     case Seq(IConst(c)) => assert(c == 0 || c == 1, c); Null()
                     case Seq(IConst(c), x) => assert(c == 0 || c == 1, c); x
                   }
-                } else if (enumType.someType.isTypeVariable) {
+                } else if (enumType.someType.isVariableSizeType) {
                   val baseTypeInfo = loadTypeInfo(enumType.someType)
                   val optionTypeInfo = loadTypeInfo(enumType)
                   state(e) = e.elementValues.map(state.apply) match {
@@ -1936,9 +1936,9 @@ trait CHIRParser
                       NewSomeOptionGeneric(enumType)(baseTypeInfo, optionTypeInfo, x)
                   }
                 } else {
+                  assert(!enumType.isVariableSizeType)
                   val mem = StackAlloc.Local(enumType, workaroundForNonZeroedTraceableRecords = true)
                   val payloadType = enumType.someType
-                  val tupleType = Tuple(Seq(Boolean, payloadType))
                   val tagChain = fieldChain(enumType, Seq(0))
                   e.elementValues.map(state.apply) match {
                     case Seq(IConst(c)) =>
@@ -1952,11 +1952,9 @@ trait CHIRParser
                             val lastFieldType = FieldSeqOperation.lastRef(payloadChain)
                       if (payloadType.isZST) {
                         // nothing to do
-
                       } else if (needsCopy(payloadType)) {
                         val addr = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, payloadChain*)
                         copy(payloadType, addr, x)
-
                       } else {
                         StoreFieldSeq(maybeDerivedPtrBase(mem), mem, x, payloadChain*)
                       }
@@ -1972,7 +1970,7 @@ trait CHIRParser
         val base = state(v)
         val res = baseType match {
           case baseType: SignatureType.OptionLikeEnum =>
-            if (baseType.someType.isTypeVariable) {
+            if (baseType.someType.isVariableSizeType) {
               base
             } else {
               Box(baseType)(loadTypeInfo(baseType), base)
