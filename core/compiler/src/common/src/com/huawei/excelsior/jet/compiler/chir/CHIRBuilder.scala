@@ -337,11 +337,22 @@ object CHIRBuilder {
 
     // Restore abstract methods that FE changed to global (still abstract) functions
 
+    // Static methods have no receiver parameter from which to recover their owner.
+    // Their vtable entries retain the original declaring type after specialization.
+    val staticAbstractOwners = pkg.typeDefs.flatMap(_.vtables).flatMap(_.vMethods)
+      .filter(m => m.instance.declaringDef.isEmpty &&
+        m.instance.attributes.contains(CHIR.Attribute.Abstract) &&
+        m.instance.attributes.contains(CHIR.Attribute.Static))
+      .map(m => m.instance -> m.parentType).toMap
+
     object GlobalAbstractFunc {
       def unapply(f: CHIR.Func): Option[CHIR.Type] = {
         if (f.declaringDef.isEmpty && f.attributes.contains(CHIR.Attribute.Abstract)) {
-          val funcType = f.tpe
-          Some(funcType.receiverType)
+          if (f.attributes.contains(CHIR.Attribute.Static)) {
+            staticAbstractOwners.get(f)
+          } else {
+            Some(f.tpe.receiverType)
+          }
         } else {
           None
         }
@@ -353,7 +364,6 @@ object CHIRBuilder {
         val symType = asClassType(resolver.symType(declType).get)
         val name = resolver.symName(m)
         val modifiers = resolver.symModifiers(m)
-        assert(!modifiers.contains(STATIC), name)
         assert(modifiers.contains(ABSTRACT), name)
         val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
         val genericInfo = resolver.genericInfo(m)
