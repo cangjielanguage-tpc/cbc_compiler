@@ -232,40 +232,6 @@ compiler/Sema/generics/interface_nongeneric_implements_generic.cj
 compiler/CHIR/UG/TypeCast/typecast01.cj
 compiler/Sema/record/primaryConstructor/primaryConstructor10.cj
 
-# bug: #20 (Support extend with interface in interprete)
-compiler/CHIR/AST2CHIR/BaseUseCase/extend/extend_interface4.cj
-compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
-compiler/CHIR/CHIR2HLIR/extend/extend_primitive_overload_operator.cj
-compiler/CHIR/Generic/testGeneric09.cj
-compiler/CHIR/UG/VTable/extend/extend1/main.cj
-compiler/CHIR/UG/VTable/extend/extend4/main.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_extend05.cj
-compiler/CHIR/UG/VTable/non_generic/extend_class_multi_level_class.cj
-compiler/CHIR/UG/VTable/non_generic/extend_class_multi_level_interface.cj
-compiler/CHIR/UG/VTable/non_generic/interface_extend01.cj
-compiler/CodegenCJNative/interface/primitive_extend_interface.cj
-compiler/CodegenCJNative/interface/primitive_extend_interface_generic_constraint.cj
-compiler/Sema/box/import_inline_box_01/main.cj
-compiler/Sema/Extend/autobox_try_catch1.cj
-compiler/Sema/Extend/autobox_try_catch2.cj
-compiler/Sema/Extend/extend_indirect_rearrange_01.cj
-compiler/Sema/Extend/extend_indirect_rearrange_02.cj
-compiler/Sema/Extend/extend_instantiated_type/extend_instantiated_type_06.cj
-compiler/Sema/Extend/extend_instantiated_type/extend_instantiated_type_10.cj
-compiler/Sema/Extend/extend_interface4.cj
-compiler/Sema/Extend/extend_subtype.cj
-compiler/Sema/Extend/extend_supertype1.cj
-compiler/Sema/Extend/extend_supertype2.cj
-compiler/Sema/Extend/extend_supertype3.cj
-compiler/Sema/Extend/extend_supertype4.cj
-compiler/Sema/Extend/extend_supertype5.cj
-compiler/Sema/Extend/extend_supertype6.cj
-compiler/Sema/Extend_import/import10/main.cj
-compiler/Sema/Extend/interface_default_implement/call_virtual_class.cj
-compiler/Sema/Extend/unbox_autobox_enumPattern_01.cj
-compiler/Sema/Extend/unbox_box_tuplePattern.cj
-compiler/Sema/Extend/unbox_enumPattern.cj
-
 # bug: #48 (Do not pass generic terms to CreateTypeInfo)
 compiler/CodegenCJNative/record/record_4.cj
 compiler/CHIR/CHIR2HLIR/matchPattern/enum_exhaustive_04.cj
