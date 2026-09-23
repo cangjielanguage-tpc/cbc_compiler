@@ -466,15 +466,15 @@ private class SignatureTable(pool: Pool[Signature]) extends DataTable[Signature]
 }
 
 private class SignatureTableWrapper(val underlying: SignatureTable) extends Table[Signature] {
-  override def add(data: Signature): Index = if (data.isFixedSize) {
+  def add(data: Signature): Index = if (data.isFixedSize) {
     underlying.add(Fst(data))
   } else {
     underlying.add(data)
   }
 
-  override def size: Index = underlying.size
-  override def serialize(out: DataOutput): Unit = underlying.serialize(out)
-  override def asByteArray(): Array[Byte] = underlying.asByteArray()
+  def size: Index = underlying.size
+  def serialize(out: DataOutput): Unit = underlying.serialize(out)
+  def asByteArray(): Array[Byte] = underlying.asByteArray()
 }
 
 private class MethodRefTable(pool: Pool[MethodReference]) extends DataTable[MethodReference](pool) {

@@ -156,8 +156,8 @@ object CbcSignatureAdapter {
     case sig: SignatureType.CangjieReference =>
       assert(!asClassType(sig).isUniversalGeneric, s"erased signature type: ${sig.toJETSignature}")
       adaptFunctional(sig).getOrElse {
-        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.ref(sig.name, !sig.isVariableSizeType)
-        else CbcFileFormat.TypeSignature.ref(sig.name, !sig.isVariableSizeType)
+        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.ref(sig.name)
+        else CbcFileFormat.TypeSignature.ref(sig.name)
       }
 
     case sig: SignatureType.InstantiatedType   =>

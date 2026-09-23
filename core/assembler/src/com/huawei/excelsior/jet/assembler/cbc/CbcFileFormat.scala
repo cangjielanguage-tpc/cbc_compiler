@@ -32,12 +32,9 @@ object CbcFileFormat {
   case class StringLiteral(s: String) extends BytecodeReference
   case class RawData(data: ArraySeq[Byte]) extends BytecodeReference
 
-  sealed trait Signature extends BytecodeReference {
-    def isReference: Boolean
-    def isFixedSize: Boolean
-  }
+  sealed abstract class Signature(val isReference: Boolean, val isFixedSize: Boolean) extends BytecodeReference
 
-  enum BuiltinSignature(val id: Int) extends Signature {
+  enum BuiltinSignature(val id: Int) extends Signature(false, false) {
     case Nil extends BuiltinSignature(0x00)
     case Void extends BuiltinSignature(0x01)
     case Unit extends BuiltinSignature(0x02)
@@ -58,65 +55,32 @@ object CbcFileFormat {
     case F16 extends BuiltinSignature(0x11)
     case F32 extends BuiltinSignature(0x12)
     case F64 extends BuiltinSignature(0x13)
-
-    override def isReference = false
-    override def isFixedSize: Boolean = false
   }
 
   object TypeSignature {
-    def ref(name: String, isFixedSize: Boolean = false) = TypeSignature(name, Seq.empty, isReference = true, isFixedSize)
+    def ref(name: String) = TypeSignature(name, Seq.empty, isReference = true, isFixedSize = true)
     def rec(name: String, isFixedSize: Boolean) = TypeSignature(name, Seq.empty, isReference = false, isFixedSize)
   }
 
   object AotTypeSignature {
-    def ref(name: String, isFixedSize: Boolean = false) = AotTypeSignature(name, Seq.empty, isReference = true, isFixedSize)
+    def ref(name: String) = AotTypeSignature(name, Seq.empty, isReference = true, isFixedSize = true)
     def rec(name: String, isFixedSize: Boolean) = AotTypeSignature(name, Seq.empty, isReference = false, isFixedSize)
   }
 
-  case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
-  case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
-  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean, isFixedSize: Boolean = false) extends Signature
-  case class PrimitiveEnum(name: String, args: Seq[Signature]) extends Signature {
-    override def isReference = false
-    override def isFixedSize: Boolean = true
-  }
-  case class UnionEnum(name: String, args: Seq[Signature]) extends Signature {
-    override def isReference = false
-    override def isFixedSize: Boolean = true
-  }
-  case class CangjieArray(tpe: Signature) extends Signature {
-    override def isReference = true
-    override def isFixedSize: Boolean = false
-  }
-  case class Tuple(args: Seq[Signature]) extends Signature {
-    override def isReference = false
-    override def isFixedSize: Boolean = args.forall(_.isFixedSize)
-  }
-  case class Functional(args: Seq[Signature], result: Signature) extends Signature {
-    override def isReference = true
-    override def isFixedSize: Boolean = false
-  }
-  case class VArray(sig: Signature, length: Long) extends Signature {
-    override def isReference = false
-    override def isFixedSize: Boolean = true
-  }
-  case class CPointer(sig: Signature) extends Signature {
-    override def isReference = false
-    override def isFixedSize: Boolean = true
-  }
-  case class Box(sig: Signature) extends Signature {
-    override def isReference = true
-    override def isFixedSize: Boolean = true
-  }
-  case class Fst(sig: Signature) extends Signature {
-    override def isReference = false
-    override def isFixedSize: Boolean = false
-  }
+  case class TypeSignature(name: String, args: Seq[Signature], override val isReference: Boolean, override val isFixedSize: Boolean = false) extends Signature(isReference, isFixedSize)
+  case class AotTypeSignature(name: String, args: Seq[Signature], override val isReference: Boolean, override val isFixedSize: Boolean = false) extends Signature(isReference, isFixedSize)
+  case class OptionSignature(name: String, args: Seq[Signature], override val isReference: Boolean, override val isFixedSize: Boolean = false) extends Signature(isReference, isFixedSize)
+  case class PrimitiveEnum(name: String, args: Seq[Signature]) extends Signature(false, true)
+  case class UnionEnum(name: String, args: Seq[Signature]) extends Signature(false, true)
+  case class CangjieArray(tpe: Signature) extends Signature(true, false)
+  case class Tuple(args: Seq[Signature]) extends Signature(false, args.forall(_.isFixedSize))
+  case class Functional(args: Seq[Signature], result: Signature) extends Signature(true, false)
+  case class VArray(sig: Signature, length: Long) extends Signature(false, true)
+  case class CPointer(sig: Signature) extends Signature(false, true)
+  case class Box(sig: Signature) extends Signature(true, true)
+  case class Fst(sig: Signature) extends Signature(false, false)
 
-  sealed trait TypeVariable extends Signature {
-    override def isReference = false
-    override def isFixedSize: Boolean = false
-  }
+  sealed abstract class TypeVariable extends Signature(false, false)
   case class FuncTypeVariable(id: Int) extends TypeVariable
   case class ClassTypeVariable(id: Int) extends TypeVariable
 
