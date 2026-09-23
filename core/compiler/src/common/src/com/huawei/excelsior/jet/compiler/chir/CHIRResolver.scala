@@ -86,7 +86,9 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
           val vtableFuncs = d.vtables.flatMap(_.vMethods)
           vtableFuncs.find(_.instance == f) match {
             case Some(m) => m.name
-            case None => shouldNotReachHere(identifier)
+            case None =>
+              assert(srcName.nonEmpty, identifier)
+              srcName + suffix
           }
         case None =>
           if (srcName.isEmpty || srcName == "$lambda" || isInitializer || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
