@@ -933,12 +933,18 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       def virtualStaticCall(): Unit = {
         val permanent = targetRef.getPermanent
-        val thisTI = call.invokeArgs(targetRef.methodType.getThisTypeInfoArgIdx)
-        val loc = thisTI match {
-          case IReg(reg) => reg
-          case UntypedSlot(slot, _) => slot
+        if (targetRef.refType.sigType.containsTypeVariables) {
+          // The operand names the argument to replace with the implementation's
+          // outer TI. The concrete dispatch TI remains in the separate this-TI argument.
+          val outerTI = call.invokeArgs(targetRef.methodType.getOuterTypeInfoArgIdx)
+          val loc = outerTI match {
+            case IReg(reg) => reg
+            case UntypedSlot(slot, _) => slot
+          }
+          asm.callInterfGeneric(loc, asm.adapter.method(permanent))
+        } else {
+          asm.callInterf(resultReg, permanent)
         }
-        asm.callInterfGeneric(loc, asm.adapter.method(permanent))
       }
 
       def directCCall(method: Method): Unit = {
