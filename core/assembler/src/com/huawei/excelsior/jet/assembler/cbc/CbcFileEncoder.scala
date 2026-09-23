@@ -466,7 +466,7 @@ private class SignatureTable(pool: Pool[Signature]) extends DataTable[Signature]
 }
 
 private class SignatureTableWrapper(val underlying: SignatureTable) extends Table[Signature] {
-  def add(data: Signature): Index = if (data.isFixedSize) {
+  def add(data: Signature): Index = if (data.needsFstWrapper) {
     underlying.add(Fst(data))
   } else {
     underlying.add(data)

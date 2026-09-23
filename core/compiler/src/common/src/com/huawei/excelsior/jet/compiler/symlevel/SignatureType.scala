@@ -298,8 +298,6 @@ sealed abstract class SignatureType extends Signature {
     case _: Primitive | BString | _: CPointer | _: Record | _: ArraySlice | _: JavaArray | _: Reference |
          ThisTypeInfo => false
   }
-  
-  final def shouldGenerateFst(implicit typeProvider: TypeProvider): Boolean = !isVariableSizeType && !isReference
 
   /** Type is variable size if size of field of this type can vary depending on type parameters meaning.
     * NOTE: corresponds to [[com.huawei.excelsior.jet.runtime.jit.cbc.file.Signature#isVariableSizeType]] in runtime. */
