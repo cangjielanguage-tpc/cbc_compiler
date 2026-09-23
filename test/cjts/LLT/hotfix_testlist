@@ -113,6 +113,9 @@ compiler/CodegenCommon/typecast/FPToSI/fp162IntNative_00.cj
 compiler/Sema/generics/instantiation/O2_part_gi/disable_default_static.cj
 compiler/Sema/operator/pow_float64_infer.cj
 compiler/Sema/overflow_check/overflow_check_float.cj
+compiler/CodegenCommon/typecast/FPToSI/fp162UIntNative_00.cj
+compiler/CodegenCommon/typecast/FPToSI/fp162UIntNative_01.cj
+compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_02.cj
 
 # not implemented: POWI
 compiler/CHIR/CHIR2HLIR/binaryExpr/pow_01.cj
@@ -264,13 +267,6 @@ compiler/FFI/CFFI/record/small_19.cj
 compiler/FFI/CFFI/record/small_20.cj
 compiler/Sema/call/call21.cj
 compiler/Sema/typealias/typealias18.cj
-
-# bug 66 (RTSProc.JR_d2ul not found)
-compiler/CodegenCommon/typecast/FPToSI/fp162UIntNative_00.cj
-compiler/CodegenCommon/typecast/FPToSI/fp162UIntNative_01.cj
-compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_02.cj
-compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_03.cj
-compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_04.cj
 
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
