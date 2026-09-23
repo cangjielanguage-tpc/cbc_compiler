@@ -25,8 +25,6 @@ import scala.annotation.tailrec
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
-private def shouldGenerateFst(sig: SignatureType)(implicit typeProvider: TypeProvider): Boolean = !sig.isVariableSizeType && !sig.isReference
-
 trait CbcSymbolAdapter extends SymbolAdapter {
   implicit val typeProvider: TypeProvider = env.getTypeProvider
 
@@ -124,6 +122,8 @@ object CbcSignatureAdapter {
   }
 
   implicit private val typeProvider: TypeProvider = env.getTypeProvider
+
+  private def shouldGenerateFst(sig: SignatureType): Boolean = !sig.isVariableSizeType && !sig.isReference
 
   private def adaptSignature(signature: Signature): CbcFileFormat.Signature = signature match {
     case SignatureType.Void          => CbcFileFormat.BuiltinSignature.Void
