@@ -162,8 +162,8 @@ object CbcSignatureAdapter {
 
     case sig: SignatureType.InstantiatedType   =>
       adaptFunctional(sig).getOrElse {
-        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
-        else CbcFileFormat.TypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
+        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference, sig.shouldGenerateFst)
+        else CbcFileFormat.TypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference, sig.shouldGenerateFst)
       }
 
     case sig: SignatureType.CangjieArray       => CbcFileFormat.CangjieArray(sig.elemType.toCbc)
@@ -179,10 +179,10 @@ object CbcSignatureAdapter {
     case sig: SignatureType.PrimitiveBasedEnum => CbcFileFormat.PrimitiveEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.UnionBasedEnum => CbcFileFormat.UnionEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.ClassBasedEnum =>
-      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
-      else CbcFileFormat.TypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
+      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, sig.shouldGenerateFst)
+      else CbcFileFormat.TypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, sig.shouldGenerateFst)
     case sig: SignatureType.OptionLikeEnum =>
-      CbcFileFormat.OptionSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, !sig.isVariableSizeType)
+      CbcFileFormat.OptionSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, sig.shouldGenerateFst)
 
     case sig: SignatureType.ArraySlice => notImplemented(sig)
     case sig: SignatureType.JavaArray => notImplemented(sig)

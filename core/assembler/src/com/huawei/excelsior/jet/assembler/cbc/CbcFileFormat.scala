@@ -58,12 +58,12 @@ object CbcFileFormat {
   }
 
   object TypeSignature {
-    def ref(name: String) = TypeSignature(name, Seq.empty, isReference = true, isFixedSize = true)
+    def ref(name: String) = TypeSignature(name, Seq.empty, isReference = true, isFixedSize = false)
     def rec(name: String, isFixedSize: Boolean) = TypeSignature(name, Seq.empty, isReference = false, isFixedSize)
   }
 
   object AotTypeSignature {
-    def ref(name: String) = AotTypeSignature(name, Seq.empty, isReference = true, isFixedSize = true)
+    def ref(name: String) = AotTypeSignature(name, Seq.empty, isReference = true, isFixedSize = false)
     def rec(name: String, isFixedSize: Boolean) = AotTypeSignature(name, Seq.empty, isReference = false, isFixedSize)
   }
 
