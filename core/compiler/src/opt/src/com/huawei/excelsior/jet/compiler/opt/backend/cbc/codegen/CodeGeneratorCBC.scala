@@ -363,6 +363,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case n: HasFrameSlot => n.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot
       }
 
+      def getBaseRef(n: FieldSeqOperation): IR = n.baseRef match {
+        case IReg(br) => br
+        case _: DerivedPtr.Local =>
+          assert(rootMethod.getFullName.contains("$withoutTI"))
+          IR.IRZ
+      }
+
       def maybeImmValue(value: Node): Option[Long] = value match {
         case _: AnyNull => Some(0L)
         case IntegralConst(c) => Some(c)
@@ -430,7 +437,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case None =>
           val (plain, rest) = fields.span(isPlainField)
           require(plain.nonEmpty, "A static chain must start with a fixed-layout static field")
-          val IReg(baseRef) = n.baseRef
+          val baseRef = getBaseRef(n)
           asm.leaStatic(dst, baseRef, constrFieldRef(plain))
           genLeaChain(dst, dst, rest)
       }
@@ -474,7 +481,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           }
         } else {
           genAddress(IR1, prefix)
-          val IReg(baseRef) = n.baseRef
+          val baseRef = getBaseRef(n)
           if (n.resType.isVariableSizeType) {
             if (store) {
               asm.st(reg, baseRef, IR1, resultTI, NoneFieldReference())
