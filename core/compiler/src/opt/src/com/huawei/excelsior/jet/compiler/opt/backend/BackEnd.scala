@@ -181,6 +181,8 @@ trait BackEnd extends InitResources with GlobalGenerator with LocalGenerator wit
         case st: Copy =>
           if (st.allowedResults.isUniverse) {
             "  allowed: any"
+          } else if (st.allowedResults.isUniverseWithoutImm) {
+            "  allowed: any non-immediate"
           } else {
             st.allowedResults.asSeq.mkString("  allowed: [", ",", "]")
           }
