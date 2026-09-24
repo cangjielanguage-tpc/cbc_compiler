@@ -2421,6 +2421,7 @@ trait CHIRParser
   }
 
   private def fieldBase(host: SignatureType, mem: Node): Node = {
+    // TODO: Move boxed-base handling into fieldChain and use Box(host) as refType of the first reference instead of explicit UnboxLea
     if (host.isVariableSizeType && mem.tpe == TRefType) UnboxLea(host)(mem)
     else mem
   }
