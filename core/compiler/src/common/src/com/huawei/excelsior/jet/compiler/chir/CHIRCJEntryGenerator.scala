@@ -36,8 +36,8 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
       }
 
       def id: Long = _id
-      def identifier: String = name
-      def srcCodeIdentifier: String = name
+      def identifier: String = CHIRCJEntryGenerator.name
+      def srcCodeIdentifier: String = CHIRCJEntryGenerator.name
       def packageName: String = userMain.packageName
       def kind: CHIR.Func.Kind = CHIR.Func.Kind.Default
       def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty

@@ -1,9 +1,9 @@
-package com.huawei.excelsior.jet.compiler.chir.v100
+package com.huawei.excelsior.jet.compiler.chir.v13002
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{HasAnnotations, HasAttributes, HasDeclaringDef}
-import com.huawei.excelsior.jet.compiler.chir.v100.PackageFormat.*
-import com.huawei.excelsior.jet.compiler.chir.v100.CHIRUtils.{toSeq, toTypeSeq}
+import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
+import com.huawei.excelsior.jet.compiler.chir.v13002.CHIRUtils.{toSeq, toTypeSeq}
 
 trait HasAnnotationsImpl extends HasAnnotations {
   def base: Base
@@ -82,7 +82,7 @@ final class VTableImpl(v: VTableInType)(using provider: CHIRItemProvider) extend
 final class VMethodImpl(v: VirtualMethodInfo)(using provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl {
   val attrs: Long = v.attributes
   def name: String = v.funcName
-  def sig: CHIR.FuncType = provider.getType[CHIR.FuncType](v.sigType).get
+  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.sigType).get
   def instance: CHIR.Func = provider.getValue[CHIR.Func](v.instance).get
   def genericTypeParams = v.methodGenericTypeParamsVector.toTypeSeq[CHIR.Type]
   def originalType: CHIR.FuncType = provider.getType[CHIR.FuncType](v.originalType).get
