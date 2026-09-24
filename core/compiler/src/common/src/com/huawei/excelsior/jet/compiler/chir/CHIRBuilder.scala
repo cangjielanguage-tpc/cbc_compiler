@@ -276,11 +276,13 @@ object CHIRBuilder {
         // TODO: explain
         val symMethods = if (rcvSig.isVariableSizeType) {
 
-          val mutName = resolver.mutWithoutTI(name)
-          val mutLinkageName = resolver.mutWithoutTI(linkageName)
-          val mutMethod = builder.addMethod(symType, mutName, sig, mutLinkageName, modifiers.value, genericInfo,
-            ABI.Description(rcvParam, hasMutParam, hasThisTypeInfoParam,
-            isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
+          val mutMethod = Option.when(hasMutParam) {
+            val mutName = resolver.mutWithoutTI(name)
+            val mutLinkageName = resolver.mutWithoutTI(linkageName)
+            builder.addMethod(symType, mutName, sig, mutLinkageName, modifiers.value, genericInfo,
+              ABI.Description(rcvParam, hasMutParam, hasThisTypeInfoParam,
+                isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
+          }
 
           val mutWrapperName = name
           val mutWrapperLinkageName = linkageName
@@ -291,11 +293,13 @@ object CHIRBuilder {
             ABI.Description(mutWrapperReceiver, mutWrapperHasMutParam, hasThisTypeInfoParam,
             isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
 
-          builder.markAsMutWrapper(mutWrapper)
+          if (mutMethod.nonEmpty) {
+            builder.markAsMutWrapper(mutWrapper)
+          }
 
           virtMethods(m) = mutWrapper
 
-          Seq(mutMethod, mutWrapper)
+          mutMethod.toSeq ++ Seq(mutWrapper)
 
         } else {
           val overrideSig = resolver.getOverrideSrcFuncType(m).map(s => resolver.functionSig(s.tpe, hasReceiver = !modifiers.contains(STATIC))._1)
