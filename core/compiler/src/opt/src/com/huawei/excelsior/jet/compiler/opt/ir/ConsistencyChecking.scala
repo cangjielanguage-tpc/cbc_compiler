@@ -221,6 +221,6 @@ trait ConsistencyChecking extends SynchronizationOptimization with UCEComponent 
   }
 
   private def checkFieldSeqOperation(node: FieldSeqOperation): Unit = {
-    assert(node.fields.init.forall(_.isInstanceOf[CangjieReferenceNode]))
+    assert(node.refs.nonEmpty)
   }
 }

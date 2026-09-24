@@ -872,7 +872,7 @@ trait CHIRParser
 
         val fields = fieldChain(host, e.path)
 
-        val lastField = collect[CangjieReferenceNode](fields).toSeq.last
+        val lastField = FieldSeqOperation.lastRef(fields)
         val n = if (lastField.fieldType.isZST) {
           // do nothing
           Void()
@@ -912,7 +912,7 @@ trait CHIRParser
         } else {
           val fields = fieldChain(host, e.path)
 
-          val lastField = collect[CangjieReferenceNode](fields).toSeq.last
+          val lastField = FieldSeqOperation.lastRef(fields)
           if (lastField.fieldType.isZST) {
             // do nothing
             NoValue()
@@ -999,7 +999,7 @@ trait CHIRParser
 
             val fields = fieldChain(host, chirPath)
 
-            val lastField = collect[CangjieReferenceNode](fields).toSeq.last
+            val lastField = FieldSeqOperation.lastRef(fields)
             val n = if (lastField.fieldType.isZST) {
               // do nothing
               Void()
@@ -1910,7 +1910,7 @@ trait CHIRParser
                       assert(c == 0 || c == 1, c)
                       StoreFieldSeq(maybeDerivedPtrBase(mem), mem, IConst(c), tagChain*)
                             val payloadChain = fieldChain(enumType, Seq(1))
-                            val lastFieldType = collect[CangjieReferenceNode](payloadChain).toSeq.last
+                            val lastFieldType = FieldSeqOperation.lastRef(payloadChain)
                       if (payloadType.isZST) {
                         // nothing to do
 

@@ -581,19 +581,10 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
   }
 
   private def optimizeFieldSeq(n: InstanceFieldSeqOperation): Boolean = {
-    def fieldsWithoutTypeInfo(fields: Seq[Node]): Seq[Node] = {
-      val refs = fields.last match {
-        case _: CangjieReferenceNode => fields
-        case _ => fields.init
-      }
-      assert(refs.nonEmpty && refs.forall(_.isInstanceOf[CangjieReferenceNode]))
-      refs
-    }
-
     cond(ReinterpretCast.skip(n.base)) {
       case g: GetFieldSeqRef =>
         assert(g.baseRef == n.baseRef)
-        val fields = fieldsWithoutTypeInfo(g.fields) ++ n.fields
+        val fields = g.refs ++ n.fields
         n match {
           case n: GetFieldSeqRef => replaceTransitively(n,
             GetFieldSeqRef.proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resAddrTpe(fields))(n.inCtrl +: n.baseRef +: g.base +: fields*))
@@ -607,7 +598,7 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
         true
       case g: GetStaticFieldSeqRef =>
         assert(g.baseRef == n.baseRef)
-        val fields = fieldsWithoutTypeInfo(g.fields) ++ n.fields
+        val fields = g.refs ++ n.fields
         n match {
           case n: GetFieldSeqRef => replaceTransitively(n, GetStaticFieldSeqRef.proto(FieldSeqOperation.resAddrTpe(fields))(n.inCtrl +: n.baseRef +: fields*))
           case n: LoadFieldSeq => replaceByCode(n) {

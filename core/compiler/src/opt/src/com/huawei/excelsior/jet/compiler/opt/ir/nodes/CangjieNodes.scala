@@ -8,6 +8,7 @@
 
 package com.huawei.excelsior.jet.compiler.opt.ir.nodes
 
+import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
@@ -24,6 +25,10 @@ trait CangjieNodes { self: Universe =>
 
   sealed trait FieldSeqOperation extends Node {
     def fields: Seq[Node]
+    def refs: Seq[CangjieReferenceNode] = FieldSeqOperation.refs(fields)
+    def initialRef: CangjieReferenceNode = FieldSeqOperation.initialRef(fields)
+    def lastRef: CangjieReferenceNode = FieldSeqOperation.lastRef(fields)
+    def resultTypeInfo: Option[Node] = FieldSeqOperation.resultTypeInfo(fields)
     def refType: SignatureType = FieldSeqOperation.refType(fields)
     def resType: SignatureType = FieldSeqOperation.resType(fields)
 
@@ -33,8 +38,25 @@ trait CangjieNodes { self: Universe =>
   }
 
   object FieldSeqOperation {
-    def refType(fields: Seq[Node]): SignatureType = fields.head.asInstanceOf[CangjieReferenceNode].refType
-    def resType(fields: Seq[Node]): SignatureType = collect[CangjieReferenceNode](fields).toSeq.last.fieldType
+    def refs(fields: Seq[Node]): Seq[CangjieReferenceNode] = {
+      require(fields.nonEmpty)
+      val references = fields.last match {
+        case _: CangjieReferenceNode => fields
+        case _ => fields.init
+      }
+      require(references.nonEmpty)
+      references.map {
+        case node: CangjieReferenceNode => node
+        case node => shouldNotReachHere(s"Unexpected node inside field sequence: $node")
+      }
+    }
+
+    def initialRef(fields: Seq[Node]): CangjieReferenceNode = refs(fields).head
+    def lastRef(fields: Seq[Node]): CangjieReferenceNode = refs(fields).last
+    def resultTypeInfo(fields: Seq[Node]): Option[Node] = fields.drop(refs(fields).size).headOption
+
+    def refType(fields: Seq[Node]): SignatureType = initialRef(fields).refType
+    def resType(fields: Seq[Node]): SignatureType = lastRef(fields).fieldType
 
     def refTpe(fields: Seq[Node]): Type = ValueType.fromSig(refType(fields))
     def resTpe(fields: Seq[Node]): Type = {
@@ -51,9 +73,9 @@ trait CangjieNodes { self: Universe =>
         case _ => if (res.isRecord) ValueType.fromSig(res) else AddrType
       }
     }
-    def hasGeneric(fields: Seq[Node]): Boolean = !fields.last.isInstanceOf[CangjieReferenceNode] || fields.exists(_.isInstanceOf[CangjieReferenceNodeGeneric])
+    def hasGeneric(fields: Seq[Node]): Boolean = resultTypeInfo(fields).nonEmpty || refs(fields).exists(_.isInstanceOf[CangjieReferenceNodeGeneric])
 
-    def isConstOffset(fields: Seq[Node]): Boolean = !hasGeneric(fields) && !fields.exists(_.isInstanceOf[IndexFieldReference])
+    def isConstOffset(fields: Seq[Node]): Boolean = !hasGeneric(fields) && !refs(fields).exists(_.isInstanceOf[IndexFieldReference])
   }
 
   sealed trait InstanceFieldSeqOperation extends FieldSeqOperation {
@@ -83,7 +105,7 @@ trait CangjieNodes { self: Universe =>
     }
 
     def apply(baseRef: Node, base: Node, fields: Node*): Node = {
-      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.forall(!_.isStatic))
+      require(FieldSeqOperation.initialRef(fields).maybeField.forall(!_.isStatic))
       proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resAddrTpe(fields))(baseRef +: base +: fields*)
     }
 
@@ -110,8 +132,8 @@ trait CangjieNodes { self: Universe =>
     }
 
     def apply(base: Node, fields: Node*): Node = {
-      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.exists(_.isStatic))
-      require(fields.size == 1 || !fields.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fields)
+      require(FieldSeqOperation.initialRef(fields).maybeField.exists(_.isStatic))
+      require(fields.size == 1 || !FieldSeqOperation.initialRef(fields).fieldType.isTraceableReference, fields)
       proto(FieldSeqOperation.resAddrTpe(fields))(base +: fields*)
     }
 
@@ -142,7 +164,7 @@ trait CangjieNodes { self: Universe =>
     }
 
     def apply(baseRef: Node, base: Node, fields: Node*): Node = {
-      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.forall(!_.isStatic))
+      require(FieldSeqOperation.initialRef(fields).maybeField.forall(!_.isStatic))
       require(!FieldSeqOperation.resType(fields).isRecord || FieldSeqOperation.resType(fields).isVariableSizeType)
       require(!FieldSeqOperation.resType(fields).isZST)
       proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(baseRef +: base +: fields*)
@@ -171,10 +193,10 @@ trait CangjieNodes { self: Universe =>
     }
 
     def apply(base: Node, fields: Node*): Node = {
-      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.exists(_.isStatic))
+      require(FieldSeqOperation.initialRef(fields).maybeField.exists(_.isStatic))
       require(!FieldSeqOperation.resType(fields).isRecord || FieldSeqOperation.resType(fields).isVariableSizeType)
       require(!FieldSeqOperation.resType(fields).isZST)
-      require(fields.size == 1 || !fields.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fields)
+      require(fields.size == 1 || !FieldSeqOperation.initialRef(fields).fieldType.isTraceableReference, fields)
       proto(FieldSeqOperation.resTpe(fields))(base +: fields*)
     }
 
@@ -204,7 +226,7 @@ trait CangjieNodes { self: Universe =>
     }
 
     def apply(baseRef: Node, base: Node, value: Node, fields: Node*): Node = {
-      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.forall(!_.isStatic))
+      require(FieldSeqOperation.initialRef(fields).maybeField.forall(!_.isStatic))
       require(!FieldSeqOperation.resType(fields).isRecord || FieldSeqOperation.resType(fields).isVariableSizeType)
       require(!FieldSeqOperation.resType(fields).isZST)
       proto(FieldSeqOperation.refTpe(fields), FieldSeqOperation.resTpe(fields))(baseRef +: base +: value +: fields*)
@@ -235,10 +257,10 @@ trait CangjieNodes { self: Universe =>
     }
 
     def apply(base: Node, value: Node, fields: Node*): Node = {
-      require(fields.head.asInstanceOf[CangjieReferenceNode].maybeField.exists(_.isStatic))
+      require(FieldSeqOperation.initialRef(fields).maybeField.exists(_.isStatic))
       require(!FieldSeqOperation.resType(fields).isRecord || FieldSeqOperation.resType(fields).isVariableSizeType)
       require(!FieldSeqOperation.resType(fields).isZST)
-      require(fields.size == 1 || !fields.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference, fields)
+      require(fields.size == 1 || !FieldSeqOperation.initialRef(fields).fieldType.isTraceableReference, fields)
       proto(FieldSeqOperation.resTpe(fields))(base +: value +: fields*)
     }
 

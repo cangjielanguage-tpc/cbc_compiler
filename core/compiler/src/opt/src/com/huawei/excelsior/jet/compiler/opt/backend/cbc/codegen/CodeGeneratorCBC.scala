@@ -291,10 +291,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       val adapter = asm.adapter
 
-      val fieldRefs = n.fields.takeWhile(_.isInstanceOf[CangjieReferenceNode])
-      val resultTypeInfo = n.fields.drop(fieldRefs.size)
-      require(fieldRefs.nonEmpty)
-      require(resultTypeInfo.size <= 1 && (resultTypeInfo.isEmpty || n.resType.isVariableSizeType))
+      val fieldRefs = n.refs
+      val resultTypeInfo = n.resultTypeInfo
+      require(resultTypeInfo.isEmpty || n.resType.isVariableSizeType)
 
       def resultTI: IR = {
         require(resultTypeInfo.size == 1)
@@ -360,10 +359,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               asm.index(scratch, base, idx, fr.refType.toCbc)
             case fr: IndexFieldReferenceGeneric =>
               val IReg(idx) = fr.idx
-              val IReg(ti) = fr.typeInfo
+              val IReg(ti) = fr.refTypeInfo
               asm.index(scratch, base, idx, ti)
             case fr: CangjieReferenceNodeGeneric =>
-              val IReg(ti) = fr.typeInfo
+              val IReg(ti) = fr.refTypeInfo
               asm.leaGeneric(scratch, base, ti, constrFieldRef(Seq(fr)))
             case fr => shouldNotReachHere(s"Unexpected field reference: $fr")
           }
@@ -374,7 +373,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       val baseLocation: Option[IR | StackSlot.Typed] = n match {
         case op: InstanceFieldSeqOperation => Some(getBaseLocation(op.base))
         case _ =>
-          require(fieldRefs.size == 1 || !fieldRefs.head.asInstanceOf[CangjieReferenceNode].fieldType.isTraceableReference)
+          require(fieldRefs.size == 1 || !n.initialRef.fieldType.isTraceableReference)
           None
       }
 
