@@ -12,7 +12,7 @@ import com.huawei.excelsior.jet.compiler.Stage
 import com.huawei.excelsior.jet.compiler.opt.backend.BackEnd
 import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, Universe}
 import com.huawei.excelsior.jet.compiler.opt.middle.DCEComponent
-import com.huawei.excelsior.jet.compiler.options.BoolOption.GenCoverageInCBC
+import com.huawei.excelsior.jet.compiler.options.BoolOption.{GenCoverageInCBC, ImplicitCallRegAllocInCBC}
 
 /** Preparation before backend. Machine-specific rematerialization, groups combination, ...
   *
@@ -83,7 +83,9 @@ trait Preparation extends SimpleSteps with SpecialSteps with RMACombining
 
     optimizeStep ("load and bfx grouped",            groupLoadAndBFX())
     optimizeStep ("convert bfx to and",              convertBFXToAnd())
-    step         ("CallArgStores inserted",          insertCallArgStores())
+    if (!env.enabled(ImplicitCallRegAllocInCBC)) {
+      step       ("CallArgStores inserted",          insertCallArgStores())
+    }
     optimizeStep ("Neg operations sifted down",      siftNegsDown())
 
     machineDependentStepsBeforeArithLeaCombining()

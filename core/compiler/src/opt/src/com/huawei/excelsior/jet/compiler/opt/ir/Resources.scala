@@ -271,6 +271,7 @@ object Resources extends ImplicitSetsAndMaps {
 
   /** Marker for special 'resource universe' set which represents all possible resources. */
   private val UniversalSetMarker = new Object { def dummy = 0 }
+  private val UniversalNonImmSetMarker = new Object { def dummy = 0 }
   private type RefsSet = mutable.Set[Resource]
   private val constTrue: Any => Boolean = { _ => true }
 
@@ -314,7 +315,10 @@ object Resources extends ImplicitSetsAndMaps {
     protected def refsAppend(rs: AnyResourceSet, inPlace: Boolean): AnyRef = {
       if (refs eq rs.refs) forkRefs(inPlace)
       else if (isUniverse || rs.isUniverse) UniversalSetMarker
-      else rs.refs match {
+      else if (isUniverseWithoutImm || rs.isUniverseWithoutImm) {
+        if (isImm || rs.isImm) UniversalSetMarker
+        else UniversalNonImmSetMarker
+      } else rs.refs match {
         case null => forkRefs(inPlace)
         case r: Resource => refsAppend(r, inPlace)
         case _sy: mutable.Set[_] =>
@@ -348,8 +352,12 @@ object Resources extends ImplicitSetsAndMaps {
 
     protected def refsRemove(rs: AnyResourceSet, inPlace: Boolean): AnyRef = {
       assert(!isUniverse)
+      assert(!isUniverseWithoutImm)
       if (refs eq rs.refs) null
       else if (rs.isUniverse) null
+      else if (rs.isUniverseWithoutImm)
+        if (isUniverse) immSet
+        else null
       else rs.refs match {
         case null => forkRefs(inPlace)
         case r: Resource => refsRemove(r, inPlace)
@@ -362,12 +370,14 @@ object Resources extends ImplicitSetsAndMaps {
     private def refsContain(r: Resource): Boolean = refs match {
       case null => false
       case UniversalSetMarker => true
+      case UniversalNonImmSetMarker => r ne Immediate
       case r0: Resource => r == r0
       case _s: mutable.Set[_] => _s.asInstanceOf[RefsSet] contains r
     }
 
     protected def refsFilter(pred: Resource => Boolean, inPlace: Boolean): AnyRef = {
       assert(!isUniverse)
+      assert(!isUniverseWithoutImm)
       refs match {
         case null => null
         case r: Resource =>
@@ -382,6 +392,12 @@ object Resources extends ImplicitSetsAndMaps {
       if (refs eq rs.refs) forkRefs(inPlace)
       else if (rs.isUniverse) forkRefs(inPlace)
       else if (isUniverse)
+        if (rs.isUniverseWithoutImm) universalNonImmSet
+        else rs.cloneRefs(inPlace || isMutable || rs.isMutable)
+      else if (rs.isUniverseWithoutImm)
+        if (isImm) null
+        else forkRefs(inPlace)
+      else if (isUniverseWithoutImm)
         rs.cloneRefs(inPlace || isMutable || rs.isMutable)
       else rs.refs match {
         case null => null
@@ -400,14 +416,14 @@ object Resources extends ImplicitSetsAndMaps {
     private def refsSize: Int = refs match {
       case null => 0
       case r: Resource => 1
-      case UniversalSetMarker => shouldNotReachHere()
+      case UniversalSetMarker | UniversalNonImmSetMarker => shouldNotReachHere()
       case s: mutable.Set[_] => s.size
     }
 
     private def refsFindOrNull(pred: Resource => Boolean): Resource = refs match {
       case null => null
       case r: Resource => if (pred(r)) r else null
-      case UniversalSetMarker => shouldNotReachHere()
+      case UniversalSetMarker | UniversalNonImmSetMarker => shouldNotReachHere()
       case _s: mutable.Set[_] =>
         _s.asInstanceOf[RefsSet].find(pred).orNull
     }
@@ -417,9 +433,10 @@ object Resources extends ImplicitSetsAndMaps {
       else rs.refs match {
         case r: Resource => !refsContain(r)
         case UniversalSetMarker => refsIsEmpty
+        case UniversalNonImmSetMarker => refsIsEmpty || isImm
         case _s: mutable.Set[_] =>
           val s = _s.asInstanceOf[RefsSet]
-          s.isEmpty || (!isUniverse && (refsFindOrNull(s) eq null))
+          s.isEmpty || (!isUniverse && !isUniverseWithoutImm && (refsFindOrNull(s) eq null))
       }
     }
 
@@ -429,7 +446,7 @@ object Resources extends ImplicitSetsAndMaps {
       else refs match {
         case null => true
         case r: Resource => rs.refsContain(r)
-        case UniversalSetMarker => false
+        case UniversalSetMarker | UniversalNonImmSetMarker => false
         case _s: mutable.Set[_] =>
           _s.asInstanceOf[RefsSet] forall rs.refsContain
       }
@@ -437,6 +454,7 @@ object Resources extends ImplicitSetsAndMaps {
 
     private def findOrNull(pred: Resource => Boolean): Resource = {
       assert(!isUniverse)
+      assert(!isUniverseWithoutImm)
       var rest = this.bits
       var idx = -1
       while (rest != 0L) {
@@ -451,6 +469,7 @@ object Resources extends ImplicitSetsAndMaps {
 
     protected def bitsFilter(pred: Resource => Boolean): Long = {
       assert(!isUniverse)
+      assert(!isUniverseWithoutImm)
       var result = 0L
       var rest = this.bits
       var idx = -1
@@ -466,6 +485,7 @@ object Resources extends ImplicitSetsAndMaps {
 
     private[Resources] def _incl(r: Resource): this.type = {
       assert(!isUniverse)
+      assert(!isUniverseWithoutImm)
       val idx = toBitIndex(r)
       if (idx >= 0) {
         bits |= (1L << idx)
@@ -477,6 +497,7 @@ object Resources extends ImplicitSetsAndMaps {
 
     private[Resources] def _excl(r: Resource): this.type = {
       assert(!isUniverse)
+      assert(!isUniverseWithoutImm)
       val idx = toBitIndex(r)
       if (idx >= 0) {
         bits &= ~(1L << idx)
@@ -525,6 +546,7 @@ object Resources extends ImplicitSetsAndMaps {
 
     def iterator: Iterator[Resource] = new Iterator[Resource] {
       assert(!isUniverse)
+      assert(!isUniverseWithoutImm)
       var rest = bits
       var idx = -1
       var r1: Resource = _
@@ -557,6 +579,9 @@ object Resources extends ImplicitSetsAndMaps {
 
     def + (r: Resource): ThisType = {
       if (isUniverse) return this.asInstanceOf[ThisType]
+      if (isUniverseWithoutImm)
+        return if (r eq Immediate) universalSet.asInstanceOf[ThisType]
+        else this.asInstanceOf[ThisType]
       val idx = toBitIndex(r)
       if (idx >= 0) {
         makeResult(bits | (1L << idx), forkRefs(inPlace = false))
@@ -567,6 +592,7 @@ object Resources extends ImplicitSetsAndMaps {
 
     def - (r: Resource): ThisType = {
       assert(!isUniverse)
+      assert(!isUniverseWithoutImm)
       val idx = toBitIndex(r)
       if (idx >= 0) {
         makeResult(bits & ~(1L << idx), forkRefs(inPlace = false))
@@ -604,6 +630,10 @@ object Resources extends ImplicitSetsAndMaps {
       makeResult(bitsFilter(pred), refsFilter(pred, inPlace = false))
 
     def isUniverse: Boolean = refs eq UniversalSetMarker
+
+    def isUniverseWithoutImm: Boolean = refs eq UniversalNonImmSetMarker
+
+    def isImm: Boolean = forall(_ eq Immediate)
 
     def isSingleton: Boolean = (bits == lowestOneBit(bits)) && {
       if (bits == 0L) refsSize == 1 else refsIsEmpty
@@ -746,6 +776,7 @@ object Resources extends ImplicitSetsAndMaps {
 
   /** Special set which represents all possible resources. */
   val universalSet = (new ResourceSet)._assign(-1L, UniversalSetMarker)
+  val universalNonImmSet = (new ResourceSet)._assign(~(1 << 63), UniversalNonImmSetMarker)
   val emptySet     = new ResourceSet
   val immSet       = addToCache(Immediate, 63).singleton
   val invalidSet   = addToCache(InvalidResource, -1).singleton

@@ -94,6 +94,8 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       case Edge(_: DerivedPtr.BaseHandle, _: GetStaticFieldSeqRef) => false
       case Edge(_: DerivedPtr.BaseHandle, _: FieldSeqOperation) => true
 
+      case Edge(_, _: Call) => false
+
       case _ => super.shouldBeUsedAsImmediate(use)
     }
 

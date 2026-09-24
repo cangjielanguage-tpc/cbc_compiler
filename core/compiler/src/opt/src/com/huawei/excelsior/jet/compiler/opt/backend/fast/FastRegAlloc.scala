@@ -15,6 +15,7 @@ import com.huawei.excelsior.jet.compiler.opt.backend.bgcm.BulldozerGCM
 import com.huawei.excelsior.jet.compiler.opt.backend.{BackEnd, MachineDescription}
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.{Immediate, InvalidResource, MutableResourceSet, Resource, ResourceSet, emptyMSet, setOf, unionOf, universalSet}
 import com.huawei.excelsior.jet.compiler.opt.ir.{Resources, Universe}
+import com.huawei.excelsior.jet.compiler.options.BoolOption.ImplicitCallRegAllocInCBC
 import com.huawei.excelsior.jet.util.ScalaCollections.{singleElement, singleton, uniqueValue}
 import com.huawei.excelsior.jet.compiler.util.{Maps, Sets}
 
@@ -178,7 +179,7 @@ trait FastRegAlloc { self: Universe with BackEnd =>
 
     /** Selects any free resource from `allowed` set where `value` may be moved to and be used (not `untouchable`). */
     private def selectNewResourceFor(value: Value, allowed: ResourceSet = universalSet): Resource = {
-      if (allowed.isUniverse) {
+      if (allowed.isUniverse || allowed.isUniverseWithoutImm) {
         (machine.freeRegFor(value) &~ untouchable).headOption getOrElse newSpillSlotUsedAsWorkaroundFor15742(value)
       } else {
         (allowed &~ untouchable).head

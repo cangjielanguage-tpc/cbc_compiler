@@ -874,6 +874,16 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         notImplemented("calls with varargs in CBC (JET-13417)");
       }
 
+      val callArgLocations = {
+        assert(env.enabled(ImplicitCallRegAllocInCBC))
+        call.invokeArgs.map {
+          case _: Void => 1 // any resource ok for Void
+          case IReg(r) => r.idx
+          case FReg(r) => IR.count + r.idx
+          case UntypedSlot(s, _) => IR.count + FR.count + s.slot
+        }
+      }
+
       if (call.methodType.isCJForeign ||
           // Unmanaged methods from CompilerInterface may be CCall on concrete platform where CBC will be JIT-compiled.
           (call.targetRef.hasMethod && call.targetRef.method.getDeclaringClass.isCompilerInterface && !call.methodType.callConv.hasManagedExecEnv)) {
