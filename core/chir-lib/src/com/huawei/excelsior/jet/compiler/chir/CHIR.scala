@@ -66,6 +66,7 @@ object CHIR {
     def body: Option[BlockGroup]
     def params: Seq[Parameter]
     def retVal: Option[LocalVar]
+    def sourceFile: Option[String]
   }
 
   object Func {
@@ -277,7 +278,10 @@ object CHIR {
     def tpe: FuncType
   }
 
+  case class DebugLocation(startLine: Long, endLine: Long)
+
   trait Expression {
+    def debugLoc: Option[DebugLocation]
   }
 
   trait Cast extends Expression {
@@ -462,7 +466,7 @@ object CHIR {
     def elementValues: Seq[Value]
   }
 
-  object GetException extends Expression {
+  trait GetException extends Expression {
   }
 
   trait VArray extends Expression with HasResultVar {
@@ -498,7 +502,7 @@ object CHIR {
     def falseBlock: Block
   }
 
-  object Exit extends Expression with Terminator
+  trait Exit extends Expression with Terminator
 
   trait Goto extends Expression with Terminator with HasSuccessors {
     def destination: Block

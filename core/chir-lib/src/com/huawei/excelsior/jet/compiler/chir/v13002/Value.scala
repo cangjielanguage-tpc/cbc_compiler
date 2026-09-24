@@ -38,6 +38,7 @@ final class FuncImpl(f: Function, val id: Long)(using val provider: CHIRItemProv
   def body: Option[CHIR.BlockGroup] = provider.getValue[CHIR.BlockGroup](f.body)
   def params = f.paramsVector.toValueSeq[CHIR.Parameter]
   def retVal: Option[CHIR.LocalVar] = provider.getValue[CHIR.LocalVar](f.retVal)
+  def sourceFile: Option[String] = Option(base.loc.filePath)
 }
 
 final class BlockGroupImpl(b: BlockGroup)(using provider: CHIRItemProvider) extends CHIR.BlockGroup {
