@@ -218,7 +218,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
           case e: UnaryExpressionBase => new UnaryImpl(e)
           case e: Expression => e.kind match {
             case CHIRExprKind.Goto => new GotoImpl(e)
-            case CHIRExprKind.Exit => CHIR.Exit
+            case CHIRExprKind.Exit => new ExitImpl(e)
             case CHIRExprKind.RaiseException => new RaiseExceptionImpl(e)
             case CHIRExprKind.StaticCast => new StaticCastImpl(e)
             case CHIRExprKind.Box => new BoxImpl(e)
@@ -231,7 +231,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
             case CHIRExprKind.RawArrayInitByValue => new RawArrayInitByValueImpl(e)
             case CHIRExprKind.Constant => new ConstantImpl(e)
             case CHIRExprKind.Tuple => new TupleImpl(e)
-            case CHIRExprKind.GetException => GetException
+            case CHIRExprKind.GetException => new GetExceptionImpl(e)
             case CHIRExprKind.GetRtti => new GetRTTIImpl(e)
           }
         }

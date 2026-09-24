@@ -291,6 +291,12 @@ final class TupleImpl(e: Expression)(implicit provider: CHIRItemProvider) extend
 final class GetRTTIImpl(e: Expression) extends CHIR.GetRTTI {
 }
 
+final class GetExceptionImpl(e: Expression) extends CHIR.GetException {
+}
+
+final class ExitImpl(e: Expression) extends CHIR.Exit {
+}
+
 private def mapOverflowStrategy(os: Int): CHIR.OverflowStrategy = os match {
   case OverflowStrategy.NA => CHIR.OverflowStrategy.Na
   case OverflowStrategy.WRAPPING => CHIR.OverflowStrategy.Wrapping

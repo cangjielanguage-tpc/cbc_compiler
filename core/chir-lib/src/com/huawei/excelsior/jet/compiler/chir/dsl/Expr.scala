@@ -47,3 +47,9 @@ final class Branch(val condition: CHIR.Value, val trueBlock: CHIR.Block, val fal
 final class RaiseException(val exceptionValue: CHIR.Value, val exceptionBlock: Option[CHIR.Block]) extends CHIR.RaiseException {
   def successors = exceptionBlock.toSeq
 }
+
+final class GetException extends CHIR.GetException {
+}
+
+final class Exit extends CHIR.Exit {
+}

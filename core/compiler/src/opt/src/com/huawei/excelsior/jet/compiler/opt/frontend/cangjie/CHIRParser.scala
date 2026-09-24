@@ -340,7 +340,7 @@ trait CHIRParser
 
       bv.terminator match {
         case t: CHIR.Goto => goto(t)
-        case CHIR.Exit => exit()
+        case _: CHIR.Exit => exit()
         case t: CHIR.RaiseException => throwOp(t)
         case t: (CHIR.TryApply |
           CHIR.TryInvoke |
@@ -1821,7 +1821,7 @@ trait CHIRParser
       case _: CHIR.Goto =>
         assert(block.blockEnd.isInstanceOf[Goto])
 
-      case CHIR.Exit =>
+      case _: CHIR.Exit =>
         val retType = rootMethod.getReturnType
         val retVal = if (retType.isZST) {
           Void()
@@ -2013,7 +2013,7 @@ trait CHIRParser
         }
         state(e) = value
 
-      case CHIR.GetException =>
+      case _: CHIR.GetException =>
         state(e) = state(catchProxy)
 
       case e: CHIR.RawArrayInitByValue =>
