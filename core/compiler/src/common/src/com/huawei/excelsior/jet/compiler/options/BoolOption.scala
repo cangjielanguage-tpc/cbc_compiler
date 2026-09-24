@@ -382,6 +382,8 @@ enum BoolOption(override val isAlias: Boolean,
 
   case PerformMassiveStackZeroingForCBC extends BoolOption(env => !env.enabled(UseIsa12)) // for JET-17840
 
+  case ImplicitCallRegAllocInCBC extends BoolOption(env => targetArch == CBC)
+
   // oberon options
   case GenMethodIDs extends BoolOption(true)
   case XDebug extends BoolOption(false)

@@ -14,6 +14,7 @@ import com.huawei.excelsior.jet.compiler.Env.tailRegister
 import com.huawei.excelsior.jet.compiler.abi.ABI.{AltLocation, TailSlot}
 import com.huawei.excelsior.jet.compiler.opt.ir.Resources.*
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
+import com.huawei.excelsior.jet.compiler.options.BoolOption.ImplicitCallRegAllocInCBC
 import com.huawei.excelsior.jet.compiler.util.Maps
 
 import scala.annotation.nowarn
@@ -183,7 +184,11 @@ trait NodesDescription { self: Universe with BackEnd =>
         if (e.source.isInstanceOf[Void] || e.source.isInstanceOf[MutFunc.Host]) {
           immSet
         } else {
-          callParamSet(call, call.invokeArgIdx(e), e)
+          if (env.enabled(ImplicitCallRegAllocInCBC)) {
+            universalNonImmSet
+          } else {
+            callParamSet(call, call.invokeArgIdx(e), e)
+          }
         }
     }
   }
