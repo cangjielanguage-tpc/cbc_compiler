@@ -615,7 +615,12 @@ trait CHIRParser
       }
       for (rcv <- rcvOpt) {
         val idx = if (method.hasReceiverParameter) method.getReceiverArgIdx else method.getMutRecordArgIdx
-        state(rcv) = rootMethodParam(idx)
+        val param = rootMethodParam(idx)
+        val realParam = method.getParamType(idx) match {
+          case t: SignatureType.Box => UnboxLea(t.base)(param)
+          case _ => param
+        }
+        state(rcv) = realParam
       }
       val chirParamStart = method.getMethodType.startSpecialParamsCount
       for ((p, i) <- args.zipWithIndex) {
@@ -2097,7 +2102,8 @@ trait CHIRParser
       val (sig, _, isCFunc, vararg) = resolver.functionSig(func, hasReceiver = !isStatic)
 
       // TODO: explain
-      val name = if (!isStatic && declType.isVariableSizeType && !refType.isVariableSizeType) {
+      val name = if (!isStatic && declType.isVariableSizeType && !refType.isVariableSizeType &&
+        (func.attributes.contains(Attribute.Mut) || func.kind == CHIR.Func.Kind.StructCtor || func.kind == CHIR.Func.Kind.PrimalStructCtor)) {
         resolver.mutWithoutTI(_name)
       } else {
         _name
@@ -2461,6 +2467,7 @@ trait CHIRParser
       rootMethodParam(rootMethod.getMutObjectArgIdx)
     case rcv: ArrayGet if rcv.arrayType.isRecordArray => rcv.array
     case rcv: FieldSeqOperation => rcv.baseRef
+    case rcv: UnboxLea => rcv.value
     case rcv: Phi =>
       val args = Phi.transitiveValueArgs(rcv).filterNot(_.isInstanceOf[NoValue])
       singleton(args) match {

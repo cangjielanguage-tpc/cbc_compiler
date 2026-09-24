@@ -232,10 +232,6 @@ compiler/CodegenCJNative/record/override_struct_generic_param_with_concrete_type
 compiler/CodegenCJNative/record/override_struct_generic_return_with_concrete_type.cj
 compiler/Sema/generics/interface_nongeneric_implements_generic.cj
 
-# bug: #37 (Reimplement withoutTI/withTI wrappers for generic field accesses to fix bugs in some corner cases)
-compiler/CHIR/UG/TypeCast/typecast01.cj
-compiler/Sema/record/primaryConstructor/primaryConstructor10.cj
-
 # bug: #48 (Do not pass generic terms to CreateTypeInfo)
 compiler/CodegenCJNative/record/record_4.cj
 compiler/CHIR/CHIR2HLIR/matchPattern/enum_exhaustive_04.cj
