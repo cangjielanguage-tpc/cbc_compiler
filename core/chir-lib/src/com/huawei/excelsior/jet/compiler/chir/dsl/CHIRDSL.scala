@@ -58,7 +58,7 @@ object CHIRDSL {
       loc
     }
 
-    def getException: CHIR.Expression = CHIR.GetException
+    def getException: CHIR.Expression = GetException()
 
     def apply(callee: CHIR.Func, thisType: Option[CHIR.Type], thisArgOpt: Option[CHIR.Value], args: CHIR.Value*): CHIR.Apply = {
       Apply(callee, thisType, thisArgOpt, args)
@@ -106,7 +106,7 @@ object CHIRDSL {
       Branch(cond, trueBlock, falseBlock)
     }
 
-    def exit(): CHIR.Terminator = CHIR.Exit
+    def exit(): CHIR.Terminator = Exit()
 
     def raise(exceptionValue: CHIR.Value, exceptionBlock: Option[CHIR.Block]): CHIR.RaiseException = {
       RaiseException(exceptionValue, exceptionBlock)
