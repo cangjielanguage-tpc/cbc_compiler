@@ -2396,9 +2396,10 @@ trait CHIRParser
       if (refType.isVariableLayoutType) {
         FieldReferenceNodeGeneric(CangjieFieldReference(field, refType, fieldType))(loadTypeInfo(refType))
       } else {
-        idx match
+        idx match {
           case Some(i) => FieldReferenceNode(CangjieFieldReference(i, field, refType, fieldType))
           case None => FieldReferenceNode(CangjieFieldReference(field, refType, fieldType))
+        }
       }
     }
 

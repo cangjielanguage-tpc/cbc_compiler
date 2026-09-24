@@ -849,25 +849,21 @@ trait CangjieNodes { self: Universe =>
 
   sealed trait CangjieReferenceNode extends FloatingNode {
     def refType: SignatureType
-
     def fieldType: SignatureType
-
     def maybeField: Option[Field]
   }
 
   sealed trait CangjieReferenceNodeGeneric extends CangjieReferenceNode {
-    def typeInfo: Node // typeinfo of refType
+    def refTypeInfo: Node
   }
 
   class FieldReferenceNode private(proto: FieldReferenceNode.Proto)
     extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode {
     def field = proto.field
 
-    override def refType = field.refType
-
-    override def fieldType = field.fieldType
-
-    override def maybeField = Some(field.field)
+    def refType = field.refType
+    def fieldType = field.fieldType
+    def maybeField = Some(field.field)
   }
 
   object FieldReferenceNode {
@@ -878,12 +874,8 @@ trait CangjieNodes { self: Universe =>
       def newInstance() = new FieldReferenceNode(this)
     }
 
-    def proto(field: CangjieFieldReference) = {
-      Prototype.intern(Proto(field))
-    }
-
-    def apply(field: CangjieFieldReference): FieldReferenceNode =
-      proto(field)()
+    def proto(field: CangjieFieldReference) = Prototype.intern(Proto(field))
+    def apply(field: CangjieFieldReference): FieldReferenceNode = proto(field)()
 
     def unapply(x: FieldReferenceNode) = Some(x.field)
   }
@@ -892,11 +884,9 @@ trait CangjieNodes { self: Universe =>
     extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode {
     def idx: Int = proto.idx
 
-    override def refType = proto.refType
-
-    override def fieldType = proto.fieldType
-
-    override def maybeField = None
+    def refType = proto.refType
+    def fieldType = proto.fieldType
+    def maybeField = None
   }
 
   object ConstIndexFieldReference {
@@ -907,12 +897,8 @@ trait CangjieNodes { self: Universe =>
       def newInstance() = new ConstIndexFieldReference(this)
     }
 
-    def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = {
-      Prototype.intern(Proto(idx, refType, fieldType))
-    }
-
-    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType): ConstIndexFieldReference =
-      proto(idx, refType, fieldType)()
+    def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(idx, refType, fieldType))
+    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType): ConstIndexFieldReference = proto(idx, refType, fieldType)()
 
     def unapply(x: ConstIndexFieldReference) = Some(x.idx, x.refType, x.fieldType)
   }
@@ -921,11 +907,9 @@ trait CangjieNodes { self: Universe =>
     extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode {
     def idx: Node = arg(0)
 
-    override def refType = proto.refType
-
-    override def fieldType = proto.fieldType
-
-    override def maybeField = None
+    def refType = proto.refType
+    def fieldType = proto.fieldType
+    def maybeField = None
   }
 
   object IndexFieldReference {
@@ -936,12 +920,8 @@ trait CangjieNodes { self: Universe =>
       def newInstance() = new IndexFieldReference(this)
     }
 
-    def proto(refType: SignatureType, fieldType: SignatureType) = {
-      Prototype.intern(Proto(refType, fieldType))
-    }
-
-    def apply(refType: SignatureType, fieldType: SignatureType)(idx: Node): IndexFieldReference =
-      proto(refType, fieldType)(idx)
+    def proto(refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(refType, fieldType))
+    def apply(refType: SignatureType, fieldType: SignatureType)(idx: Node): IndexFieldReference = proto(refType, fieldType)(idx)
 
     def unapply(x: IndexFieldReference) = Some(x.idx, x.refType, x.fieldType)
   }
@@ -950,13 +930,11 @@ trait CangjieNodes { self: Universe =>
     extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNodeGeneric {
     def field = proto.field
 
-    override def typeInfo: Node = arg(0)
+    def refTypeInfo: Node = arg(0)
 
-    override def refType = field.refType
-
-    override def fieldType = field.fieldType
-
-    override def maybeField = Some(field.field)
+    def refType = field.refType
+    def fieldType = field.fieldType
+    def maybeField = Some(field.field)
   }
 
   object FieldReferenceNodeGeneric {
@@ -967,27 +945,21 @@ trait CangjieNodes { self: Universe =>
       def newInstance() = new FieldReferenceNodeGeneric(this)
     }
 
-    def proto(field: CangjieFieldReference) = {
-      Prototype.intern(Proto(field))
-    }
+    def proto(field: CangjieFieldReference) = Prototype.intern(Proto(field))
+    def apply(field: CangjieFieldReference)(typeInfo: Node): FieldReferenceNodeGeneric = proto(field)(typeInfo)
 
-    def apply(field: CangjieFieldReference)(typeInfo: Node): FieldReferenceNodeGeneric =
-      proto(field)(typeInfo)
-
-    def unapply(x: FieldReferenceNodeGeneric) = Some(x.field, x.typeInfo)
+    def unapply(x: FieldReferenceNodeGeneric) = Some(x.field, x.refTypeInfo)
   }
 
   class ConstIndexGeneric private(proto: ConstIndexGeneric.Proto)
     extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNodeGeneric {
     def idx: Int = proto.idx
 
-    override def typeInfo: Node = arg(0)
+    def refTypeInfo: Node = arg(0)
 
-    override def refType = proto.refType
-
-    override def fieldType = proto.fieldType
-
-    override def maybeField = None
+    def refType = proto.refType
+    def fieldType = proto.fieldType
+    def maybeField = None
   }
 
   object ConstIndexGeneric {
@@ -998,27 +970,21 @@ trait CangjieNodes { self: Universe =>
       def newInstance() = new ConstIndexGeneric(this)
     }
 
-    def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = {
-      Prototype.intern(Proto(idx, refType, fieldType))
-    }
+    def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(idx, refType, fieldType))
+    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType)(typeInfo: Node): ConstIndexGeneric = proto(idx, refType, fieldType)(typeInfo)
 
-    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType)(typeInfo: Node): ConstIndexGeneric =
-      proto(idx, refType, fieldType)(typeInfo)
-
-    def unapply(x: ConstIndexGeneric) = Some(x.idx, x.refType, x.fieldType, x.typeInfo)
+    def unapply(x: ConstIndexGeneric) = Some(x.idx, x.refType, x.fieldType, x.refTypeInfo)
   }
 
   class IndexFieldReferenceGeneric private(proto: IndexFieldReferenceGeneric.Proto)
     extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNodeGeneric {
     def idx: Node = arg(0)
 
-    override def typeInfo: Node = arg(1)
+    def refTypeInfo: Node = arg(1)
 
-    override def refType = proto.refType
-
-    override def fieldType = proto.fieldType
-
-    override def maybeField = None
+    def refType = proto.refType
+    def fieldType = proto.fieldType
+    def maybeField = None
   }
 
   object IndexFieldReferenceGeneric {
@@ -1029,13 +995,9 @@ trait CangjieNodes { self: Universe =>
       def newInstance() = new IndexFieldReferenceGeneric(this)
     }
 
-    def proto(refType: SignatureType, fieldType: SignatureType) = {
-      Prototype.intern(Proto(refType, fieldType))
-    }
+    def proto(refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(refType, fieldType))
+    def apply(refType: SignatureType, fieldType: SignatureType)(idx: Node, typeInfo: Node): IndexFieldReferenceGeneric = proto(refType, fieldType)(idx, typeInfo)
 
-    def apply(refType: SignatureType, fieldType: SignatureType)(idx: Node, typeInfo: Node): IndexFieldReferenceGeneric =
-      proto(refType, fieldType)(idx, typeInfo)
-
-    def unapply(x: IndexFieldReferenceGeneric) = Some(x.idx, x.refType, x.fieldType, x.typeInfo)
+    def unapply(x: IndexFieldReferenceGeneric) = Some(x.idx, x.refType, x.fieldType, x.refTypeInfo)
   }
 }
