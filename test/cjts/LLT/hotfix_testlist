@@ -171,7 +171,6 @@ compiler/FFI/CFFI/type_cast/type_cast_12.cj
 compiler/FFI/CFFI/type_cast/type_cast_3.cj
 compiler/FFI/CFFI/type_cast/type_cast_6.cj
 compiler/FFI/CFFI/type_cast/type_cast_7.cj
-compiler/FFI/CFFI/type_cast/type_cast_7.cj
 compiler/FFI/CFFI/type_cast/type_cast_9.cj
 compiler/Sema/ffi/c_type_in_generictype.cj
 
@@ -284,7 +283,6 @@ compiler/FFI/CFFI/record/small_17.cj
 compiler/FFI/CFFI/record/small_18.cj
 compiler/CodegenCommon/cffi/foreign/01/foreign_01.cj
 compiler/CodegenCJNative/incremental/foreign/foreign1.cj
-compiler/CodegenCJNative/incremental/foreign/foreign1.cj
 compiler/CHIR/CHIR2HLIR/generic/generic_external_use_ffic/main.cj
 
 # bug 79 (Cast Float32 -> Int32 does not throw on overflow)
@@ -328,7 +326,6 @@ compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
 compiler/CodegenCJNative/enum/04_EXHAUSTIVE_ASSOCIATED_OPTION_LIKE/main_08.cj
 compiler/CodegenCJNative/import/record_generic_import/main.cj
 compiler/Sema/Extend/generic/generic_param_pass.cj
-compiler/Sema/box/option_box_assign_00.cj
 compiler/Sema/generics/enum7.cj
 compiler/Sema/generics/enum8.cj
 compiler/Sema/generics/function_generics_list.cj
@@ -475,7 +472,6 @@ compiler/CHIROpt/ValueRangeAnalysis/issue04/RangeAnalysis_Incr.cj
 
 # ignore due to "invalid file or directory %disableCHIROpt"
 compiler/CHIROpt/O2Optimization/testO2DisableCHIROpt.cj
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet05.cj
 
 # ignore due to "invalid option: '--fchir-switch-opt'"
 compiler/CHIROpt/SanCovPass/traceCompareFail.cj
