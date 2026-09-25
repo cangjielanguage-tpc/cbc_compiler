@@ -33,6 +33,8 @@ import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter.Ge
 import com.huawei.excelsior.jet.compiler.types.CompiledType
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 
+import scala.annotation.tailrec
+
 trait CHIRParser
   extends UCEComponent
      with ConstBranchElimination
@@ -1177,13 +1179,13 @@ trait CHIRParser
               if (objTpe.someType.isTypeVariable) {
                 obj
               } else {
-                Box(objTpe)(loadTypeInfo(objTpe), obj)
+                createBox(objTpe, obj)
               }
             case objTpe =>
               if (objTpe.isTypeVariable || objTpe.isTraceableReference) {
                 obj
               } else {
-                Box(objTpe)(loadTypeInfo(objTpe), obj)
+                createBox(objTpe, obj)
               }
           }
           (SignatureType.Box(tpe), ref)
@@ -1840,7 +1842,7 @@ trait CHIRParser
                 // Variable-sized type
                 val value = state(r.get)
                 val ti = loadTypeInfo(t.base)
-                val box = if (value.tpe.isTraceableRefType) value else Box(t.base)(ti, value)
+                val box = if (value.tpe.isTraceableRefType) value else createBox(t.base, value)
                 AssignGeneric(t.base)(ti, retByVal, box)
                 retByVal
 
@@ -1975,13 +1977,13 @@ trait CHIRParser
             if (baseType.someType.isTypeVariable) {
               base
             } else {
-              Box(baseType)(loadTypeInfo(baseType), base)
+              createBox(baseType, base)
             }
           case _ =>
             if (baseType.isVariableSizeType || baseType.isTraceableReference) {
               base
             } else {
-              Box(baseType)(loadTypeInfo(baseType), base)
+              createBox(baseType, base)
             }
         }
         state(e) = res
@@ -2432,31 +2434,40 @@ trait CHIRParser
       sa
     }
 
-    private def createFieldReferenceNode(field: Field, refType: SignatureType, fieldType: SignatureType, idx: Option[Long] = None): CangjieReferenceNode = {
-      if (refType.isVariableLayoutType) {
-        FieldReferenceNodeGeneric(CangjieFieldReference(field, refType, fieldType))(loadTypeInfo(refType))
-      } else {
-        idx match {
-          case Some(i) => FieldReferenceNode(CangjieFieldReference(i, field, refType, fieldType))
-          case None => FieldReferenceNode(CangjieFieldReference(field, refType, fieldType))
-        }
+  }
+
+  private def createNoneReferenceNode(refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
+    if (refType.isVariableLayoutType) {
+      FieldReferenceNodeGeneric(CangjieFieldReference(refType, fieldType))(loadTypeInfo(refType))
+    } else {
+      FieldReferenceNode(CangjieFieldReference(refType, fieldType))
+    }
+  }
+
+  private def createFieldReferenceNode(field: Field, refType: SignatureType, fieldType: SignatureType, idx: Option[Long] = None): CangjieReferenceNode = {
+    if (refType.isVariableLayoutType) {
+      FieldReferenceNodeGeneric(CangjieFieldReference(field, refType, fieldType))(loadTypeInfo(refType))
+    } else {
+      idx match {
+        case Some(i) => FieldReferenceNode(CangjieFieldReference(i, field, refType, fieldType))
+        case None => FieldReferenceNode(CangjieFieldReference(field, refType, fieldType))
       }
     }
+  }
 
-    private def createConstIndexNode(idx: Int, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
-      if (refType.isVariableLayoutType) {
-        ConstIndexGeneric(idx, refType, fieldType)(loadTypeInfo(refType))
-      } else {
-        ConstIndexFieldReference(idx, refType, fieldType)
-      }
+  private def createConstIndexNode(idx: Int, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
+    if (refType.isVariableLayoutType) {
+      ConstIndexGeneric(idx, refType, fieldType)(loadTypeInfo(refType))
+    } else {
+      ConstIndexFieldReference(idx, refType, fieldType)
     }
+  }
 
-    private def createIndexNode(idx: Node, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
-      if (refType.isVariableLayoutType) {
-        IndexFieldReferenceGeneric(refType, fieldType)(idx, loadTypeInfo(refType))
-      } else {
-        IndexFieldReference(refType, fieldType)(idx)
-      }
+  private def createIndexNode(idx: Node, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
+    if (refType.isVariableLayoutType) {
+      IndexFieldReferenceGeneric(refType, fieldType)(idx, loadTypeInfo(refType))
+    } else {
+      IndexFieldReference(refType, fieldType)(idx)
     }
   }
 
@@ -2466,6 +2477,7 @@ trait CHIRParser
     else mem
   }
 
+  @tailrec
   private def maybeDerivedPtrBase(rcv: Node): Node = rcv match {
     case rcv if rcv.tpe.isTraceableRefType => rcv
     case rcv: Param if rootMethod.hasMutRecordParameter && rcv.num == rootMethod.getMutRecordArgIdx =>
@@ -2503,6 +2515,14 @@ trait CHIRParser
     }
     for (n <- all[SMutRecArg]) {
       n.replaceBy(n.receiver)
+    }
+  }
+
+  private def createBox(base: SignatureType, value: Node): Node = {
+    if (base.isVariableSizeType) {
+      LoadFieldSeq(maybeDerivedPtrBase(value), value, createNoneReferenceNode(base, base), loadTypeInfo(base))
+    } else {
+      Box(base)(loadTypeInfo(base), value)
     }
   }
 
