@@ -28,11 +28,14 @@ import scala.collection.mutable
 trait CbcSymbolAdapter extends SymbolAdapter {
   implicit val typeProvider: TypeProvider = env.getTypeProvider
 
+  private def genericParams(t: SignatureType): Seq[SignatureType] = t match {
+    case t: SignatureType.InstantiatedType => t.instantiatedTypeParameters
+    case t: SignatureType.CangjieEnum => t.params
+    case _ => Seq.empty
+  }
+
   private def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
-    val cparams = refType match {
-      case refType: SignatureType.InstantiatedType => refType.instantiatedTypeParameters
-      case _ => Seq.empty
-    }
+    val cparams = genericParams(refType)
     val lparams = Seq.empty
 
     val refClass = asClassType(refType)
@@ -53,24 +56,27 @@ trait CbcSymbolAdapter extends SymbolAdapter {
     case symbol: CodeSigSymbol => symbol.sig.toCbc
     case symbol: MethodReference =>
       val declaringClass = symbol.method.getDeclaringClass
-      val refType = if (declaringClass.isCangjiePackage) {
-        if (symbol.method.getCHIRDef.nonEmpty) {
+      val (refType, cparams) = if (declaringClass.isCangjiePackage) {
+        val t = if (symbol.method.getCHIRDef.nonEmpty) {
           // Force reference to alt definition (see CbcFileEncoderAdapter.TypeWrapper)
           CbcFileFormat.TypeSignature.ref(CbcFileEncoderAdapter.cbcPackageName(declaringClass.getName))
         } else {
           CbcFileFormat.AotTypeSignature.ref(declaringClass.getName)
         }
+        (t, Seq.empty)
       } else if (symbol.accessKind == SPECIAL && asClassType(symbol.refType.sigType) != declaringClass) {
-        Closure(symbol.refType.sigType)(refineSuperTypes).find(asClassType(_) == declaringClass).get.toCbc
+        val t = Closure(symbol.refType.sigType)(refineSuperTypes).find(asClassType(_) == declaringClass).get
+        (t.toCbc, genericParams(t))
       } else {
-        symbol.refType.sigType.toCbc
+        val t = symbol.refType.sigType
+        (t.toCbc, genericParams(t))
       }
       val aotData = symbol.accessKind match {
         case STATIC | SPECIAL | MUT => Option.when(symbol.method.getCHIRDef.isEmpty)(DirectCallAotData(symbol.method.getExportedName.toString))
         case VIRTUAL => Option.when(refType.isInstanceOf[CbcFileFormat.AotTypeSignature])(InterfaceCallAotData(symbol.explicitVNum.get)) // TODO: improve if needed
         case _ => notImplemented(symbol.accessKind)
       }
-      val signature = symbol.method.getSignature.toCbc
+      val signature = symbol.method.getSignature.instantiate(cparams, Seq.empty).toCbc
 
       val mt = symbol.methodType
       val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
