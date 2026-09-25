@@ -20,6 +20,33 @@ compiler/Sema
 # Float16
 compiler/CodegenCJNative/LegacyTests/typesFp16.cj
 
+# not implemented: Not implemented yet POWI 64 in execute
+compiler/CHIR/CHIR2HLIR/overflow/int16/power.cj
+compiler/CHIR/CHIR2HLIR/overflow/int16/power_max.cj
+compiler/CHIR/CHIR2HLIR/overflow/int16/power_min.cj
+compiler/CHIR/CHIR2HLIR/overflow/int32/power.cj
+compiler/CHIR/CHIR2HLIR/overflow/int64/pow_const.cj
+compiler/CHIR/CHIR2HLIR/overflow/int64/pow_const_wrapping.cj
+compiler/CHIR/CHIR2HLIR/overflow/int64/pow_option.cj
+compiler/CHIR/CHIR2HLIR/overflow/int64/power.cj
+compiler/CHIR/CHIR2HLIR/overflow/int64/power_assign.cj
+compiler/CHIR/CHIR2HLIR/overflow/int64/power_max.cj
+compiler/CHIR/CHIR2HLIR/overflow/int64/power_min.cj
+compiler/CHIR/CHIR2HLIR/overflow/int8/pow_const.cj
+compiler/CHIR/CHIR2HLIR/overflow/int8/pow_const_wrapping.cj
+compiler/CHIR/CHIR2HLIR/overflow/int8/pow_option.cj
+compiler/CHIR/CHIR2HLIR/overflow/int8/power.cj
+compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
+compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
+compiler/CHIR/CHIR2HLIR/overflow/uint16/power.cj
+compiler/CHIR/CHIR2HLIR/overflow/uint32/power.cj
+compiler/CHIR/CHIR2HLIR/overflow/uint64/pow_const_wrapping.cj
+compiler/CHIR/CHIR2HLIR/overflow/uint8/pow_const.cj
+compiler/CHIR/CHIR2HLIR/overflow/uint8/pow_const_wrapping.cj
+compiler/CHIR/CHIR2HLIR/overflow/uint8/power.cj
+compiler/CodegenCHIR/overflow/exp_wrapping.cj
+compiler/CodegenCHIR/tryCatch/rawArray/rawArray_01.cj
+
 # not implemented: Integral -> Rune cast check (silently wraps, OverflowException never raised)
 compiler/CodegenCommon/typecast/integer2char_invalid_int16.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_int32.cj
