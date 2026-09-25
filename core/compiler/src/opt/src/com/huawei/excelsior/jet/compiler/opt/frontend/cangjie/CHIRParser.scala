@@ -617,6 +617,7 @@ trait CHIRParser
         val idx = if (method.hasReceiverParameter) method.getReceiverArgIdx else method.getMutRecordArgIdx
         val param = rootMethodParam(idx)
         val realParam = method.getParamType(idx) match {
+          case SignatureType.Box(t: SignatureType.OptionLikeEnum) if t.someType.isTypeVariable => param
           case t: SignatureType.Box => UnboxLea(t.base)(param)
           case _ => param
         }
