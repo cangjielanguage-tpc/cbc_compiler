@@ -346,8 +346,7 @@ trait Types { this: CompilerEnvironment =>
         case _: ClassBasedEnum => TRefType
         case _: UnionBasedEnum => RecordAddrType(sigType)
         case sig: OptionLikeEnum =>
-          if (sig.someType.isTypeVariable) shouldNotReachHere(sig)
-          else if (sig.isNullableOption) TRefType
+          if (sig.isNullableOption) TRefType
           else RecordAddrType(sig)
       }
     }
