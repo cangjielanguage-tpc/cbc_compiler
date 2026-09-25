@@ -1152,6 +1152,7 @@ trait CHIRParser
 
           vtable.extDefs.iterator.map { extDef =>
             val vnum = extDef.funcTable.indexWhere { method =>
+              // TODO: instantiate method type parameters as well
               method.name == name && method.originalSig.instantiate(genericParams(receiverType), Seq.empty) == sig
             }
             (extDef, vnum)
