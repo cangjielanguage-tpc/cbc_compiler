@@ -2283,14 +2283,14 @@ trait CHIRParser
     private def fieldChain(host: SignatureType, path: Seq[Long], maybeBoxed: Boolean = false): Seq[Node] = {
       val fields = path.scanLeft[CangjieReferenceNode](null) { case (fr, idx) =>
         val refType = if (fr == null) host else fr.fieldType
-        val accessType = if (fr == null && maybeBoxed && host.isVariableSizeType) SignatureType.Box(host) else refType
+        val fieldRefType = if (fr == null && maybeBoxed && host.isVariableSizeType) SignatureType.Box(host) else refType
 
         def fieldRef(idx: Long): CangjieReferenceNode = {
           val refClass = asClassType(refType)
           val allClassFields = (refClass +: refClass.getSuperClasses.toArray).reverse.flatMap(_.getDeclaredFields)
           val next = allClassFields.filterNot(_.isStatic).apply(idx.toInt)
           val fieldType = next.getType.instantiate(genericParams(refType), Seq.empty)
-          createFieldReferenceNode(next, accessType, fieldType, Some(idx))
+          createFieldReferenceNode(next, fieldRefType, fieldType, Some(idx))
         }
 
         refType match {
@@ -2298,14 +2298,14 @@ trait CHIRParser
             fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
           case refType: SignatureType.Tuple =>
             val fieldType = refType.params(idx.toInt)
-            createConstIndexNode(idx.toInt, accessType, fieldType)
+            createConstIndexNode(idx.toInt, fieldRefType, fieldType)
           case refType: SignatureType.OptionLikeEnum =>
             assert(!refType.isNullableOption && !refType.someType.isTypeVariable, refType)
             val fieldType = idx match {
               case 0 => SignatureType.Boolean
               case 1 => refType.someType
             }
-            createConstIndexNode(idx.toInt, accessType, fieldType)
+            createConstIndexNode(idx.toInt, fieldRefType, fieldType)
           case refType: (SignatureType.ZeroSizedEnum | SignatureType.PrimitiveBasedEnum | SignatureType.UnionBasedEnum) =>
             shouldNotReachHere(refType)
           case refType =>
