@@ -2073,11 +2073,9 @@ trait CHIRParser
         }
 
       case e: CHIR.GetRTTI =>
-        // GetRTTI reads the dynamic type of its object operand. In an instance
-        // method that operand is the implicit receiver; in a static method it
-        // is an explicit reference argument, because there is no receiver.
-        val obj = if (rootMethod.hasReceiverParameter) ReceiverParam() else state(e.obj)
-        state(e) = ThisTypeInfoBy(obj)
+        // The state map resolves the object operand after parameter substitution.
+        // This remains correct when the containing CHIR body has been inlined.
+        state(e) = ThisTypeInfoBy(state(e.obj))
     }
 
     private def staticFieldRef(globalVar: CHIR.GlobalVar): CangjieReferenceNode = {
