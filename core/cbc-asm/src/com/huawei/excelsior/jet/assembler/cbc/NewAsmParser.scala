@@ -129,10 +129,10 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
 
     private def constructType(name: String, subtypes: Seq[Signature]): Signature = {
       consume() match {
-        case Kw(Ref)    => TypeSignature(name, subtypes, true)
-        case Kw(AotRef) => AotTypeSignature(name, subtypes, true)
-        case Kw(Rec)    => TypeSignature(name, subtypes, false)
-        case Kw(AotRec) => AotTypeSignature(name, subtypes, false)
+        case Kw(Ref)    => TypeSignature(name, subtypes, true, false)
+        case Kw(AotRef) => AotTypeSignature(name, subtypes, true, false)
+        case Kw(Rec)    => TypeSignature(name, subtypes, false, false)
+        case Kw(AotRec) => AotTypeSignature(name, subtypes, false, false)
         case Kw(KeywordKind.NullableOption) => OptionSignature(name, subtypes, true)
         case Kw(KeywordKind.UnionOption) => OptionSignature(name, subtypes, false)
         case t =>

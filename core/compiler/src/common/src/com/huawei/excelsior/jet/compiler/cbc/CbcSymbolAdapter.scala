@@ -120,6 +120,8 @@ object CbcSignatureAdapter {
 
   implicit private val typeProvider: TypeProvider = env.getTypeProvider
 
+  private def shouldGenerateFst(sig: SignatureType): Boolean = !sig.isVariableSizeType && !sig.isReference
+
   private def adaptSignature(signature: Signature): CbcFileFormat.Signature = signature match {
     case SignatureType.Void          => CbcFileFormat.BuiltinSignature.Void
     case SignatureType.Unit          => CbcFileFormat.BuiltinSignature.Unit
@@ -147,8 +149,8 @@ object CbcSignatureAdapter {
 
     case sig: SignatureType.Record =>
       assert(!asClassType(sig).isUniversalGeneric, s"erased signature type: ${sig.toJETSignature}")
-      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.rec(sig.name)
-      else CbcFileFormat.TypeSignature.rec(sig.name)
+      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature.rec(sig.name, shouldGenerateFst(sig))
+      else CbcFileFormat.TypeSignature.rec(sig.name, shouldGenerateFst(sig))
 
     case sig: SignatureType.CangjieReference =>
       assert(!asClassType(sig).isUniversalGeneric, s"erased signature type: ${sig.toJETSignature}")
@@ -159,8 +161,8 @@ object CbcSignatureAdapter {
 
     case sig: SignatureType.InstantiatedType   =>
       adaptFunctional(sig).getOrElse {
-        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference)
-        else CbcFileFormat.TypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference)
+        if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference, shouldGenerateFst(sig))
+        else CbcFileFormat.TypeSignature(sig.name, sig.instantiatedTypeParameters.map(_.toCbc), sig.isReference, shouldGenerateFst(sig))
       }
 
     case sig: SignatureType.CangjieArray       => CbcFileFormat.CangjieArray(sig.elemType.toCbc)
@@ -176,10 +178,10 @@ object CbcSignatureAdapter {
     case sig: SignatureType.PrimitiveBasedEnum => CbcFileFormat.PrimitiveEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.UnionBasedEnum => CbcFileFormat.UnionEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.ClassBasedEnum =>
-      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
-      else CbcFileFormat.TypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
+      if (!sig.symType.isCHIRDef) CbcFileFormat.AotTypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, shouldGenerateFst(sig))
+      else CbcFileFormat.TypeSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, shouldGenerateFst(sig))
     case sig: SignatureType.OptionLikeEnum =>
-      CbcFileFormat.OptionSignature(sig.name, sig.params.map(_.toCbc), sig.isReference)
+      CbcFileFormat.OptionSignature(sig.name, sig.params.map(_.toCbc), sig.isReference, shouldGenerateFst(sig))
 
     case sig: SignatureType.ArraySlice => notImplemented(sig)
     case sig: SignatureType.JavaArray => notImplemented(sig)
