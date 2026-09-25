@@ -861,7 +861,7 @@ trait CHIRParser
 
         val ValueSig(host) = memBase
 
-        val fields = fieldChain(host, e.path)
+        val fields = fieldChain(host, e.path, maybeBoxed = staticField.isEmpty && mem.tpe == TRefType)
 
         val lastField = FieldSeqOperation.lastRef(fields)
         val n = if (lastField.fieldType.isZST) {
@@ -870,7 +870,7 @@ trait CHIRParser
 
         } else {
           staticField match {
-            case None => GetFieldSeqRef(maybeDerivedPtrBase(mem), fieldBase(host, mem), fields*)
+            case None => GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields*)
             case Some(sf) => GetStaticFieldSeqRef(DerivedPtr.Global(), sf +: fields*)
           }
         }
@@ -901,7 +901,7 @@ trait CHIRParser
           arrayPut(host, mem, LConst(idx), arg)
 
         } else {
-          val fields = fieldChain(host, e.path)
+          val fields = fieldChain(host, e.path, maybeBoxed = staticField.isEmpty && mem.tpe == TRefType)
 
           val lastField = FieldSeqOperation.lastRef(fields)
           if (lastField.fieldType.isZST) {
@@ -913,10 +913,10 @@ trait CHIRParser
             staticField match {
               case None =>
                 if (!lastField.fieldType.isVariableSizeType && needsCopy(lastField.fieldType)) {
-                  val addr = GetFieldSeqRef(maybeDerivedPtrBase(mem), fieldBase(host, mem), fields*)
+                  val addr = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
-                  StoreFieldSeq(maybeDerivedPtrBase(mem), fieldBase(host, mem), arg, fields*)
+                  StoreFieldSeq(maybeDerivedPtrBase(mem), mem, arg, fields*)
                 }
               case Some(sf) =>
                 if (!lastField.fieldType.isVariableSizeType && needsCopy(lastField.fieldType)) {
@@ -988,7 +988,7 @@ trait CHIRParser
                 packageInitCheck(symRefType)
             }
 
-            val fields = fieldChain(host, chirPath)
+            val fields = fieldChain(host, chirPath, maybeBoxed = staticField.isEmpty && mem.tpe == TRefType)
 
             val lastField = FieldSeqOperation.lastRef(fields)
             val n = if (lastField.fieldType.isZST) {
@@ -1000,9 +1000,9 @@ trait CHIRParser
               val valueOrMem = staticField match {
                 case None =>
                   if (shouldCopy) {
-                    GetFieldSeqRef(maybeDerivedPtrBase(mem), fieldBase(host, mem), fields*)
+                    GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields*)
                   } else {
-                    LoadFieldSeq(maybeDerivedPtrBase(mem), fieldBase(host, mem), fields*)
+                    LoadFieldSeq(maybeDerivedPtrBase(mem), mem, fields*)
                   }
                 case Some(sf) =>
                   if (shouldCopy) {
@@ -2280,16 +2280,17 @@ trait CHIRParser
       case _ => Seq.empty
     }
 
-    private def fieldChain(host: SignatureType, path: Seq[Long]): Seq[Node] = {
+    private def fieldChain(host: SignatureType, path: Seq[Long], maybeBoxed: Boolean = false): Seq[Node] = {
       val fields = path.scanLeft[CangjieReferenceNode](null) { case (fr, idx) =>
         val refType = if (fr == null) host else fr.fieldType
+        val fieldRefType = if (fr == null && maybeBoxed && host.isVariableSizeType) SignatureType.Box(host) else refType
 
         def fieldRef(idx: Long): CangjieReferenceNode = {
           val refClass = asClassType(refType)
           val allClassFields = (refClass +: refClass.getSuperClasses.toArray).reverse.flatMap(_.getDeclaredFields)
           val next = allClassFields.filterNot(_.isStatic).apply(idx.toInt)
           val fieldType = next.getType.instantiate(genericParams(refType), Seq.empty)
-          createFieldReferenceNode(next, refType, fieldType, Some(idx))
+          createFieldReferenceNode(next, fieldRefType, fieldType, Some(idx))
         }
 
         refType match {
@@ -2297,14 +2298,14 @@ trait CHIRParser
             fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
           case refType: SignatureType.Tuple =>
             val fieldType = refType.params(idx.toInt)
-            createConstIndexNode(idx.toInt, refType, fieldType)
+            createConstIndexNode(idx.toInt, fieldRefType, fieldType)
           case refType: SignatureType.OptionLikeEnum =>
             assert(!refType.isNullableOption && !refType.someType.isTypeVariable, refType)
             val fieldType = idx match {
               case 0 => SignatureType.Boolean
               case 1 => refType.someType
             }
-            createConstIndexNode(idx.toInt, refType, fieldType)
+            createConstIndexNode(idx.toInt, fieldRefType, fieldType)
           case refType: (SignatureType.ZeroSizedEnum | SignatureType.PrimitiveBasedEnum | SignatureType.UnionBasedEnum) =>
             shouldNotReachHere(refType)
           case refType =>
@@ -2432,9 +2433,17 @@ trait CHIRParser
       sa
     }
 
+    private def loadFieldRefTypeInfo(refType: SignatureType): Node = {
+      val layoutType = refType match {
+        case t: SignatureType.Box => t.base
+        case t => t
+      }
+      loadTypeInfo(layoutType)
+    }
+
     private def createFieldReferenceNode(field: Field, refType: SignatureType, fieldType: SignatureType, idx: Option[Long] = None): CangjieReferenceNode = {
       if (refType.isVariableLayoutType) {
-        FieldReferenceNodeGeneric(CangjieFieldReference(field, refType, fieldType))(loadTypeInfo(refType))
+        FieldReferenceNodeGeneric(CangjieFieldReference(field, refType, fieldType))(loadFieldRefTypeInfo(refType))
       } else {
         idx match {
           case Some(i) => FieldReferenceNode(CangjieFieldReference(i, field, refType, fieldType))
@@ -2445,7 +2454,7 @@ trait CHIRParser
 
     private def createConstIndexNode(idx: Int, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
       if (refType.isVariableLayoutType) {
-        ConstIndexGeneric(idx, refType, fieldType)(loadTypeInfo(refType))
+        ConstIndexGeneric(idx, refType, fieldType)(loadFieldRefTypeInfo(refType))
       } else {
         ConstIndexFieldReference(idx, refType, fieldType)
       }
@@ -2458,12 +2467,6 @@ trait CHIRParser
         IndexFieldReference(refType, fieldType)(idx)
       }
     }
-  }
-
-  private def fieldBase(host: SignatureType, mem: Node): Node = {
-    // TODO: Move boxed-base handling into fieldChain and use Box(host) as refType of the first reference instead of explicit UnboxLea
-    if (host.isVariableSizeType && mem.tpe == TRefType) UnboxLea(host)(mem)
-    else mem
   }
 
   private def maybeDerivedPtrBase(rcv: Node): Node = rcv match {
