@@ -14,7 +14,7 @@ import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BytecodeReference, 
 trait SymbolAdapter {
   def adapt(symbol: Symbol): BytecodeReference
 
-  final def field(symbol: Symbol): FieldReferenceWithType = adapt(symbol).asInstanceOf[FieldReferenceWithType]
+  final def field(symbol: Symbol): FieldReference = adapt(symbol).asInstanceOf[FieldReference]
   final def method(symbol: Symbol): MethodReference = adapt(symbol).asInstanceOf[MethodReference]
   final def sigType(symbol: Symbol): Signature      = adapt(symbol).asInstanceOf[Signature]
   final def string(symbol: Symbol): StringLiteral   = adapt(symbol).asInstanceOf[StringLiteral]

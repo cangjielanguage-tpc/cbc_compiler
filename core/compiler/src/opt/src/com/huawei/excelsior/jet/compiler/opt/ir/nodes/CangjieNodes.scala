@@ -423,6 +423,7 @@ trait CangjieNodes { self: Universe =>
     case class Proto private[Box](base: SignatureType)
       extends FixedArgs[Box](ControlType, MemoryType, AddrType, ValueType.fromSig(base, instantiateRich = true))(ValueType.fromSig(SignatureType.Box(base)))
       with ControlMemoryValueTagged[Box] {
+      assert(!base.isVariableSizeType) // boxing VST is done via LoadFieldSeq
 
       def newInstance() = new Box(this)
     }
@@ -885,7 +886,7 @@ trait CangjieNodes { self: Universe =>
 
     def refType = field.refType
     def fieldType = field.fieldType
-    def maybeField = Some(field.field)
+    def maybeField = field.field
   }
 
   object FieldReferenceNode {
@@ -898,8 +899,6 @@ trait CangjieNodes { self: Universe =>
 
     def proto(field: CangjieFieldReference) = Prototype.intern(Proto(field))
     def apply(field: CangjieFieldReference): FieldReferenceNode = proto(field)()
-
-    def unapply(x: FieldReferenceNode) = Some(x.field)
   }
 
   class ConstIndexFieldReference private(proto: ConstIndexFieldReference.Proto)
@@ -921,8 +920,6 @@ trait CangjieNodes { self: Universe =>
 
     def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(idx, refType, fieldType))
     def apply(idx: Int, refType: SignatureType, fieldType: SignatureType): ConstIndexFieldReference = proto(idx, refType, fieldType)()
-
-    def unapply(x: ConstIndexFieldReference) = Some(x.idx, x.refType, x.fieldType)
   }
 
   class IndexFieldReference private(proto: IndexFieldReference.Proto)
@@ -944,8 +941,6 @@ trait CangjieNodes { self: Universe =>
 
     def proto(refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(refType, fieldType))
     def apply(refType: SignatureType, fieldType: SignatureType)(idx: Node): IndexFieldReference = proto(refType, fieldType)(idx)
-
-    def unapply(x: IndexFieldReference) = Some(x.idx, x.refType, x.fieldType)
   }
 
   class FieldReferenceNodeGeneric private(proto: FieldReferenceNodeGeneric.Proto)
@@ -956,7 +951,7 @@ trait CangjieNodes { self: Universe =>
 
     def refType = field.refType
     def fieldType = field.fieldType
-    def maybeField = Some(field.field)
+    def maybeField = field.field
   }
 
   object FieldReferenceNodeGeneric {
@@ -969,8 +964,6 @@ trait CangjieNodes { self: Universe =>
 
     def proto(field: CangjieFieldReference) = Prototype.intern(Proto(field))
     def apply(field: CangjieFieldReference)(typeInfo: Node): FieldReferenceNodeGeneric = proto(field)(typeInfo)
-
-    def unapply(x: FieldReferenceNodeGeneric) = Some(x.field, x.refTypeInfo)
   }
 
   class ConstIndexGeneric private(proto: ConstIndexGeneric.Proto)
@@ -994,8 +987,6 @@ trait CangjieNodes { self: Universe =>
 
     def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(idx, refType, fieldType))
     def apply(idx: Int, refType: SignatureType, fieldType: SignatureType)(typeInfo: Node): ConstIndexGeneric = proto(idx, refType, fieldType)(typeInfo)
-
-    def unapply(x: ConstIndexGeneric) = Some(x.idx, x.refType, x.fieldType, x.refTypeInfo)
   }
 
   class IndexFieldReferenceGeneric private(proto: IndexFieldReferenceGeneric.Proto)
@@ -1019,7 +1010,5 @@ trait CangjieNodes { self: Universe =>
 
     def proto(refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(refType, fieldType))
     def apply(refType: SignatureType, fieldType: SignatureType)(idx: Node, typeInfo: Node): IndexFieldReferenceGeneric = proto(refType, fieldType)(idx, typeInfo)
-
-    def unapply(x: IndexFieldReferenceGeneric) = Some(x.idx, x.refType, x.fieldType, x.refTypeInfo)
   }
 }
