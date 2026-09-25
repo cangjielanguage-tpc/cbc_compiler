@@ -751,7 +751,7 @@ trait CHIRParser
               case CHIR.OverflowStrategy.Throwing =>
                 val width = sig.toAsm.width
                 val normalizedArgs = Seq(l, r) map { n =>
-                  CheckedOp.normalizeArg(n.tpe, width, signed, n)
+                  CheckedOp.normalizeArg(tpe, width, signed, n)
                 }
                 e.kind match {
                   case CHIR.Binary.Kind.Add => CheckedOp(tpe, width, CheckedOp.Kind.ADD, signed, method.isManaged)(normalizedArgs: _*)
