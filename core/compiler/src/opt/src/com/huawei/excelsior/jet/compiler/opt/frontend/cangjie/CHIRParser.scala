@@ -1364,7 +1364,7 @@ trait CHIRParser
           case (from @ OptionLikeEnum(_, _, x), to @ Tuple(Seq(Boolean, y))) =>
             // Have to account for erasure in case of recursive option types
             assert(x == y || (x == ReferenceType.cangjieStdCoreObject.sigType && y.isTraceableReference), s"cast from $from to $to")
-            if (from.isNullableOption || x.isTypeVariable) {
+            if (from.isNullableOption || x.containsTypeVariables) {
               EnumCast(from)(value)
             } else {
               ReinterpretCast(fromTpe, toTpe)(value)
