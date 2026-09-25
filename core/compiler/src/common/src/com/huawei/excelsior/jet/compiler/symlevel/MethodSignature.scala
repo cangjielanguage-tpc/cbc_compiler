@@ -17,7 +17,11 @@ case class MethodSignature(returnType: SignatureType, parameterTypes: Seq[Signat
 
   private[symlevel] def instantiateImpl(cparams: Seq[SignatureType], lparams: Seq[SignatureType]): MethodSignature = {
     def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
-      if (g.isTypeVariable && !i.isTypeVariable) SignatureType.Box(i) else i
+      if (g.isTypeVariable && !i.isTypeVariable && (!i.isReference || i.isInstanceOf[SignatureType.OptionLikeEnum])) {
+        SignatureType.Box(i)
+      } else {
+        i
+      }
     }
 
     MethodSignature(boxTypeVar(returnType, returnType.instantiateImpl(cparams, lparams)), parameterTypes.map(t => boxTypeVar(t, t.instantiateImpl(cparams, lparams))))

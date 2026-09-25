@@ -356,7 +356,6 @@ sealed abstract class SignatureType extends Signature {
     case t: InstantiatedRecord    => InstantiatedRecord(t.name, t.instantiatedTypeParameters.map(_.instantiateImpl(cparams, lparams)))
     case t: InstantiatedReference => InstantiatedReference(t.name, t.instantiatedTypeParameters.map(_.instantiateImpl(cparams, lparams)))
     case t: Tuple                 => Tuple(t.params.map(_.instantiateImpl(cparams, lparams)))
-    case t: Box                   => Box(t.base.instantiateImpl(cparams, lparams))
     case t: ArraySlice            => ArraySlice(t.elemType.instantiateImpl(cparams, lparams))
     case t: CangjieArray          => CangjieArray(t.elemType.instantiateImpl(cparams, lparams))
     case t: CangjieEnumWrapper    => CangjieEnumWrapper(t.baseType.instantiateImpl(cparams, lparams).asInstanceOf[CangjieEnumWrapper.Base], t.name)
@@ -370,6 +369,9 @@ sealed abstract class SignatureType extends Signature {
     case t: ClassBasedEnum        => ClassBasedEnum(t.name, t.params.map(_.instantiateImpl(cparams, lparams)))
     case t: UnionBasedEnum        => UnionBasedEnum(t.name, t.params.map(_.instantiateImpl(cparams, lparams)))
     case t: OptionLikeEnum        => OptionLikeEnum(t.name, t.params.map(_.instantiateImpl(cparams, lparams)), t.someType.instantiateImpl(cparams, lparams))
+    case t: Box                   =>
+      val base = t.base.instantiateImpl(cparams, lparams)
+      if (base.isReference && !base.isInstanceOf[OptionLikeEnum]) base else Box(base)
   }
 
   def uninstantiated: SignatureType = this match {
