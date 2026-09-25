@@ -124,6 +124,10 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def linkageName(v: CHIR.Func | CHIR.GlobalVar | CHIR.InstanceVar): String = v match {
+    // A static virtual bridge and its raw implementation share a Cangjie
+    // linkage name. Unlike instance bridges, no receiver is available to keep
+    // their CBC identities distinct. The bridge retains the public linkage;
+    // its compiler-only raw implementation gets a private suffix.
     case v: CHIR.Func if bridgedRawStaticMethods.contains(v) => s"${v.identifier.tail}$$raw"
     case v: CHIR.Func => v.identifier.tail
     case v: CHIR.GlobalVar => v.identifier.tail
