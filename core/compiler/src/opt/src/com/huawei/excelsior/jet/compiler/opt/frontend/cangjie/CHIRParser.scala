@@ -2073,8 +2073,6 @@ trait CHIRParser
         }
 
       case e: CHIR.GetRTTI =>
-        // The state map resolves the object operand after parameter substitution.
-        // This remains correct when the containing CHIR body has been inlined.
         state(e) = ThisTypeInfoBy(state(e.obj))
     }
 
