@@ -34,6 +34,7 @@ object CbcFileFormat {
 
   sealed trait Signature extends BytecodeReference {
     def isReference: Boolean
+    def needsFstWrapper: Boolean
   }
 
   enum BuiltinSignature(val id: Int) extends Signature {
@@ -58,48 +59,63 @@ object CbcFileFormat {
     case F32 extends BuiltinSignature(0x12)
     case F64 extends BuiltinSignature(0x13)
 
-    override def isReference = false
+    def isReference = false
+    def needsFstWrapper: Boolean = false
   }
 
-  case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean) extends Signature
-  case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean) extends Signature
-  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean) extends Signature
+  object TypeSignature {
+    def ref(name: String) = TypeSignature(name, Seq.empty, isReference = true, needsFstWrapper = false)
+    def rec(name: String, needsFstWrapper: Boolean) = TypeSignature(name, Seq.empty, isReference = false, needsFstWrapper)
+  }
+
+  object AotTypeSignature {
+    def ref(name: String) = AotTypeSignature(name, Seq.empty, isReference = true, needsFstWrapper = false)
+    def rec(name: String, needsFstWrapper: Boolean) = AotTypeSignature(name, Seq.empty, isReference = false, needsFstWrapper)
+  }
+
+  case class TypeSignature(name: String, args: Seq[Signature], isReference: Boolean, needsFstWrapper: Boolean = false) extends Signature
+  case class AotTypeSignature(name: String, args: Seq[Signature], isReference: Boolean, needsFstWrapper: Boolean = false) extends Signature
+  case class OptionSignature(name: String, args: Seq[Signature], isReference: Boolean, needsFstWrapper: Boolean = false) extends Signature
   case class PrimitiveEnum(name: String, args: Seq[Signature]) extends Signature {
-    override def isReference = false
+    def isReference = false
+    def needsFstWrapper: Boolean = true
   }
   case class UnionEnum(name: String, args: Seq[Signature]) extends Signature {
-    override def isReference = false
+    def isReference = false
+    def needsFstWrapper: Boolean = true
   }
   case class CangjieArray(tpe: Signature) extends Signature {
-    override def isReference = true
+    def isReference = true
+    def needsFstWrapper: Boolean = false
   }
   case class Tuple(args: Seq[Signature]) extends Signature {
-    override def isReference = false
+    def isReference = false
+    def needsFstWrapper: Boolean = args.forall(_.needsFstWrapper)
   }
   case class Functional(args: Seq[Signature], result: Signature) extends Signature {
-    override def isReference = true
-  }
-  case class Nullable(sig: Signature) extends Signature { // FIXME: remove
-    override def isReference = sig.isReference
-  }
-  case class NonNullable(sig: Signature) extends Signature {
-    override def isReference = sig.isReference
+    def isReference = true
+    def needsFstWrapper: Boolean = false
   }
   case class VArray(sig: Signature, length: Long) extends Signature {
-    override def isReference = false
+    def isReference = false
+    def needsFstWrapper: Boolean = true
   }
   case class CPointer(sig: Signature) extends Signature {
-    override def isReference = false
+    def isReference = false
+    def needsFstWrapper: Boolean = true
   }
   case class Box(sig: Signature) extends Signature {
-    override def isReference = true
+    def isReference = true
+    def needsFstWrapper: Boolean = true
   }
   case class Fst(sig: Signature) extends Signature {
-    override def isReference = false
+    def isReference = false
+    def needsFstWrapper: Boolean = false
   }
 
   sealed trait TypeVariable extends Signature {
-    override def isReference = false
+    def isReference = false
+    def needsFstWrapper: Boolean = false
   }
   case class FuncTypeVariable(id: Int) extends TypeVariable
   case class ClassTypeVariable(id: Int) extends TypeVariable
@@ -107,16 +123,6 @@ object CbcFileFormat {
   object BuiltinSignature {
     def count: Int = BuiltinSignature.F64.id + 1
     def unapply(sig: BuiltinSignature): Option[Int] = Some(sig.id)
-  }
-
-  object TypeSignature {
-    def ref(name: String) = TypeSignature(name, Seq.empty, isReference = true)
-    def rec(name: String) = TypeSignature(name, Seq.empty, isReference = false)
-  }
-
-  object AotTypeSignature {
-    def ref(name: String) = AotTypeSignature(name, Seq.empty, isReference = true)
-    def rec(name: String) = AotTypeSignature(name, Seq.empty, isReference = false)
   }
 
   sealed trait Flag {
