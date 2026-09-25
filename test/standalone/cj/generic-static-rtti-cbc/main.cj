@@ -35,10 +35,10 @@ class GenericProduct<T> <: Factory<GenericProduct<T>> {
   }
 }
 
-struct Holder<M> where M <: Factory<M> {
+class Holder<M> where M <: Factory<M> {
   public Holder(public var value: ?M) {}
 
-  public mut func getOrCreate(): M {
+  public func getOrCreate(): M {
     if (let Some(value) <- value) {
       value
     } else {

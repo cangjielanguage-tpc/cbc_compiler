@@ -32,12 +32,13 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   private implicit val typeProvider: TypeProvider = env.getTypeProvider
 
   private val symTypeByTable = mutable.HashMap.empty[CHIR.Type | CHIR.CustomTypeDef, SymType]
-  // The frontend creates a bridge for a virtual method whose source and implementation signatures differ.
-  // The bridge has the vtable ABI, while its raw method retains the concrete implementation ABI.
-  // Keep both methods in the CBC symbol table.
-  private lazy val bridgedRawMethods: Set[CHIR.Func] = pkg.typeDefs.iterator
+  // A static bridge and its raw implementation have no receiver to distinguish
+  // their otherwise identical CBC method identities. Keep both methods in the
+  // CBC symbol table; non-static bridges retain the established representation.
+  private lazy val bridgedRawStaticMethods: Set[CHIR.Func] = pkg.typeDefs.iterator
     .flatMap(_.methods)
     .flatMap(_.annotations.collect { case a: CHIR.WrappedRawMethod => a.rawMethod })
+    .filter(_.attributes.contains(CHIR.Attribute.Static))
     .toSet
 
   def symType(v: CHIR.Type | CHIR.CustomTypeDef): Option[SymType] = symTypeByTable.get(v) orElse {
@@ -100,7 +101,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
           }
         case None =>
           val name = if (srcName.isEmpty || srcName == "$lambda" || isInitializer || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
-          if (wrappedMethod.isEmpty && _v.isInstanceOf[CHIR.Func] && bridgedRawMethods.contains(v.asInstanceOf[CHIR.Func])) s"$name$$raw" else name
+          if (wrappedMethod.isEmpty && _v.isInstanceOf[CHIR.Func] && bridgedRawStaticMethods.contains(v.asInstanceOf[CHIR.Func])) s"$name$$raw" else name
       }
     }
 
