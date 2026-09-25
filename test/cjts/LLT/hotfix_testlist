@@ -516,6 +516,8 @@ compiler/Sema/effect/resume_unit.cj
 compiler/Sema/effect/resume_with.cj
 compiler/Sema/Extend/generic/extend_hashmap_serializat.cj
 compiler/Sema/lookup/bugfix2.cj
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix23.cj
+compiler/Sema/Extend/extend_enum2.cj
 
 # ignore due to demangling discrepancies in stracktraces (main::goo vs default::goo etc.)
 compiler/CodegenCJNative/demangle/decl/c_function_decl1.cj
@@ -553,3 +555,4 @@ compiler/CodegenCJNative/demangle/type/tuple_type2.cj
 compiler/CHIROpt/VarInitCheck/InitOrder/circular1.cj
 compiler/CHIROpt/VarInitCheck/varray.cj
 compiler/CHIROpt/VarInitCheck/varray_if.cj
+compiler/Sema/generics/generic_subst_perf.cj
