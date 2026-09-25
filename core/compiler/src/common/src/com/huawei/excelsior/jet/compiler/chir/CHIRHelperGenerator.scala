@@ -63,7 +63,7 @@ class CHIRHelperGenerator(private var helperId: Long, _pkg: CHIR.Package) {
     gen.local(CHIR.BuiltinType.Nothing, gen.raise(exception, Option.empty))
   }
 
-  private def generateHelper(_id: Long, name: String,
+  private def generateHelper(_id: Long, _name: String,
                              _tpe: CHIR.FuncType,
                              _body: CHIR.BlockGroup,
                              _params: Seq[CHIR.Parameter] = Seq.empty,
@@ -73,9 +73,9 @@ class CHIRHelperGenerator(private var helperId: Long, _pkg: CHIR.Package) {
 
       def id: Long = _id
 
-      def identifier: String = name
+      def identifier: String = _name
 
-      def srcCodeIdentifier: String = name
+      def srcCodeIdentifier: String = _name
 
       def packageName: String = "VERY_COOL_PACKAGE"
 
