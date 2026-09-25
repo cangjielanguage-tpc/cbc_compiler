@@ -5,23 +5,24 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR.{Binary, Intrinsic, Unary}
 import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v13002.CHIRUtils.{toSeq, toTypeSeq, toValueSeq}
 
-class AllocateImpl(val e: AllocateBase)(implicit val provider: CHIRItemProvider) extends CHIR.Allocate {
-  def allocatedType: CHIR.Type = provider.getType[CHIR.Type](e.allocatedType).get
+class AllocateImpl(val a: AllocateBase)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Allocate {
+  val e: Expression = a.base
+  def allocatedType: CHIR.Type = provider.getType[CHIR.Type](a.allocatedType).get
 }
 
 final class TryAllocateImpl(allocation: AllocateBase)(implicit provider: CHIRItemProvider) extends AllocateImpl(allocation) with CHIR.TryAllocate {
-  lazy val successors: Seq[CHIR.Block] = takeLastTwoBlocks(mapOperands(e.base))
+  lazy val successors: Seq[CHIR.Block] = takeLastTwoBlocks(mapOperands(e))
 }
 
-class ApplyImpl(e: ApplyBase)(implicit provider: CHIRItemProvider) extends CHIR.Apply {
-  private val fc = e.base
-  private val ex = fc.base
-  lazy val Seq(callee: CHIR.Func, args: _*) = mapOperands(ex)
+class ApplyImpl(a: ApplyBase)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Apply {
+  private val fc = a.base
+  val e: Expression = fc.base
+  lazy val Seq(callee: CHIR.Func, args: _*) = mapOperands(e)
   def thisType: Option[CHIR.Type] = provider.getType[CHIR.Type](fc.objType)
   def thisArg: CHIR.Value = args.head
   def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
-  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
-  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.base.resultLocalVar).get
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
 final class TryApplyImpl(e: ApplyBase)(implicit provider: CHIRItemProvider) extends ApplyImpl(e) with CHIR.TryApply {
@@ -29,11 +30,11 @@ final class TryApplyImpl(e: ApplyBase)(implicit provider: CHIRItemProvider) exte
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(super.args)
 }
 
-class BinaryImpl(e: BinaryExpressionBase)(implicit provider: CHIRItemProvider) extends CHIR.Binary {
-  private val ex = e.base
-  lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.size >= 2) // at least left and right operands should be here
+class BinaryImpl(b: BinaryExpressionBase)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Binary {
+  val e = b.base
+  lazy val operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.size >= 2) // at least left and right operands should be here
 
-  def kind: Binary.Kind = ex.kind match {
+  def kind: Binary.Kind = e.kind match {
     case CHIRExprKind.Add | CHIRExprKind.TryAdd => Binary.Kind.Add
     case CHIRExprKind.Sub | CHIRExprKind.TrySub => Binary.Kind.Sub
     case CHIRExprKind.Mul | CHIRExprKind.TryMul => Binary.Kind.Mul
@@ -52,50 +53,56 @@ class BinaryImpl(e: BinaryExpressionBase)(implicit provider: CHIRItemProvider) e
     case CHIRExprKind.Equal => Binary.Kind.Eq
     case CHIRExprKind.NotEqual => Binary.Kind.NotEq
   }
-  def overflowStrategy: CHIR.OverflowStrategy = mapOverflowStrategy(e.overflowStrategy)
+  def overflowStrategy: CHIR.OverflowStrategy = mapOverflowStrategy(b.overflowStrategy)
   def leftOperand: CHIR.Value = operands.head
   def rightOperand: CHIR.Value = operands(1)
-  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
-  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.resultLocalVar).get
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
 final class TryBinaryImpl(e: BinaryExpressionBase)(implicit provider: CHIRItemProvider) extends BinaryImpl(e) with CHIR.TryBinary {
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-final class BranchImpl(e: Branch)(implicit provider: CHIRItemProvider) extends CHIR.Branch {
-  lazy val Seq(condition: CHIR.Value, trueBlock: CHIR.Block, falseBlock: CHIR.Block) = mapOperands(e.base)
+final class BranchImpl(b: Branch)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Branch {
+  val e: Expression = b.base
+  lazy val Seq(condition: CHIR.Value, trueBlock: CHIR.Block, falseBlock: CHIR.Block) = mapOperands(e)
   def successors: Seq[CHIR.Block] = Seq(trueBlock, falseBlock)
 }
 
-final class DebugImpl(e: Debug)(implicit provider: CHIRItemProvider) extends CHIR.Debug {
+final class DebugImpl(d: Debug)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Debug {
+  val e: Expression = d.base
 }
 
-final class FieldImpl(e: Field)(implicit provider: CHIRItemProvider) extends CHIR.Field {
-  lazy val Seq(base: CHIR.Value) = mapOperands(e.base)
-  def path: Seq[Long] = e.pathVector.toSeq
+final class FieldImpl(f: Field)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Field {
+  val e: Expression = f.base
+  lazy val Seq(base: CHIR.Value) = mapOperands(e)
+  def path: Seq[Long] = f.pathVector.toSeq
 }
 
-final class GetElementRefImpl(e: GetElementRef)(implicit provider: CHIRItemProvider) extends CHIR.GetElementRef {
-  lazy val Seq(base: CHIR.Value) = mapOperands(e.base)
-  def path: Seq[Long] = e.pathVector.toSeq
+final class GetElementRefImpl(g: GetElementRef)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetElementRef {
+  val e: Expression = g.base
+  lazy val Seq(base: CHIR.Value) = mapOperands(e)
+  def path: Seq[Long] = g.pathVector.toSeq
 }
 
-final class GetRTTIStaticImpl(e: GetRTTIStatic)(implicit provider: CHIRItemProvider) extends CHIR.GetRTTIStatic {
+final class GetRTTIStaticImpl(g: GetRTTIStatic)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetRTTIStatic {
+  val e: Expression = g.base
 }
 
-final class InstanceOfImpl(e: InstanceOf)(implicit provider: CHIRItemProvider) extends CHIR.InstanceOf {
-  lazy val Seq(obj: CHIR.Value) = mapOperands(e.base)
-  def testType: CHIR.Type = provider.getType[CHIR.Type](e.targetType).get
-  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.base.resultTy).get
-  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.resultLocalVar).get
+final class InstanceOfImpl(i: InstanceOf)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.InstanceOf {
+  val e: Expression = i.base
+  lazy val Seq(obj: CHIR.Value) = mapOperands(e)
+  def testType: CHIR.Type = provider.getType[CHIR.Type](i.targetType).get
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
-class IntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) extends CHIR.Intrinsic {
-  private val ex = e.base.base
-  private lazy val operands: Seq[CHIR.Value] = mapOperands(e.base.base)
+class IntrinsicImpl(in: IntrinsicBase)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Intrinsic {
+  val e = in.base.base
+  private lazy val operands: Seq[CHIR.Value] = mapOperands(e)
 
-  def kind: Intrinsic.Kind = e.intrinsicKind match {
+  def kind: Intrinsic.Kind = in.intrinsicKind match {
     case IntrinsicKind.ABS => Intrinsic.Kind.Abs
     case IntrinsicKind.FABS => Intrinsic.Kind.Fabs
     case IntrinsicKind.ARRAY_ACQUIRE_RAW_DATA => Intrinsic.Kind.ArrayAcquireRawData
@@ -127,8 +134,8 @@ class IntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) exten
     case IntrinsicKind.COS => Intrinsic.Kind.Cos
   }
   def args: Seq[CHIR.Value] = operands
-  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
-  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.base.resultLocalVar).get
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
 final class TryIntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvider) extends IntrinsicImpl(e) with CHIR.TryIntrinsic {
@@ -136,15 +143,15 @@ final class TryIntrinsicImpl(e: IntrinsicBase)(implicit provider: CHIRItemProvid
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(super.args)
 }
 
-class InvokeImpl(e: InvokeBase)(implicit provider: CHIRItemProvider) extends CHIR.Invoke {
-  private val fc = e.base
-  private val ex = fc.base
-  lazy val Seq(callee: CHIR.Func, args: _*) = mapOperands(ex)
+class InvokeImpl(i: InvokeBase)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Invoke {
+  private val fc = i.base
+  val e: Expression = fc.base
+  lazy val Seq(callee: CHIR.Func, args: _*) = mapOperands(e)
   def thisType: CHIR.Type = provider.getType[CHIR.Type](fc.objType).get
   def thisArg: CHIR.Value = args.head
   def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
-  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
-  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.base.resultLocalVar).get
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
 final class TryInvokeImpl(e: InvokeBase)(implicit provider: CHIRItemProvider) extends InvokeImpl(e) with CHIR.TryInvoke {
@@ -152,22 +159,22 @@ final class TryInvokeImpl(e: InvokeBase)(implicit provider: CHIRItemProvider) ex
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(super.args)
 }
 
-final class MultiBranchImpl(e: MultiBranch)(implicit provider: CHIRItemProvider) extends CHIR.MultiBranch {
-  lazy val Seq(condition: CHIR.Value, defaultBlock: CHIR.Block, _normalBlocks: _*) = mapOperands(e.base)
+final class MultiBranchImpl(m: MultiBranch)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.MultiBranch {
+  val e: Expression = m.base
+  lazy val Seq(condition: CHIR.Value, defaultBlock: CHIR.Block, _normalBlocks: _*) = mapOperands(e)
   def normalBlocks: Seq[CHIR.Block] = {
     val blocks = _normalBlocks
     blocks.collect {
       case t: CHIR.Block => t
     }.ensuring(_.size == blocks.size)
   }
-  def caseValues: Seq[Long] = e.caseValuesVector.toSeq
+  def caseValues: Seq[Long] = m.caseValuesVector.toSeq
   def successors: Seq[CHIR.Block] = defaultBlock +: normalBlocks
 }
 
-trait CastImpl extends CHIR.Cast {
-  def e: Expression
+trait CastImpl extends ExpressionImpl with CHIR.Cast {
   implicit def provider: CHIRItemProvider
-  
+
   lazy val operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty)
 
   def value: CHIR.Value = operands.head
@@ -183,10 +190,11 @@ final class TryNumericCastImpl(e: NumericCastBase)(implicit provider: CHIRItemPr
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-class RawArrayAllocateImpl(e: RawArrayAllocateBase)(implicit provider: CHIRItemProvider) extends CHIR.RawArrayAllocate {
-  lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.nonEmpty) // at least size should be here
+class RawArrayAllocateImpl(r: RawArrayAllocateBase)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RawArrayAllocate {
+  val e: Expression = r.base
+  lazy val operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty) // at least size should be here
 
-  def elementType: CHIR.Type = provider.getType[CHIR.Type](e.elementType).get
+  def elementType: CHIR.Type = provider.getType[CHIR.Type](r.elementType).get
   def size: CHIR.Value = operands.head
 }
 
@@ -194,48 +202,51 @@ final class TryRawArrayAllocateImpl(e: RawArrayAllocateBase)(implicit provider: 
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-class SpawnImpl(e: SpawnBase)(implicit provider: CHIRItemProvider) extends CHIR.Spawn {
-  lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.nonEmpty)  // at least obj should be here
+class SpawnImpl(s: SpawnBase)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Spawn {
+  val e: Expression = s.base
+  lazy val operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty)  // at least obj should be here
 
   def obj: CHIR.Value = operands.head
-  def executeClosure: Option[CHIR.Func] = provider.getValue[CHIR.Func](e.executeClosure)
-  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.base.resultTy).get
-  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.resultLocalVar).get
+  def executeClosure: Option[CHIR.Func] = provider.getValue[CHIR.Func](s.executeClosure)
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
 final class TrySpawnImpl(e: SpawnBase)(implicit provider: CHIRItemProvider) extends SpawnImpl(e) with CHIR.TrySpawn {
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-final class StoreElementRefImpl(e: StoreElementRef)(implicit provider: CHIRItemProvider) extends CHIR.StoreElementRef {
-  lazy val Seq(value: CHIR.Value, location: CHIR.Value) = mapOperands(e.base)
-  def path: Seq[Long] = e.pathVector.toSeq
+final class StoreElementRefImpl(s: StoreElementRef)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.StoreElementRef {
+  val e: Expression = s.base
+  lazy val Seq(value: CHIR.Value, location: CHIR.Value) = mapOperands(e)
+  def path: Seq[Long] = s.pathVector.toSeq
 }
 
-class UnaryImpl(e: UnaryExpressionBase)(implicit provider: CHIRItemProvider) extends CHIR.Unary {
-  lazy val operands: Seq[CHIR.Value] = mapOperands(e.base).ensuring(_.nonEmpty) // at least operand should be here
+class UnaryImpl(u: UnaryExpressionBase)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Unary {
+  val e: Expression = u.base
+  lazy val operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty) // at least operand should be here
 
   def operand: CHIR.Value = operands.head
-  def kind: Unary.Kind = e.base.kind match {
+  def kind: Unary.Kind = e.kind match {
     case CHIRExprKind.BitNot => Unary.Kind.BitNot
     case CHIRExprKind.Not => Unary.Kind.Not
     case CHIRExprKind.Neg | CHIRExprKind.TryNeg => Unary.Kind.Neg
   }
-  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.base.resultTy).get
-  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.resultLocalVar).get
-  def overflowStrategy: CHIR.OverflowStrategy = mapOverflowStrategy(e.overflowStrategy)
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
+  def overflowStrategy: CHIR.OverflowStrategy = mapOverflowStrategy(u.overflowStrategy)
 }
 
 final class TryUnaryImpl(e: UnaryExpressionBase)(implicit provider: CHIRItemProvider) extends UnaryImpl(e) with CHIR.TryUnary {
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-final class GotoImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Goto {
+final class GotoImpl(val e: Expression)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Goto {
   lazy val Seq(destination: CHIR.Block) = mapOperands(e)
   def successors: Seq[CHIR.Block] = Seq(destination)
 }
 
-final class RaiseExceptionImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.RaiseException {
+final class RaiseExceptionImpl(val e: Expression)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RaiseException {
   private lazy val operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty)
 
   def exceptionValue: CHIR.Value = operands.head
@@ -260,41 +271,53 @@ final class CastToConcreteImpl(val e: Expression)(implicit val provider: CHIRIte
 final class CastToGenericImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.CastToGeneric {
 }
 
-final class LoadImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Load {
+final class LoadImpl(val e: Expression)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Load {
   lazy val Seq(location: CHIR.Value) = mapOperands(e)
 }
 
-final class StoreImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Store {
+final class StoreImpl(val e: Expression)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Store {
   lazy val Seq(value: CHIR.Value, location: CHIR.Value) = mapOperands(e)
 }
 
-final class RawArrayLiteralInitImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.RawArrayLiteralInit {
+final class RawArrayLiteralInitImpl(val e: Expression)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RawArrayLiteralInit {
   lazy val Seq(array: CHIR.Value, elementValues: _*) = mapOperands(e)
 }
 
-final class RawArrayInitByValueImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.RawArrayInitByValue {
+final class RawArrayInitByValueImpl(val e: Expression)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RawArrayInitByValue {
   lazy val Seq(array: CHIR.Value, size: CHIR.Value, initValue: CHIR.Value) = mapOperands(e)
 }
 
-final class ConstantImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Constant {
+final class ConstantImpl(val e: Expression)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Constant {
   lazy val Seq(literal: CHIR.Value) = mapOperands(e)
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
-final class TupleImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.Tuple {
+final class TupleImpl(val e: Expression)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Tuple {
   def elementValues: Seq[CHIR.Value] = mapOperands(e)
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
 
-final class GetRTTIImpl(e: Expression) extends CHIR.GetRTTI {
+final class GetRTTIImpl(val e: Expression) extends ExpressionImpl with CHIR.GetRTTI {
 }
 
-final class GetExceptionImpl(e: Expression) extends CHIR.GetException {
+final class GetExceptionImpl(val e: Expression) extends ExpressionImpl with CHIR.GetException {
 }
 
-final class ExitImpl(e: Expression) extends CHIR.Exit {
+final class ExitImpl(val e: Expression) extends ExpressionImpl with CHIR.Exit {
+}
+
+trait ExpressionImpl extends CHIR.Expression {
+  def e: Expression
+
+  def debugLoc: Option[CHIR.DebugLocation] = {
+    def getLine(b: Base)(posMapper: DebugLocation => Pos) = Option(b.loc).map(posMapper).map(_.line)
+    
+    val b = e.base
+    getLine(b)(_.beginPos).zip(getLine(b)(_.endPos))
+      .map((st, end) => CHIR.DebugLocation(st, end))
+  }
 }
 
 private def mapOverflowStrategy(os: Int): CHIR.OverflowStrategy = os match {
@@ -311,5 +334,5 @@ private def mapOperands(e: Expression)(implicit provider: CHIRItemProvider) = {
 private def takeLastTwoBlocks(operands: Seq[CHIR.Value]): Seq[CHIR.Block] = {
   operands.takeRight(2).collect {
     case t: CHIR.Block => t
-  }.ensuring(_.size == 2) 
+  }.ensuring(_.size == 2)
 }

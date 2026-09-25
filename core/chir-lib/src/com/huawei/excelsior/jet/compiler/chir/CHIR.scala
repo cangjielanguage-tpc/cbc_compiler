@@ -66,7 +66,7 @@ object CHIR {
     def body: Option[BlockGroup]
     def params: Seq[Parameter]
     def retVal: Option[LocalVar]
-    def sourceFile: Option[String] = None // TODO
+    def sourceFile: Option[String]
   }
 
   object Func {
@@ -278,13 +278,10 @@ object CHIR {
     def tpe: FuncType
   }
 
-  trait DebugLocation {
-    def startLine: Long
-    def endLine: Long
-  }
+  case class DebugLocation(startLine: Long, endLine: Long)
 
   trait Expression {
-    def debugLoc: Option[DebugLocation] = None // TODO
+    def debugLoc: Option[DebugLocation]
   }
 
   trait Cast extends Expression {

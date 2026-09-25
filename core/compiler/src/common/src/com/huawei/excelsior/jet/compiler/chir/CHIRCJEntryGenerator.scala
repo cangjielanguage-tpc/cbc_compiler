@@ -140,7 +140,8 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
       def annotations: Seq[CHIR.Annotation] = Seq.empty
       // TODO need some?
       def attributes: Seq[CHIR.Attribute] = Seq.empty
-      def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
+      def declaringDef: Option[CHIR.CustomTypeDef] = None
+      def sourceFile: Option[String] = None
     }
   }
 }
