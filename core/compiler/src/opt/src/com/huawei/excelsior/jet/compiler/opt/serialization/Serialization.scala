@@ -279,6 +279,12 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: EscapeWriteBarrier.Static => EscapeWriteBarrier.Static.Proto
         case _: ZeroRefs => ZeroRefs.Proto
         case _: Halt => Halt.Proto
+        case _: FieldReferenceNode => FieldReferenceNode.Proto
+        case _: ConstIndexFieldReference => ConstIndexFieldReference.Proto
+        case _: IndexFieldReference => IndexFieldReference.Proto
+        case _: FieldReferenceNodeGeneric => FieldReferenceNodeGeneric.Proto
+        case _: ConstIndexGeneric => ConstIndexGeneric.Proto
+        case _: IndexFieldReferenceGeneric => IndexFieldReferenceGeneric.Proto
 
         case n: Deferred => n.proto match {
           case _: Deferred.New.Proto => Deferred.New.Proto
@@ -322,13 +328,10 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: MutFunc.Combine => MutFunc.Combine.Proto
 
         case _: GetFieldSeqRef => GetFieldSeqRef.Proto
-        case _: GetFieldSeqRefGeneric => GetFieldSeqRefGeneric.Proto
         case _: GetStaticFieldSeqRef => GetStaticFieldSeqRef.Proto
         case _: LoadFieldSeq => LoadFieldSeq.Proto
-        case _: LoadFieldSeqGeneric => LoadFieldSeqGeneric.Proto
         case _: LoadStaticFieldSeq => LoadStaticFieldSeq.Proto
         case _: StoreFieldSeq => StoreFieldSeq.Proto
-        case _: StoreFieldSeqGeneric => StoreFieldSeqGeneric.Proto
         case _: StoreStaticFieldSeq => StoreStaticFieldSeq.Proto
         case _: ZeroValueGeneric => ZeroValueGeneric.Proto
         case _: LoadTypeInfo => LoadTypeInfo.Proto

@@ -63,8 +63,7 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
       | CopyStructure | CopyStructureCBC | Throw | CheckedOp | EndLocalUnmovable
       | MutFuncArgNode | MutFunc.Combine | Return | UniversalGeneric.ConvertHolder | BulldozerHint
       | LoadTypeInfoGeneric | GenericTypeArg
-      | LoadFieldSeq | StoreFieldSeq | GetFieldSeqRef | LoadStaticFieldSeq | StoreStaticFieldSeq | GetStaticFieldSeqRef
-      | LoadFieldSeqGeneric | StoreFieldSeqGeneric | GetFieldSeqRefGeneric) => true
+      | LoadFieldSeq | StoreFieldSeq | GetFieldSeqRef | LoadStaticFieldSeq | StoreStaticFieldSeq | GetStaticFieldSeqRef) => true
 
     case x: BitcodeDeferred.FieldOp => x.hasObj
 
