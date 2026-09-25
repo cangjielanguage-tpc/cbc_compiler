@@ -382,7 +382,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
         adaptedRefs match {
           case Seq(field) => field
-          case refs => MultiFieldReference(refs)
+          case refs => MultiFieldReference(refs.map(_.asInstanceOf[CbcFileFormat.FieldReferenceWithType]))
         }
       }
 
@@ -397,7 +397,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
         val (plain, rest) = fields.span(isPlainField)
         if (plain.nonEmpty) {
-          asm.lea(scratch, base, constrFieldRef(plain))
+          constrFieldRef(plain) match {
+            case f: CbcFileFormat.NoneFieldReference => // no need for lea
+            case f => asm.lea(scratch, base, f)
+          }
           genLeaChain(scratch, scratch, rest)
         } else {
           fields.head match {
@@ -410,7 +413,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               asm.index(scratch, base, idx, ti)
             case fr: CangjieReferenceNodeGeneric =>
               val IReg(ti) = fr.refTypeInfo
-              asm.leaGeneric(scratch, base, ti, constrFieldRef(Seq(fr)))
+              constrFieldRef(Seq(fr)) match {
+                case f: CbcFileFormat.NoneFieldReference => // no need for lea
+                case f => asm.leaGeneric(scratch, base, ti, f)
+              }
             case fr => shouldNotReachHere(s"Unexpected field reference: $fr")
           }
           genLeaChain(scratch, scratch, fields.tail)
