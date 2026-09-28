@@ -55,7 +55,7 @@
       movi.64 IR2, 0xABAB
       st.typed IR2, $0, #p1_field
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       st.typed IR1, $0, #r1_field
 
@@ -64,7 +64,7 @@
       gcpoint
 
       ld.typed IR1, $0, #r1_field
-      call.direct IR1, #check
+      call.direct #check, IR1
       @dead IR1
 
       movi.64 IR1, 42
@@ -79,7 +79,7 @@
       zero.refs $0
       zero.refs $1
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       st.typed IR1, $0, #r1_field
 
@@ -88,7 +88,7 @@
 
       @dead IR1 IR2
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       st.typed IR1, $1, #r1_field
 
@@ -97,14 +97,14 @@
 
       @dead IR1 IR2
 
-      call.direct IR1, #default.baz
+      call.direct #default.baz
 
       ld.typed IR1, $0, #r1_field
-      call.direct IR1, #check
+      call.direct #check, IR1
       @dead IR1
 
       ld.typed IR1, $1, #r1_field
-      call.direct IR1, #check
+      call.direct #check, IR1
       @dead IR1
 
       movi.64 IR1, 42
@@ -119,7 +119,7 @@
       zero.refs $0
       zero.refs $1
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       st.typed IR1, $0, #r1_field
 
@@ -128,7 +128,7 @@
 
       @dead IR1 IR2
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       st.typed IR1, $1, #r1_field
 
@@ -137,14 +137,14 @@
 
       @dead IR1 IR2
 
-      call.direct IR1, #default.bar
+      call.direct #default.bar
 
       ld.typed IR1, $0, #r1_field
-      call.direct IR1, #check
+      call.direct #check, IR1
       @dead IR1
 
       ld.typed IR1, $1, #r1_field
-      call.direct IR1, #check
+      call.direct #check, IR1
       @dead IR1
 
       movi.64 IR1, 42
@@ -155,12 +155,12 @@
   @method main()I64
     @saved_iregs IR12, IR13
     @code
-      call.direct IR1, #startGarbageGenerator
+      call.direct #startGarbageGenerator
       movi.64 IR12, 0x10000
       movi.64 IR13, 0x1
 l:
       sub.64 IR12, IR12, IR13
-      call.direct IR1, #default.foo
+      call.direct #default.foo
       @live.prim IR1
       bcc.64 NE, IR12, IRZ, l
       ret.64 IR1

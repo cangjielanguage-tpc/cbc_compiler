@@ -37,7 +37,7 @@
       box IR8, IR2, I64
       load.type.info IR3, I64
 
-      call.direct IR1, #foo
+      call.direct #foo, IR1, IR2, IR3
       @dead IR1, IR2, IR3, IR7, IR8
       @live.ref IR1
 

@@ -40,10 +40,10 @@
 @type default
   @method main()I64
     @code
-      call.direct IR1, #packageInitRef
+      call.direct #packageInitRef
 
       newobj default:Child@ref
-      call.direct IR1, #qwerty
+      call.direct #qwerty, IR1
       @dead IR1
       @live.prim IR1
       ret.64 IR1

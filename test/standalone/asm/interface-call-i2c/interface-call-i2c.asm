@@ -13,9 +13,9 @@
 
   @method main()I64
     @code
-      call.direct IR1, #getI
+      call.direct #getI, IR1
       @live.ref IR1
-      call.interf IR1, #foo
+      call.interf #foo, IR1
       @dead IR1
       @live.prim IR1
       ret.64 IR1

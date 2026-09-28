@@ -57,7 +57,7 @@
       @dead IR1, IR2, IR9
     shared:
       mov.ref IR1, IR12
-      call.closure ()I64
+      call.closure ()I64, IR1
       @dead IR1
       @live.prim IR1
 
@@ -104,7 +104,7 @@
     @flags VIRTUAL SRET
     @code
       ;; pass current args as args to next call
-      call.direct IR1, #getstr
+      call.direct #getstr
       @live.prim IR1
       ret.64 IR1
     @end
@@ -140,11 +140,11 @@
     @code
       movi.64 IR1, 0
       movi.64 IR2, 1
-      call.direct IR1, #guess
+      call.direct #guess, IR1, IR2
       @dead IR1, IR2
 
       ; dynamically test whether we are executing on aarch64 or x64
-      call.direct IR1, #sret
+      call.direct #sret
       @live.prim IR1
       st.static IR1, #sret_flag
       @dead IR1
@@ -153,7 +153,7 @@
       mov.ref IR11, IR1
       @dead IR1
 
-      call.closure ()I64
+      call.closure ()I64, IR1
       @live.prim IR1
 
       bcci.64 EQ, IR1, 42, success1
@@ -177,11 +177,11 @@ no_sret_shift:
       prepare.rec $0
       ld.stack.rec IR9, $0
       mov.ref IR1, IR11
-      call.closure ()std.core.String@arec
+      call.closure ()std.core.String@arec, IR1
       @dead IR1, IR9
 
       ld.stack.rec IR1, $0
-      call.direct IR1, #print
+      call.direct #print, IR1
       @dead IR1
 
       ; check generic call closure
@@ -199,7 +199,7 @@ no_sret_shift:
       prepare.rec $1
       ld.stack.rec IR9, $1
       load.type.info.obj IR2, IR1
-      call.closure.g ()%0
+      call.closure.g ()%0, IR1
       @dead IR1, IR2, IR9
 
       ld.typed IR1, $1, #index_ref_1
@@ -223,11 +223,11 @@ has_sret_shift:
       prepare.rec $0
       ld.stack.rec IR1, $0
       mov.ref IR2, IR11
-      call.closure ()std.core:String@arec
+      call.closure ()std.core:String@arec, IR2
       @dead IR1, IR2
 
       ld.stack.rec IR1, $0
-      call.direct IR1, #print
+      call.direct #print, IR1
       @dead IR1
 
       ; check generic call closure
@@ -242,7 +242,7 @@ has_sret_shift:
       prepare.rec $1
       ld.stack.rec IR1, $1
       load.type.info.obj IR3, IR2
-      call.closure.g ()%0
+      call.closure.g ()%0, IR2
       @dead IR1, IR2, IR3
 
       ld.typed IR1, $1, #index_ref_1

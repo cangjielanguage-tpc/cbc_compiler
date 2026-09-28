@@ -38,22 +38,22 @@
     @saved_iregs IR12, IR13
 
     @code
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       mov.ref   IR12, IR1
       @dead     IR1
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       mov.ref   IR13, IR1
       @dead     IR1
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       mov.ref   IR4, IR1
       @dead     IR1
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       mov.ref   IR6, IR1
       @dead     IR1
@@ -71,17 +71,17 @@
     @saved_iregs IR11, IR13
 
     @code
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       mov.ref   IR11, IR1
       @dead     IR1
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       mov.ref   IR13, IR1
       @dead     IR1
 
-      call.direct IR1, #default.baz
+      call.direct #default.baz
       @live.prim  IR1
 
       @dead IR11 IR13
@@ -94,33 +94,33 @@
     @saved_iregs IR11, IR12, IR13
 
     @code
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       mov.ref   IR11, IR1
       @dead     IR1
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       mov.ref   IR12, IR1
       @dead     IR1
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       mov.ref   IR13, IR1
       @dead     IR1
 
-      call.direct IR1, #default.bar
+      call.direct #default.bar
 
       mov.ref IR1, IR11
-      call.direct IR1, #check
+      call.direct #check, IR1
       @dead IR1
 
       mov.ref IR1, IR12
-      call.direct IR1, #check
+      call.direct #check, IR1
       @dead IR1
 
       mov.ref IR1, IR13
-      call.direct IR1, #check
+      call.direct #check, IR1
       @dead IR1
 
       @dead IR11 IR12 IR13
@@ -134,12 +134,12 @@
     @saved_iregs IR11, IR12
 
     @code
-      call.direct IR1, #startGarbageGenerator
+      call.direct #startGarbageGenerator
       movi.64 IR12, 0x10000
       movi.64 IR11, 0x1
 l:
       sub.64 IR12, IR12, IR11
-      call.direct IR1, #default.foo
+      call.direct #default.foo
       @live.prim IR1
       bcc.64 NE, IR12, IRZ, l
       ret.64 IR1

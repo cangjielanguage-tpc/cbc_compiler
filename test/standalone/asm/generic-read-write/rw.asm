@@ -74,7 +74,7 @@
       box IR2, IR2, I64
 
       load.type.info IR3, I64
-      call.direct IR1, #invoke
+      call.direct #invoke, IR1, IR2, IR3
       @dead IR1, IR2, IR3
 
       newobj default:Generic[std.core:Object@aref]@ref
@@ -83,7 +83,7 @@
       mov.ref IR2, IR12
       load.type.info IR3, std.core:Object@aref
 
-      call.direct IR1, #invoke
+      call.direct #invoke, IR1, IR2, IR3
       @dead IR1, IR2, IR3
 
       ld.field IR2, IR12, #foo.fieldi64

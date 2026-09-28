@@ -33,7 +33,7 @@
 
   @method main()I64
     @code
-      call.direct IR1, #packageInitRef
+      call.direct #packageInitRef
 
       newobj aot:Point@aref
       movi.64 IR2, 123
@@ -52,7 +52,7 @@
       @dead IR1
 
       ld.static IR1, #refFieldRef
-      call.direct IR1, #checkObj
+      call.direct #checkObj, IR1
       @dead IR1
 
       ld.static IR2, #fieldRef32
