@@ -943,8 +943,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       def virtualStaticCall(): Unit = {
         val permanent = targetRef.getPermanent
         if (targetRef.refType.sigType.containsTypeVariables) {
-          // The operand names the argument to replace with the implementation's
-          // outer TI. The concrete dispatch TI remains in the separate this-TI argument.
           val outerTI = call.invokeArgs(targetRef.methodType.getOuterTypeInfoArgIdx)
           val loc = outerTI match {
             case IReg(reg) => reg
