@@ -160,12 +160,37 @@ class BitStream {
     bytes.toSeq
   }
 
-  private def flush(): Unit = {
+  private def flush(): BitStream = {
     if (bitCount > 0) {
       bytes += ((data << (8 - bitCount)) & 0xff).toInt
       bitCount = 0
       data = 0L
     }
+    this
+  }
+
+  def uVarInt(value: Long): BitStream = {
+    TieredVarInt.encode(this, value)
+    this
+  }
+
+  def uVarInts(values: Iterator[Long]): BitStream = {
+    for (value <- values) {
+      TieredVarInt.encode(this, value)
+    }
+    this
+  }
+
+  def sVarInt(value: Long): BitStream = {
+    TieredVarInt.encodeSigned(this, value)
+    this
+  }
+
+  def sVarInts(values: Iterator[Long]): BitStream = {
+    for (value <- values) {
+      TieredVarInt.encodeSigned(this, value)
+    }
+    this
   }
 
   def w4(x: Register | AsmType | CC | Ordinal | LoadAccessKind | StoreAccessKind): BitStream = w4(x match {
