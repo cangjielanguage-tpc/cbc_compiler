@@ -118,7 +118,9 @@ class TestSuite:
         expected = dotexpected(test_name)
         actual = custom_actual if custom_actual is not None else dotactual(test_name)
         diff_err = io.StringIO()
+        t0 = time.monotonic()
         res = await run_async(" ".join(diff(actual, expected)), shell=True, stderr_log=diff_err)
+        await Timings.add('diff', time.monotonic() - t0, timing_chunk)
         return res
 
     async def run_cjc(self, file: str, output_file: str, output_type: str = None,
@@ -361,14 +363,19 @@ class StandaloneTestSuite(TestSuite):
             return
 
         self.compilation_failures = []
+        global timing_chunk
+        timing_chunk = 'build'
         succeeded: list[str] = await self.build_parallel(tests, self.build_test, args)
+        timing_chunk = 'other'
 
         for test_name, in_mode, msg in self.compilation_failures:
             full_msg = test_failed(test_name, in_mode, msg=msg)
             await self.print_stderr(full_msg)
 
+        timing_chunk = 'run'
         for test in succeeded:
             await self.run_test(test)
+        timing_chunk = 'other'
 
 
 def enabled(name, args):
@@ -392,10 +399,16 @@ async def run_in_env(use_tool_sh: bool, env: dict[str, str], cmd: list[str], cwd
         env['TOOLCHAIN'] = toolchain_path
         cmd = [f'{TestSuite.root_dir}/tool.sh'] + cmd
 
-    return await run_async(cmd, shell=False, log=log, env=env, cwd=cwd, stderr_log=stderr_log)
+    t0 = time.monotonic()
+    res = await run_async(cmd, shell=False, log=log, env=env, cwd=cwd, stderr_log=stderr_log)
+    await Timings.add(classify_cmd(cmd), time.monotonic() - t0, timing_chunk)
+    return res
 
 
 toolchain_path: str = ""
+
+# Current chunk ('build' or 'run') for timing attribution; set by run().
+timing_chunk: str = 'other'
 
 
 def test_failed(name, in_mode="cj", msg=None):
@@ -470,6 +483,9 @@ def test(args):
     print(f"CANGJIE_TOOLCHAIN: {toolchain_path}")
 
     asyncio.run(StandaloneTestSuite(toolchain_path).run(args))
+
+    print()
+    print(Timings.report())
 
     if failedTests:
         print()
