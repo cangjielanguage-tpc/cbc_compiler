@@ -20,12 +20,28 @@ import xscala.io.LEB128Encoder
 import xscala.util.MathUtils
 
 import scala.annotation.nowarn
+import scala.collection.mutable.ArrayBuffer
 
 trait ByteStream {
   def write8(x: Int): ByteStream
 
-  def bits(f: BitStream => BitStream): ByteStream =
-    write8(f(new BitStream()).send())
+  /** Writes a bit stream, which must be byte rounded. */
+  def bits(f: BitStream => BitStream): ByteStream = {
+    var stream: ByteStream = this
+    for (b <- f(new BitStream()).send()) {
+      stream = stream.write8(b)
+    }
+    stream
+  }
+
+  /** Writes a bit stream, rounding it up to byte boundary. */
+  def bitsRounded(f: BitStream => BitStream): ByteStream = {
+    var stream: ByteStream = this
+    for (b <- f(new BitStream()).sendRounded()) {
+      stream = stream.write8(b)
+    }
+    stream
+  }
 
   final def write16(x: Int): ByteStream =
     write8(x & 0xff).write8((x >>> 8) & 0xff)
@@ -85,17 +101,39 @@ class InteriorByteStream(seg: Segment, private var _pos: Int) extends ByteStream
 }
 
 /**
-  * Byte-size bit stream.
+  * Bit stream of arbitrary length. Bits are packed from most significant one,
+  * so the stream is read back in the order it was written.
   */
 class BitStream {
   private var bitCount: Int = 0
-  private var data: Int = 0
+  private var data: Long = 0L
+  private val bytes: ArrayBuffer[Int] = ArrayBuffer.empty
 
-  def write(x: Int, bits: Int): BitStream = {
-    assert(bitCount + bits <= 8)
-    assert(MathUtils.isNBits(x, bits))
-    data = (data << bits) | x
-    bitCount += bits
+  /** Writes low `bits` bits of `x`. */
+  def write(x: Long, bits: Int): BitStream = {
+    assert(0 <= bits && bits <= 64)
+    assert(MathUtils.isNBits(x, bits), s"$x doesn't fit into $bits bits")
+    var shift = bits
+    if (bitCount > 0) {
+      // complete the partially filled byte first
+      val taken = math.min(8 - bitCount, shift)
+      data = (data << taken) | ((x >>> (shift - taken)) & MathUtils.rightNBits64(taken))
+      shift -= taken
+      bitCount += taken
+      if (bitCount == 8) {
+        bytes += (data & 0xff).toInt
+        data = 0L
+        bitCount = 0
+      }
+    }
+    while (shift >= 8) {
+      shift -= 8
+      bytes += ((x >>> shift) & 0xff).toInt
+    }
+    if (shift > 0) {
+      data = (data << shift) | (x & MathUtils.rightNBits64(shift))
+      bitCount += shift
+    }
     this
   }
 
@@ -103,10 +141,31 @@ class BitStream {
   def w1(x: Int): BitStream = write(x, 1)
   def w2(x: Int): BitStream = write(x, 2)
   def w4(x: Int): BitStream = write(x, 4)
+  def w8(x: Int): BitStream = write(x, 8)
+  def w16(x: Int): BitStream = write(x, 16)
+  def w36(x: Long): BitStream = write(x, 36)
 
-  def send(): Int = {
-    assert(bitCount == 8)
-    data
+  /** An amount of bits written so far. */
+  def size: Int = bytes.length * 8 + bitCount
+
+  /** Returns bytes of the stream, asserting that it is byte rounded. */
+  def send(): Seq[Int] = {
+    assert(bitCount == 0, s"bit stream is not byte rounded: $bitCount trailing bits")
+    bytes.toSeq
+  }
+
+  /** Returns bytes of the stream, padding the last byte with zero bits. */
+  def sendRounded(): Seq[Int] = {
+    flush()
+    bytes.toSeq
+  }
+
+  private def flush(): Unit = {
+    if (bitCount > 0) {
+      bytes += ((data << (8 - bitCount)) & 0xff).toInt
+      bitCount = 0
+      data = 0L
+    }
   }
 
   def w4(x: Register | AsmType | CC | Ordinal | LoadAccessKind | StoreAccessKind): BitStream = w4(x match {
