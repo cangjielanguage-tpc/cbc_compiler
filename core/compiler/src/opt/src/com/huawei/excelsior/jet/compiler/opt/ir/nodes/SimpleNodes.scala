@@ -200,7 +200,7 @@ trait SimpleNodes { self: Universe with Nodes =>
     object SecondArg extends EdgeMatcher[UMulH](1)
   }
 
-  class Pow private(proto: Pow.Proto) extends ArithCommutativeOp(proto) with FloatingNode
+  class Pow private(proto: Pow.Proto) extends BinaryOp(proto) with FloatingNode
 
   object Pow {
     case class Proto private[Pow](keyType: Type) extends BinaryOp.Floating[Pow](keyType)(keyType) {
