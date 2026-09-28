@@ -2095,8 +2095,8 @@ trait CHIRParser
       val (sig, _, isCFunc, vararg) = resolver.functionSig(func, hasReceiver = !isStatic)
 
       // TODO: explain
-      val name = if (!isStatic && declType.isVariableSizeType && !refType.isVariableSizeType &&
-        (func.attributes.contains(Attribute.Mut) || func.kind == CHIR.Func.Kind.StructCtor || func.kind == CHIR.Func.Kind.PrimalStructCtor)) {
+      val isMut = func.attributes.contains(Attribute.Mut) || func.kind == CHIR.Func.Kind.StructCtor || func.kind == CHIR.Func.Kind.PrimalStructCtor
+      val name = if (!isStatic && declType.isVariableSizeType && (!refType.isVariableSizeType || isMut)) {
         resolver.mutWithoutTI(_name)
       } else {
         _name
