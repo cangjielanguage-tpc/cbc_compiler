@@ -1,5 +1,6 @@
 import os
 import shutil
+import tempfile
 
 
 def patched(name):
@@ -59,6 +60,22 @@ def java_cmd():
     if java_exec:
         return java_exec
     raise EnvironmentError('JAVA_HOME environment variable is not set and java is not found in PATH')
+
+
+def java_perf_flags():
+    """JVM flags that make short-lived compiler JVM runs faster.
+
+    - C1-only JIT: C2 compilation of the compiler itself is a large share of CPU
+      in short runs and pays off only for long-running JVMs.
+    - AppCDS: the compiler loads ~8.5k classes per run; sharing the parsed class
+      metadata via an archive cuts startup and classloading time roughly in half.
+      The archive is (re)created automatically when missing/stale.
+    """
+    return [
+        '-XX:TieredStopAtLevel=1',
+        '-XX:+AutoCreateSharedArchive',
+        '-XX:SharedArchiveFile=' + os.path.join(tempfile.gettempdir(), 'cbc-compiler.jsa'),
+    ]
 
 
 def diff(actual, expected):

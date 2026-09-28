@@ -197,7 +197,7 @@ class StandaloneTestSuite(TestSuite):
 
         match in_mode:
             case "asm":
-                compile_asm_to_obj = [java_cmd(), '-jar', self.asm_jar, dotasm(test_name)]
+                compile_asm_to_obj = [java_cmd()] + java_perf_flags() + ['-jar', self.asm_jar, dotasm(test_name)]
 
                 with open(f"{test_work_dir}/asm.out", "w+") as asm_log:
                     asm_err = io.StringIO()
@@ -271,7 +271,7 @@ class StandaloneTestSuite(TestSuite):
                         continue
 
                     aot_deps_args = [f"-cbcaotdeps={':'.join(aot_so_names)}"] if aot_so_names else []
-                    chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + int_chir_files
+                    chir_to_cbc = [java_cmd()] + java_perf_flags() + ['-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + int_chir_files
                     cbc_log = io.StringIO()
                     cbc_err = io.StringIO()
                     res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)
