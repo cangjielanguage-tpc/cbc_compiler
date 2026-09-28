@@ -34,7 +34,7 @@
   @method main()I64
     @code
       newobj default:Foo@ref
-      call.virt IR1, #virt_foo
+      call.virt #virt_foo, IR1
       @dead IR1
       @live.prim IR1
       ret.64 IR1

@@ -44,7 +44,7 @@
       add.64 IR1, IR1, IR2
       add.64 IR1, IR1, IR3
       add.64 IR1, IR1, IR4
-      call.direct IR1, #print
+      call.direct #print, IR1
       @dead IR1
       movi.64 IR1, 0x0
       ret.64 IR1

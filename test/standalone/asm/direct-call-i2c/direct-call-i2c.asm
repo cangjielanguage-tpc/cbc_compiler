@@ -13,10 +13,10 @@
 
   @method main()I64
     @code
-      call.direct IR1, #packageInitRef
+      call.direct #packageInitRef
 
       movi.64 IR1, 42
-      call.direct IR1, #testPrint
+      call.direct #testPrint, IR1
       ret.64 IR1
     @end
   @end

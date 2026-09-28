@@ -72,7 +72,7 @@
       mov.ref IR11, IR1
 
       ; i64 case
-      call.interf IR1, #fooi64
+      call.interf #fooi64, IR1, IR2
       @dead IR1
       @live.prim IR1
 
@@ -82,7 +82,7 @@
       ; i32 case
       mov.ref IR1, IR11
 
-      call.interf IR1, #fooi32
+      call.interf #fooi32, IR1, IR2
       @dead IR1
       @live.prim IR1
 
@@ -92,7 +92,7 @@
       ; u64 case
       mov.ref IR1, IR11
 
-      call.interf IR1, #foou64
+      call.interf #foou64, IR1, IR2
       @dead IR1
       @live.prim IR1
 
@@ -102,7 +102,7 @@
       ; obj case
       mov.ref IR1, IR11
 
-      call.interf IR1, #fooobj
+      call.interf #fooobj, IR1, IR2
       @dead IR1
       @live.prim IR1
 

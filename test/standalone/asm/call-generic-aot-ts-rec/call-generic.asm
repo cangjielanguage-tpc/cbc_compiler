@@ -62,7 +62,7 @@
       load.type.info IR3, I64
       box.ts $0, IR1
 
-      call.direct IR1, #foo
+      call.direct #foo, IR1, IR2, IR3
       @dead IR1, IR2, IR3
 
       ld.field IR2, IR12, #bar.x

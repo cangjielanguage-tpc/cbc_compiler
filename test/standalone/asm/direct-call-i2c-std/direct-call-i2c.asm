@@ -13,7 +13,7 @@
     @code
       movi.64 IR1, 42 ; first arg on aarch64
       movi.64 IR2, 42 ; first arg on x86_64 (due to Unit ret-by-val taking up IR1)
-      call.direct IR1, #println
+      call.direct #println, IR1
       @dead IR1
       movi.64 IR1, 0
       ret.64 IR1

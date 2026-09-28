@@ -39,7 +39,7 @@
       movi.64 IR2, 0xABAB
       st.uslot.64 IR2, $0
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       st.uslot.ref IR1, $1
 
@@ -56,7 +56,7 @@
     @untyped_count 0x4
 
     @code
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       st.uslot.ref IR1, $0
 
@@ -65,7 +65,7 @@
 
       @dead IR1 IR2
 
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       st.uslot.ref IR1, $2
 
@@ -74,7 +74,7 @@
 
       @dead IR1 IR2
 
-      call.direct IR1, #default.baz
+      call.direct #default.baz
       @live.prim IR1
 
       ret.64 IR1
@@ -85,7 +85,7 @@
     @untyped_count 0x2
 
     @code
-      call.direct IR1, #default.newObj
+      call.direct #default.newObj
       @live.ref IR1
       st.uslot.ref IR1, $0
 
@@ -94,7 +94,7 @@
 
       @dead IR1 IR2
 
-      call.direct IR1, #default.bar
+      call.direct #default.bar
       @live.prim IR1
 
       ret.64 IR1
@@ -104,12 +104,12 @@
   @method main()I64
     @saved_iregs IR12, IR13
     @code
-      call.direct IR1, #startGarbageGenerator
+      call.direct #startGarbageGenerator
       movi.64 IR12, 0x10000
       movi.64 IR13, 0x1
 l:
       sub.64 IR12, IR12, IR13
-      call.direct IR1, #default.foo
+      call.direct #default.foo
       @live.prim IR1
       bcc.64 NE, IR12, IRZ, l
       ret.64 IR1

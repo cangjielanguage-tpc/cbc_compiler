@@ -11,7 +11,7 @@
 
   @method main()I64
     @code
-      call.direct IR1, #testGcPoint
+      call.direct #testGcPoint
       movi.64 IR1, 0x10000
       movi.64 IR3, 0x1
 l:
