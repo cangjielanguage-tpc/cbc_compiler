@@ -1431,6 +1431,7 @@ trait CHIRParser
             arrayPut(arrayType, obj, idx, value)
 
           case CHIR.Intrinsic.Kind.VArraySet =>
+            // TODO: ArrayIndexCheck
             val Seq(array, value, index) = e.args
             val ValueSig(arrayType: SignatureType.VArray) = array
             val base = array match {
@@ -1443,9 +1444,9 @@ trait CHIRParser
             vArrayPut(arrayType, base, state(index), state(value))
 
           case CHIR.Intrinsic.Kind.VArrayGet =>
+            // TODO: ArrayIndexCheck
             val array +: indices = e.args
-            val ValueSig(initialType: SignatureType.VArray) = array
-            var arrayType = initialType
+            var ValueSig(arrayType: SignatureType.VArray) = array
             var value = array match {
               case global: CHIR.GlobalVar =>
                 val field = staticFieldRef(global)
@@ -1455,7 +1456,9 @@ trait CHIRParser
             }
             for ((index, i) <- indices.zipWithIndex) {
               value = vArrayGet(arrayType, value, state(index))
-              if (i + 1 < indices.size) arrayType = arrayType.elemType.asInstanceOf[SignatureType.VArray]
+              if (i + 1 < indices.size) {
+                arrayType = arrayType.elemType.asInstanceOf[SignatureType.VArray]
+              }
             }
             state(e) = value
 
@@ -2059,8 +2062,13 @@ trait CHIRParser
             }.next()
             val refType = extDef.extType.instantiate(genericParams(lambdaType), Seq.empty)
             val target = new MethodReference(extDef.funcTable(vnum).impl.get, MAK.VIRTUAL, CompiledType(refType), vnum)
-            index => callMethod(target, Some(refType), Some(lambdaType), arrayType.elemType,
-              Seq(lambdaType, SignatureType.Int64), Seq(initializer, index), None)
+            
+            def init_func(index: Int) : Node = {
+              val paramTypes = Seq(lambdaType, SignatureType.Int64)
+              val argVals = Seq(initializer, index)
+              callMethod(target, Some(refType), Some(lambdaType), arrayType.elemType, paramTypes, argVals, None)
+            }
+            init_func
         }
         for (index <- 0L until arrayType.length) {
           vArrayPut(arrayType, mem, LConst(index), init(LConst(index)))
@@ -2381,7 +2389,7 @@ trait CHIRParser
     }
 
     private def vArrayIndex(arrayType: SignatureType.VArray, index: Node): CangjieReferenceNode = index match {
-      case IntegralConst(i) if i >= 0 && i <= Int.MaxValue => createConstIndexNode(i.toInt, arrayType, arrayType.elemType)
+      case IntegralConst(i) => createConstIndexNode(i.toInt, arrayType, arrayType.elemType)
       case _ => createIndexNode(index, arrayType, arrayType.elemType)
     }
 

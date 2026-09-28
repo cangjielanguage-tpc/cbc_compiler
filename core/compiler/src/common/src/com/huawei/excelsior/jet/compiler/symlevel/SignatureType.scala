@@ -169,7 +169,7 @@ sealed abstract class SignatureType extends Signature {
     case x: Box => x.base.hasRefFields
     case _: ZeroSizedEnum | _: PrimitiveBasedEnum | _: UnionBasedEnum => false
     case x: OptionLikeEnum => x.someType.isTraceableReference || (x.someType.isRecord && x.someType.hasRefFields)
-    case x: VArray => x.length != 0 && (x.elemType.isTraceableReference || (x.elemType.isRecord && x.elemType.hasRefFields))
+    case x: VArray => false
     case x => x.symType.hasRefFields
   }
 
@@ -750,6 +750,7 @@ object SignatureType {
 
   case class VArray(elemType: SignatureType, length: Long) extends SignatureType.Proper {
     override protected def calcSymType(implicit typeProvider: TypeProvider): Type = {
+      assert(!isStandalone)
       val name = VArray.name(elemType, length)
       val t = typeProvider.findClass(XString(name), loadPDB = true)
       assert(t != null, s"could not find symlevel type '$name' for $this")
