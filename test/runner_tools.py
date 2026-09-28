@@ -71,11 +71,15 @@ def java_perf_flags():
       metadata via an archive cuts startup and classloading time roughly in half.
       The archive is (re)created automatically when missing/stale.
     """
-    return [
+    flags = [
         '-XX:TieredStopAtLevel=1',
         '-XX:+AutoCreateSharedArchive',
         '-XX:SharedArchiveFile=' + os.path.join(tempfile.gettempdir(), 'cbc-compiler.jsa'),
     ]
+    # Allow switching JIT policy for experiments (e.g. CBC_RUNNER_FULLJIT=1)
+    if os.environ.get('CBC_RUNNER_FULLJIT'):
+        flags = [f for f in flags if f != '-XX:TieredStopAtLevel=1']
+    return flags
 
 
 def diff(actual, expected):
