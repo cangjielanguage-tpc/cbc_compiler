@@ -216,6 +216,37 @@ func test_fromGlobal() {
     println(fromGlobal2())
 }
 
+struct Padded {
+    let wide: Int64
+    let small: UInt8
+
+    init(wide: Int64, small: UInt8) {
+        this.wide = wide
+        this.small = small
+    }
+}
+
+var globalVArray: VArray<Padded, $2> = [Padded(10, 7), Padded(20, 9)]
+
+func readAt(index: Int64) {
+    println(globalVArray[index].wide)
+    println(globalVArray[index].small)
+}
+
+func writeAt(index: Int64, value: Padded) {
+    globalVArray[index] = value
+}
+
+func test_padding() {
+    println(globalVArray[1].wide)
+    readAt(1)
+    writeAt(1, Padded(30, 11))
+    println(globalVArray[1].wide)
+    println(globalVArray[1].small)
+    readAt(1)
+    readAt(0)
+}
+
 main(): Int64 {
     test_get()
     test_getI()
@@ -235,5 +266,6 @@ main(): Int64 {
     test_fromObj()
     test_fromRec()
     test_fromGlobal()
+    test_padding()
     0
 }
