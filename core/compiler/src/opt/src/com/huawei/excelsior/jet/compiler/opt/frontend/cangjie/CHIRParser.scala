@@ -2068,8 +2068,8 @@ trait CHIRParser
       val (sig, _, isCFunc, vararg) = resolver.functionSig(func, hasReceiver = !isStatic)
 
       // TODO: explain
-      val name = if (!isStatic && declType.isVariableSizeType && !refType.isVariableSizeType &&
-        (func.attributes.contains(Attribute.Mut) || func.kind == CHIR.Func.Kind.StructCtor || func.kind == CHIR.Func.Kind.PrimalStructCtor)) {
+      val isMut = func.attributes.contains(Attribute.Mut) || func.kind == CHIR.Func.Kind.StructCtor || func.kind == CHIR.Func.Kind.PrimalStructCtor
+      val name = if (!isStatic && declType.isVariableSizeType && isMut) {
         resolver.mutWithoutTI(_name)
       } else {
         _name
@@ -2124,6 +2124,15 @@ trait CHIRParser
         (None, None, _args, _paramTypes)
       } else {
         (_args.headOption, _paramTypes.headOption, _args.tail, _paramTypes.tail)
+      }
+
+      lazy val mutReceiver = receiver.map { rcv =>
+        if (rcv.tpe.isTraceableRefType) {
+          assert(receiverType.get.isVariableSizeType)
+          UnboxLea(receiverType.get)(rcv)
+        } else {
+          rcv
+        }
       }
 
       def adjustArg(a: Node, from: SignatureType, to: SignatureType): Node = {
@@ -2190,8 +2199,8 @@ trait CHIRParser
 
           Seq(abiRetVal)
         case Receiver => receiver.map(adjustArg(_, receiverType.get, target.methodType.parameterType(target.methodType.getReceiverArgIdx))) ensuring (_.nonEmpty)
-        case SMutRecord => Seq(SMutRecArg(receiver.get))
-        case SMutObject => Seq(SMutObjectArg(SMutRecArg(receiver.get)))
+        case SMutRecord => Seq(SMutRecArg(mutReceiver.get))
+        case SMutObject => Seq(SMutObjectArg(SMutRecArg(mutReceiver.get)))
         case OuterTypeInfo =>
           val t = outerTypeInfo.get
           if (t.isCangjieClosure) {
@@ -2499,19 +2508,13 @@ trait CHIRParser
   private def resolveProxiesInArgs(): Unit = {
     for (n <- all[SMutObjectArg]) {
       val actual = n.recArg.receiver match {
-        case rcv: InstanceFieldSeqOperation =>
-          if (rootMethod.isCangjieMut) {
-            // If mut-function calls another mut-function of this's struct field
-            // then base ref should be forwarded from outer mut-function to inner
-            rootMethodParam(rootMethod.getMutObjectArgIdx)
-          } else {
-            rcv.baseRef
-          }
+        case rcv: InstanceFieldSeqOperation => rcv.baseRef
         case rcv: FieldSeqOperation => DerivedPtr.Global()
         case rcv: StackAlloc => DerivedPtr.Local()
         case rcv: Param =>
           assert(rcv.num == rootMethod.getMutRecordArgIdx)
           rootMethodParam(rootMethod.getMutObjectArgIdx)
+        case rcv: UnboxLea => rcv.value
       }
       n.replaceBy(actual)
     }
