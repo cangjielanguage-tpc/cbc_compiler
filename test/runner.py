@@ -124,7 +124,8 @@ class TestSuite:
     async def run_cjc(self, file: str, output_file: str, output_type: str = None,
                       additional_args: list[str] = [], use_tool_sh: bool = True, cwd=None, log=None):
         assert '.' in file
-        cjc_args = ["--fobf-layout", "--fno-obf-export-symbols", "--fobf-line-number", "--fobf-source-path"]
+        cjc_args = ["--fobf-layout", "--fno-obf-export-symbols", "--fobf-line-number", "--fobf-source-path",
+                    "--obf-sym-output-mapping", dotobfdotmap(output_file)]
         cjc_args += additional_args
 
         if output_type is not None:

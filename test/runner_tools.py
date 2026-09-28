@@ -50,6 +50,10 @@ def dotchir(name):
     return f'{name}.chir'
 
 
+def dotobfdotmap(name):
+    return f'{name}.obf.map'
+
+
 def java_cmd():
     """Resolves the java executable path via JAVA_HOME or system PATH."""
     java_home = os.getenv('JAVA_HOME')

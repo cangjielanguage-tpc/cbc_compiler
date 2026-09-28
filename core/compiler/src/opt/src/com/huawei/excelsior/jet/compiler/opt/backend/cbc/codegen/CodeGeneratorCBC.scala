@@ -382,7 +382,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
         adaptedRefs match {
           case Seq(field) => field
-          case refs => MultiFieldReference(refs)
+          case refs => MultiFieldReference(refs.map(_.asInstanceOf[CbcFileFormat.FieldReferenceWithType]))
         }
       }
 
@@ -425,7 +425,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       def genAddress(dst: IR, fields: Seq[Node]): Unit = baseLocation match {
-        case Some(base: IR) => genLeaChain(dst, base, fields)
+        case Some(base: IR) => fields match {
+          case Seq(f: (FieldReferenceNode | FieldReferenceNodeGeneric)) if f.maybeField.isEmpty => // none field ref does not need lea
+          case _ => genLeaChain(dst, base, fields)
+        }
         case Some(_: StackSlot.Typed) => notImplemented("lea for typed slots")
         case None =>
           val (plain, rest) = fields.span(isPlainField)
