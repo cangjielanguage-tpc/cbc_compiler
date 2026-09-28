@@ -226,8 +226,13 @@ enum IntrinsicWithBody(className: String, methodName: String, signature: String,
   case Address_loadAcquireAddr extends IntrinsicWithBody("com/huawei/excelsior/aj/lang/Address", mangleName("loadAcquireAddr", "()Lcom/huawei/excelsior/aj/lang/Address;"), "(&)&")
   case Address_storeReleaseAddr extends IntrinsicWithBody("com/huawei/excelsior/aj/lang/Address", mangleName("storeReleaseAddr", "(Lcom/huawei/excelsior/aj/lang/Address;)V"), "(&&)V")
 
-  override def getClassName = XString.ascii(className)
-  override def getMethodName = XString.ascii(methodName)
-  override def getSignature = XString.ascii(signature.replace(Intrinsic.ADDR_SIG_PLACEHOLDER, TypeKind.address.getBCSignatureChar))
+  // Cached XString views (see IntrinsicWithoutBody for rationale).
+  private lazy val classNameX  = XString.ascii(className)
+  private lazy val methodNameX = XString.ascii(methodName)
+  private lazy val signatureX  = XString.ascii(signature.replace(Intrinsic.ADDR_SIG_PLACEHOLDER, TypeKind.address.getBCSignatureChar))
+
+  override def getClassName: XString = classNameX
+  override def getMethodName: XString = methodNameX
+  override def getSignature: XString = signatureX
   override def getOpType = opType ensuring (_ != null)
 }

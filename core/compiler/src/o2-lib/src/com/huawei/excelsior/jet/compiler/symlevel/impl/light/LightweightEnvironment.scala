@@ -841,32 +841,26 @@ final class LightweightEnvironment extends Environment with TypeProvider with Sy
     if (enabled(LogBootstrapPromotionDetailed)) stdout.printStackTrace(new RuntimeException(s"[BOOTSTRAP] ${`type`}"))
   }
 
-  private[light] val intrinsicsCache = mutable.Map[IntrinsicWithBody, Method]()
   private[light] val intrinsicsWithoutBodyCache = mutable.Map[IntrinsicWithoutBody, Method]()
+  private[light] val intrinsicsCache = mutable.Map[IntrinsicWithBody, Method]()
+
+  // Index of all intrinsic signatures for O(1) lookup instead of scanning every
+  // intrinsic per method. Built lazily on first query; each intrinsic's identity
+  // is (declaring class name, method name, signature) as XStrings.
+  private case class IntrinsicKey(cls: XString, name: XString, sig: MethodSignature)
+  private lazy val intrinsicIndex: Map[IntrinsicKey, Intrinsic] = {
+    val tp: TypeProvider = this
+    val builder = Map.newBuilder[IntrinsicKey, Intrinsic]
+    for (intr <- IntrinsicWithoutBody.values)
+      builder += IntrinsicKey(intr.getClassName, intr.getMethodName, intr.methodSignature(tp)) -> intr
+    for (intr <- IntrinsicWithBody.values)
+      builder += IntrinsicKey(intr.getClassName, intr.getMethodName, intr.methodSignature(tp)) -> intr
+    builder.result()
+  }
 
   private[light] def findIntrinsicType(m: Method): Intrinsic = {
     assert(m != null)
-    for (intr <- IntrinsicWithoutBody.values) {
-      val cachedMethod = intrinsicsWithoutBodyCache.get(intr).orNull
-      if (m == cachedMethod) return intr
-      if (cachedMethod == null) {
-        if (intr.isThisMethod(m)) {
-          intrinsicsWithoutBodyCache.put(intr, m)
-          return intr
-        }
-      }
-    }
-    for (intr <- IntrinsicWithBody.values) {
-      val cachedMethod = intrinsicsCache.get(intr).orNull
-      if (m == cachedMethod) return intr
-      if (cachedMethod == null) {
-        if (intr.isThisMethod(m)) {
-          intrinsicsCache.put(intr, m)
-          return intr
-        }
-      }
-    }
-    null
+    intrinsicIndex.get(IntrinsicKey(m.getDeclaringClass.getXName, m.getXName, m.getSignature)).orNull
   }
 
   override def dropSymCache(): Unit = {
@@ -875,6 +869,8 @@ final class LightweightEnvironment extends Environment with TypeProvider with Sy
     intrinsicsWithoutBodyCache.clear()
     symCache = null
   }
+  // note: intrinsicIndex is immutable & lazily built; it is intrinsic-static data
+  // (does not reference Methods), so it stays valid across dropSymCache().
 
   override def getClassTypeByNameAndClassLoaderSID(name: String, clsid: String) = {
     val o2type = o2env.getTypeByNameAndClassLoaderSID(XString(name), XString(clsid))

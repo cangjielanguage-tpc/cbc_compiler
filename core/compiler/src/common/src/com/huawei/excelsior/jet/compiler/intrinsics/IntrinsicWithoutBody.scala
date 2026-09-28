@@ -285,9 +285,16 @@ enum IntrinsicWithoutBody(className: String, methodName: String, signature: Stri
     this(className, methodName, signature, 0)
   }
 
-  override def getClassName = XString.ascii(className)
-  override def getMethodName = XString.ascii(methodName)
-  override def getSignature = XString.ascii(signature.replace(Intrinsic.ADDR_SIG_PLACEHOLDER, TypeKind.address.getBCSignatureChar))
+  // Cached XString views: findIntrinsicType() calls these accessors for every
+  // intrinsic on every method lookup, so re-encoding the constant strings each
+  // time (XString.ascii -> decodeContent) shows up prominently in profiles.
+  private lazy val classNameX    = XString.ascii(className)
+  private lazy val methodNameX   = XString.ascii(methodName)
+  private lazy val signatureX    = XString.ascii(signature.replace(Intrinsic.ADDR_SIG_PLACEHOLDER, TypeKind.address.getBCSignatureChar))
+
+  override def getClassName: XString = classNameX
+  override def getMethodName: XString = methodNameX
+  override def getSignature: XString = signatureX
   override def getOpType = opType ensuring (_ != null)
 
   def getSpecialParamsCount = specialParamsCount
