@@ -2062,13 +2062,9 @@ trait CHIRParser
             }.next()
             val refType = extDef.extType.instantiate(genericParams(lambdaType), Seq.empty)
             val target = new MethodReference(extDef.funcTable(vnum).impl.get, MAK.VIRTUAL, CompiledType(refType), vnum)
-            
-            def init_func(index: Int) : Node = {
-              val paramTypes = Seq(lambdaType, SignatureType.Int64)
-              val argVals = Seq(initializer, index)
-              callMethod(target, Some(refType), Some(lambdaType), arrayType.elemType, paramTypes, argVals, None)
-            }
-            init_func
+
+            index =>
+              callMethod(target, Some(refType), Some(lambdaType), arrayType.elemType, Seq(lambdaType, SignatureType.Int64), Seq(initializer, index), None)
         }
         for (index <- 0L until arrayType.length) {
           vArrayPut(arrayType, mem, LConst(index), init(LConst(index)))
