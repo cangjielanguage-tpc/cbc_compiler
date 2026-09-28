@@ -18,6 +18,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Checked, Comm
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.{LD_F32, LD_F64, LD_REC, LD_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.{ST_F32, ST_F64, ST_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.Opcode.CallInterf
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.RegGroup.{DivCheck, NullCheck}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.{LivenessAnalyzer, LivenessInfoCollector, Assembler as OldAssembler}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{FloatMathOperaions, FloatOperations, Opcode, RegGroup, RegSymGroup, low4, scut4}
@@ -592,23 +593,26 @@ trait ForkedAssembler {
       .bits(_.w4(typeInfo).w4(0))
   }
 
-  private def checkAotData(opc: (RegSymGroup | Opcode), ref: MethodReference): Unit = {
+  private def checkAotData(opc: Opcode, ref: MethodReference): Unit = {
     ((opc, ref.aotData): @unchecked) match {
       case (_, None) =>
-      case (RegSymGroup.CallInterf, Some(_: CbcFileFormat.InterfaceCallAotData)) =>
+      case (Opcode.CallInterf, Some(_: CbcFileFormat.InterfaceCallAotData)) =>
       case (Opcode.CallInterfGeneric, Some(_: CbcFileFormat.InterfaceCallAotData)) =>
-      case (RegSymGroup.CallDirect, Some(_: CbcFileFormat.DirectCallAotData)) =>
-      case (RegSymGroup.CallVirt, Some(_: CbcFileFormat.VirtualCallAotData)) =>
+      case (Opcode.CallDirect, Some(_: CbcFileFormat.DirectCallAotData)) =>
+      case (Opcode.CallVirt, Some(_: CbcFileFormat.VirtualCallAotData)) =>
     }
   }
 
-  def callInterf(rd: IR, ref: MethodReference): Unit = {
-    checkAotData(RegSymGroup.CallInterf, ref)
-    regSymGroup(RegSymGroup.CallInterf, rd, ref)
+  def callInterf(ref: MethodReference, params: Seq[Assembler.CallParameter]): Unit = {
+    checkAotData(Opcode.CallInterf, ref)
+    stream
+      .opc8(CallInterf)
+      .sym16(ref)
+    stream.callArgs(params)
     saveState()
   }
 
-  def callInterfGeneric(outerTiLoc: (IR | StackSlot.Untyped), ref: MethodReference): Unit = {
+  def callInterfGeneric(outerTiLoc: (IR | StackSlot.Untyped), ref: MethodReference, params: Seq[Assembler.CallParameter]): Unit = {
     checkAotData(Opcode.CallInterfGeneric, ref)
     val outerTiIdx = outerTiLoc match {
       case x: IR => x.idx
@@ -618,30 +622,43 @@ trait ForkedAssembler {
       .opc8(Opcode.CallInterfGeneric)
       .write16(outerTiIdx)
       .sym16(ref)
+    stream.callArgs(params)
     saveState()
   }
 
-  def callDirect(rd: IR, ref: MethodReference): Unit = {
-    checkAotData(RegSymGroup.CallDirect, ref)
-    regSymGroup(RegSymGroup.CallDirect, rd, ref)
+  def callDirect(ref: MethodReference, params: Seq[Assembler.CallParameter]): Unit = {
+    checkAotData(Opcode.CallDirect, ref)
+    stream
+      .opc8(Opcode.CallDirect)
+      .sym16(ref)
+    stream.callArgs(params)
     saveState()
   }
 
-  def callVirt(rd: IR, ref: MethodReference): Unit = {
-    checkAotData(RegSymGroup.CallVirt, ref)
-    regSymGroup(RegSymGroup.CallVirt, rd, ref)
+  def callVirt(ref: MethodReference, params: Seq[Assembler.CallParameter]): Unit = {
+    checkAotData(Opcode.CallVirt, ref)
+    stream
+      .opc8(Opcode.CallVirt)
+      .sym16(ref)
+    stream.callArgs(params)
     saveState()
   }
 
-  def callClosure(rd: IR, tpe: Signature): Unit = {
+  def callClosure(tpe: Signature, params: Seq[Assembler.CallParameter]): Unit = {
     assert(tpe.isInstanceOf[CbcFileFormat.Functional])
-    regSymGroup(RegSymGroup.CallClosure, rd, tpe)
+    stream
+      .opc8(Opcode.CallClosure)
+      .sym16(tpe)
+    stream.callArgs(params)
     saveState()
   }
 
-  def callClosureGeneric(rd: IR, tpe: Signature): Unit = {
+  def callClosureGeneric(tpe: Signature, params: Seq[Assembler.CallParameter]): Unit = {
     assert(tpe.isInstanceOf[CbcFileFormat.Functional])
-    regSymGroup(RegSymGroup.CallClosureGeneric, rd, tpe)
+    stream
+      .opc8(Opcode.CallClosureGeneric)
+      .sym16(tpe)
+    stream.callArgs(params)
     saveState()
   }
 
@@ -1111,13 +1128,10 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
 
   def adapter: SymbolAdapter = self
 
-  def callDirect(rd: IR, methodId: Symbol): Unit = callDirect(rd, adapter.method(methodId))
-
-  def callVirt(rd: IR, methodId: Symbol): Unit = callInterf(rd, adapter.method(methodId))
-
-  def callInterf(rd: IR, sig_id: Symbol, methodId: Symbol): Unit = callInterf(rd, adapter.method(methodId))
-
-  def callInterf(rd: IR, methodId: Symbol): Unit = callInterf(rd, adapter.method(methodId))
+  def callDirect(methodId: Symbol, params: Seq[Assembler.CallParameter]): Unit = callDirect(adapter.method(methodId), params)
+  def callVirt(methodId: Symbol, params: Seq[Assembler.CallParameter]): Unit = callInterf(adapter.method(methodId), params)
+  def callInterf(sig_id: Symbol, methodId: Symbol, params: Seq[Assembler.CallParameter]): Unit = callInterf(adapter.method(methodId), params)
+  def callInterf(methodId: Symbol, params: Seq[Assembler.CallParameter]): Unit = callInterf(adapter.method(methodId), params)
 
   def newobj(sig_idx: Symbol): Unit = {
     newobj(adapter.sigType(sig_idx))
@@ -1186,6 +1200,19 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
 }
 
 object Assembler {
+
+  case class ParamIReg(p: IR) extends CallParameter
+  case class ParamFReg(p: FR) extends CallParameter
+  case class ParamUntyped(p: StackSlot.Untyped) extends CallParameter
+
+  sealed abstract class CallParameter {
+    final def idx: Int = this match {
+      case ParamIReg(p) => p.idx
+      case ParamFReg(p) => IR.count + p.idx
+      case ParamUntyped(p) => IR.count + FR.count + p.slot
+    }
+  }
+
   sealed trait Ordinal {
     def ordinal: Int
   }
@@ -1340,20 +1367,25 @@ object Assembler {
     case SBinImm16
     case SBinImm32
     case SBinImm64
+    case CallDirect
+    case CallVirt
+    case CallInterf
+    case CallClosure
+    case CallClosureGeneric
   }
 
   enum RegSymGroup extends Ordinal {
     case LoadTypeInfoSig
     case LoadTypeInfoGeneric
     case NewObj
-    case CallDirect
-    case CallVirt
-    case CallInterf
+    case Unused0
+    case Unused1
+    case Unused2
     case Spawn
     case SpawnFuture
-    case CallClosure
+    case Unused3
     case NewClosure
-    case CallClosureGeneric
+    case Unused4
     case NewObjGeneric
     case NewClosureGeneric
   }

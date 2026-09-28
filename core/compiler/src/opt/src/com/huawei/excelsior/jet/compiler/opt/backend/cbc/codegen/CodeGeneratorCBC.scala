@@ -900,19 +900,18 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         notImplemented("calls with varargs in CBC (JET-13417)");
       }
 
-      val callArgLocations = {
+      def callArgLocations: Seq[ForkedISA12Assembler.CallParameter] = {
+        import ForkedISA12Assembler.*
         assert(env.enabled(ImplicitCallRegAllocInCBC))
         call.invokeArgs.map {
-          case _: Void => 1 // any resource ok for Void
-          case IReg(r) => r.idx
-          case FReg(r) => IR.count + r.idx
-          case UntypedSlot(s, _) => IR.count + FR.count + s.slot
+          case _: Void => ParamIReg(IR.IRZ) // any resource ok for Void
+          case IReg(r) => ParamIReg(r)
+          case FReg(r) => ParamFReg(r)
+          case UntypedSlot(s, _) => ParamUntyped(s)
         }
       }
 
-      if (call.methodType.isCJForeign ||
-          // Unmanaged methods from CompilerInterface may be CCall on concrete platform where CBC will be JIT-compiled.
-          (call.targetRef.hasMethod && call.targetRef.method.getDeclaringClass.isCompilerInterface && !call.methodType.callConv.hasManagedExecEnv)) {
+      if (call.methodType.isCJForeign) {
         mayHaveNativeCalls = true
       }
 
@@ -920,15 +919,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       addLivenessHints(call)
 
-      def resultReg: IR = call match {
-        case IReg(r) => r
-        case _ => IR.IR1
-      }
-
       call.target match {
         case InvokeInterfaceTarget(LightInterfCastCBC(rcvType)) =>
           assert(Isa12Mode)
-          asm.callInterf(resultReg, CodeSigSymbol(rcvType), targetRef.getPermanent)
+          asm.callInterf(CodeSigSymbol(rcvType), targetRef.getPermanent, callArgLocations)
         case _ =>
           assert(!targetRef.isInterfCall)
       }
@@ -939,7 +933,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         assert(mr.method.hasUniversalGenericContext)
         val m = mr.getPermanent
         if (mr.methodType.hasReceiverParameter) {
-          asm.callDirect(resultReg, m)
+          asm.callDirect(m, callArgLocations)
         } else {
           shouldNotReachHere(s"Incorrect method type: ${mr.methodType}")
         }
@@ -947,7 +941,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       def directCall(): Unit = {
         val permanent = targetRef.getPermanent
-        asm.callDirect(resultReg, permanent)
+        asm.callDirect(permanent, callArgLocations)
       }
 
       def virtualStaticCall(): Unit = {
@@ -957,7 +951,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       def directCCall(method: Method): Unit = {
         val permanent = new MethodReference(method, targetRef.accessKind).getPermanent
-        asm.callDirect(resultReg, permanent)
+        asm.callDirect(permanent, callArgLocations)
       }
 
       def virtualCall(): Unit = {
@@ -966,9 +960,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
         if (targetRef.refType.sigType.isCangjieClosure) {
           if (targetRef.method.getName == "$GenericVirtualFunc") {
-            asm.callClosureGeneric(resultReg, targetRef.refType.sigType.toCbc)
+            asm.callClosureGeneric(targetRef.refType.sigType.toCbc, callArgLocations)
           } else {
-            asm.callClosure(resultReg, targetRef.refType.sigType.toCbc)
+            asm.callClosure(targetRef.refType.sigType.toCbc, callArgLocations)
           }
         } else {
           val outerTI = call.invokeArgs(targetRef.methodType.getOuterTypeInfoArgIdx)
@@ -976,13 +970,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case IReg(reg) => reg
             case UntypedSlot(slot, _) => slot
           }
-          asm.callInterfGeneric(loc, asm.adapter.method(permanent))
+          asm.callInterfGeneric(loc, asm.adapter.method(permanent), callArgLocations)
         }
       }
 
       def intrinsicCall(tp: CJIntrinsicType): Unit = {
         val intrinsicRef = asm.adapter.asInstanceOf[CbcSymbolAdapter].adaptIntrinsic(targetRef, tp.name)
-        asm.callDirect(resultReg, intrinsicRef)
+        asm.callDirect(intrinsicRef, callArgLocations)
       }
 
       if (!realICallGenerated) {
