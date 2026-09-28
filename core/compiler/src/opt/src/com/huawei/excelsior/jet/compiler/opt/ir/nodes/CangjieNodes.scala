@@ -307,6 +307,7 @@ trait CangjieNodes { self: Universe =>
 
   object SMutRecArg {
     class Proto private[SMutRecArg](receiverType: Type) extends FixedArgs[SMutRecArg](receiverType)(AddrType) {
+      assert(receiverType.isRecordAddrType || receiverType == AddrType, receiverType)
       def newInstance() = new SMutRecArg(this)
     }
 
