@@ -397,10 +397,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
         val (plain, rest) = fields.span(isPlainField)
         if (plain.nonEmpty) {
-          constrFieldRef(plain) match {
-            case f: CbcFileFormat.NoneFieldReference => // no need for lea
-            case f => asm.lea(scratch, base, f)
-          }
+          asm.lea(scratch, base, constrFieldRef(plain))
           genLeaChain(scratch, scratch, rest)
         } else {
           fields.head match {
@@ -413,10 +410,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               asm.index(scratch, base, idx, ti)
             case fr: CangjieReferenceNodeGeneric =>
               val IReg(ti) = fr.refTypeInfo
-              constrFieldRef(Seq(fr)) match {
-                case f: CbcFileFormat.NoneFieldReference => // no need for lea
-                case f => asm.leaGeneric(scratch, base, ti, f)
-              }
+              asm.leaGeneric(scratch, base, ti, constrFieldRef(Seq(fr)))
             case fr => shouldNotReachHere(s"Unexpected field reference: $fr")
           }
           genLeaChain(scratch, scratch, fields.tail)
@@ -431,7 +425,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       def genAddress(dst: IR, fields: Seq[Node]): Unit = baseLocation match {
-        case Some(base: IR) => genLeaChain(dst, base, fields)
+        case Some(base: IR) => fields match {
+          case Seq(f: (FieldReferenceNode | FieldReferenceNodeGeneric)) if f.maybeField.isEmpty => // none field ref does not need lea
+          case _ => genLeaChain(dst, base, fields)
+        }
         case Some(_: StackSlot.Typed) => notImplemented("lea for typed slots")
         case None =>
           val (plain, rest) = fields.span(isPlainField)
