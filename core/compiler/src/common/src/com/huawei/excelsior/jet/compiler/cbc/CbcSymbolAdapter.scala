@@ -183,7 +183,7 @@ object CbcSignatureAdapter {
     case sig: SignatureType.Tuple => CbcFileFormat.Tuple(sig.params.map(_.toCbc))
     case sig: SignatureType.Box => CbcFileFormat.Box(sig.base.toCbc)
 
-    case sig: SignatureType.ZeroSizedEnum => CbcFileFormat.BuiltinSignature.Unit // TODO: ZST enum
+    case sig: SignatureType.ZeroSizedEnum => CbcFileFormat.PrimitiveEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.PrimitiveBasedEnum => CbcFileFormat.PrimitiveEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.UnionBasedEnum => CbcFileFormat.UnionEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.ClassBasedEnum =>
