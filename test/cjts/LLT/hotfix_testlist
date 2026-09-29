@@ -406,6 +406,26 @@ compiler/CodegenCHIR/tryCatch/tryTypeCast/tryTypeCast_3.cj
 # bug 63 (Proper parse @C methods with C-struct return type)
 compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
 
+# bug 99 (overloaded operators use mangling ~+ so VTable slot search fails)
+compiler/CodegenCHIR/overflow/add_saturating.cj
+compiler/CodegenCHIR/overflow/add_throwing.cj
+compiler/CodegenCHIR/overflow/add_wrapping.cj
+compiler/CodegenCHIR/overflow/div_saturating.cj
+compiler/CodegenCHIR/overflow/div_throwing.cj
+compiler/CodegenCHIR/overflow/div_wrapping.cj
+compiler/CodegenCHIR/overflow/mod_saturating.cj
+compiler/CodegenCHIR/overflow/mod_throwing.cj
+compiler/CodegenCHIR/overflow/mod_wrapping.cj
+compiler/CodegenCHIR/overflow/mul_saturating.cj
+compiler/CodegenCHIR/overflow/mul_throwing.cj
+compiler/CodegenCHIR/overflow/mul_wrapping.cj
+compiler/CodegenCHIR/overflow/neg_saturating.cj
+compiler/CodegenCHIR/overflow/neg_throwing.cj
+compiler/CodegenCHIR/overflow/neg_wrapping.cj
+compiler/CodegenCHIR/overflow/sub_saturating.cj
+compiler/CodegenCHIR/overflow/sub_throwing.cj
+compiler/CodegenCHIR/overflow/sub_wrapping.cj
+
 # uses --debug-annotations
 compiler/CHIR/ComputeAnnotations
 
