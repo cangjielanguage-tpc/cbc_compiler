@@ -270,6 +270,18 @@ final class StoreImpl(e: Expression)(implicit provider: CHIRItemProvider) extend
   lazy val Seq(value: CHIR.Value, location: CHIR.Value) = mapOperands(e)
 }
 
+final class VArrayImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.VArray {
+  def elementValues: Seq[CHIR.Value] = mapOperands(e)
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
+}
+
+final class VArrayBuilderImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.VArrayBuilder {
+  lazy val Seq(size: CHIR.Value, initValue: CHIR.Value, initializer: CHIR.Value) = mapOperands(e)
+  def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
+  def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
+}
+
 final class RawArrayLiteralInitImpl(e: Expression)(implicit provider: CHIRItemProvider) extends CHIR.RawArrayLiteralInit {
   lazy val Seq(array: CHIR.Value, elementValues: _*) = mapOperands(e)
 }
