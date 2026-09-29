@@ -165,6 +165,10 @@ class StandaloneTestSuite(TestSuite):
         super().__init__(toolchain_path)
         self.asm_jar = self.toolchain_path + "/tools/bin/cbc-asm.jar"
         self.compiler_jar = self.toolchain_path + "/tools/bin/cbc-compiler.jar"
+        # CBC_RUNNER_CBC_BIN: run chir->cbc compilation with an external compiler
+        # binary (e.g. a GraalVM native-image build) instead of `java -jar`.
+        # Timing instrumentation classifies these runs as 'cbc-compiler (native)'.
+        self.cbc_bin = os.environ.get('CBC_RUNNER_CBC_BIN')
         self.compilation_failures = []
 
     async def build_test(self, test_name: str):
@@ -273,7 +277,10 @@ class StandaloneTestSuite(TestSuite):
                         continue
 
                     aot_deps_args = [f"-cbcaotdeps={':'.join(aot_so_names)}"] if aot_so_names else []
-                    chir_to_cbc = [java_cmd()] + java_perf_flags() + ['-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + int_chir_files
+                    if self.cbc_bin:
+                        chir_to_cbc = [self.cbc_bin, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + int_chir_files
+                    else:
+                        chir_to_cbc = [java_cmd()] + java_perf_flags() + ['-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + int_chir_files
                     cbc_log = io.StringIO()
                     cbc_err = io.StringIO()
                     res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)

@@ -156,6 +156,17 @@ def java_perf_flags():
         '-XX:+AutoCreateSharedArchive',
         '-XX:SharedArchiveFile=' + os.path.join(tempfile.gettempdir(), 'cbc-compiler.jsa'),
     ]
+    # A jar newer than the archive makes the JVM silently ignore the archive
+    # (measured: 127-test suite 147.8s -> 195.8s with a stale one). Drop the
+    # stale archive so the next run recreates it instead of running without CDS.
+    jar = os.environ.get('CBC_COMPILER_JAR')
+    archive = os.path.join(tempfile.gettempdir(), 'cbc-compiler.jsa')
+    if jar and os.path.exists(jar) and os.path.exists(archive) \
+            and os.path.getmtime(jar) > os.path.getmtime(archive):
+        try:
+            os.remove(archive)
+        except OSError:
+            pass
     # Allow switching JIT policy for experiments (e.g. CBC_RUNNER_FULLJIT=1)
     if os.environ.get('CBC_RUNNER_FULLJIT'):
         flags = [f for f in flags if f != '-XX:TieredStopAtLevel=1']
