@@ -601,6 +601,15 @@ trait Nodes extends NodeSpells with AJNodes with KernelNodes with SimpleNodes wi
 
   object Node {
 
+    /** Sequential counter for deterministic per-node hash codes (see NodeWithArgs).
+      * identityHashCode is random per run (and address-based under native-image),
+      * which leaks nondeterminism into any hash collection keyed by nodes whose
+      * iteration order reaches the output (e.g. GC-map liveness lists in CBC).
+      */
+    private val stableIdCounter = new java.util.concurrent.atomic.AtomicInteger(0)
+    private[ir] def nextStableId(): Int =
+      stableIdCounter.incrementAndGet() * 0x9e3779b9 // golden-ratio spread for better bucket distribution
+
     /** Creates a copy of given node, partially applying given `argMapping`. */
     def clonePartially(n: Node)(argMapping: PartialFunction[Edge, Node]): Node = withPos(n) {
       val defaultMapping: PartialFunction[Edge, Node] = if (currentScope.isInState) {

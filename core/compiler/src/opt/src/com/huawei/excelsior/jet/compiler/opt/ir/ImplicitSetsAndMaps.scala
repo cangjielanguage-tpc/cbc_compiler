@@ -14,12 +14,41 @@ import com.huawei.excelsior.jet.compiler.symlevel.{Field, Type as SymlevelType}
 import com.huawei.excelsior.jet.compiler.util.{Maps, Sets}
 import com.huawei.excelsior.jet.util.graph.Loop
 
+import scala.collection.mutable
+
+import scala.collection.immutable
+
 /**
   * Created by conwor on 30.11.2015.
   */
 //TODO: optimize
 trait UniverseImplicitSetsAndMaps extends ImplicitSetsAndMaps { self: Universe =>
-  implicit object NodeSetsAndMaps extends Sets.Default[Node] with Maps.Default[Node]
+
+  // Immutable sets keyed by Node use identity hash codes (NodeWithArgs overrides
+  // hashCode with System.identityHashCode), so plain immutable.Set iteration order
+  // is nondeterministic across runs, JVMs and native-image. This wrapper keeps a
+  // mutable.LinkedHashSet under the hood (insertion-ordered, O(1) add/contains)
+  // and exposes it through the immutable Set interface; iteration order is then
+  // deterministic (creation order).
+  private[ir] final class OrderedSet[N] private (underlying: mutable.LinkedHashSet[N]) extends immutable.Set[N] {
+    def this() = this(mutable.LinkedHashSet.empty[N])
+    override def incl(elem: N): immutable.Set[N] = { val c = underlying.clone(); c += elem; new OrderedSet(c) }
+    override def excl(elem: N): immutable.Set[N] = { val c = underlying.clone(); c -= elem; new OrderedSet(c) }
+    override def contains(elem: N): Boolean = underlying.contains(elem)
+    override def iterator: Iterator[N] = underlying.iterator
+    override def size: Int = underlying.size
+  }
+
+  private[ir] trait LinkedNodeSets[N] extends Sets[N] with Maps.Default[N] {
+    override type ImmSet = OrderedSet[N]
+    override def newImmSet: ImmSet = new OrderedSet[N]
+    override type MSet = mutable.Set[N]
+    override def newMSet: MSet = mutable.Set.empty[N]
+    override type QSet = mutable.LinkedHashSet[N]
+    override def newQSet: QSet = mutable.LinkedHashSet.empty[N]
+  }
+
+  implicit object NodeSetsAndMaps extends LinkedNodeSets[Node] with Maps.Default[Node]
   implicit object EdgeSetsAndMaps extends Sets.Default[Edge] with Maps.Default[Edge]
   implicit object FloatingNodeSetsAndMaps extends Sets.Default[FloatingNode] with Maps.Default[FloatingNode]
   implicit object ControlNodeSetsAndMaps extends Sets.Default[ControlNode] with Maps.Default[ControlNode]

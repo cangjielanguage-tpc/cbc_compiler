@@ -1136,7 +1136,13 @@ trait NodeSpells { self: Universe with Nodes =>
 
     /** Different node instances never equal to each other */
     final override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
-    final override def hashCode() = System.identityHashCode(this)
+    // Deterministic per-instance hash: identityHashCode is random per run (and
+    // address-based under native-image), which leaks nondeterminism into any
+    // hash collection keyed by nodes whose iteration order reaches the output
+    // (e.g. GC-map liveness lists in CBC). A sequential id gives a stable hash
+    // while preserving the "every instance is distinct" semantics.
+    private val stableId = Node.nextStableId()
+    final override def hashCode() = stableId
   }
 
   /** Base class for a node that has varargs. */

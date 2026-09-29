@@ -40,7 +40,10 @@ object LivenessAnalyzer {
 class LivenessAnalyzer(strict: Boolean = true) extends FlowAnalyzer {
   private case class BlockState(entryState: Map[Resource, LivenessMark])
 
-  private val instructionState = mutable.Set.empty[(Resource, Mark)]
+  // LinkedHashSet: iteration order feeds currentState insertion order, which is
+  // serialized into CBC liveness data. A plain HashSet would make the output
+  // depend on identity hash codes (nondeterministic across runs/JVMs/native).
+  private val instructionState = mutable.LinkedHashSet.empty[(Resource, Mark)]
   private var inOp = false
 
   private val currentState = mutable.LinkedHashMap.empty[Resource, LivenessMark]
