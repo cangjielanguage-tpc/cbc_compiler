@@ -26,7 +26,10 @@ class CHIRHelperGenerator(private var helperId: Long, _pkg: CHIR.Package) {
   implicit val pkg: CHIR.Package = _pkg
   private val helpers: mutable.HashMap[Long, CHIR.Func] = mutable.HashMap()
   private val helpersByName: mutable.HashMap[String, CHIR.Func] = mutable.HashMap()
-  private val throwHelpers = Iterator(ThrowHelper("foo_helper", "CBC Internal error"))
+  private val throwHelpers = Iterator(
+    ThrowHelper("throwSymbolResolutionError", "CBC internal error: symbol resolution error"),
+    ThrowHelper("throwAbstractMethodCallError", "CBC internal error: abstract method was called")
+  )
 
   private case class ThrowHelper(name: String, exceptionMsg: String)
 
@@ -72,7 +75,7 @@ class CHIRHelperGenerator(private var helperId: Long, _pkg: CHIR.Package) {
 
       def srcCodeIdentifier: String = _name
 
-      def packageName: String = "VERY_COOL_PACKAGE"
+      def packageName: String = "cbc_intrinsics"
 
       def kind: Func.Kind = CHIR.Func.Kind.Default
 
