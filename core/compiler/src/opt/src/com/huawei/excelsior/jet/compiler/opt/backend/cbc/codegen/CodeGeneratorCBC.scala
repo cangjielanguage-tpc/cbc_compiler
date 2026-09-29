@@ -120,6 +120,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    private def genPow(pow: Pow): Unit = {
+      (widthOf(pow), pow.isFP, pow, pow.l, pow.r) match {
+        case (w, false, IReg(d), IReg(l), IReg(r)) => asm.pow(w, d, l, r)
+        case (w, false, IReg(d), IReg(l), IntegralConst(c)) => asm.powi(w, d, l, c)
+      }
+    }
+
     private def genDivisorCheck(x: DivisorCheck): Unit = {
       val IReg(r) = x.divisor
       asm.divisorCheck(r)
@@ -177,7 +184,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       case (w, false, IReg(d), IReg(l), IReg(r)) => op match {
         case _: Add => asm.add(w, d, l, r)
         case _: Mul => asm.mul(w, d, l, r)
-        case _: Pow => asm.pow(w, d, l, r)
         case _: MulH => asm.mulh(w, d, l, r)
         case _: UMulH => asm.umulh(w, d, l, r)
       }
@@ -185,7 +191,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       case (w, false, IReg(d), IReg(l), IntegralConst(c)) => op match {
         case _: Add => asm.addi(w, d, l, c)
         case _: Mul => asm.muli(w, d, l, c)
-        case _: Pow => asm.powi(w, d, l, c)
         case _: MulH => asm.mulhi(w, d, l, c)
         case _: UMulH => asm.umulhi(w, d, l, c)
       }
@@ -1270,6 +1275,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       node match {
         case x: Cmp                        => genCmp(x)
         case x: Sub                        => genSub(x)
+        case x: Pow                        => genPow(x)
         case x: IDivRemOp                  => genIDivRemOp(x)
         case x: FDiv                       => genFDiv(x)
         case x: LogicalBinaryOp            => genLogical(x)
