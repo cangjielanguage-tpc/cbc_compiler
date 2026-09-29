@@ -92,7 +92,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       case Edge(_: HasFrameSlot, _: Box) => true
 
       case Edge(_: DerivedPtr.BaseHandle, _: GetStaticFieldSeqRef) => false
-      case Edge(_: DerivedPtr.BaseHandle, _: FieldSeqOperation) => true
+      case Edge(_: DerivedPtr.BaseHandle, op: FieldSeqOperation) => FieldSeqOperation.isConstOffset(op.fields)
 
       case _ => super.shouldBeUsedAsImmediate(use)
     }

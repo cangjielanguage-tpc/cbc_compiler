@@ -148,23 +148,6 @@ compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_02.cj
 compiler/CHIR/CHIR2HLIR/binaryExpr/pow_01.cj
 compiler/Sema/operator/pow_int64_infer.cj
 
-# not implemented: VArrayExpr
-compiler/CodegenCJNative/varray
-compiler/Sema/varray
-compiler/CHIR/VArray
-compiler/CodegenCJNative/reflect/reflect_09.cj
-compiler/CHIR/AST2CHIR/BaseUseCase/array/varray_03.cj
-compiler/CHIR/DCE/testUnusedVariable10.cj
-compiler/CodegenCHIR/literal.cj
-compiler/CodegenCJNative/constant/constant_03.cj
-compiler/CodegenCHIR/varray.cj
-compiler/CodegenCJNative/array/array_2.cj
-
-# not implemented: VArrayBuilder
-compiler/CHIR/DCE/testUnusedCode21.cj
-compiler/CHIROpt/DeadCodeElimination/UselessFunction/DCESkipCFunc.cj
-compiler/Sema/function/nest_function_generic_inst02.cj
-
 # not implemented: FuncType
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
 compiler/CHIR/CFFIWrapper/cffi01.cj
@@ -344,11 +327,6 @@ compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_03.cj
 compiler/CodegenCJNative/LegacyTests/enum_nest.cj
 
 # bug 9 (Support runtime intrsinsics/calls in CBC)
-## VARRAY_GET
-compiler/CodegenCJNative/incremental/global_var/test.info
-compiler/CodegenCJNative/array/array_1.cj
-compiler/CodegenCJNative/enum/05_EXHAUSTIVE_ASSOCIATED_NONREF/main_03.cj
-compiler/Sema/const_evaluation/ok_varray.cj
 ## CPOINTER_INIT0
 compiler/CodegenCHIR/spawn_02.cj
 compiler/CodegenCJNative/demangle/type/cpointer_type1.cj

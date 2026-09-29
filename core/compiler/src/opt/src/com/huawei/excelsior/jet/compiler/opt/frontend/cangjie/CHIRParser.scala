@@ -1472,6 +1472,38 @@ trait CHIRParser
             }
             arrayPut(arrayType, obj, idx, value)
 
+          case CHIR.Intrinsic.Kind.VArraySet =>
+            // TODO: ArrayIndexCheck
+            val Seq(array, value, index) = e.args
+            val ValueSig(arrayType: SignatureType.VArray) = array
+            val base = array match {
+              case global: CHIR.GlobalVar =>
+                val field = staticFieldRef(global)
+                packageInitCheck(asClassType(field.refType))
+                GetStaticFieldSeqRef(DerivedPtr.Global(), field)
+              case _ => state(array)
+            }
+            varrayPut(arrayType, base, state(index), state(value))
+
+          case CHIR.Intrinsic.Kind.VArrayGet =>
+            // TODO: ArrayIndexCheck
+            val array +: indices = e.args
+            var ValueSig(arrayType: SignatureType.VArray) = array
+            var value = array match {
+              case global: CHIR.GlobalVar =>
+                val field = staticFieldRef(global)
+                packageInitCheck(asClassType(field.refType))
+                GetStaticFieldSeqRef(DerivedPtr.Global(), field)
+              case _ => state(array)
+            }
+            for ((index, i) <- indices.zipWithIndex) {
+              value = varrayGet(arrayType, value, state(index))
+              if (i + 1 < indices.size) {
+                arrayType = arrayType.elemType.asInstanceOf[SignatureType.VArray]
+              }
+            }
+            state(e) = value
+
           case CHIR.Intrinsic.Kind.ArraySize =>
             val obj = state(e.args.head)
             state(e) = CangjieArrayLength(obj)
@@ -1697,7 +1729,7 @@ trait CHIRParser
             case CHIR.BuiltinType.Float32 => FConst(v.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.toDouble)
             case CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => IntegralConst(AddrType)(v)
-            case _: CHIR.CustomType => IntegralConst(AddrType)(v)
+            case _: CHIR.CustomType | _: CHIR.VArrayType => IntegralConst(AddrType)(v)
           }
         }
         val value = e.literal match {
@@ -2045,6 +2077,42 @@ trait CHIRParser
           }
         }
 
+      case e: CHIR.VArray =>
+        val arrayType = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.VArray]
+        val mem = StackAlloc.Local(arrayType)
+        for ((value, index) <- e.elementValues.zipWithIndex) {
+          varrayPut(arrayType, mem, LConst(index), state(value))
+        }
+        state(e) = mem
+
+      case e: CHIR.VArrayBuilder =>
+        val arrayType = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.VArray]
+        val mem = StackAlloc.Local(arrayType)
+        val initializer = state(e.initializer)
+        val init: Node => Node = initializer match {
+          case _: AnyNull => _ => state(e.initValue)
+          case _ =>
+            val ValueSig(lambdaType) = e.initializer
+            val vtable = asClassType(lambdaType).getCHIRVTable
+            val extDef = vtable.extDefs(2) // at index 2 is a specialized function
+            val vnum = 0 // there is only one function in the funcTable
+            val entry = extDef.funcTable(vnum)
+
+            assert(lambdaType.isCangjieLambdaSuper, lambdaType)
+            assert(extDef.extType.instantiate(genericParams(lambdaType), Seq.empty) == lambdaType, lambdaType)
+
+            val method = entry.impl.get
+            val target = new MethodReference(method, MAK.VIRTUAL, CompiledType(lambdaType), vnum)
+            val retType = arrayType.elemType
+
+            index =>
+              callMethod(target, Some(lambdaType), Some(lambdaType), retType, Seq(lambdaType, SignatureType.Int64), Seq(initializer, index), None)
+        }
+        for (index <- 0L until arrayType.length) {
+          varrayPut(arrayType, mem, LConst(index), init(LConst(index)))
+        }
+        state(e) = mem
+
       case e: CHIR.GetRTTI =>
         state(e) = ThisTypeInfoBy(ReceiverParam())
     }
@@ -2306,6 +2374,8 @@ trait CHIRParser
         refType match {
           case refType if refType.isCangjieLambda =>
             fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
+          case refType: SignatureType.VArray =>
+            createConstIndexNode(idx.toInt, refType, refType.elemType)
           case refType: SignatureType.Tuple =>
             val fieldType = refType.params(idx.toInt)
             createConstIndexNode(idx.toInt, fieldRefType, fieldType)
@@ -2364,6 +2434,41 @@ trait CHIRParser
         copy(elemType, addr, value)
       } else {
         ArrayPut(arrayType)(obj, idx, value)
+      }
+    }
+
+    private def varrayIndex(arrayType: SignatureType.VArray, index: Node): CangjieReferenceNode = index match {
+      case IntegralConst(i) => createConstIndexNode(i.toInt, arrayType, arrayType.elemType)
+      case _ => createIndexNode(index, arrayType, arrayType.elemType)
+    }
+
+    private def varrayGet(arrayType: SignatureType.VArray, array: Node, index: Node): Node = {
+      val elemType = arrayType.elemType
+      if (elemType.isZST) {
+        Void()
+      } else {
+        val field = varrayIndex(arrayType, index)
+        if (needsCopy(elemType)) {
+          val local = StackAlloc.Local(elemType)
+          val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
+          copy(elemType, local, addr)
+          local
+        } else {
+          LoadFieldSeq(maybeDerivedPtrBase(array), array, field)
+        }
+      }
+    }
+
+    private def varrayPut(arrayType: SignatureType.VArray, array: Node, index: Node, value: Node): Unit = {
+      val elemType = arrayType.elemType
+      if (!elemType.isZST) {
+        val field = varrayIndex(arrayType, index)
+        if (needsCopy(elemType)) {
+          val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
+          copy(elemType, addr, value)
+        } else {
+          StoreFieldSeq(maybeDerivedPtrBase(array), array, value, field)
+        }
       }
     }
 
