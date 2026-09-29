@@ -342,6 +342,12 @@ compiler/Sema/ffi/import_cpointer_generic/b.cj
 compiler/FFI/CFFI/type_cast/type_cast_5.cj
 compiler/FFI/CFFI/type_cast/type_cast_8.cj
 compiler/FFI/CFFI/type_cast/type_cast_10.cj
+# blackBox
+compiler/CHIR/AST2CHIR/forin/benchmark_arraylist.cj
+compiler/CodegenCJNative/record/record_6.cj
+compiler/CodegenCJNative/record/record_7.cj
+compiler/CodegenCommon/global/globalvariable/UInt8ti.cj
+compiler/Sema/function/intrinsic_check_first_class_pipline.cj
 
 # bug 90 (genericTypeInfoParam called in method with no genericFuncParams)
 compiler/CHIR/CHIR2HLIR/extend/extend_instantiate_01.cj
