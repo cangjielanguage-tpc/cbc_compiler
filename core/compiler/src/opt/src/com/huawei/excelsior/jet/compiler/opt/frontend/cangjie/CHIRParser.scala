@@ -2053,18 +2053,20 @@ trait CHIRParser
           case _: AnyNull => _ => state(e.initValue)
           case _ =>
             val ValueSig(lambdaType) = e.initializer
-            val signature = MethodSignature(arrayType.elemType, Seq(SignatureType.Int64))
             val vtable = asClassType(lambdaType).getCHIRVTable
-            val (extDef, vnum) = vtable.extDefs.iterator.flatMap { ext =>
-              ext.funcTable.indices.collect {
-                case i if ext.funcTable(i).originalSig.instantiate(genericParams(lambdaType), Seq.empty) == signature => (ext, i)
-              }
-            }.next()
-            val refType = extDef.extType.instantiate(genericParams(lambdaType), Seq.empty)
-            val target = new MethodReference(extDef.funcTable(vnum).impl.get, MAK.VIRTUAL, CompiledType(refType), vnum)
+            val extDef = vtable.extDefs(2) // at index 2 is a specialized function
+            val vnum = 0 // there is only one function in the funcTable
+            val entry = extDef.funcTable(vnum)
+
+            assert(lambdaType.isCangjieLambdaSuper, lambdaType)
+            assert(extDef.extType.instantiate(genericParams(lambdaType), Seq.empty) == lambdaType, lambdaType)
+
+            val method = entry.impl.get
+            val target = new MethodReference(method, MAK.VIRTUAL, CompiledType(lambdaType), vnum)
+            val retType = arrayType.elemType
 
             index =>
-              callMethod(target, Some(refType), Some(lambdaType), arrayType.elemType, Seq(lambdaType, SignatureType.Int64), Seq(initializer, index), None)
+              callMethod(target, Some(lambdaType), Some(lambdaType), retType, Seq(lambdaType, SignatureType.Int64), Seq(initializer, index), None)
         }
         for (index <- 0L until arrayType.length) {
           varrayPut(arrayType, mem, LConst(index), init(LConst(index)))
