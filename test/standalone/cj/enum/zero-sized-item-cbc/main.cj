@@ -15,15 +15,16 @@ enum DnsSource {
     }
 }
 
-func forwardTag(tag: Int64): Int64 {
-    tag
+func itemOf(source: DnsSource): Int64 {
+    source.item
 }
 
-func tagOf(source: DnsSource): Int64 {
-    forwardTag(source.item)
+func intOf(source: DnsSource): Int64 {
+    source.toInt64()
 }
 
 main(): Int64 {
-    println(tagOf(DnsSource.System))
+    println(intOf(DnsSource.System))
+    println(itemOf(DnsSource.System))
     0
 }
