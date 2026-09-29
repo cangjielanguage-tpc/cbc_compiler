@@ -14,7 +14,7 @@ import com.huawei.excelsior.jet.assembler.Fixup.seq
 import com.huawei.excelsior.jet.assembler.cbc.Fixups.BTTBySymbol
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
-import com.huawei.excelsior.jet.assembler.cbc.{ExceptionTable, FieldReference, RawData, StackSlot, isa12}
+import com.huawei.excelsior.jet.assembler.cbc.{ExceptionTable, FieldReference, RawData, SourceCodeInfo, StackSlot, isa12}
 import com.huawei.excelsior.jet.assembler.fixups.{CoverageLocs, Relocation, RelocationKind}
 import com.huawei.excelsior.jet.assembler.{Fixup, Segment}
 import com.huawei.excelsior.jet.common.XString
@@ -80,7 +80,7 @@ object LegacyCBCFileGenerator extends CBCFileGenerator {
   private val methodsCode = mutable.LinkedHashMap.empty[Method, MethodCode]
 
   def sendCode(m: Method, seg: Segment, literalsOffset: Int,
-               xinfo: XTableGenerator.PackedXInfo, exTable: ExceptionTable, liveness: LivenessInfoCollector.AllStates,
+               xinfo: XTableGenerator.PackedXInfo, sourceCodeInfo: SourceCodeInfo, exTable: ExceptionTable, liveness: LivenessInfoCollector.AllStates,
                tailParamCount: Int, untypedStackSlotsCount: Int,
                usedNonVolIRegsMask: Int, usedNonVolFRegsMask: Int, maxCalleeStackArgsCount: Int,
                mayHaveNativeCalls: Boolean,

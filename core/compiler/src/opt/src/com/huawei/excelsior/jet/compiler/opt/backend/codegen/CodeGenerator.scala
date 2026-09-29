@@ -534,6 +534,7 @@ trait CodeGenerator extends DataGenerator
             assert(node.isGroupRoot)
             if (needXSite(node)) expectedXSitesCount += 1
             genNode(node)
+            genSourceCodeInfo(node)
           }
           genBlockEnd(block, succ => layout.isAliasOf(succ, nextB))
 
@@ -570,6 +571,8 @@ trait CodeGenerator extends DataGenerator
     
     protected def doFreeze(): Unit
 
+    protected def genSourceCodeInfo(n: Node): Unit = { /* do nothing */ }
+    
     protected def genXHandlerInfo(b: Block): Unit = { /* do nothing */ }
   }
 

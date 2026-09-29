@@ -9,7 +9,7 @@
 package com.huawei.excelsior.jet.compiler.opt.backend.codegen
 
 import com.huawei.excelsior.jet.assembler.Segment
-import com.huawei.excelsior.jet.assembler.cbc.ExceptionTable
+import com.huawei.excelsior.jet.assembler.cbc.{ExceptionTable, SourceCodeInfo}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
 import com.huawei.excelsior.jet.compiler.ir.{MarkedRegion, XInfo}
@@ -20,4 +20,4 @@ trait Code {
 }
 
 case class CodeMach(segment: Segment, xinfo: XInfo, markedRegions: Seq[MarkedRegion], siberiaOffset: Int) extends Code
-case class CodeCBC(segment: Segment, xinfo: XInfo, exTable: ExceptionTable, liveness: LivenessInfoCollector.AllStates) extends Code
+case class CodeCBC(segment: Segment, xinfo: XInfo, exTable: ExceptionTable, sourceCodeInfo: SourceCodeInfo, liveness: LivenessInfoCollector.AllStates) extends Code

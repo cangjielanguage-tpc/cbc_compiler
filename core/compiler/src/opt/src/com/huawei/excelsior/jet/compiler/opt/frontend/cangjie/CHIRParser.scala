@@ -12,10 +12,11 @@ import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHe
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.{PreparationRequired, RTSProc, Stage, StatsKind}
 import com.huawei.excelsior.jet.compiler.abi.ABI
-import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
+import com.huawei.excelsior.jet.compiler.bytecode.{ArithOp, BytecodePosition}
 import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Attribute
 import com.huawei.excelsior.jet.compiler.chir.{CHIR, CHIRLoader, CHIRResolver}
+import com.huawei.excelsior.jet.compiler.ir.BytecodeOffset
 import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimination, Universe}
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
@@ -147,6 +148,8 @@ trait CHIRParser
 
     val func = pkg.function(idx)
 
+    val debugState = mutable.LinkedHashMap.empty[Int, CHIR.DebugLocation]
+
     stage(Stage.CangjieFunctionParsing) {
       val blockMap = withFreeUnreachableBlocks {
         makeCFG(method, func)
@@ -169,8 +172,12 @@ trait CHIRParser
 
       Node.withImplicitArgConversion(convertNullAndProxy) {
         withRecordConversion {
-          // TODO: withPosFactory
-          CHIRInterpreter(method, func, blockMap).iterate()
+          withPosFactory(() => {
+            val bcOffsetLike = if (debugState.nonEmpty) debugState.last._1 else BytecodeOffset.SYNTHETIC
+            BytecodePosition(bcOffsetLike, currentInlineContext)
+          }) {
+            CHIRInterpreter(method, func, blockMap, debugState).iterate()
+          }
         }
       }
       dbgPrinter.debugNodes("All graph after BCP")
@@ -251,6 +258,18 @@ trait CHIRParser
     val ret = unifyReturns(retValType)
 
     dbgPrinter.debugNodes("All graph after returns unification")
+
+    if (debugState.nonEmpty) {
+      for (n <- all[SpinalNode] if n.hasXSite) {
+        n.pos match {
+          case pos: BytecodePosition =>
+            for (CHIR.DebugLocation(startLine, _) <- debugState get pos.offset) {
+              n.pos = pos.copy(lineNumber = startLine.intValue())
+            }
+          case _ => // do nothing
+        }
+      }
+    }
 
     ret
   }
@@ -365,7 +384,7 @@ trait CHIRParser
     blockMap
   }
 
-  private class CHIRInterpreter(method: Method, func: CHIR.Func, blockMap: BlockMap)(implicit pkg: CHIR.Package, resolver: CHIRResolver) extends AbstractInterpreter {
+  private class CHIRInterpreter(method: Method, func: CHIR.Func, blockMap: BlockMap, debugState: mutable.LinkedHashMap[Int, CHIR.DebugLocation])(implicit pkg: CHIR.Package, resolver: CHIRResolver) extends AbstractInterpreter {
     interpreter =>
 
     case class CatchProxy()
@@ -526,6 +545,11 @@ trait CHIRParser
           }
         }
       }
+      
+      def debugExpression(e: CHIR.Expression)(action: => Unit): Unit = {
+        e.debugLoc.foreach(debugState.put(debugState.size, _))
+        action
+      }
 
       val anchor = block.outCtrl match {
         case anchor: HandlerAnchor => anchor
@@ -560,7 +584,9 @@ trait CHIRParser
         // Parse regular expressions
         processBlock(block) {
           for (e <- spine) {
-            parseExpression(e, block, state)
+            debugExpression(e) {
+              parseExpression(e, block, state)
+            }
           }
         }
 
@@ -569,7 +595,9 @@ trait CHIRParser
         processBlock(terminatorBlock) {
           onCommit.withCallback(registerXCtrl(_, state, anchor.xHandler)) {
             state.add(anchor)
-            parseExpression(terminator, terminatorBlock, state)
+            debugExpression(terminator) {
+              parseExpression(terminator, terminatorBlock, state)
+            }
           }
         }
 
@@ -580,7 +608,9 @@ trait CHIRParser
       } else { // Regular block
         processBlock(block) {
           for (e <- blockMap(block).expressions) {
-            parseExpression(e, block, state)
+            debugExpression(e) {
+              parseExpression(e, block, state)
+            }
           }
         }
         block
