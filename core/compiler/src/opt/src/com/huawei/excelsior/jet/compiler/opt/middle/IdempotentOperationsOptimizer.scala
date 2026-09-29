@@ -261,7 +261,11 @@ trait IdempotentOperationsOptimizer { self: Universe =>
   object IdempotentOperationsOptimizer {
 
     def log(n: Idempotent): Unit = {
-      stats.count(StatsKind.IdempotentOperations, s"idempotent operation ${n.name} removed", n)
+      // NOTE: n.name is expensive (reflection-based simpleName + productIterator);
+      // build the event string only when the stats kind is actually collected.
+      if (stats.isEnabled(StatsKind.IdempotentOperations)) {
+        stats.count(StatsKind.IdempotentOperations, s"idempotent operation ${n.name} removed", n)
+      }
     }
 
     def shouldOptimize(n: Idempotent): Boolean = n match {

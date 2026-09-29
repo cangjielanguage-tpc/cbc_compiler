@@ -453,9 +453,14 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
       } else {
         StatsKind.LazyPreparation
       }
-      stats.count(statKind,
-        s"type ${check.klass.getName} marked for ${check.kind} preparation from method ${rootMethod.getFullName}" +
-          s" in ${hostingClass.getName}", check)
+      // NOTE: the event string is expensive (symlevel getName/getFullName go through
+      // XString decode/encode), and this is called per PreparationCheck lowering.
+      // Build it only when the stats kind is actually collected.
+      if (stats.isEnabled(statKind)) {
+        stats.count(statKind,
+          s"type ${check.klass.getName} marked for ${check.kind} preparation from method ${rootMethod.getFullName}" +
+            s" in ${hostingClass.getName}", check)
+      }
     }
   }
 
