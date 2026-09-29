@@ -49,7 +49,7 @@ async def build(test_id, workdir):
     base = test_id.split("::")[0]
     rel = base.split("/", 1)[1]
     name = Path(rel).name
-    src_dir = HERE / rel
+    src_dir = HERE / Path(rel).parent
     wdir = Path(workdir)
     log_path = wdir / "build.log"
     shutil.copytree(src_dir, wdir, dirs_exist_ok=True)
@@ -84,7 +84,7 @@ async def run_command(test_id, workdir):
     base = test_id.split("::")[0]
     name = Path(base).name
     wdir = Path(workdir)
-    return f'LD_LIBRARY_PATH="{wdir}" launcher "{wdir}/{name}.cbc"'
+    return f'LD_LIBRARY_PATH="{wdir}:$LD_LIBRARY_PATH" launcher "{wdir}/{name}.cbc"'
 
 
 async def run(test_id, workdir):
@@ -108,7 +108,7 @@ async def run(test_id, workdir):
     return verify(test_id, wdir)
 
 
-async def verify(test_id, wdir):
+def verify(test_id, wdir):
     name = Path(test_id.split("::")[0]).name
     expected = wdir / f"{name}.expected"
     actual = wdir / f"{name}.actual"
