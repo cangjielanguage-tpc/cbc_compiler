@@ -300,28 +300,6 @@ compiler/CHIR/CHIR2HLIR/overflow_typecast/uint64/inttouint64.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/inttouint8.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/uinttouint8.cj
 
-# bug 82 (CHIR.GetRTTIStatic could have explicit parameter)
-compiler/CHIR/UG/VTable/staticMethod/staticMethod01.cj
-compiler/Sema/call/call_generic_upper_04.cj
-compiler/Sema/call/call_generic_upper_02.cj
-compiler/Sema/const_evaluation/ok_interface.cj
-compiler/Sema/generics/generic_upperbound_reference_09.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_6.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_8.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_class_2.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_2.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_7.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic09.cj
-compiler/Sema/typealias/import_alias/typeaslias.cj
-compiler/CHIR/StaticAbstractMark/import3/main.cj
-compiler/CHIR/StaticAbstractMark/import5/main.cj
-compiler/CHIR/StaticAbstractMark/main.cj
-compiler/CHIR/UG/StaticFunc/funcAsVar01.cj
-compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
-compiler/CodegenCJNative/vfe/vfe_01.cj
-compiler/Sema/function/interface_def_val.cj
-compiler/Sema/generics/generic_static_field_prop/generic_static_nested_func.cj
-
 # bug 84 (ZeroSizedEnum in match expression)
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_03.cj
