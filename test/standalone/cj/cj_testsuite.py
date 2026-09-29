@@ -66,7 +66,6 @@ async def build(test_id, workdir):
     test_src = HERE / Path(rel).parent
     test_copy = Path(workdir).parent
     wdir = Path(workdir)
-    os.makedirs(wdir, exist_ok=True)
     log_io = io.StringIO()
 
     toolchain = os.environ["TOOLCHAIN"]
@@ -88,6 +87,8 @@ async def build(test_id, workdir):
                     (wdir / "build.log").write_text(log_io.getvalue())
                     return 1
             aot_sos.append(aot_name)
+
+    os.makedirs(wdir, exist_ok=True)
 
     import_args = ["--import-path", str(test_copy)] if aot_sos else []
 
@@ -134,7 +135,7 @@ async def run_command(test_id, workdir):
     base = test_id.split("::")[0]
     name = Path(base).name
     wdir = Path(workdir)
-    return f'LD_LIBRARY_PATH="{wdir}" launcher "{wdir}/{name}.cbc"'
+    return f'LD_LIBRARY_PATH="{wdir.parent}:$LD_LIBRARY_PATH" launcher "{wdir}/{name}.cbc"'
 
 
 async def run(test_id, workdir):
