@@ -10,41 +10,32 @@ package xscala.management
 
 private[xscala] final class ManagementJDK extends Management {
 
-  lazy val runtimeClass = Class.forName("java.lang.Runtime")
-  lazy val managementFactoryClass = Class.forName("java.lang.management.ManagementFactory")
-  lazy val operatingSystemMXBeanClass = Class.forName("com.sun.management.OperatingSystemMXBean")
-  lazy val garbageCollectorMXBeanClass = Class.forName("java.lang.management.GarbageCollectorMXBean")
-
-  def getTotalCores: Int = {
-    val runtime = runtimeClass.getMethod("getRuntime").invoke(null)
-    runtimeClass.getMethod("availableProcessors").invoke(runtime).asInstanceOf[Int]
-  }
+  // Direct calls instead of reflection: this file is already JDK-specific
+  // (see directory name), and reflection creates registration burden for
+  // AOT compilation of the compiler itself (e.g. GraalVM native-image).
+  def getTotalCores: Int =
+    Runtime.getRuntime.availableProcessors
 
   def getTotalCollectionTime: Long = {
     var result: Long = 0
-    val beans = managementFactoryClass.getMethod("getGarbageCollectorMXBeans").invoke(null).asInstanceOf[java.util.List[_]]
+    val beans = java.lang.management.ManagementFactory.getGarbageCollectorMXBeans
     val iter = beans.iterator()
     while (iter.hasNext) {
-      val elem = iter.next()
-      val collectionTime = garbageCollectorMXBeanClass.getMethod("getCollectionTime").invoke(elem).asInstanceOf[Long]
-      result += collectionTime
+      result += iter.next().getCollectionTime
     }
     result
   }
 
-  def getTotalPhysicalMemorySize: Long = {
-    val bean = managementFactoryClass.getMethod("getOperatingSystemMXBean").invoke(null)
-    operatingSystemMXBeanClass.getMethod("getTotalPhysicalMemorySize").invoke(bean).asInstanceOf[Long]
-  }
+  def getTotalPhysicalMemorySize: Long =
+    java.lang.management.ManagementFactory.getOperatingSystemMXBean
+      .asInstanceOf[com.sun.management.OperatingSystemMXBean].getTotalPhysicalMemorySize
 
-  def getSystemLoadAverage: Double = {
-    val bean = managementFactoryClass.getMethod("getOperatingSystemMXBean").invoke(null)
-    operatingSystemMXBeanClass.getMethod("getSystemLoadAverage").invoke(bean).asInstanceOf[Double]
-  }
+  def getSystemLoadAverage: Double =
+    java.lang.management.ManagementFactory.getOperatingSystemMXBean
+      .asInstanceOf[com.sun.management.OperatingSystemMXBean].getSystemLoadAverage
 
-  def getSystemCpuLoad: Double = {
-    val bean = managementFactoryClass.getMethod("getOperatingSystemMXBean").invoke(null)
-    operatingSystemMXBeanClass.getMethod("getSystemCpuLoad").invoke(bean).asInstanceOf[Double]
-  }
+  def getSystemCpuLoad: Double =
+    java.lang.management.ManagementFactory.getOperatingSystemMXBean
+      .asInstanceOf[com.sun.management.OperatingSystemMXBean].getSystemCpuLoad
 
 }
