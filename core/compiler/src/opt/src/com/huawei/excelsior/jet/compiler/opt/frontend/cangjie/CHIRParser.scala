@@ -1441,7 +1441,7 @@ trait CHIRParser
                 GetStaticFieldSeqRef(DerivedPtr.Global(), field)
               case _ => state(array)
             }
-            vArrayPut(arrayType, base, state(index), state(value))
+            varrayPut(arrayType, base, state(index), state(value))
 
           case CHIR.Intrinsic.Kind.VArrayGet =>
             // TODO: ArrayIndexCheck
@@ -1455,7 +1455,7 @@ trait CHIRParser
               case _ => state(array)
             }
             for ((index, i) <- indices.zipWithIndex) {
-              value = vArrayGet(arrayType, value, state(index))
+              value = varrayGet(arrayType, value, state(index))
               if (i + 1 < indices.size) {
                 arrayType = arrayType.elemType.asInstanceOf[SignatureType.VArray]
               }
@@ -2041,7 +2041,7 @@ trait CHIRParser
         val arrayType = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.VArray]
         val mem = StackAlloc.Local(arrayType)
         for ((value, index) <- e.elementValues.zipWithIndex) {
-          vArrayPut(arrayType, mem, LConst(index), state(value))
+          varrayPut(arrayType, mem, LConst(index), state(value))
         }
         state(e) = mem
 
@@ -2067,7 +2067,7 @@ trait CHIRParser
               callMethod(target, Some(refType), Some(lambdaType), arrayType.elemType, Seq(lambdaType, SignatureType.Int64), Seq(initializer, index), None)
         }
         for (index <- 0L until arrayType.length) {
-          vArrayPut(arrayType, mem, LConst(index), init(LConst(index)))
+          varrayPut(arrayType, mem, LConst(index), init(LConst(index)))
         }
         state(e) = mem
 
@@ -2384,17 +2384,17 @@ trait CHIRParser
       }
     }
 
-    private def vArrayIndex(arrayType: SignatureType.VArray, index: Node): CangjieReferenceNode = index match {
+    private def varrayIndex(arrayType: SignatureType.VArray, index: Node): CangjieReferenceNode = index match {
       case IntegralConst(i) => createConstIndexNode(i.toInt, arrayType, arrayType.elemType)
       case _ => createIndexNode(index, arrayType, arrayType.elemType)
     }
 
-    private def vArrayGet(arrayType: SignatureType.VArray, array: Node, index: Node): Node = {
+    private def varrayGet(arrayType: SignatureType.VArray, array: Node, index: Node): Node = {
       val elemType = arrayType.elemType
       if (elemType.isZST) {
         Void()
       } else {
-        val field = vArrayIndex(arrayType, index)
+        val field = varrayIndex(arrayType, index)
         if (needsCopy(elemType)) {
           val local = StackAlloc.Local(elemType)
           val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
@@ -2406,10 +2406,10 @@ trait CHIRParser
       }
     }
 
-    private def vArrayPut(arrayType: SignatureType.VArray, array: Node, index: Node, value: Node): Unit = {
+    private def varrayPut(arrayType: SignatureType.VArray, array: Node, index: Node, value: Node): Unit = {
       val elemType = arrayType.elemType
       if (!elemType.isZST) {
-        val field = vArrayIndex(arrayType, index)
+        val field = varrayIndex(arrayType, index)
         if (needsCopy(elemType)) {
           val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
           copy(elemType, addr, value)
