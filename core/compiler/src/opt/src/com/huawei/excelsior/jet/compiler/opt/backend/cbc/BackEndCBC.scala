@@ -76,7 +76,7 @@ trait BackEndCBC
   }
 
   override def sendCode(code: Code): Unit = {
-    val CodeCBC(segment, xinfo, exTable, liveness) = code
+    val CodeCBC(segment, xinfo, exTable, sourceCodeInfo, liveness) = code
 
     if (env.enabled(PrintDeltaMaps)) {
       env.reportDeltaMaps(codeUnit, xinfo)
@@ -96,7 +96,7 @@ trait BackEndCBC
     val literalsOffset = 0 // literals offset is not needed for new isa
 
     CBCFileGenerator.sendCode(
-      codeUnit.method, segment, literalsOffset, packedXInfo, exTable, liveness,
+      codeUnit.method, segment, literalsOffset, packedXInfo, sourceCodeInfo, exTable, liveness,
       tailParamCount, untypedStackSlotsCount,
       usedNonVolIRegsMask, usedNonVolFRegsMask, maxCalleeStackArgsCount,
       codegen.mayHaveNativeCalls, stackAllocatedTypeSigs, variablesSizeTypes)

@@ -22,7 +22,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.FloatMathOp
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler as ForkedISA12Assembler
 import com.huawei.excelsior.jet.assembler.{AsmEmitter, AsmType, Label, Location, Segment, Symbol, Width}
 import com.huawei.excelsior.jet.compiler.NotImplementedFeature.CBC
-import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
+import com.huawei.excelsior.jet.compiler.bytecode.{ArithOp, BytecodePosition}
 import com.huawei.excelsior.jet.compiler.bytecode.ArithOp.*
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
 import com.huawei.excelsior.jet.compiler.cbc.{CbcSymbolAdapter, CodeSigSymbol}
@@ -1423,12 +1423,21 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     override def genCode0(segment: Segment, layout: Layout, xInfo: XInfo, methodStart: Label, slowPathStubStart: Label): Code = {
-      CodeCBC(segment, xInfo, exTable.build, livenessInfo)
+      CodeCBC(segment, xInfo, exTable.build, sourceCodeInfo.build, livenessInfo)
     }
 
     override def doFreeze(): Unit = {}
 
+    private lazy val sourceCodeInfo = SourceCodeInfo.Builder()
     private lazy val exTable = ExceptionTable.Builder()
+
+    override protected def genSourceCodeInfo(n: Node): Unit = {
+      (n, n.pos) match {
+        case (n: SpinalNode, p: BytecodePosition) if n.hasXSite && p.lineNumber > 0 =>
+          sourceCodeInfo.add(segment.newBoundLabel, p.lineNumber)
+        case _ => // do nothing  
+      }
+    }
 
     override def genXHandlerInfo(b: Block): Unit = {
       b.singleXHandlerOption.foreach(xb => exTable.addRegionRef(startOf(b), endOf(b), startOf(xb)));
