@@ -279,8 +279,10 @@ object CHIRBuilder {
           val mutMethod = Option.when(hasMutParam) {
             val mutName = resolver.mutWithoutTI(name)
             val mutLinkageName = resolver.mutWithoutTI(linkageName)
-            builder.addMethod(symType, mutName, sig, mutLinkageName, modifiers.value, genericInfo, ABI.Description(rcvParam, hasMutParam, hasThisTypeInfoParam,
-            isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount), m.sourceFile)
+            builder.addMethod(symType, mutName, sig, mutLinkageName, modifiers.value, genericInfo,
+              ABI.Description(rcvParam, hasMutParam, hasThisTypeInfoParam,
+                isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount),
+              m.sourceFile)
           }
 
           val mutWrapperName = name
@@ -288,8 +290,10 @@ object CHIRBuilder {
           val mutWrapperModifiers = modifiers - Modifier.CJ_MUT
           val mutWrapperHasMutParam = false
           val mutWrapperReceiver = Some(SignatureType.Box(rcvSig))
-          val mutWrapper = builder.addMethod(symType, mutWrapperName, sig, mutWrapperLinkageName, mutWrapperModifiers.value, genericInfo, ABI.Description(mutWrapperReceiver, mutWrapperHasMutParam, hasThisTypeInfoParam,
-            isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount), m.sourceFile)
+          val mutWrapper = builder.addMethod(symType, mutWrapperName, sig, mutWrapperLinkageName, mutWrapperModifiers.value, genericInfo,
+            ABI.Description(mutWrapperReceiver, mutWrapperHasMutParam, hasThisTypeInfoParam,
+            isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount), 
+            m.sourceFile)
 
           if (mutMethod.nonEmpty) {
             builder.markAsMutWrapper(mutWrapper)
@@ -302,8 +306,10 @@ object CHIRBuilder {
         } else {
           val overrideSig = resolver.getOverrideSrcFuncType(m).map(s => resolver.functionSig(s.tpe, hasReceiver = !modifiers.contains(STATIC))._1)
           val hasRetByVal = overrideSig.exists(_.returnType.isTypeVariable)
-          val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo, ABI.Description(rcvParam,
-            hasMutParam, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, hasRetByVal = hasRetByVal, genericFuncParamsCount), m.sourceFile)
+          val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
+            ABI.Description(rcvParam,
+            hasMutParam, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, hasRetByVal = hasRetByVal, genericFuncParamsCount),
+            m.sourceFile)
           if (SignatureType.fromSymType(symType).isCangjieLambda && name == "$GenericVirtualFunc") {
             assert(symMethod.hasRetByValParameter)
           }
@@ -359,8 +365,10 @@ object CHIRBuilder {
         val hasThisTypeInfoParam = modifiers.contains(STATIC)
         val linkageName = resolver.linkageName(m)
 
-        val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo, ABI.Description(rcv, hasMutParam = false, hasThisTypeInfoParam,
-          isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount), m.sourceFile)
+        val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
+          ABI.Description(rcv, hasMutParam = false, hasThisTypeInfoParam,
+          isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount),
+          m.sourceFile)
         virtMethods(m) = symMethod
 
         if (symType.isCHIRDef) {
@@ -450,7 +458,8 @@ object CHIRBuilder {
         val genericFuncParamsCount = m.genericTypeParams.size
         val linkageName = resolver.linkageName(m)
         val symMethod = builder.addMethod(symPkg, name, sig, linkageName, modifiers, genericInfo, ABI.Description(None, hasMutParam = false, hasThisTypeInfoParam = false,
-          isCFunc, hasOuterTypeInfo = false, hasRetByVal = false, genericFuncParamsCount), m.sourceFile)
+          isCFunc, hasOuterTypeInfo = false, hasRetByVal = false, genericFuncParamsCount), 
+          m.sourceFile)
         if (pkg.packageInitFunc == m) {
           builder.markAsPackageInit(symMethod)
         }
