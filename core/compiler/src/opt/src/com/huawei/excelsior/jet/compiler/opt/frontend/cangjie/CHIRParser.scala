@@ -537,7 +537,7 @@ trait CHIRParser
           }
         }
       }
-      
+
       def parseExpressionWithPosition(e: CHIR.Expression, block: Block, state: State): Unit = {
         e.debugLoc.foreach(debugState.addOne)
         parseExpression(e, block, state)
