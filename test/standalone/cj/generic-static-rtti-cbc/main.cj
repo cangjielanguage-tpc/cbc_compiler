@@ -49,16 +49,28 @@ class Holder<M> where M <: Factory<M> {
 
 main(): Int64 {
   var holder = Holder<Product>(None)
-  if (holder.getOrCreate().id != 11 || creations != 1) { return 1 }
+  let product = holder.getOrCreate()
+  println(product.id)
+  println(creations)
+  if (product.id != 11 || creations != 1) { return 1 }
 
   var cached = Holder<Product>(Some(Product(33)))
-  if (cached.getOrCreate().id != 33 || creations != 1) { return 2 }
+  let cachedProduct = cached.getOrCreate()
+  println(cachedProduct.id)
+  println(creations)
+  if (cachedProduct.id != 33 || creations != 1) { return 2 }
 
   var other = Holder<OtherProduct>(None)
-  if (other.getOrCreate().id != 22 || creations != 2) { return 3 }
+  let otherProduct = other.getOrCreate()
+  println(otherProduct.id)
+  println(creations)
+  if (otherProduct.id != 22 || creations != 2) { return 3 }
 
   // The implementation needs GenericProduct<Int64>'s outer TI, not Factory's TI.
   var generic = Holder<GenericProduct<Int64>>(None)
-  if (generic.getOrCreate().value.isSome() || creations != 3) { return 4 }
+  let genericProduct = generic.getOrCreate()
+  println(genericProduct.value.isSome())
+  println(creations)
+  if (genericProduct.value.isSome() || creations != 3) { return 4 }
   0
 }
