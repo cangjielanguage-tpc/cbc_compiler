@@ -36,7 +36,6 @@ class PackageWithHelpers(pkg: CHIR.Package, helpers: Seq[CHIR.Func], helpersById
     Option(helpersByName(identifier))
   } else {
     pkg.getFunc(identifier)
-
   }
 
   // Forwarders
