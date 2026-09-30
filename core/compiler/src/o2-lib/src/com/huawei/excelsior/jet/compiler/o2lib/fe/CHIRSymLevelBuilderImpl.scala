@@ -16,6 +16,7 @@ import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTabl
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.*
 import com.huawei.excelsior.jet.compiler.o2lib.u.xiFilesModule
+import com.huawei.excelsior.jet.compiler.options.BoolOption.IgnoreSourceFileNameForCbc
 import com.huawei.excelsior.jet.compiler.symlevel.*
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironment
@@ -190,8 +191,10 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
         assert(dups.isEmpty, s"Unexpected duplicate linkage names: ${methodByO2Object(m) +: dups}")
         m.markAsExported(XString(exportedName))
       }
-      
-      sourceFile.foreach(f => m.sourceFile = XString(f))
+
+      if (!env.enabled(IgnoreSourceFileNameForCbc)) {
+        sourceFile.foreach(f => m.sourceFile = XString(f))
+      }
 
       methodByO2Object(m)
     }
