@@ -81,13 +81,20 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
       val isInitializer = v.attributes.contains(CHIR.Attribute.Initializer)
       val isPackageGlobal = v.declaringDef.isEmpty
-      val suffix = if (isGenericInstantiated(v)) {
+      val isBridgedRawStaticMethod = wrappedMethod.isEmpty && (v match {
+        case f: CHIR.Func => bridgedRawStaticMethods.contains(f)
+        case _ => false
+      })
+      if (isBridgedRawStaticMethod) {
+        assert(srcName.nonEmpty, identifier)
+      }
+      val suffix = (if (isGenericInstantiated(v)) {
         // TODO another way without id usage?
         assert(id > 0)
         s"$$instantiated$$${pkg.name}$$$id"
       } else {
         ""
-      }
+      }) + (if (isBridgedRawStaticMethod) "$raw" else "")
       getOverrideSrcFuncType(v) match {
         case Some(funcType) =>
           val f = _v.asInstanceOf[CHIR.Func]
@@ -100,8 +107,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
               srcName + suffix
           }
         case None =>
-          val name = if (srcName.isEmpty || srcName == "$lambda" || isInitializer || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
-          if (wrappedMethod.isEmpty && _v.isInstanceOf[CHIR.Func] && bridgedRawStaticMethods.contains(v.asInstanceOf[CHIR.Func])) s"$name$$raw" else name
+          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
       }
     }
 
