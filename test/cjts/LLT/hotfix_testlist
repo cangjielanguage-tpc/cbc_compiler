@@ -265,16 +265,6 @@ compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
 compiler/CHIR/CHIR2HLIR/typeCast/float2intExceed.cj
 compiler/CHIR/CHIR2HLIR/exception/try86.cj
 
-# bug 80 (Precise line numbers in stack traces)
-compiler/CHIR/CHIR2HLIR/exception/try61.cj
-compiler/CHIR/CHIR2HLIR/exception/try67.cj
-compiler/CHIR/DCE/testDCEAsg03.cj
-compiler/CHIR/DCE/testDCEAsg04.cj
-compiler/CHIR/DCE/testDCEThrow05.cj
-compiler/CHIR/DCE/testDCEThrow06.cj
-compiler/CodegenCJNative/runtime/stacktrace.cj
-compiler/CodegenCommon/dec/throw.cj
-
 # bug 81 (CHIR.GetRTTI could have explicit parameter (not always ReceiverParam))
 compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
 
