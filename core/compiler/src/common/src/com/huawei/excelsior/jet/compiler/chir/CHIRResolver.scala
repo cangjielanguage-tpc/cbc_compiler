@@ -298,6 +298,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       case CHIR.Attribute.Mut => mods += CJ_MUT
       case CHIR.Attribute.Redef => mods += CJ_REDEF
       case CHIR.Attribute.Override => mods += CJ_OVERRIDE
+      case CHIR.Attribute.Foreign => mods += CJ_FOREIGN
       case CHIR.Attribute.Static => mods -= FINAL; mods += STATIC
       case _ => // do nothing
     }

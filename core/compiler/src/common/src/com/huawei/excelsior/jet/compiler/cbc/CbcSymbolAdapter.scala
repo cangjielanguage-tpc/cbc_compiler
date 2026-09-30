@@ -57,7 +57,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
     case symbol: MethodReference =>
       val declaringClass = symbol.method.getDeclaringClass
       val (refType, cparams) = if (declaringClass.isCangjiePackage) {
-        val t = if (symbol.method.getCHIRDef.nonEmpty) {
+        val t = if (symbol.method.getCHIRDef.nonEmpty || symbol.method.isCangjieForeign) {
           // Force reference to alt definition (see CbcFileEncoderAdapter.TypeWrapper)
           CbcFileFormat.TypeSignature.ref(CbcFileEncoderAdapter.cbcPackageName(declaringClass.getName))
         } else {
@@ -72,7 +72,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         (t.toCbc, genericParams(t))
       }
       val aotData = symbol.accessKind match {
-        case STATIC | SPECIAL | MUT => Option.when(symbol.method.getCHIRDef.isEmpty)(DirectCallAotData(symbol.method.getExportedName.toString))
+        case STATIC | SPECIAL | MUT => Option.when(symbol.method.getCHIRDef.isEmpty && !symbol.method.isCangjieForeign)(DirectCallAotData(symbol.method.getExportedName.toString))
         case VIRTUAL => Option.when(refType.isInstanceOf[CbcFileFormat.AotTypeSignature])(InterfaceCallAotData(symbol.explicitVNum.get)) // TODO: improve if needed
         case _ => notImplemented(symbol.accessKind)
       }

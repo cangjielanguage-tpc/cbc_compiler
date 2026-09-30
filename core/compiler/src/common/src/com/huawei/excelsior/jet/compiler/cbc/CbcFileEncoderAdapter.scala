@@ -264,7 +264,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
     def build(builder: CbcFileFormat.Type.Builder): Unit = {
       builder.setName(cbcPackageName(t.getName))
 
-      val methods = t.getDeclaredMethods.filter(_.getCHIRDef.nonEmpty).toSeq
+      val methods = t.getDeclaredMethods.filter(m => m.getCHIRDef.nonEmpty || m.isCangjieForeign).toSeq
       val fields  = t.getDeclaredFields.filter(_.getCHIRDef.nonEmpty).toSeq
 
       methods.foreach(MethodWrapper(_).build(builder.newMethodBuilder()))
