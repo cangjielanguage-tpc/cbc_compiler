@@ -1,3 +1,4 @@
+Hello CJC
 An exception has occurred:
 IllegalArgumentException: bad args
 	 at default::user.main()(unknown:0)

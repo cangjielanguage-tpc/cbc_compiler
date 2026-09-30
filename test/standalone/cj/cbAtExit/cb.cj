@@ -1,8 +1,9 @@
 import std.env.*
+import std.collection.*
 
-main(): Unit {
+main() {
     atExit {
         println("Hello CJC")
     }
-    throw IllegalArgumentException("bad args")
+    return 0
 }

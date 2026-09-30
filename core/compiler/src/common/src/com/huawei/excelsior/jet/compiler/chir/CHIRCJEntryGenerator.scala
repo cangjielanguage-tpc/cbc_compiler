@@ -21,6 +21,7 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
   private val eprintlnFunc = pkg.getFunc("_CNat8eprintlnHRNat6StringE").get
   private val errToString = pkg.getFunc("_CNat5Error8toStringHv").get
   private val handleExFunc = pkg.getFunc("_CNat15handleExceptionHCNat9ExceptionE").get
+  private val atExitCallbacks = pkg.getFunc("_CNat27CJ_CORE_ExecAtexitCallbacksHv").get
 
   def gen(): CHIR.Func = {
     new CHIR.Func {
@@ -79,6 +80,7 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
 
         gen.startBlock(saveMainRes)
         gen.local(Unit, gen.st(mainRes, _retVal))
+        gen.local(Unit, gen.applyStatic(atExitCallbacks))
         gen.local(Unit, gen.exit())
 
         // Start exception handler
@@ -114,19 +116,23 @@ class CHIRCJEntryGenerator(pkg: CHIR.Package, _id: Long, userMain: CHIR.Func) {
         handleException(dsl.Ref(OOM), checkOOM, checkError) { _ =>
           val msg = gen.local(String, gen.const(String, "An exception has occurred:    Out of memory"))
                     gen.local(Unit,   gen.applyStatic(eprintlnFunc, msg))
+                    gen.local(Unit,   gen.applyStatic(atExitCallbacks))
         }
 
         handleException(dsl.Ref(Error), checkError, checkException) { except =>
           val errStr = gen.local(String, gen.invoke(errToString, thisType = dsl.Ref(Error), thisArg = Some(except), allArgs = except))
                        gen.local(Unit,   gen.applyStatic(eprintlnFunc, errStr))
+                       gen.local(Unit,   gen.applyStatic(atExitCallbacks))
         }
 
         handleException(dsl.Ref(Exception), checkException, rethrow) { except =>
           gen.local(Unit, gen.applyStatic(handleExFunc, except))
+          gen.local(Unit, gen.applyStatic(atExitCallbacks))
         }
 
         // Rethrow if not OOM, Error or Exception
         gen.startBlock(rethrow)
+        gen.local(Unit, gen.applyStatic(atExitCallbacks))
         gen.local(Unit, gen.raise(ex, exceptionBlock = None))
       })
 

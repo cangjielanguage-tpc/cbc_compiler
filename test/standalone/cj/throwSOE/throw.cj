@@ -1,3 +1,5 @@
+import std.env.*
+
 var g: Int64 = 0
 
 func f(x: Int64): Int64 {
@@ -7,5 +9,8 @@ func f(x: Int64): Int64 {
 }
 
 main() {
+    atExit {
+        println("Hello CJC")
+    }
     println(f(1))
 }
