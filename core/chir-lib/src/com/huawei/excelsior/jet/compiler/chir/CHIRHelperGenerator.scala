@@ -21,6 +21,8 @@ object AOTDefs {
   def eprintlnFunc(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat8eprintlnHRNat6StringE").get
   def errToString(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat5Error8toStringHv").get
   def handleExFunc(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat15handleExceptionHCNat9ExceptionE").get
+  def atExitCallbacks(implicit pkg: CHIR.Package) = pkg.getFunc("_CNat27CJ_CORE_ExecAtexitCallbacksHv").get
+
 }
 
 object CHIRHelperGenerator {
@@ -156,6 +158,7 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
 
           gen.startBlock(saveMainRes)
           gen.local(Unit, gen.st(mainRes, _retVal))
+          gen.local(Unit, gen.applyStatic(AOTDefs.atExitCallbacks))
           gen.local(Unit, gen.exit())
 
           // Start exception handler
@@ -191,19 +194,23 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
           handleException(dsl.Ref(AOTDefs.OOM), checkOOM, checkError) { _ =>
             val msg = gen.local(AOTDefs.String, gen.const(AOTDefs.String, "An exception has occurred:    Out of memory"))
             gen.local(Unit, gen.applyStatic(AOTDefs.eprintlnFunc, msg))
+            gen.local(Unit, gen.applyStatic(AOTDefs.atExitCallbacks))
           }
 
           handleException(dsl.Ref(AOTDefs.Error), checkError, checkException) { except =>
             val errStr = gen.local(AOTDefs.String, gen.invoke(AOTDefs.errToString, thisType = dsl.Ref(AOTDefs.Error), thisArg = Some(except), allArgs = except))
             gen.local(Unit, gen.applyStatic(AOTDefs.eprintlnFunc, errStr))
+            gen.local(Unit, gen.applyStatic(AOTDefs.atExitCallbacks))
           }
 
           handleException(dsl.Ref(AOTDefs.Exception), checkException, rethrow) { except =>
             gen.local(Unit, gen.applyStatic(AOTDefs.handleExFunc, except))
+            gen.local(Unit, gen.applyStatic(AOTDefs.atExitCallbacks))
           }
 
           // Rethrow if not OOM, Error or Exception
           gen.startBlock(rethrow)
+          gen.local(Unit, gen.applyStatic(AOTDefs.atExitCallbacks))
           gen.local(Unit, gen.raise(ex, exceptionBlock = None))
         })
 
