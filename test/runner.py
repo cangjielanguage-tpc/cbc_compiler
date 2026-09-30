@@ -196,6 +196,25 @@ class StandaloneTestSuite(TestSuite):
                 return 1
             aot_so_names.append(aot_name)
 
+        native_lib_names = []
+        for c_file in sorted(glob.glob(os.path.join(test_work_dir, "*.c"))):
+            native_name = os.path.basename(c_file)[:-len(".c")]
+            native_so = f"{test_work_dir}/lib{native_name}.so"
+            native_log = io.StringIO()
+            native_err = io.StringIO()
+            res = await run_in_env(True, env, ["cc", "-shared", "-fPIC", "-o", native_so, c_file],
+                                  log=native_log, stderr_log=native_err)
+            if res != 0:
+                err_msg = f"Standalone test native library compilation error ({native_name}): {res}\n"
+                if native_log.getvalue().strip():
+                    err_msg += native_log.getvalue()
+                if native_err.getvalue().strip():
+                    err_msg += native_err.getvalue()
+                await self.print_stderr(err_msg)
+                self.compilation_failures.append((test_name, in_mode, f"during native library compilation ({native_name})"))
+                return 1
+            native_lib_names.append(native_name)
+
         match in_mode:
             case "asm":
                 compile_asm_to_obj = [java_cmd(), '-jar', self.asm_jar, dotasm(test_name)]
@@ -272,7 +291,8 @@ class StandaloneTestSuite(TestSuite):
                         continue
 
                     aot_deps_args = [f"-cbcaotdeps={':'.join(aot_so_names)}"] if aot_so_names else []
-                    chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + int_chir_files
+                    foreign_libs_args = [f"-foreignlibs={':'.join(native_lib_names)}"] if native_lib_names else []
+                    chir_to_cbc = [java_cmd(), '-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + foreign_libs_args + int_chir_files
                     cbc_log = io.StringIO()
                     cbc_err = io.StringIO()
                     res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)
