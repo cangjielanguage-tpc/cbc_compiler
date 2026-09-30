@@ -29,6 +29,8 @@ object CHIRHelperGenerator {
 
 class CHIRHelperGenerator(_pkg: CHIR.Package) {
   implicit val pkg: CHIR.Package = _pkg
+  // If you add new throw helpers you should also add them to
+  // NewAsmParser to synthesize fake throwers for asm tests
   private val throwHelpers = Seq(
     ThrowHelper("throwSymbolResolutionError", "CBC internal error: symbol resolution error"),
     ThrowHelper("throwAbstractMethodCallError", "CBC internal error: abstract method was called")

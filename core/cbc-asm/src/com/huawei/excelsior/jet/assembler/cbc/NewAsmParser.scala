@@ -750,7 +750,6 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
         val unit = CbcFileFormat.BuiltinSignature.Unit
         methodBuilder.setSignature(Functional(Seq(), unit))
         gen.nop()
-//        gen.ret(IR.IR1, Width.W64)
         val codeBuilder = methodBuilder.getCodeBuilder()
         codeBuilder.setSegment(segment)
         codeBuilder.setLiveness(gen.collectLiveness)
