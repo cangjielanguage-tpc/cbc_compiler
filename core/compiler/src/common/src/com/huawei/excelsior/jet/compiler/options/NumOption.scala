@@ -38,7 +38,14 @@ enum NumOption(range: Range,
   case MaxOptimizeIterations extends NumOption(_ => if (isWorkMode) 100 else 1000)
 
   case ConsistencyCheckLevel extends NumOption(range(0, 3), env => {
-    if (isWorkMode) {
+    if (targetArch == CBC) {
+      // Consistency checking is a debug facility; on the CBC backend (AOT
+      // library compilation) it costs ~18% of compile time (measured on the
+      // eembc benchmark: 82k check invocations, stage "+timing"). IR
+      // invariants are still exercised by the test suite with explicit
+      // -ConsistencyCheckLevel=2/3.
+      0
+    } else if (isWorkMode) {
       2
     } else if (env.enabled(FastBackEnd)) {
       0
