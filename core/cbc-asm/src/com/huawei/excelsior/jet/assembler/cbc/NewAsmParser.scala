@@ -72,6 +72,9 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
           throw e
       }
     }
+
+    HelpersGenerator().generate()
+
     if (errors.nonEmpty) {
       dumpErrors()
       false
@@ -711,6 +714,48 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
   private class LabelsMap(segment: Segment) extends Labels {
     private val map = mutable.LinkedHashMap.empty[String, Label]
     def get(str: String): Label = map.getOrElseUpdate(str, segment.newLabel)
+  }
+
+  /**
+   * This is needed to synthesize types and methods that are used as part of "cbc_intrinsics" type.
+   *
+   * You should not call them from asm.
+   */
+  private class HelpersGenerator() {
+
+    private val helperNames = Seq("throwAbstractMethodCallError", "throwSymbolResolutionError")
+
+    def generate(): Unit = {
+      val tb = builder.newTypeBuilder()
+      tb.setName("$P$cbc_intrinsics")
+      for (helper <- helperNames) {
+        val mb = tb.newMethodBuilder()
+        mb.setName(helper)
+        HelperGenerator(helper).generate(mb)
+      }
+    }
+
+    private class HelperGenerator(helperName: String) {
+      private val segment = new Segment()
+      private val analyzer = new LivenessAnalyzer
+      private val gen = {
+        val gen = new CodeGenerator()
+        gen.analyzer = analyzer
+        gen.setUp(segment)
+        gen
+      }
+
+      def generate(methodBuilder: CbcFileFormat.Method.Builder): Unit = {
+        methodBuilder.setName(helperName)
+        val unit = CbcFileFormat.BuiltinSignature.Unit
+        methodBuilder.setSignature(Functional(Seq(), unit))
+        gen.nop()
+//        gen.ret(IR.IR1, Width.W64)
+        val codeBuilder = methodBuilder.getCodeBuilder()
+        codeBuilder.setSegment(segment)
+        codeBuilder.setLiveness(gen.collectLiveness)
+      }
+    }
   }
 
   private class CodeParser(builder: MethodCode.Builder) extends Parser {

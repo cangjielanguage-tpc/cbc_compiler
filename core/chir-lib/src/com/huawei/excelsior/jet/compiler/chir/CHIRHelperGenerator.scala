@@ -87,7 +87,7 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
       id => generateHelper(id, helper.name, throwHelperType, throwHelperBody(throwHelper = helper))
   }
 
-  class CHIRCJEntryGenerator(_id: Long, userMain: CHIR.Func) {
+  private class CHIRCJEntryGenerator(_id: Long, userMain: CHIR.Func) {
     private val Bool = CHIR.BuiltinType.Boolean
     private val Unit = CHIR.BuiltinType.Unit
     private val Int64 = CHIR.BuiltinType.Int64
