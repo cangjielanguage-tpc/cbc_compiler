@@ -8,10 +8,10 @@ interface B {
   func foo(): Int64
 }
 class S {}
-extend S <: A & B {}
+extend S <: A & B {} // the default must be propagated from A to B
 
+let b: B = S()
 main(): Int64 {
-  let b: B = S()
-  b.foo() // <--- CRASHES HERE
+  b.foo()
 }
 
