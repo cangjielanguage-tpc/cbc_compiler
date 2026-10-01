@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.debug.cangjie
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.jet.common.XString
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
 import com.huawei.excelsior.jet.compiler.debug.cangjie.CangjieDebugToolbox.Names.{compoundTypeNameDeprecated, debugTypeName}

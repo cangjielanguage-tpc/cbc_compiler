@@ -8,7 +8,7 @@
 
 package com.huawei.excelsior.jet.compiler.o2lib.u
 
-import com.huawei.excelsior.jet.common.{XString, XStringInternTable}
+import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.Env.isWorkMode
 import com.huawei.excelsior.jet.compiler.symlevel.{MethodSignature, SignatureType}
 import com.huawei.excelsior.o2j.runtime.O2JSupport
@@ -23,10 +23,11 @@ object JStringsModule {
     def this() = this(STRING_BUFFER_INITIAL_CAPACITY)
 
     def intern(): XString = {
+      // Formerly interned via XStringInternTable; interning is now identity.
       if (len == 0) {
-        return interntable.internedEmptyString
+        return ""
       }
-      interntable.put(buf, len)
+      jsBytesToString(buf, len)
     }
 
     def toUpperCase(): Unit = {
@@ -89,7 +90,7 @@ object JStringsModule {
       }
     }
 
-    def toJString = XString.slice(buf, 0, len)
+    def toJString = jsBytesToString(buf, len)
 
     def fromPlatform = XString(toJString.platformToString)
 
@@ -176,7 +177,12 @@ object JStringsModule {
     }
   }
 
-  val interntable = new XStringInternTable()
+  /** Decodes the ASCII/latin-1 byte buffer used by [[StringBuffer]] into a
+    * String. The buffer is byte-oriented (appendChar asserts ch < 256), so
+    * ISO-8859-1 gives the same byte==char mapping the old XString had. */
+  private def jsBytesToString(buf: Array[Byte], len: Int): String =
+    new String(buf, 0, len, java.nio.charset.StandardCharsets.ISO_8859_1)
+
   val jstrClinit = internJString("<clinit>")
   val jstrDot = internJString(".")
   val jstrQuote = internJString("\"")
@@ -282,36 +288,17 @@ object JStringsModule {
   }
 
   // only ASCII string consts are allowed her that came from o2 string literals
-  def internJString(s: String): XString = {
-    val length = s.length()
-    if (length == 0) {
-      return interntable.internedEmptyString
-    }
-    interntable.put(O2JSupport.byteArrStringConst(s), length)
-  }
+  def internJString(s: String): XString = s
 
-  def intern(str: XString): XString = interntable.put(str)
+  def intern(str: XString): XString = str
 
   def internSubstring(str: XString, from: Int, to: Int): XString = {
     val toInd = if (to == -1) str.length else to
-    interntable.put(str, from, toInd)
+    str.substring(from, toInd)
   }
 
   def cleanStringsCache(): Unit = {
     xmConfigModule.clearCaches()
-    val oldSize = interntable.size
-    val oldCapacity = interntable.capacity
-    interntable.cleanAndResize()
-
-    if (isWorkMode) {
-      val newSize = interntable.size
-      val newCapacity = interntable.capacity
-
-      if (oldCapacity == newCapacity) {
-        xiEnvModule.info.print(s"\n\nXString interntable cleaned: $oldSize -> $newSize, no resize")
-      } else {
-        xiEnvModule.info.print(s"\n\nXString interntable cleaned: $oldSize -> $newSize, resized: $oldCapacity -> $newCapacity")
-      }
-    }
+    // XStringInternTable is gone; nothing to clean.
   }
 }

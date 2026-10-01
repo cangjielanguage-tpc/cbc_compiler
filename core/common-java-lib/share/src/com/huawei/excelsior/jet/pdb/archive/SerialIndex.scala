@@ -8,6 +8,7 @@
 package com.huawei.excelsior.jet.pdb.archive
 
 import com.huawei.excelsior.jet.common.XString
+import xscala.text.ModifiedUtf8Encoding
 import xscala.io.{ByteBuffer, LEB128Encoder}
 
 import scala.annotation.tailrec
@@ -291,7 +292,8 @@ object SerialIndex {
 
     def find(name: XString): Int = {
       dataPos = 0
-      val found = doFind(XString.unsafeGetValue(name), XString.unsafeGetOffset(name), name.length)
+      val bytes = ModifiedUtf8Encoding.encodeStringPreserving(name)
+      val found = doFind(bytes, 0, bytes.length)
       if (found) decodeLeaf() else 0
     }
 

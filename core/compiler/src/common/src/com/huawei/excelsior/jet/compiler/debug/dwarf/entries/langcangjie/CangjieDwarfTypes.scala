@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.debug.dwarf.entries.langcangjie
 
 import com.huawei.excelsior.jet.common.XString
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.TypeProvider
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
 import com.huawei.excelsior.jet.compiler.debug.cangjie.CangjieDebugToolbox.Names.*

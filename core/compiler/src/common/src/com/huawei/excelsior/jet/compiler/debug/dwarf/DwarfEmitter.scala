@@ -14,6 +14,7 @@ import com.huawei.excelsior.jet.assembler.*
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.{ADDR64, DWARF_SECTION}
 import com.huawei.excelsior.jet.assembler.fixups.{FixedSizeFixup, Relocation}
 import com.huawei.excelsior.jet.common.XString
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.{addressSize, stackPointer}
 import com.huawei.excelsior.jet.compiler.debug.dwarf.Dwarf.*
 import com.huawei.excelsior.jet.compiler.debug.dwarf.DwarfEmitter.ExprLoc

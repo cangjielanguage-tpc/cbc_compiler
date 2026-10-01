@@ -59,7 +59,7 @@ object Configuration {
       }
     }
 
-    private def isWhitespace(b: Byte) = (b & 0xFF).toChar.asciiIsWhitespace
+    private def isWhitespace(c: Char) = c.asciiIsWhitespace
 
     private def skipWhitespaces(position: Int): Int = {
       var pos = position

@@ -18,9 +18,8 @@ import com.huawei.excelsior.jet.common.XString
   * @author cypok
   */
 case class VerificationError(errorMsg: XString, errorKind: ErrorKind, exceptionKind: ExceptionKind) extends RuntimeException {
-  def this(msg: String, errorKind: VerificationError.ErrorKind, exceptionKind: VerificationError.ExceptionKind) = {
-    this(if (msg.isEmpty) XString.empty else XString(msg), errorKind, exceptionKind)
-  }
+  // NOTE: the former auxiliary `this(msg: String, ...)` collapsed into the
+  // primary constructor when XString became an alias of String (same erasure).
 
   def toClassLoadingError = new VerificationError(errorMsg, CLASSLOADING_ERROR, exceptionKind)
 

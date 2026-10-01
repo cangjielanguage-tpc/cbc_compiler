@@ -58,8 +58,8 @@ object SignatureTraverser {
   def fromString(sig: XString): SignatureTraverser = new FromStringImpl(sig)
 
   private class FromStringImpl(sig: XString) extends SignatureTraverser {
-    private val bytes = XString.unsafeGetValue(sig)
-    private val offset = XString.unsafeGetOffset(sig)
+    // Signatures are ASCII; iterate chars directly.
+    private val offset = 0
     private val len = sig.length
     private val end = offset + len
     private var pos = offset
@@ -79,7 +79,7 @@ object SignatureTraverser {
           invalidSignature("unexpected end")
           return
         }
-        val entryChar = bytes(pos)
+        val entryChar = sig.charAt(pos)
         pos += 1
         entryChar match {
           case '(' | ')' =>
@@ -94,7 +94,7 @@ object SignatureTraverser {
             nameStart = pos
             nameLen = 0
             while (pos < end) {
-              val ch = bytes(pos)
+              val ch = sig.charAt(pos)
               pos += 1
               if (ch == ';') {
                 if (nameLen == 0) {
@@ -124,12 +124,12 @@ object SignatureTraverser {
 
     override def getPrimitiveSigChar = {
       assert(!isClass && (pos > 0))
-      bytes(pos - 1)
+      sig.charAt(pos - 1).toByte
     }
 
     override def getClassName = {
       assert(isClass)
-      XString.unsafeWrap(bytes, nameStart, nameLen)
+      sig.substring(nameStart, nameStart + nameLen)
     }
 
     override def getArrayDim = arrayDim
@@ -138,6 +138,6 @@ object SignatureTraverser {
       throw new IllegalArgumentException(s"Signature '$getSig' at index ${pos-offset}: $message")
     }
 
-    private def getSig = XString.unsafeWrap(bytes, offset, len)
+    private def getSig = sig
   }
 }

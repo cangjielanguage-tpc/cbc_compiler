@@ -8,6 +8,7 @@
 package com.huawei.excelsior.jet.pdb.archive
 
 import com.huawei.excelsior.jet.common.XString
+import xscala.text.ModifiedUtf8Encoding
 import xscala.io.TextOutput
 
 import Index.*
@@ -92,7 +93,7 @@ trait Index {
       }
 
       override def leaf(nodeID: NodeID, entryID: EntryID): Unit = {
-        f(XString.slice(buf, 0, size), entryID)
+        f(ModifiedUtf8Encoding.decodeStringPreserving(buf, 0, size), entryID)
       }
     })
   }
@@ -117,7 +118,7 @@ trait Index {
         }
         nesting += 1
         indent()
-        val name = XString.slice(chars, start, charsCnt)
+        val name = ModifiedUtf8Encoding.decodeStringPreserving(chars, start, charsCnt)
         out.print(s"$dstID:\"$name\"")
         last = FWD
       }
