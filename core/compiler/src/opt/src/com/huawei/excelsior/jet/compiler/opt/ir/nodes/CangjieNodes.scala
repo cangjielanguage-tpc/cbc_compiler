@@ -385,6 +385,7 @@ trait CangjieNodes { self: Universe =>
       (sig: @unchecked) match {
         case sig: InstantiatedType  => sig.instantiatedTypeParameters.size
         case sig: Tuple             => sig.params.size
+        case _: SignatureType.Box => 1
         case sig: CangjieEnum       => sig.params.size
         case _: ArraySlice | _: CangjieArray | _: VArray => 1
       }
