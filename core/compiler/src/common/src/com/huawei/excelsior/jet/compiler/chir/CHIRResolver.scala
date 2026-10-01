@@ -124,6 +124,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def linkageName(v: CHIR.Func | CHIR.GlobalVar | CHIR.InstanceVar): String = v match {
+    case v: CHIR.Func if bridgedRawStaticMethods.contains(v) => s"${v.identifier.tail}$$raw"
     case v: CHIR.Func => v.identifier.tail
     case v: CHIR.GlobalVar => v.identifier.tail
     case v: CHIR.InstanceVar => null
