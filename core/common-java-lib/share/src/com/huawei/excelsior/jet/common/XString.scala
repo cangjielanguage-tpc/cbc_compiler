@@ -59,7 +59,24 @@ object XString {
   * Method semantics intentionally mirror the historical byte-based XString
   * where it is observable; see the per-method notes.
   */
+  /** Fast path: most compiler strings are ASCII ("modified UTF-8" == chars).
+    * Falls back to the full modified-UTF-8 encoder otherwise. */
+  private[common] def encodedBytes(s: String): Array[Byte] = {
+    val len = s.length
+    var i = 0
+    while (i < len) {
+      val c = s.charAt(i)
+      if (c > 0x7F || c == 0) return ModifiedUtf8Encoding.encodeStringPreserving(s)
+      i += 1
+    }
+    val bytes = new Array[Byte](len)
+    i = 0
+    while (i < len) { bytes(i) = s.charAt(i).toByte; i += 1 }
+    bytes
+  }
+
 object XStringOps {
+
 
 extension (s: String) {
 
@@ -71,7 +88,7 @@ extension (s: String) {
     * Compares decoded bytes with this string's UTF-8 bytes. */
   def contentEquals(arr: Array[Byte], offset: Int, count: Int): Boolean = {
     if (offset < 0 || count < 0 || offset + count > arr.length) return false
-    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
+    val bytes = encodedBytes(s)
     bytes.length == count && {
       var i = 0
       while (i < count && bytes(i) == arr(offset + i)) do i += 1
@@ -100,13 +117,13 @@ extension (s: String) {
 
   /** Former XString.appendTo. */
   def appendTo(out: DataOutput): Unit = {
-    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
+    val bytes = encodedBytes(s)
     out.putBytes(bytes, 0, bytes.length)
   }
 
   /** Former XString.getChars into a byte array (UTF-8 bytes of this string). */
   def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Byte], dstBegin: Int): Unit = {
-    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
+    val bytes = encodedBytes(s)
     System.arraycopy(bytes, srcBegin, dst, dstBegin, srcEnd - srcBegin)
   }
 
@@ -118,7 +135,7 @@ extension (s: String) {
     * identical to char indexOf. Implemented over UTF-8 bytes so that
     * multi-byte contents behave like the old byte-based search. */
   def indexOfX(ch: Byte, fromIndex: Int): Int = {
-    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
+    val bytes = encodedBytes(s)
     var i = math.max(0, fromIndex)
     while (i < bytes.length) {
       if (bytes(i) == ch) return i
@@ -130,7 +147,7 @@ extension (s: String) {
   def indexOfX(ch: Byte): Int = s.indexOfX(ch, 0)
 
   def lastIndexOfX(ch: Byte, fromIndex: Int): Int = {
-    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
+    val bytes = encodedBytes(s)
     var i = math.min(fromIndex, bytes.length - 1)
     while (i >= 0) {
       if (bytes(i) == ch) return i
@@ -145,7 +162,7 @@ extension (s: String) {
   /** Former XString.split(ch: Byte). */
   def splitX(ch: Byte): Array[String] = {
     val parts = scala.collection.mutable.ArrayBuffer.empty[String]
-    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
+    val bytes = encodedBytes(s)
     var start = 0
     var i = 0
     while (i < bytes.length) {
@@ -161,7 +178,7 @@ extension (s: String) {
 
   /** Former XString.replace(oldChar: Byte, newChar: Byte): UTF-8 byte replace. */
   def replaceX(oldByte: Byte, newByte: Byte): String = {
-    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
+    val bytes = encodedBytes(s)
     var changed = false
     var i = 0
     while (i < bytes.length) {
