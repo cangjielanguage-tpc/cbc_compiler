@@ -19,8 +19,8 @@ object PackageWithHelpers {
 }
 
 class PackageWithHelpers(pkg: CHIR.Package, helpers: Seq[CHIR.Func]) extends CHIR.Package {
-  val helpersById = helpers.map(h => (h.id.toInt, h)).toMap
-  val helpersByName = helpers.map(h => (h.name, h)).toMap
+  private val helpersById = helpers.map(h => (h.id.toInt, h)).toMap
+  private val helpersByName = helpers.map(h => (h.name, h)).toMap
 
   def values: Iterator[CHIR.Value] = pkg.values ++ helpers.iterator
 
