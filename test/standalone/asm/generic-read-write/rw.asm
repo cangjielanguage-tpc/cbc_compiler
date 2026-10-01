@@ -38,17 +38,26 @@
 
   @method run(%0)I32
     @flags VIRTUAL
+    @saved_iregs IR11, IR12, IR13
     @code
       @live.ref IR1, IR2
       @live.prim IR3
 
-      type.arg IR4, 0, IR3
+      mov.ref IR11, IR1
+      mov.ref IR12, IR2
+      mov.64  IR13, IR3
+      @dead IR1, IR2, IR3
 
-      lea.g IR9, IR1, IR3, #foo.field
-      st.g IR2, IR1, IR9, IR4
+      type.arg IR1, 0, IR13
+      load.type.info.g IR3, default:Generic[%0]@ref
+      @dead IR1
+
+      type.arg IR4, 0, IR13
+
+      lea.g IR9, IR11, IR3, #foo.field
+      st.g IR12, IR11, IR9, IR4
       @dead IR9
 
-      @dead IR1, IR2, IR3, IR4
       movi.64 IR1, 0
       ret.64 IR1
     @end
