@@ -576,3 +576,6 @@ compiler/CHIROpt/VarInitCheck/InitOrder/circular1.cj
 compiler/CHIROpt/VarInitCheck/varray.cj
 compiler/CHIROpt/VarInitCheck/varray_if.cj
 compiler/Sema/generics/generic_subst_perf.cj
+
+# ignore due to cjts misconfiguration (line 6: $1: unbound variable)
+compiler/CHIR/AST2CHIR/BaseUseCase/function/funcNode.cj
