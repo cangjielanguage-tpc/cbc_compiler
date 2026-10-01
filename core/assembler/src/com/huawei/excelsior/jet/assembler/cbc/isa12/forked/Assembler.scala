@@ -1070,7 +1070,6 @@ trait ForkedAssembler {
       .sym16(sig)
   }
 
-// Unused. TODO: support copying in generic context
   def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = instr {
     stream
       .opc8(Opcode.CopyGeneric)
@@ -1087,7 +1086,6 @@ trait ForkedAssembler {
       .sym16(sig)
   }
 
-// Unused. TODO: support element access for generic arrays
   def index(dst: IR, src: IR, idx: IR, ti: IR): Unit = instr {
     stream
       .opc8(Opcode.IndexGeneric)

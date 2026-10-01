@@ -1442,22 +1442,23 @@ trait CHIRParser
             // TODO: ArrayIndexCheck
             val args = e.args
             val ValueSig(arrayType) = args.head
-            val (obj, idx) = args match {
-              case Seq(obj, idx) => (state(obj), state(idx))
+            val (array, idx) = args match {
+              case Seq(array, idx) => (state(array), state(idx))
             }
             val elemType = arrayType.getArrayElemType
             val n = if (elemType.isZST) {
               Void()
-            } else if (elemType.isVariableSizeType) {
-                notImplemented("ArrayGet of generic array is not supported")
             } else {
-              val get = ArrayGet(arrayType)(obj, idx)
-              if (needsCopy(elemType)) {
+              val field = arrayIndex(arrayType, idx)
+              if (elemType.isVariableSizeType) {
+                LoadFieldSeq(maybeDerivedPtrBase(array), array, field, loadTypeInfo(elemType))
+              } else if (needsCopy(elemType)) {
                 val local = StackAlloc.Local(elemType)
-                copy(elemType, local, get)
+                val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
+                copy(elemType, local, addr)
                 local
               } else {
-                get
+                LoadFieldSeq(maybeDerivedPtrBase(array), array, field)
               }
             }
             state(e) = n
@@ -2423,23 +2424,27 @@ trait CHIRParser
       }
     }
 
-    private def arrayPut(arrayType: SignatureType, obj: Node, idx: Node, value: Node): Unit = {
+    private def arrayPut(arrayType: SignatureType, array: Node, idx: Node, value: Node): Unit = {
       val elemType = arrayType.getArrayElemType
       if (elemType.isZST) {
         // nop
-      } else if (elemType.isVariableSizeType) {
-        notImplemented("ArrayPut to generic array is not supported")
-      } else if (needsCopy(elemType)) {
-        val addr = ArrayGet(arrayType)(obj, idx)
-        copy(elemType, addr, value)
       } else {
-        ArrayPut(arrayType)(obj, idx, value)
+        val field = arrayIndex(arrayType, idx)
+        if (elemType.isVariableSizeType) {
+          StoreFieldSeq(maybeDerivedPtrBase(array), array, value, field, loadTypeInfo(elemType))
+        }
+        else if (needsCopy(elemType)) {
+          val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
+          copy(elemType, addr, value)
+        } else {
+          StoreFieldSeq(maybeDerivedPtrBase(array), array, value, field)
+        }
       }
     }
 
-    private def varrayIndex(arrayType: SignatureType.VArray, index: Node): CangjieReferenceNode = index match {
-      case IntegralConst(i) => createConstIndexNode(i.toInt, arrayType, arrayType.elemType)
-      case _ => createIndexNode(index, arrayType, arrayType.elemType)
+    private def arrayIndex(arrayType: SignatureType, index: Node): CangjieReferenceNode = index match {
+      case IntegralConst(i) => createConstIndexNode(i.toInt, arrayType, arrayType.getArrayElemType)
+      case _ => createIndexNode(index, arrayType, arrayType.getArrayElemType)
     }
 
     private def varrayGet(arrayType: SignatureType.VArray, array: Node, index: Node): Node = {
@@ -2447,7 +2452,7 @@ trait CHIRParser
       if (elemType.isZST) {
         Void()
       } else {
-        val field = varrayIndex(arrayType, index)
+        val field = arrayIndex(arrayType, index)
         if (needsCopy(elemType)) {
           val local = StackAlloc.Local(elemType)
           val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
@@ -2462,7 +2467,7 @@ trait CHIRParser
     private def varrayPut(arrayType: SignatureType.VArray, array: Node, index: Node, value: Node): Unit = {
       val elemType = arrayType.elemType
       if (!elemType.isZST) {
-        val field = varrayIndex(arrayType, index)
+        val field = arrayIndex(arrayType, index)
         if (needsCopy(elemType)) {
           val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
           copy(elemType, addr, value)
