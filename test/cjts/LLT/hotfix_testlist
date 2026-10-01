@@ -399,6 +399,12 @@ compiler/CodegenCHIR/overflow/sub_saturating.cj
 compiler/CodegenCHIR/overflow/sub_throwing.cj
 compiler/CodegenCHIR/overflow/sub_wrapping.cj
 
+# bug 101 (compiler incorrectly preserve SRET flag in ABI for overriden methods)
+compiler/CodegenCommon/enum/enum_fix_02.cj
+compiler/Sema/forin/closedrange_rune.cj
+compiler/Sema/range/range_class_02.cj
+compiler/Sema/range/range_class_03.cj
+
 # uses --debug-annotations
 compiler/CHIR/ComputeAnnotations
 
