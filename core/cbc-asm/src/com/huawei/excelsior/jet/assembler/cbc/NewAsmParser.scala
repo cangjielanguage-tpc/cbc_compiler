@@ -26,6 +26,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, ForkedAssembler}
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Segment, Width}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
+import com.huawei.excelsior.jet.compiler.chir.ThrowHelper
 import xscala.io.*
 
 import scala.PartialFunction.condOpt
@@ -722,16 +723,15 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
    * You should not call them from asm.
    */
   private class HelpersGenerator() {
-
-    private val helperNames = Seq("throwAbstractMethodCallError", "throwSymbolResolutionError")
-
     def generate(): Unit = {
+      val throwHelpers = ThrowHelper.throwHelpers
+
       val tb = builder.newTypeBuilder()
       tb.setName("$P$cbc_intrinsics")
-      for (helper <- helperNames) {
+      for (helper <- throwHelpers) {
         val mb = tb.newMethodBuilder()
-        mb.setName(helper)
-        HelperGenerator(helper).generate(mb)
+        mb.setName(helper.name)
+        HelperGenerator(helper.name).generate(mb)
       }
     }
 

@@ -26,17 +26,9 @@ object PackageWithHelpers {
 class PackageWithHelpers(pkg: CHIR.Package, helpers: Seq[CHIR.Func], helpersById: mutable.HashMap[Int, CHIR.Func], helpersByName: mutable.HashMap[String, CHIR.Func]) extends CHIR.Package {
   def values: Iterator[CHIR.Value] = pkg.values ++ helpers.iterator
 
-  def function(idx: Int): CHIR.Func = if (helpersById.contains(idx)) {
-    helpersById(idx)
-  } else {
-    pkg.function(idx)
-  }
+  def function(idx: Int): CHIR.Func = helpersById.getOrElse(idx, pkg.function(idx))
 
-  def getFunc(identifier: String): Option[CHIR.Func] = if (helpersByName.contains(identifier)) {
-    Option(helpersByName(identifier))
-  } else {
-    pkg.getFunc(identifier)
-  }
+  def getFunc(identifier: String): Option[CHIR.Func] = helpersByName.get(identifier).orElse(pkg.getFunc(identifier))
 
   // Forwarders
   def getDef(identifier: String): Option[CHIR.CustomTypeDef] = pkg.getDef(identifier)

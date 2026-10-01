@@ -188,7 +188,7 @@ object Build {
     .disablePlugins(JUnitXmlReportPlugin)
 
   lazy val cbcAsm = (project in file("core/cbc-asm"))
-    .dependsOn(assembler % "test->test;compile->compile", commonJavaLib % "test->test;compile->compile", xscalaVMDependent)
+    .dependsOn(assembler % "test->test;compile->compile", commonJavaLib % "test->test;compile->compile", xscalaVMDependent, chirLib)
     .settings(commonSourceTestLayout, commonTestSettings, javaTestSettings)
     .settings(
       compilerAssemblySettings(),
