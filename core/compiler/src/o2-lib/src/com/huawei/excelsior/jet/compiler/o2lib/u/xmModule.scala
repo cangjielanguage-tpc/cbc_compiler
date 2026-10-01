@@ -12,6 +12,7 @@ import com.huawei.excelsior.common.Arch.*
 import com.huawei.excelsior.common.Language.{CANGJIE, JAVA}
 import com.huawei.excelsior.common.{JetDirs, Language, LanguagePack}
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.debug.dwarf.Dwarf
 import com.huawei.excelsior.jet.compiler.driver.ProjectLogic
@@ -65,12 +66,8 @@ object xmModule { /* Ned 03-Mar-94. */
       of SetResource enumeration
   */
 
-  private class SetResourceEquation(name: XString, type0: SetResource, checked: SmartKind)
+  private class SetResourceEquation(name: XString, type0: SetResource, checked: SmartKind = Checked)
     extends env.Equation(name, checked) {
-
-    def this(name: String, type0: SetResource, checked: SmartKind = Checked) = {
-      this(js.newJString(name), type0, checked)
-    }
 
     //@Override
     override def verify(): Unit = {

@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.xmlib
 
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.o2lib.o2.CharClassModule as CharClass
 import com.huawei.excelsior.jet.compiler.o2lib.u.{JStringsModule as js, xiFilesModule as xfs}
@@ -130,7 +131,7 @@ object FSModule {
       0
     }
 
-    private def isSeparator(char: Byte) = separators contains char.toChar
+    private def isSeparator(char: Char) = separators contains char
   }
 
   object Unix extends HostFilesystem {

@@ -8,6 +8,8 @@
 
 package com.huawei.excelsior.jet.compiler.opt.backend.cbc.codegen
 
+import com.huawei.excelsior.jet.common.XStringOps.*
+
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.AsmType.*
 import com.huawei.excelsior.jet.assembler.Width.{W32, W64}

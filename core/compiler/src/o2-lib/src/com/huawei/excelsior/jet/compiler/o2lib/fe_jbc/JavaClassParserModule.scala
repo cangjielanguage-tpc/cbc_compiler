@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.fe_jbc
 
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.debug.dwarf.entries.langjava.MethodInfo
 import com.huawei.excelsior.jet.compiler.o2lib.fe.pc
 import com.huawei.excelsior.jet.compiler.o2lib.fe_jbc.JavaClassParserModule.PtrBootstrapMethod

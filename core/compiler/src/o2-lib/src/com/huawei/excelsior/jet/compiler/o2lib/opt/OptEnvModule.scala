@@ -12,6 +12,7 @@ import com.huawei.excelsior.common.Language.JAVA
 import com.huawei.excelsior.common.LanguagePack
 import com.huawei.excelsior.jet.codeemitter.SymbolInfo
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.languagePack
 import com.huawei.excelsior.jet.compiler.bytecode.{BytecodeTypeKind, MethodAccessKind}
 import com.huawei.excelsior.jet.compiler.o2lib.be_386.{CodeDefModule as cd, opAttrsModule as at, opDefModule as opDef, opStdModule as opStd}

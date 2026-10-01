@@ -299,10 +299,8 @@ trait AJNodes { self: Universe with ObjectOperationNodes =>
     def unapply(x: AJString) = Some(x.str, x.bstr)
 
     def bstr(str: XString): Node = apply(str, bstr = true)
-    def bstr(str: String): Node = bstr(XString(str))
 
     def ustr(str: XString): Node = apply(str, bstr = false)
-    def ustr(str: String): Node = ustr(XString(str))
   }
 
 

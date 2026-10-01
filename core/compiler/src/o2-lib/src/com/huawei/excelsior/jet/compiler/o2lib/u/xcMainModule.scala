@@ -12,6 +12,7 @@ import com.huawei.excelsior.common.Arch.*
 import com.huawei.excelsior.common.Language.JAVA
 import com.huawei.excelsior.common.LanguagePack
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.delayed.DelayedIntrinsicsUsageTracker
 import com.huawei.excelsior.jet.compiler.driver.ProjectLogic

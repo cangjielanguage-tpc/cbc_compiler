@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.o2lib.u.PDB
 
 import com.huawei.excelsior.jet.common.*
 import com.huawei.excelsior.jet.common.XString.xstr
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.o2lib.u.PDB.xArchiveModule.ArchiveEntry
 import com.huawei.excelsior.jet.compiler.o2lib.u.PDB.{xArchiveModule as xArchive, xPDBModule as xPDB}
 import com.huawei.excelsior.jet.compiler.o2lib.u.{JStringsModule as js, xRamFileModule as xRamFile, xiEnvModule as env, xiFilesModule as xfs, xmErrorsModule as xmErrors}

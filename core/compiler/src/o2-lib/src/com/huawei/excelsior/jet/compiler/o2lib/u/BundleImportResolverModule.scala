@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.u
 
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.RTConst
 import com.huawei.excelsior.jet.compiler.o2lib.fe.pcOModule.ClassloaderIDGetter
 import com.huawei.excelsior.jet.compiler.o2lib.fe.{pc, pcNamesModule as pcNames, pcOModule as pcO}

@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.o2lib.fe
 
 import com.huawei.excelsior.common.{CodeHelpers, Language}
 import com.huawei.excelsior.jet.common.XString
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.languagePack
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker.ARRAY_SLICE_NAME

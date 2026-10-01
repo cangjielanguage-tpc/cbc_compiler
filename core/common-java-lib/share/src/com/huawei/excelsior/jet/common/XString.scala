@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.common
 
 import xscala.io.{DataInput, DataOutput}
+import xscala.text.ModifiedUtf8Encoding
 
 /** XString is now a plain [[java.lang.String]].
   *
@@ -33,6 +34,9 @@ object XString {
 
   /** Identity: strings are already strings. */
   def apply(str: String): String = str
+
+  /** Extractor: matches any string, binds its content. */
+  def unapply(x: String): Option[String] = Some(x)
 
   /** Empty string. */
   def empty: String = ""
@@ -67,7 +71,7 @@ extension (s: String) {
     * Compares decoded bytes with this string's UTF-8 bytes. */
   def contentEquals(arr: Array[Byte], offset: Int, count: Int): Boolean = {
     if (offset < 0 || count < 0 || offset + count > arr.length) return false
-    val bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
     bytes.length == count && {
       var i = 0
       while (i < count && bytes(i) == arr(offset + i)) do i += 1
@@ -78,9 +82,8 @@ extension (s: String) {
   /** Former XString.utf8ToString: identity now. */
   def utf8ToString: String = s
 
-  /** Former XString.platformToString: decode with platform encoding. */
-  def platformToString: String =
-    new String(s.getBytes(java.nio.charset.StandardCharsets.UTF_8), java.nio.charset.Charset.defaultCharset())
+  /** Former XString.platformToString: identity now (already a String). */
+  def platformToString: String = s
 
   /** Former XString.toPlatformBytes. */
   def toPlatformBytes: Array[Byte] =
@@ -93,16 +96,17 @@ extension (s: String) {
   def equals2(str2: String): Boolean = s == str2
 
   /** Former XString.asInput: DataInput over this string's UTF-8 bytes. */
-  def asInput: DataInput = DataInput.from(s.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+  def asInput: DataInput = DataInput.from(ModifiedUtf8Encoding.encodeStringPreserving(s))
 
   /** Former XString.appendTo. */
   def appendTo(out: DataOutput): Unit = {
-    out.putBytes(s.getBytes(java.nio.charset.StandardCharsets.UTF_8), 0, s.length)
+    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
+    out.putBytes(bytes, 0, bytes.length)
   }
 
   /** Former XString.getChars into a byte array (UTF-8 bytes of this string). */
   def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Byte], dstBegin: Int): Unit = {
-    val bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
     System.arraycopy(bytes, srcBegin, dst, dstBegin, srcEnd - srcBegin)
   }
 
@@ -114,7 +118,7 @@ extension (s: String) {
     * identical to char indexOf. Implemented over UTF-8 bytes so that
     * multi-byte contents behave like the old byte-based search. */
   def indexOfX(ch: Byte, fromIndex: Int): Int = {
-    val bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
     var i = math.max(0, fromIndex)
     while (i < bytes.length) {
       if (bytes(i) == ch) return i
@@ -126,7 +130,7 @@ extension (s: String) {
   def indexOfX(ch: Byte): Int = s.indexOfX(ch, 0)
 
   def lastIndexOfX(ch: Byte, fromIndex: Int): Int = {
-    val bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
     var i = math.min(fromIndex, bytes.length - 1)
     while (i >= 0) {
       if (bytes(i) == ch) return i
@@ -141,42 +145,39 @@ extension (s: String) {
   /** Former XString.split(ch: Byte). */
   def splitX(ch: Byte): Array[String] = {
     val parts = scala.collection.mutable.ArrayBuffer.empty[String]
-    val bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
     var start = 0
     var i = 0
     while (i < bytes.length) {
       if (bytes(i) == ch) {
-        parts += new String(bytes, start, i - start, java.nio.charset.StandardCharsets.UTF_8)
+        parts += ModifiedUtf8Encoding.decodeStringPreserving(bytes, start, i - start)
         start = i + 1
       }
       i += 1
     }
-    parts += new String(bytes, start, bytes.length - start, java.nio.charset.StandardCharsets.UTF_8)
+    parts += ModifiedUtf8Encoding.decodeStringPreserving(bytes, start, bytes.length - start)
     parts.toArray
   }
 
   /** Former XString.replace(oldChar: Byte, newChar: Byte): UTF-8 byte replace. */
   def replaceX(oldByte: Byte, newByte: Byte): String = {
-    val bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    val bytes = ModifiedUtf8Encoding.encodeStringPreserving(s)
     var changed = false
     var i = 0
     while (i < bytes.length) {
       if (bytes(i) == oldByte) { bytes(i) = newByte; changed = true }
       i += 1
     }
-    if (changed) new String(bytes, java.nio.charset.StandardCharsets.UTF_8) else s
+    if (changed) ModifiedUtf8Encoding.decodeStringPreserving(bytes) else s
   }
 
   /** Former XString.trim (byte-based whitespace: space and tab only). */
   def trimX: String = s.trim
 
-  /** Former XString.startsWith(prefix, startIndex). */
-  def startsWithX(prefix: String, startIndex: Int): Boolean =
-    s.startsWith(prefix, startIndex)
-
   /** Former XString.startsWithIgnoreCase(prefix, startIndex): ASCII-only
-    * case-insensitive comparison, as in the old implementation. */
-  def startsWithIgnoreCaseX(prefix: String, startIndex: Int): Boolean = {
+    * case-insensitive comparison, as in the old implementation.
+    * (2-arg startsWith is covered natively by java.lang.String.) */
+  def startsWithIgnoreCase(prefix: String, startIndex: Int): Boolean = {
     if (startIndex < 0 || startIndex > s.length) return false
     if (s.length - startIndex < prefix.length) return false
     var i = 0

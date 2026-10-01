@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.o2lib.u
 
 import com.huawei.excelsior.common.Language.JAVA
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.o2lib.fe.{pc, ObjNamesModule as ObjNames, pcNamesModule as pcNames, pcOModule as pcO}
 import com.huawei.excelsior.jet.compiler.o2lib.fe_jbc.jbcFrontModule as jbcFront

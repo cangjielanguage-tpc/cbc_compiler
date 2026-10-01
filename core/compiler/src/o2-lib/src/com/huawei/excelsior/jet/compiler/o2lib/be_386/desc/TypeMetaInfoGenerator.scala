@@ -11,6 +11,7 @@ package com.huawei.excelsior.jet.compiler.o2lib.be_386.desc
 import com.huawei.excelsior.jet.assembler
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.*
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.layout.FieldsLayout
 import com.huawei.excelsior.jet.compiler.layout.FieldsLayout.FieldOffs

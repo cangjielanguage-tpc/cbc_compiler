@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.u
 
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.o2lib.opt.VZCModule as VZC
 import com.huawei.excelsior.jet.compiler.o2lib.o2.CharClassModule as CharClass

@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.o2lib.fe
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotCallThis
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.o2lib.o2.CharClassModule as CharClass
 import com.huawei.excelsior.jet.compiler.o2lib.u.{JStringsModule as js, xiEnvModule as xiEnv, xiFilesModule as xiFiles}
 import com.huawei.excelsior.jet.compiler.o2lib.xmlib.FSModule as FS

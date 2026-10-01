@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.xmlib.JZip
 
 import com.huawei.excelsior.jet.common.XString
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.xminizip.Minizip
 import xscala.io.DataInput
 

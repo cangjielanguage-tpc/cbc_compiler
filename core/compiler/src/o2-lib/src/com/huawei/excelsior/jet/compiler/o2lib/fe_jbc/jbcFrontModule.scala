@@ -12,6 +12,7 @@ import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.common.Language.JAVA
 import com.huawei.excelsior.common.LanguagePack
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.languagePack
 import com.huawei.excelsior.jet.compiler.Stage
 import com.huawei.excelsior.jet.compiler.lambda.LambdaTypeGenerator

@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.projectsystem
 
 import com.huawei.excelsior.jet.common.XString
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.o2lib.u.ErrMsg.*
 import com.huawei.excelsior.jet.compiler.o2lib.u.xiEnvModule as env
 import xscala.util.UByte

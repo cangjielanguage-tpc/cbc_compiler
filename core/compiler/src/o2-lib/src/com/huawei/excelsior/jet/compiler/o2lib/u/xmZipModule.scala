@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.u
 
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.o2lib.u.{JStringsModule as js, TextFileModule as TextFile, xRamFileModule as xRamFile, xiFilesModule as xfs}
 import com.huawei.excelsior.jet.compiler.o2lib.xmlib.FSModule as FS
 import com.huawei.excelsior.jet.compiler.o2lib.xmlib.JZip.{ZipEntry, ZipFileModule as ZipFile}

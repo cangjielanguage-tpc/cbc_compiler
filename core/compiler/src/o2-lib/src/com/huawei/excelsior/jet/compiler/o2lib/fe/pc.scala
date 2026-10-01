@@ -222,9 +222,7 @@ object pc {
     class Const(_mno: MNO, _nameObj: pcNames.NAME, _size: Option[Int]) extends Sized(_mno, _nameObj, _size)
 
     /** Read-write data - initialized at program start (owns segment) or uninitialized. */
-    class RW(_mno: MNO, _name: XString, _size: Option[Int]) extends Sized(_mno, pcNames.RawName(_name), _size) {
-      def this(_mno: MNO, _name: String, _size: Option[Int]) = this(_mno, js.newJString(_name), _size)
-    }
+    class RW(_mno: MNO, _name: XString, _size: Option[Int]) extends Sized(_mno, pcNames.RawName(_name), _size)
 
     class TypeInfo(val tpe: SymType, _name: String, _size: Option[Int] = None) extends RW(tpe.mno, _name, _size)
 

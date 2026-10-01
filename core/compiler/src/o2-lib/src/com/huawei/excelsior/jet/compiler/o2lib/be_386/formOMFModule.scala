@@ -13,6 +13,7 @@ import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.*
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.debug.dwarf.DwarfLinker.HeaderInfo
 import com.huawei.excelsior.jet.compiler.o2lib.be_386.CodeDefModule.Segment

@@ -293,7 +293,6 @@ trait LambdaLoading { this: Universe =>
     }
   }
 
-  private def strConst(str: String): Node = strConst(xstr(str))
   private def strConst(str: XString): Node =
     ConstString(loadedMethod.getDeclaringClass.getConstString(str), typeProvider.getStringType)()
   

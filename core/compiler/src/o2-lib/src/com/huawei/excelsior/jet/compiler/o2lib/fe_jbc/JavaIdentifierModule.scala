@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.fe_jbc
 
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.o2j.runtime.*
 import com.huawei.excelsior.o2s.runtime.*
 import com.huawei.excelsior.o2s.runtime.O2SSupport.Keywords.*

@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.xmlib
 
 import com.huawei.excelsior.jet.common.XString
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.o2lib.u.JStringsModule
 import xscala.io.{DataOutput, Path}
 

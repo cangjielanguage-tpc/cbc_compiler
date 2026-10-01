@@ -13,6 +13,7 @@ import com.huawei.excelsior.jet.assembler
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.*
 import com.huawei.excelsior.jet.assembler.fixups.{Relocation, RelocationKind}
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.o2lib.be_386.opAttrsModule as at
 import com.huawei.excelsior.jet.compiler.o2lib.fe.pc
 import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironment.getO2Method

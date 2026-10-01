@@ -19,6 +19,8 @@ object CharClassModule {
 
   def isUpper(ch: Byte) = (ch >= 'A') && (ch <= 'Z')
 
+  def isUpper(ch: Char) = (ch >= 'A') && (ch <= 'Z')
+
   def isWhiteSpace(ch: Char) = (ch == ' ') || (ch == '\t')
 
   def isWhiteSpace(ch: Byte) = (ch == ' ') || (ch == '\t')

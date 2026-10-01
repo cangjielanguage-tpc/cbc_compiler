@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.o2lib.fe
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.o2lib.opt.O2Env
 import com.huawei.excelsior.jet.compiler.o2lib.fe.{pcNamesModule as pcNames, pcOModule as pcO}
 import com.huawei.excelsior.jet.compiler.o2lib.u.ErrMsg.*

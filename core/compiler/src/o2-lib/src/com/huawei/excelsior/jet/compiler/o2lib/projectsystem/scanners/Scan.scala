@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.projectsystem.scanners
 
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.o2lib.o2.CharClassModule as CharClass
 import com.huawei.excelsior.jet.compiler.o2lib.projectsystem.CPEntryModes.CPEntryMode
 import com.huawei.excelsior.jet.compiler.o2lib.projectsystem.ErrorMessages.*

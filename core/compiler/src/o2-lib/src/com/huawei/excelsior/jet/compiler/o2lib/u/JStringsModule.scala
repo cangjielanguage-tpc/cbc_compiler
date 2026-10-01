@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.u
 
 import com.huawei.excelsior.jet.common.XString
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.isWorkMode
 import com.huawei.excelsior.jet.compiler.symlevel.{MethodSignature, SignatureType}
 import com.huawei.excelsior.o2j.runtime.O2JSupport

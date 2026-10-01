@@ -10,6 +10,7 @@ package com.huawei.excelsior.jet.compiler.o2lib.u.PDB
 
 import com.huawei.excelsior.common.Arch.CBC
 import com.huawei.excelsior.jet.common.*
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.Stage
 import com.huawei.excelsior.jet.compiler.driver.CompilationWorker

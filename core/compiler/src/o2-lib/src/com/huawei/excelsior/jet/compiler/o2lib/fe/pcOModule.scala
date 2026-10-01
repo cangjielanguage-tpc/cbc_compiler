@@ -13,6 +13,7 @@ import com.huawei.excelsior.common.{Arch, DataAnnotationParsing}
 import com.huawei.excelsior.common.Language.{JAVA, SCALA}
 import com.huawei.excelsior.jet.common.*
 import com.huawei.excelsior.jet.common.XString.xstr
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.abi.ABI.makeABISignature

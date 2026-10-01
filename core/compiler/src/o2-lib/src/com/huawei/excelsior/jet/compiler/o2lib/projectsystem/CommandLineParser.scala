@@ -8,6 +8,8 @@
 
 package com.huawei.excelsior.jet.compiler.o2lib.projectsystem
 
+import com.huawei.excelsior.jet.common.XStringOps.*
+
 import com.huawei.excelsior.jet.compiler.driver.ProjectLogic
 import com.huawei.excelsior.jet.compiler.o2lib.projectsystem.DecorParser.parseDecor
 import com.huawei.excelsior.jet.compiler.o2lib.projectsystem.ErrorMessages.{configResToMsg, msg_error_in_command_line, msg_syntax_error}

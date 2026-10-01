@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.o2lib.projectsystem.scanners
 
 import com.huawei.excelsior.jet.common.XString
+import com.huawei.excelsior.jet.common.XStringOps.*
 import com.huawei.excelsior.jet.compiler.o2lib.o2.CharClassModule as CharClass
 import com.huawei.excelsior.jet.compiler.o2lib.projectsystem.ErrorMessages.msg_syntax_error
 import com.huawei.excelsior.jet.compiler.o2lib.projectsystem.{AbstractProject, DirIterator}
