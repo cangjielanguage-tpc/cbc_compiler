@@ -22,21 +22,23 @@ object AOTDefs {
   def errToString(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat5Error8toStringHv").get
   def handleExFunc(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat15handleExceptionHCNat9ExceptionE").get
   def atExitCallbacks(implicit pkg: CHIR.Package) = pkg.getFunc("_CNat27CJ_CORE_ExecAtexitCallbacksHv").get
-
 }
 
 object CHIRHelperGenerator {
     val cjEntryName = "cj_entry"
 }
 
-class CHIRHelperGenerator(_pkg: CHIR.Package) {
-  implicit val pkg: CHIR.Package = _pkg
-  // If you add new throw helpers you should also add them to
-  // NewAsmParser to synthesize fake throwers for asm tests
-  private val throwHelpers = Seq(
+object ThrowHelper {
+  def throwHelpers: Seq[ThrowHelper] = Seq(
     ThrowHelper("throwSymbolResolutionError", "CBC internal error: symbol resolution error"),
     ThrowHelper("throwAbstractMethodCallError", "CBC internal error: abstract method was called")
   )
+}
+
+case class ThrowHelper(name: String, exceptionMsg: String)
+
+class CHIRHelperGenerator(_pkg: CHIR.Package) {
+  implicit val pkg: CHIR.Package = _pkg
 
   private def generateHelper(_id: Long, _name: String,
                              _tpe: CHIR.FuncType,
@@ -59,8 +61,6 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
     }
   }
-
-  private case class ThrowHelper(name: String, exceptionMsg: String)
 
   private object ThrowHelperGenerator {
     private def throwHelperType: CHIR.FuncType = new CHIR.FuncType {
@@ -91,12 +91,12 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
       id => generateHelper(id, helper.name, throwHelperType, throwHelperBody(throwHelper = helper))
   }
 
-  private class CHIRCJEntryGenerator(_id: Long, userMain: CHIR.Func) {
+  private class CHIRCJEntryGenerator(userMain: CHIR.Func) {
     private val Bool = CHIR.BuiltinType.Boolean
     private val Unit = CHIR.BuiltinType.Unit
     private val Int64 = CHIR.BuiltinType.Int64
 
-    def gen(): CHIR.Func = {
+    private def gen(_id: Long): CHIR.Func = {
       new CHIR.Func {
         private var _retVal: CHIR.LocalVar = _
 
@@ -227,12 +227,14 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
         def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
       }
     }
+
+    def cjEntry: Int => CHIR.Func = id => gen(id)
   }
 
 
   def generateHelpers: Seq[Int => CHIR.Func] = {
-    val throwHelperFuncs = throwHelpers.map(ThrowHelperGenerator.throwHelper(_))
-    val cjEntry = pkg.getFunc("user.main").map((mainFunc: CHIR.Func) => (id: Int) => CHIRCJEntryGenerator(id, mainFunc).gen())
+    val throwHelperFuncs = ThrowHelper.throwHelpers.map(ThrowHelperGenerator.throwHelper(_))
+    val cjEntry = pkg.getFunc("user.main").map(CHIRCJEntryGenerator(_).cjEntry)
     throwHelperFuncs ++ cjEntry.iterator
   }
 }
