@@ -14,16 +14,14 @@ object PackageWithHelpers {
     val ids = startingId until (startingId + helperGenerators.length)
     val helpers = helperGenerators.zip(ids).map((helperGen, id) => helperGen(id))
 
-    for (helper <- helpers) {
-      helpersById(helper.id.toInt) = helper
-      helpersByName(helper.name) = helper
-    }
-
-    new PackageWithHelpers(pkg, helpers, helpersById, helpersByName)
+    new PackageWithHelpers(pkg, helpers)
   }
 }
 
-class PackageWithHelpers(pkg: CHIR.Package, helpers: Seq[CHIR.Func], helpersById: mutable.HashMap[Int, CHIR.Func], helpersByName: mutable.HashMap[String, CHIR.Func]) extends CHIR.Package {
+class PackageWithHelpers(pkg: CHIR.Package, helpers: Seq[CHIR.Func]) extends CHIR.Package {
+  val helpersById = helpers.map(h => (h.id.toInt, h)).toMap
+  val helpersByName = helpers.map(h => (h.name, h)).toMap
+
   def values: Iterator[CHIR.Value] = pkg.values ++ helpers.iterator
 
   def function(idx: Int): CHIR.Func = helpersById.getOrElse(idx, pkg.function(idx))
