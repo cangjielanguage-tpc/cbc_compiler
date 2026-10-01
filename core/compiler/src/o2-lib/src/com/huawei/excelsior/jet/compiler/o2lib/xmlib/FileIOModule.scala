@@ -21,8 +21,10 @@ object FileIOModule {
 
     def fprintf(fmt: String, args: Any*): Unit = {
       val str = JStringsModule.format(fmt, args: _*)
+      // js.StringBuffer strings are ISO-8859-1 (byte == char): copy directly.
       val data = new Array[Byte](str.length)
-      str.getChars(data, 0)
+      var i = 0
+      while (i < data.length) { data(i) = str.charAt(i).toByte; i += 1 }
       writeBlock(data, 0, data.length)
     }
 

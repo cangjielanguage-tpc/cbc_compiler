@@ -98,8 +98,13 @@ object JStringsModule {
     def appendString(s: XString): Unit = {
       if (!s.isEmpty) {
         ensureCapacity(len + s.length)
-        s.getChars(0, s.length, buf, len)
-        len += s.length
+        // StringBuffer bytes are ISO-8859-1 (byte == char, see appendChar).
+        // Copy chars directly; do NOT route through the modified-UTF-8
+        // XStringOps.getChars (that re-encodes the whole string per append).
+        var i = 0
+        val n = s.length
+        while (i < n) { buf(len + i) = s.charAt(i).toByte; i += 1 }
+        len += n
       }
     }
 
@@ -118,7 +123,8 @@ object JStringsModule {
         return
       ensureCapacity(this.len + len)
       this.moveChars(index, index + len, this.len - index)
-      str.getChars(0, len, buf, index)
+      var i = 0
+      while (i < len) { buf(index + i) = str.charAt(i).toByte; i += 1 }
       this.len += len
     }
 
