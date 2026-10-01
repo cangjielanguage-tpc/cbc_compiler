@@ -194,6 +194,9 @@ compiler/Sema/interface/interface_default_impl/prop_call_unimpl_static_func.cj
 compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_005.cj
 compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
 compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
+compiler/Sema/class/class_static_member_func_inheritance_2.cj
+compiler/Sema/class/interface_no_override_modifier_2.cj
+compiler/Sema/class/interface_static_member_func_inheritance_1.cj
 
 # bug: #46 (CBC-compiler generated call.interf.g to "non-boxed" method which is absent in method table)
 compiler/CHIR/CHIR2HLIR/record/mut/record_mut_ok_6.cj
@@ -287,6 +290,14 @@ compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_2.
 compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_7.cj
 compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic09.cj
 compiler/Sema/typealias/import_alias/typeaslias.cj
+compiler/CHIR/StaticAbstractMark/import3/main.cj
+compiler/CHIR/StaticAbstractMark/import5/main.cj
+compiler/CHIR/StaticAbstractMark/main.cj
+compiler/CHIR/UG/StaticFunc/funcAsVar01.cj
+compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
+compiler/CodegenCJNative/vfe/vfe_01.cj
+compiler/Sema/function/interface_def_val.cj
+compiler/Sema/generics/generic_static_field_prop/generic_static_nested_func.cj
 
 # bug 84 (ZeroSizedEnum in match expression)
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
@@ -404,6 +415,48 @@ compiler/CodegenCommon/enum/enum_fix_02.cj
 compiler/Sema/forin/closedrange_rune.cj
 compiler/Sema/range/range_class_02.cj
 compiler/Sema/range/range_class_03.cj
+
+# bug 103 (static interface call with generic upper bound)
+compiler/Sema/Extend/interface_default_implement/static_default_impl_call_non_impl_pass.cj
+compiler/Sema/function/defaultParameter6.cj
+compiler/Sema/generics/generic_member10/main.cj
+compiler/Sema/generics/in_package_inst_1.cj
+compiler/Sema/generics/instantiation_rearrange_01/test.cj
+compiler/Sema/generics/rearrange_multi_impl/main.cj
+compiler/Sema/interface/abstract_static_generic_function_01.cj
+compiler/Sema/interface/abstract_static_generic_function_02.cj
+
+# bug 104 (properly support generic struct copy)
+compiler/CodegenCJNative/generic/generic_function1.cj
+compiler/CodegenCJNative/interface/GenericRecordExtendInterfaceGenericConstraint.cj
+compiler/CodegenCJNative/trycatch/zerovalue.cj
+compiler/Sema/Extend/interface_default_implement/other_pkg_in_generic/main.cj
+compiler/Sema/PatternMatching/MatchExpression/match016.cj
+compiler/Sema/record/record_this2.cj
+compiler/Sema/record/record_this3.cj
+
+# bug 105 (support CHIR.CastToGeneric in CHIRParser)
+compiler/CodegenCJNative/ExtensionDef/extensiondef_07.cj
+compiler/CodegenCJNative/record/record_5.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00100.cj
+compiler/Sema/IsOrAsExpr/import_generic_as_01/test.cj
+compiler/Sema/class/interface_default_implemented_func_generic_valid_1.cj
+compiler/Sema/class/interface_default_implemented_func_generic_valid_3.cj
+
+# bug 106 (mut interface method access of generic field)
+compiler/CodegenCJNative/generic/generic_struct2.cj
+compiler/CodegenCJNative/generic/generic_struct3.cj
+compiler/CodegenCJNative/generic/generic_struct4.cj
+compiler/CodegenCJNative/generic/generic_struct5.cj
+
+# bug 107 (Array of Varrays fails to compile)
+compiler/CodegenCJNative/array/array_zero_value.cj
+compiler/CodegenCJNative/constant/constant_03.cj
+compiler/CodegenCJNative/varray/varray_array1.cj
+
+# bug 109 (inconsistent rules for signatures while parsing Box-based functions)
+compiler/Sema/unusedImport/unusedImport002/unused011.cj
+compiler/Sema/unusedImport/unusedImport004/unused009.cj
 
 # uses --debug-annotations
 compiler/CHIR/ComputeAnnotations
