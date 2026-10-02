@@ -1,0 +1,122 @@
+#include <Wire.h>
+#include <I2Cdev.h>
+#include <MPU6050.h>
+#include <Mouse.h>
+#include <Keyboard.h>
+
+MPU6050 mpu;
+
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+
+const int leftButton = 4;
+const int rightButton = 5;
+const int lockButton = 7; 
+
+int lastLeftState = LOW;
+int lastRightState = LOW;
+int lastLockState = LOW;
+unsigned long touchStartTime = 0;
+bool isLockedTriggered = false;
+
+// --- НАСТРОЙКИ ИДЕАЛЬНОЙ ПЛАВНОСТИ (ГИРОСКОП) ---
+const float filterKoef = 0.35; 
+const int sensitivity = 160;   
+const int deadZone = 15;       
+
+long gyroX_offset = 0;
+long gyroY_offset = 0;
+float filteredX = 0;
+float filteredY = 0;
+
+void setup() {
+  pinMode(leftButton, INPUT);
+  pinMode(rightButton, INPUT);
+  pinMode(lockButton, INPUT);
+  
+  // УБРАЛИ СТАРУЮ БЛОКИРОВКУ, КОТОРАЯ ВЫЗЫВАЛА ЗАВИСАНИЕ
+
+  Wire.begin();
+  // Включаем аппаратную защиту от зависания гироскопа (таймаут 3 миллисекунды)
+  Wire.setWireTimeout(3000, true); 
+  
+  delay(1000); 
+  mpu.initialize();
+  
+  // Если гироскоп не подключен, плата НЕ зависнет, а просто пропустит калибровку
+  if (mpu.testConnection()) {
+    // Калибровка гироскопа в покое
+    for (int i = 0; i < 200; i++) {
+      mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+      gyroX_offset += gx;
+      gyroY_offset += gy;
+      delay(3);
+    }
+    gyroX_offset /= 200;
+    gyroY_offset /= 200;
+  }
+
+  Mouse.begin();
+  Keyboard.begin();
+}
+
+void loop() {
+  // Проверяем ошибки на шине I2C. Если они есть — очищаем шину
+  if (Wire.getWireTimeoutFlag()) {
+    Wire.clearWireTimeoutFlag();
+  }
+
+  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+  long rawX = gx - gyroX_offset;
+  long rawY = gy - gyroY_offset;
+
+  filteredX = (rawX * filterKoef) + (filteredX * (1.0 - filterKoef));
+  filteredY = (rawY * filterKoef) + (filteredY * (1.0 - filterKoef));
+
+  int moveY = 0;
+  int moveX = 0;
+
+  if (abs(filteredX) > deadZone) moveX = filteredX / sensitivity;
+  if (abs(filteredY) > deadZone) moveY = filteredY / sensitivity;
+
+  if (moveX != 0 || moveY != 0) {
+    Mouse.move(-moveX, moveY, 0); 
+  }
+
+  // --- ОБРАБОТКА СЕНСОРНЫХ КНОПОК МЫШИ ---
+  int currentLeftState = digitalRead(leftButton);
+  if (currentLeftState != lastLeftState) {
+    if (currentLeftState == HIGH) Mouse.press(MOUSE_LEFT);
+    else Mouse.release(MOUSE_LEFT);
+    lastLeftState = currentLeftState;
+  }
+
+  int currentRightState = digitalRead(rightButton);
+  if (currentRightState != lastRightState) {
+    if (currentRightState == HIGH) Mouse.press(MOUSE_RIGHT);
+    else Mouse.release(MOUSE_RIGHT);
+    lastRightState = currentRightState;
+  }
+
+  // --- ОБРАБОТКА СЕНСОРА БЛОКИРОВКИ (ПИН 7) ---
+  int currentLockState = digitalRead(lockButton);
+  if (currentLockState == HIGH) {
+    if (lastLockState == LOW) {
+      touchStartTime = millis();
+      isLockedTriggered = false; 
+    }
+    if (!isLockedTriggered && (millis() - touchStartTime >= 2000)) {
+      Keyboard.press(KEY_LEFT_GUI); 
+      Keyboard.press('l');          
+      delay(50);
+      Keyboard.releaseAll();        
+      isLockedTriggered = true;     
+    }
+  } else {
+    isLockedTriggered = false;
+  }
+  lastLockState = currentLockState;
+
+  delay(10);
+}
