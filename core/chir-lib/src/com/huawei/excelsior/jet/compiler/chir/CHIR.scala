@@ -378,6 +378,7 @@ object CHIR {
     def thisType: Type
     def thisArg: Value
     def instantiatedTypeArgs: Seq[Type]
+    def overflowStrategy: OverflowStrategy
     def args: Seq[Value]
   }
 

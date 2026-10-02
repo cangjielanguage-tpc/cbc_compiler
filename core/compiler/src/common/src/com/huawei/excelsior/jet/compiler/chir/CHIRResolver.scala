@@ -309,6 +309,13 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     t.attributes.contains(CHIR.Attribute.GenericInstantiated)
   }
 
+  def isOverflowOperator(t: CHIR.Func): Boolean = {
+    t.attributes.contains(CHIR.Attribute.Operator) && (t.srcCodeIdentifier match {
+      case "+" | "-" | "*" | "/" => true
+      case _ => false
+    })
+  }
+
   def isImported(t: CHIR.CustomTypeDef | CHIR.Func | CHIR.GlobalVar): Boolean = {
     val (attrs, isFunctionalTypeBase) = t match {
       case t: CHIR.CustomTypeDef => (t.attributes, isFunctionalType(t) && !isLambda(t.tpe))

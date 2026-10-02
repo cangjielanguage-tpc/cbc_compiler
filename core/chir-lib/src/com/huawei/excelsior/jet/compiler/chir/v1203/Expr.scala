@@ -145,6 +145,7 @@ class InvokeImpl(e: InvokeBase)(implicit provider: CHIRItemProvider) extends CHI
   def thisType: CHIR.Type = provider.getType[CHIR.Type](fc.objType).get
   def thisArg: CHIR.Value = args.head
   def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
+  def overflowStrategy = CHIR.OverflowStrategy.Na
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](ex.resultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.base.base.resultLocalVar).get
 }
