@@ -58,6 +58,10 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
         case v: CHIR.Func => v.annotations
         case v: CHIR.GlobalVar => v.annotations
       }
+      val isWrappedMethod = _v match {
+        case v: CHIR.Func => getMethodWrapper(v).nonEmpty
+        case v: CHIR.GlobalVar => false
+      }
       val wrappedMethod = annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
       val v = wrappedMethod.getOrElse(_v)
       val (id, identifier, srcName) = v match {
@@ -91,7 +95,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
               srcName + suffix
           }
         case None =>
-          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
+          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || isWrappedMethod || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
       }
     }
 
@@ -234,6 +238,30 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     }
   }
 
+  // Keys - wrapped methods, values - wrappers
+  private val wrappedMethodsCache = mutable.HashMap.empty[CHIR.Func, CHIR.Func]
+  private var wrappedMethodsCacheInitialized = false
+
+  private def initWrappedMethods(): Unit = {
+    pkg.values foreach {
+      case wrapper: CHIR.Func =>
+        val wrappedMethod = wrapper.annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
+        // TODO: assert only one
+        for (f <- wrappedMethod) {
+          wrappedMethodsCache(f) = wrapper
+        }
+      case _ =>
+    }
+  }
+
+  private def getMethodWrapper(f: CHIR.Func): Option[CHIR.Func] = {
+    if (!wrappedMethodsCacheInitialized) {
+      initWrappedMethods()
+      wrappedMethodsCacheInitialized = true
+    }
+    wrappedMethodsCache.get(f)
+  }
+
   private val typeVarCache = mutable.HashMap.empty[CHIR.GenericType, SignatureType.TypeVariable]
   private var typeVarCacheInitialized = false
 
@@ -307,6 +335,13 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
   def isGenericInstantiated(t: CHIR.HasAttributes): Boolean = {
     t.attributes.contains(CHIR.Attribute.GenericInstantiated)
+  }
+
+  def isOverflowOperator(t: CHIR.Func): Boolean = {
+    t.attributes.contains(CHIR.Attribute.Operator) && (t.srcCodeIdentifier match {
+      case "+" | "-" | "*" | "/" => true
+      case _ => false
+    })
   }
 
   def isImported(t: CHIR.CustomTypeDef | CHIR.Func | CHIR.GlobalVar): Boolean = {

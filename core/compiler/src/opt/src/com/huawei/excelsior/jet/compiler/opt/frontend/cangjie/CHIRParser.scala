@@ -1120,7 +1120,17 @@ trait CHIRParser
           case ValueSig(sig) => sig
         }
 
-        val name = resolver.symName(methodArgVal)
+        val symName = resolver.symName(methodArgVal)
+        val name = methodArgVal match {
+          case f: CHIR.Func if resolver.isOverflowOperator(f) =>
+            // Mirrors logic for vtable names in cjc
+            e.overflowStrategy match {
+              case CHIR.OverflowStrategy.Throwing => s"~$symName"
+              case CHIR.OverflowStrategy.Wrapping => s"&$symName"
+              case _ => s"%$symName"
+            }
+          case _ => symName
+        }
         val (gsig, _, _, _) = resolver.functionSig(methodArgVal.tpe, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {

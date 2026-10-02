@@ -273,6 +273,9 @@ object CHIRBuilder {
           }
         }
 
+        val overrideSig = resolver.getOverrideSrcFuncType(m).map(s => resolver.functionSig(s.tpe, hasReceiver = !modifiers.contains(STATIC))._1)
+        val hasRetByVal = overrideSig.exists(_.returnType.isTypeVariable)
+
         // TODO: explain
         val symMethods = if (rcvSig.isVariableSizeType) {
 
@@ -281,7 +284,7 @@ object CHIRBuilder {
             val mutLinkageName = resolver.mutWithoutTI(linkageName)
             builder.addMethod(symType, mutName, sig, mutLinkageName, modifiers.value, genericInfo,
               ABI.Description(rcvParam, hasMutParam, hasThisTypeInfoParam,
-                isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
+                isCFunc = false, hasOuterTypeInfo, hasRetByVal, genericFuncParamsCount))
           }
 
           val mutWrapperName = name
@@ -291,7 +294,7 @@ object CHIRBuilder {
           val mutWrapperReceiver = Some(SignatureType.Box(rcvSig))
           val mutWrapper = builder.addMethod(symType, mutWrapperName, sig, mutWrapperLinkageName, mutWrapperModifiers.value, genericInfo,
             ABI.Description(mutWrapperReceiver, mutWrapperHasMutParam, hasThisTypeInfoParam,
-            isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount))
+            isCFunc = false, hasOuterTypeInfo, hasRetByVal, genericFuncParamsCount))
 
           if (mutMethod.nonEmpty) {
             builder.markAsMutWrapper(mutWrapper)
@@ -302,8 +305,6 @@ object CHIRBuilder {
           mutMethod.toSeq ++ Seq(mutWrapper)
 
         } else {
-          val overrideSig = resolver.getOverrideSrcFuncType(m).map(s => resolver.functionSig(s.tpe, hasReceiver = !modifiers.contains(STATIC))._1)
-          val hasRetByVal = overrideSig.exists(_.returnType.isTypeVariable)
           val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
             ABI.Description(rcvParam,
             hasMutParam, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, hasRetByVal = hasRetByVal, genericFuncParamsCount))

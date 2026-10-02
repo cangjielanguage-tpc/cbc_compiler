@@ -28,6 +28,7 @@ final class Allocate(val allocatedType: CHIR.Type) extends CHIR.Allocate
 final class Invoke(val callee: CHIR.Func, val thisType: CHIR.Type, val thisArgOpt: Option[CHIR.Value], val args: Seq[CHIR.Value]) extends CHIR.Invoke with HasResultVar {
   def thisArg: CHIR.Value = thisArgOpt.get
   def instantiatedTypeArgs: Seq[CHIR.Type] = Seq.empty
+  def overflowStrategy = CHIR.OverflowStrategy.Na
 }
 
 // Terminators

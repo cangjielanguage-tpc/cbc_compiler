@@ -390,32 +390,6 @@ compiler/CodegenCHIR/tryCatch/tryTypeCast/tryTypeCast_3.cj
 # bug 63 (Proper parse @C methods with C-struct return type)
 compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
 
-# bug 99 (overloaded operators use mangling ~+ so VTable slot search fails)
-compiler/CodegenCHIR/overflow/add_saturating.cj
-compiler/CodegenCHIR/overflow/add_throwing.cj
-compiler/CodegenCHIR/overflow/add_wrapping.cj
-compiler/CodegenCHIR/overflow/div_saturating.cj
-compiler/CodegenCHIR/overflow/div_throwing.cj
-compiler/CodegenCHIR/overflow/div_wrapping.cj
-compiler/CodegenCHIR/overflow/mod_saturating.cj
-compiler/CodegenCHIR/overflow/mod_throwing.cj
-compiler/CodegenCHIR/overflow/mod_wrapping.cj
-compiler/CodegenCHIR/overflow/mul_saturating.cj
-compiler/CodegenCHIR/overflow/mul_throwing.cj
-compiler/CodegenCHIR/overflow/mul_wrapping.cj
-compiler/CodegenCHIR/overflow/neg_saturating.cj
-compiler/CodegenCHIR/overflow/neg_throwing.cj
-compiler/CodegenCHIR/overflow/neg_wrapping.cj
-compiler/CodegenCHIR/overflow/sub_saturating.cj
-compiler/CodegenCHIR/overflow/sub_throwing.cj
-compiler/CodegenCHIR/overflow/sub_wrapping.cj
-
-# bug 101 (compiler incorrectly preserve SRET flag in ABI for overriden methods)
-compiler/CodegenCommon/enum/enum_fix_02.cj
-compiler/Sema/forin/closedrange_rune.cj
-compiler/Sema/range/range_class_02.cj
-compiler/Sema/range/range_class_03.cj
-
 # bug 103 (static interface call with generic upper bound)
 compiler/Sema/Extend/interface_default_implement/static_default_impl_call_non_impl_pass.cj
 compiler/Sema/function/defaultParameter6.cj
