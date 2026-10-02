@@ -25,6 +25,7 @@ import com.huawei.excelsior.jet.compiler.abi.Frame
 import com.huawei.excelsior.jet.compiler.abi.XTableGenerator
 import com.huawei.excelsior.jet.compiler.abi.cbc.PlatformCBC
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator
+import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
 import com.huawei.excelsior.jet.compiler.chir.{CHIR, CHIRLoader, CHIRResolver}
 import com.huawei.excelsior.jet.compiler.ir.XInfo
@@ -297,6 +298,17 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
     }
 
+/** Stores the value in `reg` into the result slot of expression `e`: keyed by
+  * the result var if present, else by the expression itself (aliased-local
+  * reads). */
+    private def storeResult(e: CHIR.Expression, reg: IR, sig: SignatureType): Unit = {
+      if (sig.isZST) ()
+      else resultOf(e) match {
+        case Some(res) => storeFromReg(res, reg, sig)
+        case None => asm.storeUntyped(reg, StoreAccessKind.from(cbcKind(sig)), StackSlot.Untyped(slotOfAny(e, sig)))
+      }
+    }
+
     private def storeFromReg(v: CHIR.Value, reg: IR, sig: SignatureType): Unit = v match {
       case _: CHIR.Literal => () // literals are re-materialized at each use
       case lv: (CHIR.LocalVar | CHIR.Parameter) =>
@@ -332,14 +344,16 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         // makes hopeless methods cheap (large fallback populations otherwise
         // burn mirror-side analysis before failing).
         def scanFatal(t: CHIR.Terminator): Unit = t match {
-          case _: CHIR.TryApply | _: CHIR.RaiseException => fail(s"terminator ${t.getClass.getSimpleName}")
+          case _: CHIR.TryApply => fail(s"terminator ${t.getClass.getSimpleName}")
           case _ =>
         }
         def scanFatalExpr(e: CHIR.Expression): Unit = e match {
           case _: CHIR.Terminator | _: CHIR.Constant | _: CHIR.Apply | _: CHIR.Store |
                _: CHIR.Load | _: CHIR.Binary | _: CHIR.Unary | _: CHIR.NumericCast |
                _: CHIR.StaticCast | _: CHIR.Allocate | _: CHIR.Field |
-               _: CHIR.GetElementRef | _: CHIR.StoreElementRef | _: CHIR.Debug =>
+               _: CHIR.GetElementRef | _: CHIR.StoreElementRef | _: CHIR.Intrinsic |
+               _: CHIR.RawArrayAllocate | _: CHIR.RawArrayLiteralInit |
+               _: CHIR.Invoke | _: CHIR.Debug =>
             // individually translatable (or no-op); per-expr checks happen in
             // the translators
             ()
@@ -420,6 +434,10 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           case e: CHIR.Field => translateField(e)
           case e: CHIR.GetElementRef => translateGetElementRef(e)
           case e: CHIR.StoreElementRef => translateStoreElementRef(e)
+          case e: CHIR.Intrinsic => translateIntrinsic(e)
+          case e: CHIR.Invoke => translateInvoke(e)
+          case e: CHIR.RawArrayAllocate => translateRawArrayAllocate(e)
+          case e: CHIR.RawArrayLiteralInit => translateRawArrayLiteralInit(e)
           case _: CHIR.Debug => () // debug bookkeeping: no-op
           case e => return fail(s"expr ${e.getClass.getSimpleName}")
         }
@@ -648,10 +666,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           // boolean negation
           loadToReg(e.operand, SCRATCH2)
           asm.xori(Width.W32, SCRATCH, SCRATCH2, 1)
-          resultOf(e) match {
-            case Some(res) => storeFromReg(res, SCRATCH, sig)
-            case None => fail("unary without result")
-          }
+          storeResult(e, SCRATCH, sig)
         case null => fail("unary null")
       }
     }
@@ -672,10 +687,9 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         case _ => fail(s"numeric cast $from -> $to")
       }
       emitCast()
-      resultOf(e) match {
-        case Some(res) => storeFromReg(res, SCRATCH, to)
-        case None => fail("cast without result")
-      }
+      // A result-less cast can still be read later through an aliased
+      // LocalVar (keyOf maps the local to this expr) — materialize its slot.
+      storeResult(e, SCRATCH, to)
     }
 
     private def translateStaticCast(e: CHIR.StaticCast): Unit = {
@@ -685,12 +699,10 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       touch(e.value)
       resultOf(e).foreach(res => touch(res))
       if (from.contains(to)) {
-        resultOf(e) match {
-          case Some(res) =>
-            loadToReg(e.value, SCRATCH)
-            storeFromReg(res, SCRATCH, to)
-          case None => fail("cast without result")
-        }
+        loadToReg(e.value, SCRATCH)
+        // A result-less cast can still be read later through an aliased
+        // LocalVar (keyOf maps the local to this expr) — materialize its slot.
+        storeResult(e, SCRATCH, to)
       } else {
         fail(s"static cast $from -> $to")
       }
@@ -786,9 +798,18 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
 
     /** Loads the field chain value into SCRATCH: walks each field ref. */
+    /** Field hosts: traceable references (class instances) and boxed records
+      * (e.g. std.core:Array<T> objects) whose chain contains only primitive
+      * or reference fields — nested records would need copy semantics. */
+    private def canFieldHost(sig: SignatureType, chain: => Seq[(Long, symlevel.Field, SignatureType, SignatureType)]): Boolean =
+      sig.isTraceableReference ||
+        (sig.isRecord && !sig.isVariableSizeType && !sig.isZST &&
+          chain.forall { case (_, _, _, ft) => ft.isPrimitive || ft.isTraceableReference })
+
     private def translateField(e: CHIR.Field): Unit = {
       val hostSig = sigOf(e.base).getOrElse(return fail("field: unknown host sig"))
-      if (!hostSig.isTraceableReference) return fail(s"field on non-ref host $hostSig")
+      lazy val preChain = fieldChain(hostSig, e.path)
+      if (!canFieldHost(hostSig, preChain)) return fail(s"field on non-ref host $hostSig")
       touch(e.base)
       resultOf(e).foreach(res => touch(res))
       val chain = fieldChain(hostSig, e.path)
@@ -823,8 +844,9 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
 
     private def translateGetElementRef(e: CHIR.GetElementRef): Unit = {
       val hostSig = sigOf(e.base).getOrElse(return fail("getElementRef: unknown host sig"))
-      if (!hostSig.isTraceableReference) return fail(s"getElementRef on non-ref host $hostSig")
       if (hostSig.isArray) return fail("array GetElementRef")
+      lazy val preChain = fieldChain(hostSig, e.path)
+      if (!canFieldHost(hostSig, preChain)) return fail(s"getElementRef on non-ref host $hostSig")
       touch(e.base)
       resultOf(e).foreach(res => touch(res))
       val chain = fieldChain(hostSig, e.path)
@@ -838,7 +860,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
 
     private def translateStoreElementRef(e: CHIR.StoreElementRef): Unit = {
       val hostSig = sigOf(e.location).getOrElse(return fail("storeElementRef: unknown host sig"))
-      if (!hostSig.isTraceableReference) return fail(s"storeElementRef on non-ref host $hostSig")
+      lazy val preChain = fieldChain(hostSig, e.path)
+      if (!canFieldHost(hostSig, preChain)) return fail(s"storeElementRef on non-ref host $hostSig")
       // array element stores need starr + a bounds-check XSite: not supported here
       if (hostSig.isArray) return fail("array StoreElementRef")
       touch(e.location, e.value)
@@ -860,6 +883,114 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val fr = fieldRef(pidx, f, rt, ft)
       loadToReg(e.value, SCRATCH)
       asm.st(SCRATCH, SCRATCH2, fr)
+    }
+
+    // ------------------------------------------------------------------
+    // Intrinsics (raw-array ops)
+    // ------------------------------------------------------------------
+
+    private def translateIntrinsic(e: CHIR.Intrinsic): Unit = {
+      import CHIR.Intrinsic.Kind
+      e.kind match {
+        case Kind.ArrayGet | Kind.ArrayGetUnchecked | Kind.ArrayGetRefUnchecked =>
+          val Seq(arrV, idxV) = e.args
+          val arrType = sigOf(arrV).getOrElse(return fail("arrayGet: unknown array sig"))
+          if (!arrType.isArray) return fail(s"arrayGet on non-array $arrType")
+          val elem = arrType.getArrayElemType
+          if (elem.isZST) return
+          if (elem.isVariableSizeType) return fail("arrayGet of variable-size elem")
+          if (elem.isRecord) return fail("arrayGet of record elem")
+          touch(arrV, idxV)
+          resultOf(e).foreach(res => touch(res))
+          loadToReg(arrV, SCRATCH2)
+          asm.nullcheck(SCRATCH2)
+          loadToReg(idxV, SCRATCH3)
+          loadArrayElem(elem)
+          if (isFloat(elem)) {
+            storeFloatFromReg(resultOf(e).getOrElse(e.asInstanceOf[CHIR.Value]), FSCRATCH0, elem)
+          } else {
+            storeResult(e, SCRATCH, elem)
+          }
+        case Kind.ArraySet | Kind.ArraySetUnchecked =>
+          val Seq(arrV, idxV, valV) = e.args
+          val arrType = sigOf(arrV).getOrElse(return fail("arraySet: unknown array sig"))
+          if (!arrType.isArray) return fail(s"arraySet on non-array $arrType")
+          val elem = arrType.getArrayElemType
+          if (elem.isZST) return
+          if (elem.isRecord) return fail("arraySet of record elem")
+          touch(arrV, idxV, valV)
+          loadToReg(arrV, SCRATCH2)
+          asm.nullcheck(SCRATCH2)
+          loadToReg(idxV, SCRATCH3)
+          if (elem.isTraceableReference) {
+            loadToReg(valV, SCRATCH)
+            asm.starrObj(SCRATCH2, SCRATCH3, SCRATCH)
+          } else if (isFloat(elem)) {
+            loadFloatToReg(valV, FSCRATCH0)
+            asm.starr(elem.toAsm, SCRATCH2, SCRATCH3, FSCRATCH0)
+          } else {
+            loadToReg(valV, SCRATCH)
+            asm.starr(elem.toAsm, SCRATCH2, SCRATCH3, SCRATCH)
+          }
+        case Kind.ArraySize =>
+          val arrV = e.args.head
+          val arrType = sigOf(arrV).getOrElse(return fail("arraySize: unknown array sig"))
+          if (!arrType.isArray) return fail(s"arraySize on non-array $arrType")
+          touch(arrV)
+          resultOf(e).foreach(res => touch(res))
+          loadToReg(arrV, SCRATCH2)
+          asm.nullcheck(SCRATCH2)
+          asm.lenarr(SCRATCH, SCRATCH2)
+          storeResult(e, SCRATCH, resolver.typeSig(e.resultTpe))
+        case other => fail(s"intrinsic $other")
+      }
+    }
+
+    private def translateRawArrayAllocate(e: CHIR.RawArrayAllocate): Unit = {
+      val elem = resolver.typeSig(e.elementType)
+      if (elem.isZST) return
+      if (elem.isVariableSizeType) return fail("raw array of variable-size elem")
+      if (elem.isRecord) return fail("raw array of record elem")
+      val arrayType = SignatureType.CangjieArray(elem)
+      touch(e.size)
+      slotOfAny(e, arrayType) // null-init before newarr's GC point
+      loadToReg(e.size, IR2)
+      asm.newarr(arrayType.toCbc) // result hardcoded IR1
+      saveGCMapHere()
+      storeResult(e, IR1, arrayType)
+    }
+
+    private def translateRawArrayLiteralInit(e: CHIR.RawArrayLiteralInit): Unit = {
+      val arrType = sigOf(e.array).getOrElse(return fail("literalInit: unknown array sig"))
+      if (!arrType.isArray) return fail(s"literalInit on non-array $arrType")
+      val elem = arrType.getArrayElemType
+      if (elem.isZST) return
+      if (elem.isRecord) return fail("literalInit of record elem")
+      touch(e.array)
+      loadToReg(e.array, SCRATCH2)
+      asm.nullcheck(SCRATCH2)
+      e.elementValues.zipWithIndex.foreach { (v, i) =>
+        if (!sigOf(v).forall(_.isZST)) {
+          loadToReg(v, SCRATCH)
+          asm.movi32(SCRATCH3, i)
+          if (elem.isTraceableReference) asm.starrObj(SCRATCH2, SCRATCH3, SCRATCH)
+          else if (isFloat(elem)) {
+            loadFloatToReg(v, FSCRATCH0)
+            asm.starr(elem.toAsm, SCRATCH2, SCRATCH3, FSCRATCH0)
+          } else asm.starr(elem.toAsm, SCRATCH2, SCRATCH3, SCRATCH)
+        }
+      }
+    }
+
+    /** Array element at [SCRATCH3] of array in SCRATCH2 -> SCRATCH (or FSCRATCH0). */
+    private def loadArrayElem(elem: SignatureType): Unit = {
+      if (elem.isTraceableReference) {
+        asm.ldarrObj(SCRATCH, SCRATCH2, SCRATCH3)
+      } else if (isFloat(elem)) {
+        asm.ldarr(elem.toAsm, FSCRATCH0, SCRATCH2, SCRATCH3)
+      } else {
+        asm.ldarr(elem.toAsm, SCRATCH, SCRATCH2, SCRATCH3)
+      }
     }
 
     // ------------------------------------------------------------------
@@ -926,6 +1057,98 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
     }
 
+    /** Virtual/static dispatch through the CHIR vtable (mirrors CHIRParser's
+      * `case e: CHIR.Invoke`). */
+    private def translateInvoke(e: CHIR.Invoke): Unit = {
+      if (e.instantiatedTypeArgs.nonEmpty) return fail("generic invoke")
+      val methodArgVal = e.callee
+      val argVals = e.args
+      val isStatic = argVals.headOption.exists {
+        case x: CHIR.LocalVar => x.associatedExpr match {
+          case _: (CHIR.GetRTTI | CHIR.GetRTTIStatic) => true
+          case _ => false
+        }
+        case _ => false
+      }
+      val (thisTypeArgVal, sourceArgVals) = if (isStatic) (argVals.headOption, argVals.tail) else (None, argVals)
+      val thisType = resolver.typeSig(e.thisType) match {
+        case SignatureType.ThisTypeInfo =>
+          val c = method.getDeclaringClass
+          if (c.isCangjieExtend) c.getCangjieExtendInfo
+          else SignatureType.fromSymType(c)
+        case t: SignatureType.TypeVariable =>
+          val v = if (isStatic) thisTypeArgVal.get else sourceArgVals.head
+          sigOf(v).getOrElse(return fail("invoke: unknown this sig"))
+        case t => t
+      }
+      val name = resolver.symName(methodArgVal)
+      val (gsig, _, _, _) = resolver.functionSig(methodArgVal.tpe, hasReceiver = !isStatic)
+      val vtable = symlevel.Type.asClassType(thisType).getCHIRVTable
+      if (vtable == null) return fail("invoke: no vtable")
+      def findSlot(extDef: CHIRVTable.ExtDef): Option[(CHIRVTable.ExtDef, Int)] = {
+        val vnum = extDef.funcTable.indexWhere(m => m.name == name && m.originalSig.instantiate(genericParamsOf(thisType), Seq.empty) == gsig)
+        Option.when(vnum >= 0)((extDef, vnum))
+      }
+      val (extDef, vnum) = vtable.extDefs.collectFirst(Function.unlift(findSlot)).getOrElse {
+        return fail(s"invoke: vtable slot not found: $name")
+      }
+      val refType = extDef.extType.instantiate(genericParamsOf(thisType), Seq.empty)
+      val refClass = symlevel.Type.asClassType(refType)
+      val calleeMethod = refClass.findDeclaredMethodOrNull(xstr(name), gsig)
+      if (calleeMethod == null) return fail(s"invoke: method not found: $name")
+      val mak = if (isStatic) MAK.STATIC else MAK.VIRTUAL
+      val ref = new MethodReference(calleeMethod, mak, CompiledType(refType), vnum)
+
+      emitCall(e, calleeMethod, sourceArgVals, ref, isVirtual = !isStatic)
+    }
+
+    /** Shared call emission: ABI layout checks, arg register loads, optional
+      * outer-TI load, the call itself and result store. */
+    private def emitCall(e: CHIR.Expression, calleeMethod: Method, callArgs: Seq[CHIR.Value],
+                         ref: MethodReference, isVirtual: Boolean): Unit = {
+      val calleeMt = calleeMethod.getMethodType
+      val endCount = calleeMt.endSpecialParamsCount
+      val outerTiSig = if (calleeMt.hasReceiverParameter) sigOf(callArgs.head).get
+                       else SignatureType.fromSymType(calleeMethod.getDeclaringClass)
+      val outerTi = endCount == 1 && calleeMt.hasOuterTypeInfoParameter &&
+        !outerTiSig.containsTypeVariables
+      if (endCount != 0 && !outerTi)
+        return fail(f"callee end special params (TI: end=$endCount outer=${calleeMt.hasOuterTypeInfoParameter} this=${calleeMt.hasThisTypeInfoParameter} tv=${outerTiSig.containsTypeVariables})")
+      if (calleeMt.hasThisTypeInfoParameter) return fail("callee ThisTypeInfo param")
+      val calleeStart = calleeMt.startSpecialParamsCount
+      if (!(calleeStart == 0 || (calleeStart == 1 && calleeMt.hasReceiverParameter && !calleeMt.hasRetByValParameter)))
+        return fail(s"callee special params start=$calleeStart")
+      val calleeAbi = DirectCBCCompiler.platform(env).abi(calleeMt)
+      val locs = calleeAbi.paramLocations
+      val regLocs = locs.filter(l => l.isReg && l.asReg.isInstanceOf[IR])
+      if (locs.exists(l => !l.isReg)) return fail("stack args")
+      val argLocs = regLocs.drop(calleeStart).dropRight(endCount)
+      val realArgs = callArgs.filter(a => sigOf(a).forall(!_.isZST))
+      if (realArgs.size != argLocs.size) return fail(s"arg count ${realArgs.size} vs ${argLocs.size}")
+      realArgs.zip(argLocs).foreach { (a, loc) =>
+        loc.asReg match {
+          case fr: FR => loadFloatToReg(a, fr)
+          case ir: IR => loadToReg(a, ir)
+        }
+      }
+      if (outerTi)
+        asm.loadTypeInfoSig(regLocs(calleeMt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR],
+          outerTiSig.toCbc)
+      val resultReg = {
+        val rl = calleeAbi.resultLocation
+        if (rl != null && rl.isReg && rl.asReg.isInstanceOf[IR]) rl.asReg.asInstanceOf[IR] else IR1
+      }
+      realArgs.foreach(a => sigOf(a) match { case Some(s) if !s.isZST => slot(a, s); case _ => })
+      resultOf(e).foreach(res => sigOf(res) match { case Some(s) if !s.isZST => slot(res, s); case _ => })
+      if (isVirtual) asm.callVirt(resultReg, ref) else asm.callDirect(resultReg, ref)
+      saveGCMapHere()
+      resultOf(e) match {
+        case Some(res) if !sigOf(res).forall(_.isZST) =>
+          storeFromReg(res, resultReg, sigOf(res).get)
+        case _ =>
+      }
+    }
+
     private def findCallee(f: CHIR.Func): Method = {
       val declSymType = f.declaringDef match {
         case Some(d) => resolver.symType(d).get
@@ -964,6 +1187,9 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         loadToReg(br.condition, SCRATCH)
         asm.bcc(BranchOp.NE, SCRATCH, IRZ, Width.W32, blockLabel(br.trueBlock))
         asm.jmp(blockLabel(br.falseBlock))
+      case r: CHIR.RaiseException =>
+        loadToReg(r.exceptionValue, IR1)
+        asm.throwEx(IR1)
       case other => fail(s"terminator ${other.getClass.getSimpleName}")
     }
 
