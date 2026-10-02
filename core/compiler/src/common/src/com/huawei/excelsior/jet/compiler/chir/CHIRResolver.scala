@@ -48,6 +48,15 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.GlobalVar | CHIR.FuncSig): String = {
+    // CustomType delegates to typeDef; cache both under their own key.
+    v match {
+      case v: CHIR.CustomType => symNameByTable.getOrElseUpdate(v, symName(v.typeDef))
+      case v: CHIR.CustomTypeDef => symNameByTable.getOrElseUpdate(v, computeSymName(v))
+      case v: (CHIR.GlobalVar | CHIR.FuncSig) => symNameByTable.getOrElseUpdate(v, computeSymName(v))
+    }
+  }
+
+  private def computeSymName(v: CHIR.CustomTypeDef | CHIR.GlobalVar | CHIR.FuncSig): String = {
     def typeDefName(v: CHIR.CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
       if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
@@ -97,7 +106,6 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
     ((v: @unchecked) match {
       case v: CHIR.StructDef => typeDefName(v)
-      case v: CHIR.CustomType => symName(v.typeDef)
       case v: CHIR.ClassDef => typeDefName(v)
       case v: CHIR.EnumDef => typeDefName(v) // TODO: support proper Enum
       case v: CHIR.ExtendDef => typeDefName(v)
@@ -117,7 +125,10 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     name + "$withoutTI"
   }
 
-  def functionSig(m: CHIR.Func, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
+  def functionSig(m: CHIR.Func, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) =
+    functionSigByTable.getOrElseUpdate(if (hasReceiver) m else m -> false, computeFunctionSig(m, hasReceiver))
+
+  private def computeFunctionSig(m: CHIR.Func, hasReceiver: Boolean): (MethodSignature, Option[SignatureType], Boolean, Boolean) = {
     val (sig, rcv, isCFunc, hasVarArg) = functionSig(m.tpe, hasReceiver)
     if (isGlobalGenericLambdaFunc(m)) {
       val cparams = Seq.tabulate(m.genericTypeParams.size)(SignatureType.LocalTypeVariable.apply)
@@ -134,7 +145,18 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     (MethodSignature(typeSig(funcType.returnType), paramTypes.map(typeSig)), receiverType.map(typeSig), funcType.isC, funcType.hasVarArg)
   }
 
-  def typeSig(tpe: CHIR.Type): SignatureType = {
+  // Caches for hot resolver functions. Keys are CHIR wrapper objects that are
+  // memoized per-index by PackageImpl (stable identity per file), values are
+  // immutable SignatureTypes / strings. This avoids re-walking flatbuffer type
+  // graphs and re-building name strings on every typeSig/symName/functionSig
+  // call from the CHIR interpreter (a measurable parse-stage hotspot).
+  private val sigTypeByTable = mutable.HashMap.empty[AnyRef, SignatureType]
+  private val symNameByTable = mutable.HashMap.empty[AnyRef, String]
+  private val functionSigByTable = mutable.HashMap.empty[AnyRef, (MethodSignature, Option[SignatureType], Boolean, Boolean)]
+
+  def typeSig(tpe: CHIR.Type): SignatureType = sigTypeByTable.getOrElseUpdate(tpe, computeTypeSig(tpe))
+
+  private def computeTypeSig(tpe: CHIR.Type): SignatureType = {
     import SignatureType.*
 
     tpe match {
