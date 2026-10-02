@@ -214,6 +214,12 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     private val asm = new ForkedAssembler with com.huawei.excelsior.jet.compiler.cbc.CbcSymbolAdapter
 
     private val liveness = new LivenessInfoCollector
+    private val exRegions = mutable.ArrayBuffer.empty[(Label, Label, Label)]
+    private val handlerBlocks = mutable.HashSet.empty[CHIR.Block]
+    private val handlerGetEx = mutable.HashMap.empty[CHIR.Block, CHIR.GetException.type]
+    private val blockEndLabels = mutable.HashMap.empty[CHIR.Block, Label]
+    private lazy val exceptionSig: SignatureType =
+      SignatureType.fromSymType(resolver.findClass("std.core:Exception").get)
 
     private val blocks: Seq[CHIR.Block] = func.body.get.blocks
 
@@ -255,6 +261,11 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     /** Loads a value into reg. LocalVars aliasing a defining expression read
       * that expression's slot; locals aliasing a literal materialize it. */
     private def loadToReg(v: CHIR.Value, reg: IR): Unit = {
+      if (v == CHIR.GetException) {
+        // the caught exception slot is created by the handler prologue
+        asm.loadUntyped(reg, LoadAccessKind.from(CbcTypeKind.REF), StackSlot.Untyped(slotOfAny(CHIR.GetException, exceptionSig)))
+        return
+      }
       val s = sigOf(v).getOrElse(return fail(s"load of unknown value ${v.getClass.getSimpleName}"))
       keyOf(v) match {
         case l: CHIR.Literal => literalToReg(l, reg)
@@ -343,17 +354,14 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         // translate BEFORE doing any slot allocation / emission work. This
         // makes hopeless methods cheap (large fallback populations otherwise
         // burn mirror-side analysis before failing).
-        def scanFatal(t: CHIR.Terminator): Unit = t match {
-          case _: CHIR.TryApply => fail(s"terminator ${t.getClass.getSimpleName}")
-          case _ =>
-        }
+        def scanFatal(t: CHIR.Terminator): Unit = ()
         def scanFatalExpr(e: CHIR.Expression): Unit = e match {
           case _: CHIR.Terminator | _: CHIR.Constant | _: CHIR.Apply | _: CHIR.Store |
                _: CHIR.Load | _: CHIR.Binary | _: CHIR.Unary | _: CHIR.NumericCast |
                _: CHIR.StaticCast | _: CHIR.Allocate | _: CHIR.Field |
                _: CHIR.GetElementRef | _: CHIR.StoreElementRef | _: CHIR.Intrinsic |
                _: CHIR.RawArrayAllocate | _: CHIR.RawArrayLiteralInit |
-               _: CHIR.Invoke | _: CHIR.Debug =>
+               _: CHIR.Invoke | CHIR.GetException | _: CHIR.Debug =>
             // individually translatable (or no-op); per-expr checks happen in
             // the translators
             ()
@@ -412,6 +420,24 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     }
 
     private def translateBlock(b: CHIR.Block): Unit = {
+      // exception-handler bookkeeping: a block containing Try* exprs (or a
+      // RaiseException with a local handler) gets an xtable region covering
+      // the whole block, targeting the handler block
+      val tryExprs = b.expressions.collect {
+        case t: CHIR.Terminator with CHIR.HasSuccessors if t.successors.length == 2 => t
+      }
+      tryExprs.foreach { t =>
+        val handler = t.successors(1)
+        handlerBlocks += handler
+        val endL = blockEndLabels.getOrElseUpdate(b, asm.newLabel)
+        exRegions += ((blockLabel(b), endL, blockLabel(handler)))
+      }
+      if (handlerBlocks.contains(b) && !handlerGetEx.contains(b)) {
+        handlerGetEx(b) = CHIR.GetException
+        slotOfAny(CHIR.GetException, exceptionSig)
+        asm.catchEx(SCRATCH)
+        asm.storeUntyped(SCRATCH, StoreAccessKind.from(CbcTypeKind.REF), StackSlot.Untyped(slotOfAny(CHIR.GetException, exceptionSig)))
+      }
       asm.bind(blockLabel(b))
       // NOTE: the serialized CHIR keeps the terminator as the LAST element of
       // `expressions` (BlockImpl.terminator = expressions.last), so handle a
@@ -420,7 +446,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       while (it.hasNext) {
         it.next() match {
           case t: CHIR.Terminator =>
-            translateTerminator(t)
+            translateTerminator(t, b)
+            bindBlockEnd(b)
             return
           case _: CHIR.Constant => () // literals materialized at use
           case e: CHIR.Apply => translateApply(e)
@@ -436,14 +463,19 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           case e: CHIR.StoreElementRef => translateStoreElementRef(e)
           case e: CHIR.Intrinsic => translateIntrinsic(e)
           case e: CHIR.Invoke => translateInvoke(e)
+          case CHIR.GetException => () // catchEx emitted at handler start
           case e: CHIR.RawArrayAllocate => translateRawArrayAllocate(e)
           case e: CHIR.RawArrayLiteralInit => translateRawArrayLiteralInit(e)
           case _: CHIR.Debug => () // debug bookkeeping: no-op
           case e => return fail(s"expr ${e.getClass.getSimpleName}")
         }
       }
-      translateTerminator(b.terminator)
+      translateTerminator(b.terminator, b)
+      bindBlockEnd(b)
     }
+
+    private def bindBlockEnd(b: CHIR.Block): Unit =
+      blockEndLabels.remove(b).foreach(asm.bind)
 
     private val labels = mutable.HashMap.empty[CHIR.Block, Label]
     private def blockLabel(b: CHIR.Block): Label = labels.getOrElseUpdate(b, asm.newLabel)
@@ -1003,58 +1035,13 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val calleeMethod = findCallee(f)
       if (calleeMethod == null) return fail(s"callee not found: ${resolver.symName(f)}")
 
-      val calleeMt = calleeMethod.getMethodType
-      // End special params (passed after the real params): only a single
-      // OuterTypeInfo param of a non-generic declaring class is supported —
-      // its value is the static TI of the declaring class.
-      val endCount = calleeMt.endSpecialParamsCount
-      // Mirrors CHIRParser: the callee's OuterTypeInfo is the TI of the
-      // receiver's (instantiated) type, or of the declaring class for
-      // receiver-less calls.
-      val outerTiSig = if (e.thisArg != null) sigOf(e.thisArg).get
-                       else SignatureType.fromSymType(calleeMethod.getDeclaringClass)
-      val outerTi = endCount == 1 && calleeMt.hasOuterTypeInfoParameter &&
-        !outerTiSig.containsTypeVariables
-      if (endCount != 0 && !outerTi)
-        return fail(f"callee end special params (TI: end=$endCount outer=${calleeMt.hasOuterTypeInfoParameter} this=${calleeMt.hasThisTypeInfoParameter} tv=${outerTiSig.containsTypeVariables})")
-      val calleeStart = calleeMt.startSpecialParamsCount
-      if (!(calleeStart == 0 || (calleeStart == 1 && calleeMt.hasReceiverParameter && !calleeMt.hasRetByValParameter)))
-        return fail(s"callee special params start=$calleeStart")
-      val calleeAbi = DirectCBCCompiler.platform(env).abi(calleeMt)
-      val locs = calleeAbi.paramLocations
-      val allArgs = (if (e.thisArg != null) Seq(e.thisArg) else Seq.empty) ++ e.args
-      val regLocs = locs.filter(l => l.isReg && l.asReg.isInstanceOf[IR])
-      if (locs.exists(l => !l.isReg)) return fail("stack args")
-      // argLocs = the locs holding the real (CHIR) params, i.e. between the
-      // start specials and the trailing end specials.
-      val argLocs = regLocs.drop(calleeStart).dropRight(endCount)
-      // ZST args are absent from the ABI; drop them
-      val realArgs = allArgs.filter(a => sigOf(a).forall(!_.isZST))
-      if (realArgs.size != argLocs.size) return fail(s"arg count ${realArgs.size} vs ${argLocs.size}")
-      // Float args go to FR registers; int/ref args to IR registers.
-      realArgs.zip(argLocs).foreach { (a, loc) =>
-        loc.asReg match {
-          case fr: FR => loadFloatToReg(a, fr)
-          case ir: IR => loadToReg(a, ir)
-        }
-      }
-      if (outerTi)
-        asm.loadTypeInfoSig(regLocs(calleeMt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR],
-          outerTiSig.toCbc)
-      val resultReg = {
-        val rl = calleeAbi.resultLocation
-        if (rl != null && rl.isReg && rl.asReg.isInstanceOf[IR]) rl.asReg.asInstanceOf[IR] else IR1
-      }
-      // pre-create (null-init) all value slots BEFORE clobbering arg registers
-      realArgs.foreach(a => sigOf(a) match { case Some(s) if !s.isZST => slot(a, s); case _ => })
-      resultOf(e).foreach(res => sigOf(res) match { case Some(s) if !s.isZST => slot(res, s); case _ => })
-      asm.callDirect(resultReg, calleeMethod)
-      saveGCMapHere()
-      resultOf(e) match {
-        case Some(res) if !sigOf(res).forall(_.isZST) =>
-          storeFromReg(res, resultReg, sigOf(res).get)
-        case _ =>
-      }
+      // v13002 CHIR: Apply.args includes the receiver at the head and
+      // `thisArg` is just args.head (derived), so never prepend it.
+      val mak = if (calleeMethod.isStatic) MAK.STATIC
+                else if (calleeMethod.isCangjieMut) MAK.MUT
+                else MAK.SPECIAL
+      val ref = new MethodReference(calleeMethod, mak, CompiledType(calleeMethod.getDeclaringClass))
+      emitCall(e, calleeMethod, e.args, ref, isVirtual = false)
     }
 
     /** Virtual/static dispatch through the CHIR vtable (mirrors CHIRParser's
@@ -1103,7 +1090,14 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     }
 
     /** Shared call emission: ABI layout checks, arg register loads, optional
-      * outer-TI load, the call itself and result store. */
+      * outer-TI load, the call itself and result store.
+      *
+      * CHIR call args INCLUDE the receiver at the head (v13002: thisArg ==
+      * args.head). The callee's start specials are consumed as follows:
+      *   - RetByVal: not a CHIR arg — the caller supplies the return-buffer
+      *     address (IRZ for ZST returns, which the callee never writes);
+      *   - Receiver: consumes callArgs.head;
+      * the remaining CHIR args map onto the ordinary parameter locations. */
     private def emitCall(e: CHIR.Expression, calleeMethod: Method, callArgs: Seq[CHIR.Value],
                          ref: MethodReference, isVirtual: Boolean): Unit = {
       val calleeMt = calleeMethod.getMethodType
@@ -1116,15 +1110,41 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         return fail(f"callee end special params (TI: end=$endCount outer=${calleeMt.hasOuterTypeInfoParameter} this=${calleeMt.hasThisTypeInfoParameter} tv=${outerTiSig.containsTypeVariables})")
       if (calleeMt.hasThisTypeInfoParameter) return fail("callee ThisTypeInfo param")
       val calleeStart = calleeMt.startSpecialParamsCount
-      if (!(calleeStart == 0 || (calleeStart == 1 && calleeMt.hasReceiverParameter && !calleeMt.hasRetByValParameter)))
-        return fail(s"callee special params start=$calleeStart")
+      val retIsZST = calleeMt.returnType.isZST
+      if (!(calleeStart == 0 ||
+            (calleeStart == 1 && calleeMt.hasReceiverParameter && !calleeMt.hasRetByValParameter) ||
+            (calleeStart == 2 && calleeMt.hasRetByValParameter && calleeMt.hasReceiverParameter && retIsZST)))
+        return fail(s"callee special params start=$calleeStart (sret=${calleeMt.hasRetByValParameter} ret=${calleeMt.returnType})")
       val calleeAbi = DirectCBCCompiler.platform(env).abi(calleeMt)
       val locs = calleeAbi.paramLocations
       val regLocs = locs.filter(l => l.isReg && l.asReg.isInstanceOf[IR])
       if (locs.exists(l => !l.isReg)) return fail("stack args")
       val argLocs = regLocs.drop(calleeStart).dropRight(endCount)
-      val realArgs = callArgs.filter(a => sigOf(a).forall(!_.isZST))
-      if (realArgs.size != argLocs.size) return fail(s"arg count ${realArgs.size} vs ${argLocs.size}")
+      // receiver: last start special; its loc sits right before the params
+      val recvLoc: Option[IR] =
+        if (calleeMt.hasReceiverParameter) Some(regLocs(calleeStart - 1).asReg.asInstanceOf[IR])
+        else None
+      val (recvVal, paramArgs) =
+        if (calleeMt.hasReceiverParameter) (Some(callArgs.head), callArgs.tail)
+        else (None, callArgs)
+      val realArgs = paramArgs.filter(a => sigOf(a).forall(!_.isZST))
+      if (realArgs.size != argLocs.size) {
+        if (sys.env.contains("DIRECT_CBC_ARGDUMP")) {
+          System.err.println(s"[argdump] callee=${calleeMethod.getName} start=$calleeStart end=$endCount mut=${calleeMt.hasMutRecordParameter}/${calleeMt.hasMutObjectParameter} recv=${calleeMt.hasReceiverParameter} sret=${calleeMt.hasRetByValParameter} callArgs=${callArgs.map(a => sigOf(a).map(_.toString).getOrElse("?"))} ret=${calleeMt.returnType}")
+        }
+        return fail(s"arg count ${realArgs.size} vs ${argLocs.size}")
+      }
+      // pre-create (null-init) all value slots BEFORE clobbering arg registers
+      recvVal.foreach(r => sigOf(r) match { case Some(s) if !s.isZST => slot(r, s); case _ => })
+      realArgs.foreach(a => sigOf(a) match { case Some(s) if !s.isZST => slot(a, s); case _ => })
+      resultOf(e).foreach(res => sigOf(res) match { case Some(s) if !s.isZST => slot(res, s); case _ => })
+      // sret pointer (RetByVal): ZST returns are never written by the callee,
+      // so IRZ (null) is a safe placeholder
+      if (calleeMt.hasRetByValParameter) {
+        val sretLoc = regLocs(0).asReg.asInstanceOf[IR]
+        asm.mov(sretLoc, IRZ, reference = true)
+      }
+      recvVal.zip(recvLoc).foreach { (r, loc) => loadToReg(r, loc) }
       realArgs.zip(argLocs).foreach { (a, loc) =>
         loc.asReg match {
           case fr: FR => loadFloatToReg(a, fr)
@@ -1138,8 +1158,6 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         val rl = calleeAbi.resultLocation
         if (rl != null && rl.isReg && rl.asReg.isInstanceOf[IR]) rl.asReg.asInstanceOf[IR] else IR1
       }
-      realArgs.foreach(a => sigOf(a) match { case Some(s) if !s.isZST => slot(a, s); case _ => })
-      resultOf(e).foreach(res => sigOf(res) match { case Some(s) if !s.isZST => slot(res, s); case _ => })
       if (isVirtual) asm.callVirt(resultReg, ref) else asm.callDirect(resultReg, ref)
       saveGCMapHere()
       resultOf(e) match {
@@ -1172,7 +1190,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     // Terminators
     // ------------------------------------------------------------------
 
-    private def translateTerminator(t: CHIR.Terminator): Unit = t match {
+    private def translateTerminator(t: CHIR.Terminator, b: CHIR.Block): Unit = t match {
       case CHIR.Exit =>
         func.retVal match {
           case Some(rv) if !sigOf(rv).exists(_.isZST) =>
@@ -1190,14 +1208,35 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       case r: CHIR.RaiseException =>
         loadToReg(r.exceptionValue, IR1)
         asm.throwEx(IR1)
+        bindBlockEnd(b)
+      case t: CHIR.Terminator with CHIR.HasSuccessors if t.successors.length == 2 =>
+        // Try* expression terminator: translate the operation, then jump to
+        // the normal successor; the xtable region routes throws to the handler
+        val normal = t.successors(0)
+        t match {
+          case a: CHIR.Apply => translateApply(a)
+          case i: CHIR.Invoke => translateInvoke(i)
+          case n: CHIR.Intrinsic => translateIntrinsic(n)
+          case b2: CHIR.Binary => translateBinary(b2)
+          case u: CHIR.Unary => translateUnary(u)
+          case c: CHIR.NumericCast => translateNumericCast(c)
+          case al: CHIR.Allocate => translateAllocate(al)
+          case ra: CHIR.RawArrayAllocate => translateRawArrayAllocate(ra)
+          case other => fail(s"try ${other.getClass.getSimpleName}")
+        }
+        if (!bail_) {
+          asm.jmp(blockLabel(normal))
+          bindBlockEnd(b)
+        }
       case other => fail(s"terminator ${other.getClass.getSimpleName}")
     }
 
     def send(): Unit = {
       val xgen = new XTableGenerator(method, (slot: Frame.Slot) => slot.offset)(env)
       val packed = xgen.packXInfo(new XInfo, Seq.empty)
+      val exTable = ExceptionTable(exRegions.map { case (s, e, t) => ExceptionTable.RegionRef(s, e, t) }.toSeq)
       CBCFileGenerator.sendCode(
-        method, segment, 0, packed, ExceptionTable(Seq.empty), liveness.collect,
+        method, segment, 0, packed, exTable, liveness.collect,
         /* tailParamCount */ 0, /* untypedStackSlotsCount */ slotTypes.length,
         /* usedNonVolIRegsMask */ 0, /* usedNonVolFRegsMask */ 0, /* maxCalleeStackArgsCount */ 0,
         /* mayHaveNativeCalls */ false,
