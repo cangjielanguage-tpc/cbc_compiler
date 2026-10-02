@@ -26,7 +26,7 @@ import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, Cangj
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.ScalaCollections.*
-import com.huawei.excelsior.jet.util.{Closure, Numbering, ScalaCollections}
+import com.huawei.excelsior.jet.util.{Closure, ScalaCollections}
 
 import scala.collection.mutable
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter.GenericFuncParams
@@ -375,7 +375,19 @@ trait CHIRParser
 
     private val catchProxy = CatchProxy()
 
-    private val localValues = Numbering[StateValue](catchProxy +: (params ++ blockMap.blockVals.flatMap(_.expressions)))
+    // Identity-keyed index over catchProxy + params + block values: CHIR wrapper
+    // objects are memoized per-index by PackageImpl, so identity is a stable key,
+    // and a mutable IdentityHashMap beats the immutable CHAMP Map on lookups that
+    // dominate interpreter State access.
+    private val localValuesSeq: Array[StateValue] =
+      (catchProxy +: (params ++ blockMap.blockVals.flatMap(_.expressions))).toArray
+    private val localValuesNum = {
+      val m = new java.util.IdentityHashMap[StateValue, Integer](localValuesSeq.length * 2)
+      var i = 0
+      while (i < localValuesSeq.length) do { m.put(localValuesSeq(i), i); i += 1 }
+      m
+    }
+    private def number(v: StateValue): Int = localValuesNum.get(v)
 
     class State(private var locals: Array[NodeRef], _memory: NodeRef, _contextTypes: ContextTypesMap)
       extends Scope.State(null, _memory, _contextTypes) {
@@ -393,7 +405,7 @@ trait CHIRParser
           case x: CHIR.LocalVar => x.associatedExpr
           case x => x
         }
-        val i = localValues.number(v)
+        val i = number(v)
         locals(i).deref ensuring (_ != null)
       }
 
@@ -403,7 +415,7 @@ trait CHIRParser
           case x => x
         }
         assert(value != null)
-        val i = localValues.number(v)
+        val i = number(v)
         if (locals(i) != value) {
           copyOnWrite()
           locals(i) = value
@@ -425,25 +437,32 @@ trait CHIRParser
           * - all values are the same and merge function of same values is identity
           * Used to implement both `Phi` and `Proxy` creation.
           */
-        def mergeValues(values: Seq[Node]): Node = {
+        def mergeValues(values: Array[Node], n: Int): Node = {
           // TODO: remove copy-paste with VarProcessor.SSACompleter.State.mergeFrom and VMStates.VMState.mergeFrom
-          assert(!(values contains null))
-          val tpe = {
-            val mergedType = values map (_.tpe) reduce (_ | _)
-            // Pretend that result is TRef if all values are null.
-            if (mergedType == EopType.Null) EopType.Plain else mergedType
+          assert(!(values.slice(0, n) contains null))
+          val mergedType = {
+            var acc = values(0).tpe
+            var j = 1
+            while (j < n) do { acc = acc | values(j).tpe; j += 1 }
+            acc
           }
-          ScalaCollections.uniqueValue(values) match {
-            case None if tpe eq ValueType => Invalid // Incompatible types.
-            case Some(value) if identity => value
-            case _ => mergeFunc(tpe, values)
-          }
+          // Pretend that result is TRef if all values are null.
+          val tpe = if (mergedType == EopType.Null) EopType.Plain else mergedType
+          var unique = true
+          var j0 = 1
+          while (j0 < n && unique) do { unique = values(j0) == values(0); j0 += 1 }
+          if (!unique && (tpe eq ValueType)) Invalid // Incompatible types.
+          else if (unique && identity) values(0)
+          else mergeFunc(tpe, values.slice(0, n).toSeq)
         }
 
         if (!identity || states.exists(_.locals ne this.locals)) {
           this.copyOnWrite()
+          val vals = new Array[Node](states.size)
           for (i <- 0 until locals.length) {
-            this.locals(i) = mergeValues(states map (_.locals(i).deref))
+            var k = 0
+            for (s <- states) do { vals(k) = s.locals(i).deref; k += 1 }
+            this.locals(i) = mergeValues(vals, states.size)
           }
         }
 
@@ -453,7 +472,7 @@ trait CHIRParser
       override def foreachPair(that: State)(action: (Node, Node) => Unit): Unit = {
         assert(this.locals.length == that.locals.length)
 
-        for ((x, y) <- this.locals zip that.locals) action(x.deref, y.deref)
+        for (i <- 0 until this.locals.length) do action(this.locals(i).deref, that.locals(i).deref)
 
         super.foreachPair(that)(action)
       }
@@ -484,13 +503,13 @@ trait CHIRParser
 
     protected def startInputState(b: Block) = {
       new State(
-        Array.fill(localValues.order.size)(Invalid)
+        Array.fill(localValuesSeq.length)(Invalid)
           // Set catchProxy to null...
           // This is the ugliest hack, but CHIR might have paths leading to GetException expression
           // on which there are literally no Catch nodes. However, it is somehow guaranteed
           // that dynamically uninitialized value never reaches these points using some pattern
           // generated by FE or some other bullshit like that.
-          .updated(localValues.number(catchProxy), Null()),
+          .updated(number(catchProxy), Null()),
         entryMemory,
         if (env.enabled(ContextTypesInParsing)) new ContextTypesMap() else null)
     }

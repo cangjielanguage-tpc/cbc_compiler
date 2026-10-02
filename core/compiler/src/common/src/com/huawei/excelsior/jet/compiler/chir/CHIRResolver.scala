@@ -32,6 +32,11 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   private implicit val typeProvider: TypeProvider = env.getTypeProvider
 
   private val symTypeByTable = mutable.HashMap.empty[CHIR.Type | CHIR.CustomTypeDef, SymType]
+  // CHIR wrapper objects are memoized per-index by PackageImpl (stable identity per
+  // file) and Modifiers/GenericInfo are immutable, so identity-keyed memoization
+  // avoids re-walking attribute flags / generic params on every call.
+  private val modifiersByTable = mutable.HashMap.empty[AnyRef, Modifiers]
+  private val genericInfoByTable = mutable.HashMap.empty[AnyRef, GenericInfo]
   def symType(v: CHIR.Type | CHIR.CustomTypeDef): Option[SymType] = symTypeByTable.get(v) orElse {
     val res = (v: @unchecked) match {
       case v: CHIR.CustomTypeDef => findClass(symName(v))
@@ -240,7 +245,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     case v: CHIR.FuncSig => action(v.genericTypeParams)
   }
 
-  def genericInfo(v: CHIR.CustomTypeDef | CHIR.Func): GenericInfo = withGenericParams(v) { params =>
+  def genericInfo(v: CHIR.CustomTypeDef | CHIR.Func): GenericInfo = genericInfoByTable.getOrElseUpdate(v, withGenericParams(v) { params =>
     val constraints = for ((t, i) <- params.zipWithIndex) yield {
       val upperBounds = t match {
         case t: CHIR.GenericType => t.upperBounds.map(typeSig)
@@ -254,7 +259,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     } else {
       GenericInfo.none
     }
-  }
+  })
 
   private val typeVarCache = mutable.HashMap.empty[CHIR.GenericType, SignatureType.TypeVariable]
   private var typeVarCacheInitialized = false
@@ -306,7 +311,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     Option(typeProvider.findClass(xstr(className), loadPDB = true))
   }
 
-  def symModifiers(a: CHIR.HasAttributes): Modifiers = {
+  def symModifiers(a: CHIR.HasAttributes): Modifiers = modifiersByTable.getOrElseUpdate(a, {
     var mods = Modifiers.EMPTY
 
     a.attributes.foreach {
@@ -325,12 +330,11 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     }
 
     mods
-  }
+  })
 
   def isGenericInstantiated(t: CHIR.HasAttributes): Boolean = {
     t.attributes.contains(CHIR.Attribute.GenericInstantiated)
   }
-
   def isImported(t: CHIR.CustomTypeDef | CHIR.Func | CHIR.GlobalVar): Boolean = {
     val (attrs, isFunctionalTypeBase) = t match {
       case t: CHIR.CustomTypeDef => (t.attributes, isFunctionalType(t) && !isLambda(t.tpe))

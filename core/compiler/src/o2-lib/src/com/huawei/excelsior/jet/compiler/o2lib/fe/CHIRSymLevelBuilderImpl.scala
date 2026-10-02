@@ -35,6 +35,38 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
 
   private val classes = ArrayBuffer.empty[pcOModule.Class]
 
+  // Per-class name -> methods index maintained incrementally by addMethod.
+  // Avoids the O(n) getDeclaredMethods rescan per addMethod call: during CHIR
+  // symlevel building every embedded dependency re-registers its methods, and
+  // nearly all of those calls end in a duplicate lookup (~40k scans per eembc
+  // compilation). Keyed by method name; signatures are verified with
+  // equalExact on candidates because names alone are not unique in theory.
+  private val methodIndex = mutable.AnyRefMap.empty[pcOModule.Class, mutable.HashMap[XString, mutable.ArrayBuffer[(MethodSignature, Method)]]]
+
+  // Classes created by this builder: their method sets are exactly what addMethod
+  // registered, so the index is complete for them. Classes loaded from elsewhere
+  // (e.g. PDB symcache) may carry pre-existing methods that the index does not
+  // know about — for those we must fall back to the O(n) scan.
+  private val builderCreatedClasses: java.util.Set[pcOModule.Class] = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap)
+
+  private def indexFor(clazz: pcOModule.Class): mutable.HashMap[XString, mutable.ArrayBuffer[(MethodSignature, Method)]] =
+    methodIndex.getOrElseUpdate(clazz, mutable.HashMap.empty)
+
+  private def findInIndex(symclazz: ClassType, o2clazz: pcOModule.Class, name: XString, sig: MethodSignature): Method = {
+    if !builderCreatedClasses.contains(o2clazz) then return symclazz.findDeclaredMethodOrNull(name, sig)
+    val byName = methodIndex.getOrElse(o2clazz, return null)
+    val candidates = byName.getOrElse(name, return null)
+    var i = 0
+    while (i < candidates.length) do
+      val (s, m) = candidates(i)
+      if MethodSignature.equalExact(s, sig) then return m
+      i += 1
+    null
+  }
+
+  private def addToIndex(clazz: pcOModule.Class, name: XString, sig: MethodSignature, m: Method): Unit =
+    indexFor(clazz).getOrElseUpdate(name, mutable.ArrayBuffer.empty) += ((sig, m))
+
   override def env: LightweightEnvironment = LightweightEnvironment.getInstance
 
   private implicit val typeProvider: TypeProvider = env
@@ -58,6 +90,7 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
   private def newClass(name: XString, modifiers: Modifiers, isCangjie: Boolean, isCangjieLambdaClass: Boolean = false): pcOModule.Class = {
     val clazz = SymLevelBuilderModule.newClass(pcNamesModule.newClassName(name), modifiers, srcFD)
     this.classes += clazz
+    builderCreatedClasses.add(clazz)
     if (isCangjie) {
       clazz.markAsCangjieType()
 
@@ -172,13 +205,15 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
 
   override def addMethod(clazz: ClassType, name: String, sig: MethodSignature, exportedName: String, modifiers: Int, genericInfo: GenericInfo,
                          abiDesc: ABI.Description) = {
-    val dup = clazz.findDeclaredMethodOrNull(XString(name), sig)
-    if (dup != null) {
-      // TODO: checks?
+    val o2clazz = typeToO2Class(clazz)
+    val xname = XString(name)
+    val dup = findInIndex(clazz, o2clazz, xname, sig)
+    if dup != null then
       dup
-
-    } else {
-      val m = SymLevelBuilderModule.addMethod(typeToO2Class(clazz), XString(name), sig, Set32(modifiers), abiDesc)
+    else {
+      val m = SymLevelBuilderModule.addMethod(o2clazz, xname, sig, Set32(modifiers), abiDesc)
+      val symm = methodByO2Object(m)
+      addToIndex(o2clazz, xname, sig, symm)
 
       if (genericInfo != GenericInfo.none) {
         m.markAsUniversalGeneric()
