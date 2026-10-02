@@ -375,12 +375,21 @@ trait Nodes extends NodeSpells with AJNodes with KernelNodes with SimpleNodes wi
     private def checkArgType(idx: Int, newArg: Node): Node = {
       if (newArg != null) {
         val formalType = proto.argType(idx)
-        val arg = withPos(newArg)(Node.convertArg(formalType, newArg))
-        if (!isArgApplicable(arg, formalType)) {
-          shouldNotReachHere(s"arg#$idx of $name is expected to have tag ${proto.argTag(idx)} & type $formalType" +
-            s" but got arg ${arg.name} with tags ${arg.tagsSeq} & type ${arg.tpe}")
+        // Fast path: with no implicit arg converter active, convertArg is the
+        // identity, so already-applicable args can be returned as-is, skipping
+        // the withPos closure and convertArg dispatch. This is the dominant
+        // case for node construction/rewiring in parse and opt phases.
+        if (!Node.argConversionActive &&
+            (formalType.tag eq newArg.tpe.tag) && isArgApplicable(newArg, formalType)) {
+          newArg
+        } else {
+          val arg = withPos(newArg)(Node.convertArg(formalType, newArg))
+          if (!isArgApplicable(arg, formalType)) {
+            shouldNotReachHere(s"arg#$idx of $name is expected to have tag ${proto.argTag(idx)} & type $formalType" +
+              s" but got arg ${arg.name} with tags ${arg.tagsSeq} & type ${arg.tpe}")
+          }
+          arg
         }
-        arg
       } else {
         null
       }
@@ -683,6 +692,10 @@ trait Nodes extends NodeSpells with AJNodes with KernelNodes with SimpleNodes wi
     }
 
     private var argConverterStack: mutable.Stack[(Type, Node) => Node] = mutable.Stack()
+
+    /** True iff implicit argument conversion is active (see [[withImplicitArgConversion]]).
+      * When it is active, [[convertArg]] may transform the argument and must not be skipped. */
+    private[Node] def argConversionActive: Boolean = argConverterStack != null && argConverterStack.nonEmpty
 
     private[Node] def convertArg(tpe: Type, n: Node) = {
       if (argConverterStack != null && argConverterStack.nonEmpty) {
