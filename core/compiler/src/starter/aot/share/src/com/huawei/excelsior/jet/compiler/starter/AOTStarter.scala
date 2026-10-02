@@ -36,6 +36,7 @@ import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironm
 import com.huawei.excelsior.jet.compiler.types.{CHA, ReferenceTypes}
 import com.huawei.excelsior.jet.compiler.wrappers.CompilerWithAJWrappers
 import com.huawei.excelsior.jet.compiler.{Compiler, CompilerWithStats, Env, Environment, LightweightCompiler}
+import com.huawei.excelsior.jet.compiler.direct.DirectCBCCompiler
 import xscala.io.*
 import xscala.properties.OS
 import xscala.util.StringOps.asciiToLowerCase
@@ -106,7 +107,8 @@ object AOTStarter {
       initCompilationDriver(env, opt, args)
 
       val withWrappers = new CompilerWithAJWrappers(env, opt, impl.getWrappersPlatformConfig)
-      new LightweightCompiler(withWrappers)
+      val fallback = new LightweightCompiler(withWrappers)
+      if (env.enabled(BoolOption.DirectCBC)) new DirectCBCCompiler(fallback) else fallback
     }
 
     StdLibCompilerModule.setImpl(() => checkOrCompileStdlib(args, dynamicBundle))

@@ -213,6 +213,9 @@ enum BoolOption(override val isAlias: Boolean,
 
   case DumpCangjieUML extends BoolOption(false)
 
+  /** Compile methods straight from CHIR, bypassing the optimizing pipeline (falls back per-method). */
+  case DirectCBC extends BoolOption(false)
+
   // Do not use this option for anything except [[Env.targetArch]] setup. Other code should use [[Env.targetArch]].
   case GenCBC extends BoolOption(false)
 
