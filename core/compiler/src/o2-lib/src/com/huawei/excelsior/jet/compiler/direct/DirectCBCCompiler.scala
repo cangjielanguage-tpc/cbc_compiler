@@ -327,6 +327,33 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
 
     def translate(): Boolean = {
       try {
+        // Fast pre-scan: reject methods containing patterns we can never
+        // translate BEFORE doing any slot allocation / emission work. This
+        // makes hopeless methods cheap (large fallback populations otherwise
+        // burn mirror-side analysis before failing).
+        def scanFatal(t: CHIR.Terminator): Unit = t match {
+          case _: CHIR.TryApply | _: CHIR.RaiseException => fail(s"terminator ${t.getClass.getSimpleName}")
+          case _ =>
+        }
+        def scanFatalExpr(e: CHIR.Expression): Unit = e match {
+          case _: CHIR.Terminator | _: CHIR.Constant | _: CHIR.Apply | _: CHIR.Store |
+               _: CHIR.Load | _: CHIR.Binary | _: CHIR.Unary | _: CHIR.NumericCast |
+               _: CHIR.StaticCast | _: CHIR.Allocate | _: CHIR.Field |
+               _: CHIR.GetElementRef | _: CHIR.StoreElementRef | _: CHIR.Debug =>
+            // individually translatable (or no-op); per-expr checks happen in
+            // the translators
+            ()
+          case other => fail(s"expr ${other.getClass.getSimpleName}")
+        }
+        if (!bail_) {
+          func.body.get.blocks.foreach { b =>
+            b.expressions.foreach {
+              case t: CHIR.Terminator => scanFatal(t)
+              case e => scanFatalExpr(e)
+            }
+            scanFatal(b.terminator)
+          }
+        }
         asm.withSegment(segment) {
           // spill incoming params (they arrive in ABI registers; calls clobber volatiles)
           val abi = DirectCBCCompiler.platform(env).abi(method.getMethodType)
@@ -846,7 +873,19 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       if (calleeMethod == null) return fail(s"callee not found: ${resolver.symName(f)}")
 
       val calleeMt = calleeMethod.getMethodType
-      if (calleeMt.endSpecialParamsCount != 0) return fail("callee end special params (TI)")
+      // End special params (passed after the real params): only a single
+      // OuterTypeInfo param of a non-generic declaring class is supported —
+      // its value is the static TI of the declaring class.
+      val endCount = calleeMt.endSpecialParamsCount
+      // Mirrors CHIRParser: the callee's OuterTypeInfo is the TI of the
+      // receiver's (instantiated) type, or of the declaring class for
+      // receiver-less calls.
+      val outerTiSig = if (e.thisArg != null) sigOf(e.thisArg).get
+                       else SignatureType.fromSymType(calleeMethod.getDeclaringClass)
+      val outerTi = endCount == 1 && calleeMt.hasOuterTypeInfoParameter &&
+        !outerTiSig.containsTypeVariables
+      if (endCount != 0 && !outerTi)
+        return fail(f"callee end special params (TI: end=$endCount outer=${calleeMt.hasOuterTypeInfoParameter} this=${calleeMt.hasThisTypeInfoParameter} tv=${outerTiSig.containsTypeVariables})")
       val calleeStart = calleeMt.startSpecialParamsCount
       if (!(calleeStart == 0 || (calleeStart == 1 && calleeMt.hasReceiverParameter && !calleeMt.hasRetByValParameter)))
         return fail(s"callee special params start=$calleeStart")
@@ -855,16 +894,22 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val allArgs = (if (e.thisArg != null) Seq(e.thisArg) else Seq.empty) ++ e.args
       val regLocs = locs.filter(l => l.isReg && l.asReg.isInstanceOf[IR])
       if (locs.exists(l => !l.isReg)) return fail("stack args")
+      // argLocs = the locs holding the real (CHIR) params, i.e. between the
+      // start specials and the trailing end specials.
+      val argLocs = regLocs.drop(calleeStart).dropRight(endCount)
       // ZST args are absent from the ABI; drop them
       val realArgs = allArgs.filter(a => sigOf(a).forall(!_.isZST))
-      if (realArgs.size != regLocs.size) return fail(s"arg count ${realArgs.size} vs ${regLocs.size}")
+      if (realArgs.size != argLocs.size) return fail(s"arg count ${realArgs.size} vs ${argLocs.size}")
       // Float args go to FR registers; int/ref args to IR registers.
-      realArgs.zip(regLocs).foreach { (a, loc) =>
+      realArgs.zip(argLocs).foreach { (a, loc) =>
         loc.asReg match {
           case fr: FR => loadFloatToReg(a, fr)
           case ir: IR => loadToReg(a, ir)
         }
       }
+      if (outerTi)
+        asm.loadTypeInfoSig(regLocs(calleeMt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR],
+          outerTiSig.toCbc)
       val resultReg = {
         val rl = calleeAbi.resultLocation
         if (rl != null && rl.isReg && rl.asReg.isInstanceOf[IR]) rl.asReg.asInstanceOf[IR] else IR1
