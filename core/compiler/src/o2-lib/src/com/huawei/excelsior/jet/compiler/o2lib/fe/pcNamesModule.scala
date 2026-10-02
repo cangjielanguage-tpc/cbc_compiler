@@ -38,7 +38,10 @@ object pcNamesModule {
   /** Name for standard classes (loaded by system classloader). */
   class ClassName(_name: XString) extends NAME(_name) {
     override def toStringID: XString = js.format("%S%S", name, jstrClassNameMarker)
-    override def getMangledName: XString = mangleJavaName(name)
+    // Mangling is pure w.r.t. the name and getMangledName is called repeatedly
+    // for the same class (PDB place lookups on every findO2Class), so cache it.
+    private lazy val cachedMangled: XString = mangleJavaName(name)
+    override def getMangledName: XString = cachedMangled
   }
 
   /** Raw name for intermediate symbols and data. */
