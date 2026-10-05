@@ -152,7 +152,7 @@ class InvokeImpl(i: InvokeBase)(implicit provider: CHIRItemProvider) extends Exp
   def thisType: CHIR.Type = provider.getType[CHIR.Type](fc.objType).get
   def thisArg: CHIR.Value = args.head
   def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
-  def overflowStrategy = mapOverflowStrategy(e.overflowStrategy)
+  def overflowStrategy = mapOverflowStrategy(i.overflowStrategy)
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }
