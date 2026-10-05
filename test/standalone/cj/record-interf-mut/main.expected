@@ -1,0 +1,5 @@
+a.a = 3 before
+A.cc(9)
+R.c(9)
+a.a = 9 after
+0

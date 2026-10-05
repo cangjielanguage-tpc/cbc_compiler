@@ -222,6 +222,7 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
             case CHIRExprKind.RaiseException => new RaiseExceptionImpl(e)
             case CHIRExprKind.StaticCast => new StaticCastImpl(e)
             case CHIRExprKind.Box => new BoxImpl(e)
+            case CHIRExprKind.UnboxToRef => new UnboxToRefImpl(e)
             case CHIRExprKind.UnboxToValue => new UnboxToValueImpl(e)
             case CHIRExprKind.CastToConcrete => new CastToConcreteImpl(e)
             case CHIRExprKind.CastToGeneric => new CastToGenericImpl(e)

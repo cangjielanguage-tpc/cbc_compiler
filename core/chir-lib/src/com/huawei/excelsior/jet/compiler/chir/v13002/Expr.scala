@@ -267,6 +267,9 @@ final class StaticCastImpl(val e: Expression)(implicit val provider: CHIRItemPro
 final class BoxImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.Box {
 }
 
+final class UnboxToRefImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.UnboxToRef {
+}
+
 final class UnboxToValueImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.UnboxToValue {
 }
 

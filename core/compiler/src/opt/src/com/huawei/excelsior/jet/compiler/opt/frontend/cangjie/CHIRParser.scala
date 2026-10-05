@@ -2059,27 +2059,30 @@ trait CHIRParser
         }
         state(e) = res
 
-      case e: (CHIR.UnboxToValue | CHIR.CastToConcrete) =>
+      case e: (CHIR.UnboxToValue | CHIR.UnboxToRef | CHIR.CastToConcrete) =>
         val base = state(e.value)
-        val baseType = resolver.typeSig(e.targetTpe)
-        val value = if (baseType.isZST) {
+        val targetType = resolver.typeSig(e.targetTpe)
+        val value = if (targetType.isZST) {
           Void()
-        } else if (baseType.isRecord) {
-          baseType match {
+        } else if (targetType.isRecord) {
+          targetType match {
             case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
               base
             case _ =>
               if (base.tpe.isTraceableRefType) {
-                UnboxRec(baseType)(loadTypeInfo(baseType), base)
+                e match {
+                  case _: CHIR.UnboxToRef => UnboxLea(targetType)(base)
+                  case _ => UnboxRec(targetType)(loadTypeInfo(targetType), base)
+                }
               } else {
                 base
               }
           }
-        } else if (baseType.isTraceableReference) {
+        } else if (targetType.isTraceableReference) {
           base
         } else {
           if (base.tpe.isTraceableRefType) {
-            Unbox(baseType)(loadTypeInfo(baseType), base)
+            Unbox(targetType)(loadTypeInfo(targetType), base)
           } else {
             base
           }
@@ -2660,6 +2663,7 @@ trait CHIRParser
           assert(rcv.num == rootMethod.getMutRecordArgIdx)
           rootMethodParam(rootMethod.getMutObjectArgIdx)
         case rcv: UnboxLea => rcv.value
+        case rcv: UnboxRec => rcv.value
       }
       n.replaceBy(actual)
     }
