@@ -37,7 +37,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   // CBC symbol table; non-static bridges retain the established representation.
   private lazy val bridgedRawStaticMethods: Set[CHIR.Func] = pkg.typeDefs.iterator
     .flatMap(_.methods)
-    .flatMap(_.annotations.collect { case a: CHIR.WrappedRawMethod => a.rawMethod })
+    .flatMap(_.annotations.collectFirst { case a: CHIR.WrappedRawMethod => a.rawMethod })
     .filter(_.attributes.contains(CHIR.Attribute.Static))
     .toSet
 

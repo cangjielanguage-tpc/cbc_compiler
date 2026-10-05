@@ -1088,9 +1088,8 @@ trait CHIRParser
             }
           case _ => false
         }
-        val isGenericStatic = e.thisArg match {
-          case x: CHIR.LocalVar if e.thisType.isInstanceOf[CHIR.GenericType] =>
-            x.associatedExpr.isInstanceOf[CHIR.GetRTTIStatic]
+        val isGenericStatic = (e.thisArg, e.thisType) match {
+          case (x: CHIR.LocalVar, _: CHIR.GenericType) if x.associatedExpr.isInstanceOf[CHIR.GetRTTIStatic] => true
           case _ => false
         }
 
@@ -1140,10 +1139,9 @@ trait CHIRParser
 
         val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
 
-        val vtableTypes = if (isGenericStatic) {
-          e.thisType.asInstanceOf[CHIR.GenericType].upperBounds.map(resolver.typeSig)
-        } else {
-          Seq(thisType)
+        val vtableTypes = e.thisType match {
+          case g: CHIR.GenericType if isGenericStatic => g.upperBounds.map(resolver.typeSig)
+          case _ => Seq(thisType)
         }
 
         def findVTableSlot(receiverType: SignatureType): Option[(SignatureType, CHIRVTable.ExtDef, Int)] = {
