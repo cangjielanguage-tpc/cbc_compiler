@@ -528,7 +528,7 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     private var typeName: String = _
     private var signature: Signature = _
     private var codeBuilder: Option[MethodCodeBuilder] = None
-    private var flags: Int = 0
+    private var flags = mutable.ArrayBuffer.empty[MethodFlag]
     private var linkageName: Option[String] = None
     private var sourceFullName: Option[String] = None
     private var sourceFile: Option[String] = None
@@ -546,7 +546,7 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     }
 
     override def addFlag(flag: MethodFlag): Unit = {
-      flags |= flag.mask
+      flags += flag
     }
 
     override def setLinkageName(fullName: String): Unit = this.linkageName = Some(fullName)
