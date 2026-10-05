@@ -308,6 +308,10 @@ compiler/Sema/concurrency/import_pkg/main.cj
 compiler/Sema/array/array_builin_ctype.cj
 compiler/Sema/concurrency/spawn9.cj
 compiler/Sema/ffi/import_cpointer_generic/b.cj
+compiler/Sema/Extend/default_implement/default_implement_01.cj
+compiler/Sema/varray/varray_cffi/varray_cstruct05.cj
+compiler/Sema/varray/varray_cffi/varray_cstruct03.cj
+compiler/Sema/varray/varray_cffi/varray_cstruct04.cj
 ## CPOINTER_INIT1
 compiler/FFI/CFFI/type_cast/type_cast_5.cj
 compiler/FFI/CFFI/type_cast/type_cast_8.cj
@@ -318,6 +322,11 @@ compiler/CodegenCJNative/record/record_6.cj
 compiler/CodegenCJNative/record/record_7.cj
 compiler/CodegenCommon/global/globalvariable/UInt8ti.cj
 compiler/Sema/function/intrinsic_check_first_class_pipline.cj
+# INOUT_PARAM
+compiler/CHIROpt/DeadCodeElimination/UselessFunction/DCESkipCFunc.cj
+compiler/Sema/varray/varray_cffi/varray_inout.cj
+compiler/Sema/varray/varray_cffi/varray_inout04.cj
+compiler/Sema/varray/varray_cffi/varray_inout05.cj
 
 # bug 90 (genericTypeInfoParam called in method with no genericFuncParams)
 compiler/CHIR/CHIR2HLIR/extend/extend_instantiate_01.cj
@@ -609,3 +618,65 @@ compiler/CHIR/AST2CHIR/BaseUseCase/function/funcNode.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
 compiler/Sema/join_meet/join_perf.cj
 compiler/Sema/operator_overload/timeout_06.cj
+
+# TODO: debug this multi-step/multi-package issues
+compiler/CHIR/UG/VTable/extend/extend4/main.cj
+compiler/CHIR/UG/VTable/extend/extend5/main.cj
+compiler/CodegenCommon/struct/main.cj
+
+# bug 111 (should not reach here: CheckCast got arg with tags ArraySeq(VALUE))
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut01.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut02.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut03.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut04.cj
+
+# bug 112 (crash when calling function from extended interface)
+compiler/Sema/Extend/autobox_try_catch1.cj
+compiler/Sema/Extend/autobox_try_catch2.cj
+compiler/Sema/Extend/interface_default_implement/call_virtual_enum.cj
+compiler/Sema/Extend/interface_default_implement/call_virtual_primitive.cj
+
+# bug 113 (assertion failed: !Engine::Term(term).IsGeneric())
+compiler/CodegenCJNative/interface/record_extend_interface.cj
+compiler/CodegenCJNative/record/implement_interfaces/record_interface_static.cj
+compiler/Sema/box/box_generic_class_03/main.cj
+
+# bug 114 (MatchError X (Integer) in PackageImpl.getExpr)
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut05.cj
+compiler/Sema/OptionalModifiers/optionalModifiers03_1.cj
+compiler/Sema/class/interface_default_implemented_func_valid_1.cj
+
+# bug 115 (loadTypeInfo: should not reach here `Box(Tuple(List(Int64, LocalTypeVariable(0)))))`)
+compiler/Sema/match/nested_pattern/match_nested_in_tuple_005.cj
+compiler/Sema/match/nested_pattern/match_nested_in_tuple_006.cj
+
+# bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
+compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
+compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass02.cj
+
+# bug 117 (Resources.sacala: java.lang.IllegalArgumentException: requirement failed: OptionLikeEnum)
+compiler/CodegenCJNative/generic/generic_struct1.cj
+compiler/CodegenCommon/enum/enum_fix_01.cj
+
+# bug 118 (BFX + shifts = fail)
+compiler/CodegenCommon/binary_op/leftshift_1.cj
+compiler/CodegenCommon/binary_op/rightshift_1.cj
+
+# bug 119 (return this from open func causes `should not reach here (extra information: symType for TypeVariable)`)
+compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_5.cj
+compiler/Sema/generics/generic_upperbound_reference_01.cj
+
+# bug 120 (cbc_engine: Conflict found for reference)
+compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
+compiler/Sema/class/class_no_override_modifier_6.cj
+
+# bug 121 (matching on property function fails with assertion failure)
+compiler/CodegenCommon/licm/licm_00.cj
+compiler/Sema/generics/instantiation/O2_part_gi/disable_instance_in_open.cj
+
+# bug 122 (fail to resolve method)
+compiler/CHIR/UG/VTable/generic/static/class_class02.cj
+compiler/Sema/Extend/extend_imp_type.cj
+
+# bug 123 (could not find VTable slot for $GenericVirtualFunc)
+compiler/Sema/call/call32.cj
