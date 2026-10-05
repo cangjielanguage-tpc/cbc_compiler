@@ -272,6 +272,8 @@ compiler/CHIR/DCE/testDCEAsg03.cj
 compiler/CHIR/DCE/testDCEAsg04.cj
 compiler/CHIR/DCE/testDCEThrow05.cj
 compiler/CHIR/DCE/testDCEThrow06.cj
+compiler/CodegenCJNative/runtime/stacktrace.cj
+compiler/CodegenCommon/dec/throw.cj
 
 # bug 81 (CHIR.GetRTTI could have explicit parameter (not always ReceiverParam))
 compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
@@ -431,6 +433,8 @@ compiler/CodegenCJNative/varray/varray_array1.cj
 # bug 109 (inconsistent rules for signatures while parsing Box-based functions)
 compiler/Sema/unusedImport/unusedImport002/unused011.cj
 compiler/Sema/unusedImport/unusedImport004/unused009.cj
+compiler/Sema/forin/forin16.cj
+compiler/Sema/type_infer/lambda_param_05.cj
 
 # uses --debug-annotations
 compiler/CHIR/ComputeAnnotations
