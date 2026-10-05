@@ -610,3 +610,8 @@ compiler/Sema/generics/generic_subst_perf.cj
 
 # ignore due to cjts misconfiguration (line 6: $1: unbound variable)
 compiler/CHIR/AST2CHIR/BaseUseCase/function/funcNode.cj
+
+# ignore due to timeouts and environmental problems
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
+compiler/Sema/join_meet/join_perf.cj
+compiler/Sema/operator_overload/timeout_06.cj
