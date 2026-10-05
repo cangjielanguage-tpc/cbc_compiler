@@ -55,7 +55,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
 
     def globalName(_v: CHIR.Func | CHIR.GlobalVar): String = {
       val (isWrappedMethod, wrappedMethod) = _v match {
-        case v: CHIR.Func => (getMethodWrapper(v).nonEmpty, getWrappedMethod(v))
+        case v: CHIR.Func => (getMethodWrappers(v).nonEmpty, getWrappedMethod(v))
         case v: CHIR.GlobalVar => (false, None)
       }
       val (id, identifier, srcName) = _v match {
@@ -240,25 +240,26 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   // Keys - wrapped methods, values - wrappers
-  private val wrappedMethodsCache = mutable.HashMap.empty[CHIR.Func, CHIR.Func]
+  private val wrappedMethodsCache = mutable.HashMap.empty[CHIR.Func, Seq[CHIR.Func]]
   private var wrappedMethodsCacheInitialized = false
 
   private def initWrappedMethods(): Unit = {
     pkg.values foreach {
       case wrapper: CHIR.Func =>
         for (f <- getWrappedMethod(wrapper)) {
-          wrappedMethodsCache(f) = wrapper
+          val wrappers = wrappedMethodsCache.getOrElse(f, Seq.empty)
+          wrappedMethodsCache(f) = wrapper +: wrappers
         }
       case _ =>
     }
   }
 
-  def getMethodWrapper(f: CHIR.Func): Option[CHIR.Func] = {
+  def getMethodWrappers(f: CHIR.Func): Seq[CHIR.Func] = {
     if (!wrappedMethodsCacheInitialized) {
       initWrappedMethods()
       wrappedMethodsCacheInitialized = true
     }
-    wrappedMethodsCache.get(f)
+    wrappedMethodsCache.getOrElse(f, Seq.empty)
   }
 
   def getWrappedMethod(f: CHIR.Func): Option[CHIR.Func] = {
