@@ -2057,7 +2057,7 @@ trait CHIRParser
         }
         state(e) = res
 
-      case e: (CHIR.UnboxToValue | CHIR.CastToConcrete) =>
+      case e: (CHIR.UnboxToValue | CHIR.UnboxToRef | CHIR.CastToConcrete) =>
         val base = state(e.value)
         val baseType = resolver.typeSig(e.targetTpe)
         val value = if (baseType.isZST) {
@@ -2068,7 +2068,10 @@ trait CHIRParser
               base
             case _ =>
               if (base.tpe.isTraceableRefType) {
-                UnboxRec(baseType)(loadTypeInfo(baseType), base)
+                e match {
+                  case _: CHIR.UnboxToRef => UnboxLea(baseType)(base)
+                  case _ => UnboxRec(baseType)(loadTypeInfo(baseType), base)
+                }
               } else {
                 base
               }
@@ -2658,6 +2661,7 @@ trait CHIRParser
           assert(rcv.num == rootMethod.getMutRecordArgIdx)
           rootMethodParam(rootMethod.getMutObjectArgIdx)
         case rcv: UnboxLea => rcv.value
+        case rcv: UnboxRec => rcv.value
       }
       n.replaceBy(actual)
     }

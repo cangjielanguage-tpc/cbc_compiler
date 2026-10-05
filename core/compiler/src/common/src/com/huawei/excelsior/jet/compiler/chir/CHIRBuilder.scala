@@ -261,7 +261,7 @@ object CHIRBuilder {
         val hasOuterTypeInfo = true // All member functions have outer type info parameter
         val hasThisTypeInfoParam = modifiers.contains(STATIC)
         val linkageName = resolver.linkageName(m)
-        val hasMutParam = rcvSig.isRecord && modifiers.contains(Modifier.CJ_MUT)
+        val hasMutParam = rcvSig.isRecord && modifiers.contains(Modifier.CJ_MUT) && resolver.getOverrideSrcFuncType(m).isEmpty
         val rcvParam = if (hasMutParam) None else rcv map {
           case t: SignatureType.OptionLikeEnum if t.someType.isTypeVariable => SignatureType.Box(t)
           case t => t

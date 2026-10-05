@@ -54,39 +54,34 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     }
 
     def globalName(_v: CHIR.Func | CHIR.GlobalVar): String = {
-      val annotations = _v match {
-        case v: CHIR.Func => v.annotations
-        case v: CHIR.GlobalVar => v.annotations
+      val (isWrappedMethod, wrappedMethod) = _v match {
+        case v: CHIR.Func => (getMethodWrapper(v).nonEmpty, getWrappedMethod(v))
+        case v: CHIR.GlobalVar => (false, None)
       }
-      val isWrappedMethod = _v match {
-        case v: CHIR.Func => getMethodWrapper(v).nonEmpty
-        case v: CHIR.GlobalVar => false
-      }
-      val wrappedMethod = annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
-      val v = wrappedMethod.getOrElse(_v)
-      val (id, identifier, srcName) = v match {
+      val (id, identifier, srcName) = _v match {
         // rename main-related functions to let interpreter start from "main" entry point
         case v: CHIR.Func if v.identifier == "@user.main" => (v.id, "user.main.invoke", "user.main.invoke")
         case v: CHIR.Func if v.kind == CHIR.Func.Kind.MainEntry => (v.id, "user.main", "user.main")
         case v: CHIR.Func if v.identifier == CHIRCJEntryGenerator.name => (v.id, "main", "main")
 
-        case v: CHIR.Func => (v.id, v.identifier, v.srcCodeIdentifier)
+        case v: CHIR.Func => (v.id, v.identifier, wrappedMethod.map(_.srcCodeIdentifier).getOrElse(v.srcCodeIdentifier))
         case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
       }
-      val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
-      val isInitializer = v.attributes.contains(CHIR.Attribute.Initializer)
-      val isPackageGlobal = v.declaringDef.isEmpty
-      val suffix = if (isGenericInstantiated(v)) {
+      val isPrivate = _v.attributes.contains(CHIR.Attribute.Private)
+      val isOperator = _v.attributes.contains(CHIR.Attribute.Operator)
+      val isInitializer = _v.attributes.contains(CHIR.Attribute.Initializer)
+      val isPackageGlobal = _v.declaringDef.isEmpty
+      val suffix = if (isGenericInstantiated(_v)) {
         // TODO another way without id usage?
         assert(id > 0)
         s"$$instantiated$$${pkg.name}$$$id"
       } else {
         ""
       }
-      getOverrideSrcFuncType(v) match {
-        case Some(funcType) =>
+      getOverrideSrcFuncType(_v) match {
+        case Some(funcType) if !isOperator =>
           val f = _v.asInstanceOf[CHIR.Func]
-          val d = v.declaringDef.get
+          val d = wrappedMethod.getOrElse(_v).declaringDef.get
           val vtableFuncs = d.vtables.flatMap(_.vMethods)
           vtableFuncs.find(_.instance == f) match {
             case Some(m) => m.name
@@ -94,8 +89,14 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
               assert(srcName.nonEmpty, identifier)
               srcName + suffix
           }
-        case None =>
-          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || isWrappedMethod || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
+        case _ =>
+          // TODO: there must be another simpler way to cover all of the edge cases
+          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || isWrappedMethod ||
+            (wrappedMethod.nonEmpty && !isOperator) || (isPackageGlobal && isPrivate)) {
+            identifier.tail
+          } else {
+            srcName + suffix
+          }
       }
     }
 
@@ -245,21 +246,24 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   private def initWrappedMethods(): Unit = {
     pkg.values foreach {
       case wrapper: CHIR.Func =>
-        val wrappedMethod = wrapper.annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
-        // TODO: assert only one
-        for (f <- wrappedMethod) {
+        for (f <- getWrappedMethod(wrapper)) {
           wrappedMethodsCache(f) = wrapper
         }
       case _ =>
     }
   }
 
-  private def getMethodWrapper(f: CHIR.Func): Option[CHIR.Func] = {
+  def getMethodWrapper(f: CHIR.Func): Option[CHIR.Func] = {
     if (!wrappedMethodsCacheInitialized) {
       initWrappedMethods()
       wrappedMethodsCacheInitialized = true
     }
     wrappedMethodsCache.get(f)
+  }
+
+  def getWrappedMethod(f: CHIR.Func): Option[CHIR.Func] = {
+    // TODO: assert only one
+    f.annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
   }
 
   private val typeVarCache = mutable.HashMap.empty[CHIR.GenericType, SignatureType.TypeVariable]

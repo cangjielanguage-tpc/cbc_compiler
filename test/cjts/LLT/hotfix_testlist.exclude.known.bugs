@@ -503,16 +503,6 @@ compiler/Sema/optional_chain/trailing_lambda_00.cj
 compiler/Sema/type_infer/lambda_param_06.cj
 compiler/Sema/type_infer/pipe_lambda_overload.cj
 
-# bug 111 (should not reach here: CheckCast got arg with tags ArraySeq(VALUE))
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut01.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut02.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut03.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut04.cj
-compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
-compiler/CodegenCJNative/generic/generic_struct.cj
-compiler/CodegenCJNative/storeElementRef.cj
-compiler/Sema/unusedImport/unusedImport002/unused016/unused016.cj
-
 # bug 112 (crash when calling function from extended interface)
 compiler/Sema/Extend/autobox_try_catch1.cj
 compiler/Sema/Extend/autobox_try_catch2.cj
@@ -547,11 +537,6 @@ compiler/Sema/Extend/extend_overload_builtin_op3.cj
 compiler/CodegenCJNative/interface/record_extend_interface.cj
 compiler/CodegenCJNative/record/implement_interfaces/record_interface_static.cj
 compiler/Sema/box/box_generic_class_03/main.cj
-
-# bug 114 (MatchError X (Integer) in PackageImpl.getExpr)
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut05.cj
-compiler/Sema/OptionalModifiers/optionalModifiers03_1.cj
-compiler/Sema/class/interface_default_implemented_func_valid_1.cj
 
 # bug 115 (loadTypeInfo: should not reach here `Box(Tuple(List(Int64, LocalTypeVariable(0)))))`)
 compiler/Sema/match/nested_pattern/match_nested_in_tuple_005.cj

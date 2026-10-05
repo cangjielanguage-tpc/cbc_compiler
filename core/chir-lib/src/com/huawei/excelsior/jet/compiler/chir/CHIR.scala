@@ -296,7 +296,7 @@ object CHIR {
   trait StaticCast extends Cast {
   }
 
-  trait UnBoxToRef extends Cast {
+  trait UnboxToRef extends Cast {
   }
 
   trait UnboxToValue extends Cast {
