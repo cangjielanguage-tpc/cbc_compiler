@@ -197,6 +197,20 @@ compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_00
 compiler/Sema/class/class_static_member_func_inheritance_2.cj
 compiler/Sema/class/interface_no_override_modifier_2.cj
 compiler/Sema/class/interface_static_member_func_inheritance_1.cj
+compiler/CHIR/CHIR2HLIR/typeAlias/typealias_use_20.cj
+compiler/CHIR/UG/VTable/generic/static/interface_extend01.cj
+compiler/CodegenCJNative/LegacyTests/class_static.cj
+compiler/CodegenCJNative/record/implement_interfaces/record_interface_box.cj
+compiler/Sema/Extend/default_implement/default_implement_00/main.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_01.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_03.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_04.cj
+compiler/Sema/class/class_inheritance_5.cj
+compiler/Sema/class/class_redef_1.cj
+compiler/Sema/class/class_static_member_func_inheritance_1.cj
+compiler/Sema/class/interface_access_control/toplevel_interface_access_control1/main.cj
+compiler/Sema/class/interface_member_variable_check_04.cj
+compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic02.cj
 
 # bug: #46 (CBC-compiler generated call.interf.g to "non-boxed" method which is absent in method table)
 compiler/CHIR/CHIR2HLIR/record/mut/record_mut_ok_6.cj
@@ -228,6 +242,7 @@ compiler/Sema/typealias/typealias23.cj
 
 # bug 55 (Incorrect dispatch for "specialized and inherited twice" generic interface)
 compiler/Sema/interface/generic_interface_inheritance
+compiler/CHIR/UG/VTable/generic/static/interface_class03.cj
 
 # bug 67 (C-struct getRetByValArgIdx crash)
 compiler/FFI/CFFI/record/small_0.cj
@@ -249,6 +264,7 @@ compiler/CodegenCommon/atexit
 compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_6.cj
 compiler/Sema/forin/forin14.cj
 compiler/Sema/typealias/overload_and_alias1/main.cj
+compiler/CodegenCommon/enum/enum_07.cj
 
 # bug 78 (not found function: native_entry)
 compiler/CodegenCJNative/LegacyTests/native.cj
@@ -259,11 +275,26 @@ compiler/FFI/CFFI/record/small_18.cj
 compiler/CodegenCommon/cffi/foreign/01/foreign_01.cj
 compiler/CodegenCJNative/incremental/foreign/foreign1.cj
 compiler/CHIR/CHIR2HLIR/generic/generic_external_use_ffic/main.cj
+compiler/Sema/ffi/bugfix1/c_ffi.cj
+compiler/Sema/varray/varray_cffi/varray_cstruct02.cj
 
 # bug 79 (Cast Float32 -> Int32 does not throw on overflow)
 compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
 compiler/CHIR/CHIR2HLIR/typeCast/float2intExceed.cj
 compiler/CHIR/CHIR2HLIR/exception/try86.cj
+
+# bug 80 (Precise line numbers in stack traces)
+compiler/CHIR/DCE/do_nothing_on_reflect.cj
+compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl1.cj
+compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl2.cj
+compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl3.cj
+compiler/CodegenCJNative/demangle/decl/nested_package/main.cj
+compiler/CodegenCJNative/reflect/reflect_02.cj
+compiler/CodegenCJNative/reflect/reflect_03.cj
+compiler/CodegenCJNative/reflect/reflect_04.cj
+compiler/CodegenCJNative/runtime/stacktrace.cj
+compiler/CodegenCJNative/trycatch/unreachable.cj
+compiler/CodegenCommon/dec/throw.cj
 
 # bug 81 (CHIR.GetRTTI could have explicit parameter (not always ReceiverParam))
 compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
@@ -391,6 +422,11 @@ compiler/CodegenCHIR/tryCatch/tryTypeCast/tryTypeCast_3.cj
 # bug 63 (Proper parse @C methods with C-struct return type)
 compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
 
+# bug 101 (compiler incorrectly preserve SRET flag in ABI for overriden methods)
+compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
+compiler/CodegenCommon/enum/enum_fix_02.cj
+compiler/Sema/forin/closedrange_rune.cj
+
 # bug 103 (static interface call with generic upper bound)
 compiler/Sema/Extend/interface_default_implement/static_default_impl_call_non_impl_pass.cj
 compiler/Sema/function/defaultParameter6.cj
@@ -400,6 +436,12 @@ compiler/Sema/generics/instantiation_rearrange_01/test.cj
 compiler/Sema/generics/rearrange_multi_impl/main.cj
 compiler/Sema/interface/abstract_static_generic_function_01.cj
 compiler/Sema/interface/abstract_static_generic_function_02.cj
+compiler/CodegenCJNative/generic/generic_class_static_var.cj
+compiler/CodegenCJNative/generic/generic_interface_static.cj
+compiler/Sema/Extend/default_implement/default_implement_05.cj
+compiler/Sema/call/call13.cj
+compiler/Sema/concurrency/spawn10.cj
+compiler/Sema/typealias/typealias_partial_infer_03.cj
 
 # bug 104 (properly support generic struct copy)
 compiler/CodegenCJNative/generic/generic_function1.cj
@@ -434,6 +476,28 @@ compiler/Sema/unusedImport/unusedImport002/unused011.cj
 compiler/Sema/unusedImport/unusedImport004/unused009.cj
 compiler/Sema/forin/forin16.cj
 compiler/Sema/type_infer/lambda_param_05.cj
+compiler/CHIR/CHIR2HLIR/function/function13.cj
+compiler/CHIR/UG/CallExpr/invoke_like_05.cj
+compiler/CHIR/annotation/package02/Anno_Incre.cj
+compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_07.cj
+compiler/CodegenCommon/class/inherit_01.cj
+compiler/CodegenCommon/overflow/cmpfuzz/test_3_main.cj
+compiler/Sema/Extend/default_implement/default_implement_07.cj
+compiler/Sema/Extend/extend_interface1.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00012.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00035.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00051.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00065.cj
+compiler/Sema/box/check_super_box_07/check_super_box_07.cj
+compiler/Sema/call/call19.cj
+compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_4.cj
+compiler/Sema/class/class_inheritance_9.cj
+compiler/Sema/generics/instantiation/instantiation007.cj
+compiler/Sema/lambda/lambda_param_infer04.cj
+compiler/Sema/lambda/test_fold.cj
+compiler/Sema/optional_chain/trailing_lambda_00.cj
+compiler/Sema/type_infer/lambda_param_06.cj
+compiler/Sema/type_infer/pipe_lambda_overload.cj
 
 # uses --debug-annotations
 compiler/CHIR/ComputeAnnotations
@@ -629,12 +693,40 @@ compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut01.cj
 compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut02.cj
 compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut03.cj
 compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut04.cj
+compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
+compiler/CodegenCJNative/generic/generic_struct.cj
+compiler/CodegenCJNative/storeElementRef.cj
+compiler/Sema/unusedImport/unusedImport002/unused016/unused016.cj
 
 # bug 112 (crash when calling function from extended interface)
 compiler/Sema/Extend/autobox_try_catch1.cj
 compiler/Sema/Extend/autobox_try_catch2.cj
 compiler/Sema/Extend/interface_default_implement/call_virtual_enum.cj
 compiler/Sema/Extend/interface_default_implement/call_virtual_primitive.cj
+compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
+compiler/CHIR/Generic/testGeneric09.cj
+compiler/CHIR/UG/VTable/non_generic/interface_extend03.cj
+compiler/CodegenCHIR/overflow/add_saturating.cj
+compiler/CodegenCHIR/overflow/add_throwing.cj
+compiler/CodegenCHIR/overflow/add_wrapping.cj
+compiler/CodegenCHIR/overflow/div_saturating.cj
+compiler/CodegenCHIR/overflow/div_throwing.cj
+compiler/CodegenCHIR/overflow/div_wrapping.cj
+compiler/CodegenCHIR/overflow/mod_saturating.cj
+compiler/CodegenCHIR/overflow/mod_throwing.cj
+compiler/CodegenCHIR/overflow/mod_wrapping.cj
+compiler/CodegenCHIR/overflow/mul_saturating.cj
+compiler/CodegenCHIR/overflow/mul_throwing.cj
+compiler/CodegenCHIR/overflow/mul_wrapping.cj
+compiler/CodegenCHIR/overflow/neg_saturating.cj
+compiler/CodegenCHIR/overflow/neg_throwing.cj
+compiler/CodegenCHIR/overflow/neg_wrapping.cj
+compiler/CodegenCHIR/overflow/sub_saturating.cj
+compiler/CodegenCHIR/overflow/sub_throwing.cj
+compiler/CodegenCHIR/overflow/sub_wrapping.cj
+compiler/CodegenCJNative/interface/primitive_extend_interface.cj
+compiler/CodegenCJNative/interface/primitive_extend_interface_generic_constraint.cj
+compiler/Sema/Extend/extend_overload_builtin_op3.cj
 
 # bug 113 (assertion failed: !Engine::Term(term).IsGeneric())
 compiler/CodegenCJNative/interface/record_extend_interface.cj
@@ -649,6 +741,10 @@ compiler/Sema/class/interface_default_implemented_func_valid_1.cj
 # bug 115 (loadTypeInfo: should not reach here `Box(Tuple(List(Int64, LocalTypeVariable(0)))))`)
 compiler/Sema/match/nested_pattern/match_nested_in_tuple_005.cj
 compiler/Sema/match/nested_pattern/match_nested_in_tuple_006.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct02.cj
+compiler/CodegenCJNative/option/option_typecast.cj
+compiler/Sema/PatternMatching/EnumPattern/generic_enum_nested_match.cj
+compiler/Sema/generics/function_generics_list.cj
 
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
@@ -669,6 +765,7 @@ compiler/Sema/generics/generic_upperbound_reference_01.cj
 # bug 120 (cbc_engine: Conflict found for reference)
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
 compiler/Sema/class/class_no_override_modifier_6.cj
+compiler/Sema/Extend/default_implement/default_implement_04.cj
 
 # bug 121 (matching on property function fails with assertion failure)
 compiler/CodegenCommon/licm/licm_00.cj
@@ -677,6 +774,10 @@ compiler/Sema/generics/instantiation/O2_part_gi/disable_instance_in_open.cj
 # bug 122 (fail to resolve method)
 compiler/CHIR/UG/VTable/generic/static/class_class02.cj
 compiler/Sema/Extend/extend_imp_type.cj
+compiler/CHIR/CHIR2HLIR/class/class_property/chir_class_property1.cj
+compiler/Sema/class/class_access_control23.cj
+compiler/Sema/class/class_property/property22.cj
+compiler/Sema/class/class_property/property25.cj
 
 # bug 123 (could not find VTable slot for $GenericVirtualFunc)
 compiler/Sema/call/call32.cj
