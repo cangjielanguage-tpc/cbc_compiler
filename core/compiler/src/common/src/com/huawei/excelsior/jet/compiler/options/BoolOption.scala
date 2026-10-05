@@ -404,6 +404,8 @@ enum BoolOption(override val isAlias: Boolean,
   // Do not use this option, use ProjectLogic.multiapp instead
   case Multiapp extends BoolOption(false)
 
+  case IgnoreSourceFileNameForCbc extends BoolOption(false)
+
   def this(defaultValue: Boolean)                 = this(false, defaultValue, null)
   def this(defaultLambda: Environment => Boolean) = this(false, null, defaultLambda)
   def this(alias: Alias)                          = this(true,  null, alias.lambda)

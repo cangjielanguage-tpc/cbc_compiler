@@ -14,7 +14,7 @@ import com.huawei.excelsior.jet.assembler.Segment
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, FieldFlag, MethodFlag, TypeEnumKind, TypeFlag}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.{Assembler, LivenessInfoCollector}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
-import com.huawei.excelsior.jet.assembler.cbc.{CbcFileEncoder, CbcFileFormat, ExceptionTable}
+import com.huawei.excelsior.jet.assembler.cbc.{CbcFileEncoder, CbcFileFormat, ExceptionTable, SourceCodeInfo}
 import com.huawei.excelsior.jet.compiler.TypeProvider
 import com.huawei.excelsior.jet.compiler.abi.XTableGenerator
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieEnumInfo
@@ -107,13 +107,14 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
   }
 
   def sendCode(m: Method, seg: Segment, literalsOffset: Int,
-               xinfo: XTableGenerator.PackedXInfo, exTable: ExceptionTable, liveness: LivenessInfoCollector.AllStates,
+               xinfo: XTableGenerator.PackedXInfo, sourceCodeInfo: SourceCodeInfo, exTable: ExceptionTable, 
+               liveness: LivenessInfoCollector.AllStates,
                tailParamCount: Int, untypedStackSlotsCount: Int,
                usedNonVolIRegsMask: Int, usedNonVolFRegsMask: Int, maxCalleeStackArgsCount: Int,
                mayHaveNativeCalls: Boolean,
                stackAllocatedTypeSigs: Seq[SignatureType], variableSizeTypes: Seq[SignatureType]): Unit = {
 
-    val was = methodsCode.put(m, Code(seg, literalsOffset, xinfo, exTable, liveness,
+    val was = methodsCode.put(m, Code(seg, literalsOffset, xinfo, sourceCodeInfo, exTable, liveness,
       untypedStackSlotsCount,
       usedNonVolIRegsMask, usedNonVolFRegsMask, maxCalleeStackArgsCount,
       mayHaveNativeCalls, stackAllocatedTypeSigs, variableSizeTypes))
@@ -301,6 +302,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
         val codeBuilder = builder.getCodeBuilder()
         codeBuilder.setSegment(code.seg)
         val xTable = Option(code.xinfo.xTable).map(_.toByteArray).getOrElse(Array.empty[Byte])
+        codeBuilder.setSourceCodeInfo(code.sourceCodeInfo)
         codeBuilder.setExceptionTable(code.exTable)
         codeBuilder.setLiveness(code.liveness)
         codeBuilder.setUntypedStackSlotsCount(code.untypedStackSlotsCount)
@@ -363,6 +365,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
   private case class Code(seg: Segment,
                           literalsOffset: Int,
                           xinfo: XTableGenerator.PackedXInfo,
+                          sourceCodeInfo: SourceCodeInfo,
                           exTable: ExceptionTable,
                           liveness: LivenessInfoCollector.AllStates,
                           untypedStackSlotsCount: Int,

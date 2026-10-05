@@ -275,7 +275,8 @@ class StandaloneTestSuite(TestSuite):
                         continue
 
                     aot_deps_args = [f"-cbcaotdeps={':'.join(aot_so_names)}"] if aot_so_names else []
-                    chir_to_cbc = java_cmd() + ['-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", args.jc_options] + aot_deps_args + int_chir_files
+                    jc_options = f"+IgnoreSourceFileNameForCbc {args.jc_options}"
+                    chir_to_cbc = java_cmd() + ['-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", jc_options] + aot_deps_args + int_chir_files
                     cbc_log = io.StringIO()
                     cbc_err = io.StringIO()
                     res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)

@@ -91,6 +91,7 @@ class Statistics {
 
 enum StatTag(val name: String, val children: StatTag*) {
   case MC_Instructions extends StatTag("instructions")
+  case MC_SourceCodeInfo extends StatTag("source code info")
   case MC_Exceptions extends StatTag("exceptions")
   case MC_GCData extends StatTag("gc maps")
   case MC_StackChecks extends StatTag("stack maps")
@@ -98,7 +99,7 @@ enum StatTag(val name: String, val children: StatTag*) {
   case String extends StatTag("strings")
   case ByteArray extends StatTag("raw data")
   case Signature extends StatTag("signature types")
-  case MethodCode extends StatTag("method code", MC_Instructions, MC_Exceptions, MC_GCData, MC_StackChecks)
+  case MethodCode extends StatTag("method code", MC_Instructions, MC_SourceCodeInfo, MC_Exceptions, MC_GCData, MC_StackChecks)
   case FieldDef extends StatTag("field definitions")
   case FieldRef extends StatTag("field references")
   case MethodDef extends StatTag("method definitions")
@@ -780,6 +781,14 @@ private class MethodCodePool(stats: Statistics) extends Pool[MethodCode] { self:
       output.putBytes(data.segment.toByteArray)
     }
 
+    stats.count(StatTag.MC_SourceCodeInfo, output) { output =>
+      if (data.sourceCodeInfo.items.nonEmpty) {
+        outSourceCodeInfo(output, data.segment, data.sourceCodeInfo)
+      } else {
+        output.putULEB(0)
+      }
+    }
+
     stats.count(StatTag.MC_Exceptions, output) { output =>
       if (data.exTable.regionRefs.nonEmpty) {
         outExTable(output, data.segment, data.exTable)
@@ -816,6 +825,13 @@ private class MethodCodePool(stats: Statistics) extends Pool[MethodCode] { self:
       })
       case _ =>
     }
+  }
+
+  private def outSourceCodeInfo(output: DataOutput, segment: Segment, sourceCodeInfo: SourceCodeInfo): Unit = {
+    val sciBuffer = new ByteBuffer()
+    sourceCodeInfo.resolve(segment).flatMap { case (bcPos, lineNumber) => Seq(bcPos, lineNumber) }.foreach(sciBuffer.putULEB)
+    output.putULEB(sciBuffer.length)
+    output.putBytes(sciBuffer.toByteArray)
   }
 
   private def outExTable(output: DataOutput, segment: Segment, exTable: ExceptionTable): Unit = {

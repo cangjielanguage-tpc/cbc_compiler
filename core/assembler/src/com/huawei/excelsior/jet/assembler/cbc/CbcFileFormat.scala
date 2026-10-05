@@ -9,9 +9,8 @@
 package com.huawei.excelsior.jet.assembler.cbc
 
 import com.huawei.excelsior.common.CodeHelpers.shouldNotCallThis
-import com.huawei.excelsior.jet.assembler.Segment
+import com.huawei.excelsior.jet.assembler.{Segment, Symbol}
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.*
-import com.huawei.excelsior.jet.assembler.Symbol
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileEncoder.Index
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.TypeEnumKind.NotEnum
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
@@ -279,6 +278,7 @@ object CbcFileFormat {
                    constValue: Option[(FieldTag, Long)]) extends Named
 
   case class MethodCode(segment: Segment,
+                        sourceCodeInfo: SourceCodeInfo,
                         exTable: ExceptionTable,
                         liveness: LivenessInfoCollector.AllStates,
                         untypedStackSlotsCount: Int,
@@ -401,6 +401,7 @@ object CbcFileFormat {
     trait Builder {
       def setSegment(segment: Segment): Unit
       def setExceptionTable(exTable: ExceptionTable): Unit
+      def setSourceCodeInfo(sourceCodeInfo: SourceCodeInfo): Unit
       def setLiveness(liveness: LivenessInfoCollector.AllStates): Unit
       def setUntypedStackSlotsCount(untypedStackSlotsCount: Int): Unit
       def setUsedNonVolIRegsMask(usedNonVolIRegsMask: Int): Unit
@@ -580,6 +581,7 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
   
   private class MethodCodeBuilder extends CbcFileFormat.MethodCode.Builder {
     private var segment: Segment = _
+    private var sourceCodeInfo = SourceCodeInfo(Seq.empty)
     private var exTable: ExceptionTable = ExceptionTable(Seq.empty)
     private var liveness: LivenessInfoCollector.AllStates = _
     private var untypedStackSlotsCount: Int = 0
@@ -591,6 +593,7 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     private var variableSizeTypes: Seq[Signature] = Seq.empty
 
     def setSegment(segment: Segment): Unit = { this.segment = segment }
+    def setSourceCodeInfo(sourceCodeInfo: SourceCodeInfo): Unit = { this.sourceCodeInfo = sourceCodeInfo }
     def setExceptionTable(exTable: ExceptionTable): Unit = { this.exTable = exTable }
     def setLiveness(liveness: LivenessInfoCollector.AllStates): Unit = { this.liveness = liveness }
     def setUntypedStackSlotsCount(untypedStackSlotsCount: Int): Unit = { this.untypedStackSlotsCount = untypedStackSlotsCount }
@@ -601,7 +604,7 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     def setStackAllocatedTypeSigs(stackAllocatedTypeSigs: Seq[Signature]): Unit = { this.stackAllocatedTypeSigs = stackAllocatedTypeSigs }
     def setVariableSizeTypes(variableSizeTypes: Seq[Signature]): Unit = { this.variableSizeTypes = variableSizeTypes }
 
-    def build(): CbcFileFormat.MethodCode = MethodCode(segment, exTable, liveness, untypedStackSlotsCount,
+    def build(): CbcFileFormat.MethodCode = MethodCode(segment, sourceCodeInfo, exTable, liveness, untypedStackSlotsCount,
       usedNonVolIRegsMask, usedNonVolFRegsMask, maxCalleeStackArgsCount,
       mayHaveNativeCalls, stackAllocatedTypeSigs, variableSizeTypes)
   }

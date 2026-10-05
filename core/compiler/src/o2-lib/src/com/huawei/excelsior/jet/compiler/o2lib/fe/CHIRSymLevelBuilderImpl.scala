@@ -16,6 +16,7 @@ import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTabl
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.*
 import com.huawei.excelsior.jet.compiler.o2lib.u.xiFilesModule
+import com.huawei.excelsior.jet.compiler.options.BoolOption.IgnoreSourceFileNameForCbc
 import com.huawei.excelsior.jet.compiler.symlevel.*
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironment
@@ -170,8 +171,8 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
     }
   }
 
-  override def addMethod(clazz: ClassType, name: String, sig: MethodSignature, exportedName: String, modifiers: Int, genericInfo: GenericInfo,
-                         abiDesc: ABI.Description) = {
+  override def addMethod(clazz: ClassType, name: String, sig: MethodSignature, exportedName: String, modifiers: Int, genericInfo: GenericInfo, 
+                         abiDesc: ABI.Description, sourceFile: Option[String]): Method = {
     val dup = clazz.findDeclaredMethodOrNull(XString(name), sig)
     if (dup != null) {
       // TODO: checks?
@@ -189,6 +190,10 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
         val dups = clazz.getDeclaredMethods.filter(f => f.getExportedName == XString(exportedName) && !f.getName.contains("$instantiated$")).toSeq
         assert(dups.isEmpty, s"Unexpected duplicate linkage names: ${methodByO2Object(m) +: dups}")
         m.markAsExported(XString(exportedName))
+      }
+
+      if (!env.enabled(IgnoreSourceFileNameForCbc)) {
+        sourceFile.foreach(f => m.sourceFile = XString(f))
       }
 
       methodByO2Object(m)

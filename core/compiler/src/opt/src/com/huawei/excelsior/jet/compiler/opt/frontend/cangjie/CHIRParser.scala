@@ -12,10 +12,11 @@ import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHe
 import com.huawei.excelsior.jet.assembler.AsmType
 import com.huawei.excelsior.jet.compiler.{PreparationRequired, RTSProc, Stage, StatsKind}
 import com.huawei.excelsior.jet.compiler.abi.ABI
-import com.huawei.excelsior.jet.compiler.bytecode.ArithOp
+import com.huawei.excelsior.jet.compiler.bytecode.{ArithOp, BytecodePosition}
 import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Attribute
 import com.huawei.excelsior.jet.compiler.chir.{CHIR, CHIRLoader, CHIRResolver}
+import com.huawei.excelsior.jet.compiler.ir.{BytecodeOffset, ColumnNumber, LineNumber}
 import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimination, Universe}
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
 import com.huawei.excelsior.jet.compiler.opt.middle.patterns.Arrays
@@ -147,6 +148,15 @@ trait CHIRParser
 
     val func = pkg.function(idx)
 
+    val debugState = mutable.ArrayBuffer.empty[CHIR.DebugLocation]
+    def posFactory() = {
+      BytecodePosition(
+        offset = Option.when(debugState.nonEmpty)(debugState.size).getOrElse(BytecodeOffset.SYNTHETIC),
+        lineNumber = debugState.lastOption.map(_.startLine.toInt).getOrElse(LineNumber.UNKNOWN),
+        columnNumber = ColumnNumber.UNKNOWN,
+        currentInlineContext)
+    }
+
     stage(Stage.CangjieFunctionParsing) {
       val blockMap = withFreeUnreachableBlocks {
         makeCFG(method, func)
@@ -169,8 +179,9 @@ trait CHIRParser
 
       Node.withImplicitArgConversion(convertNullAndProxy) {
         withRecordConversion {
-          // TODO: withPosFactory
-          CHIRInterpreter(method, func, blockMap).iterate()
+          withPosFactory(posFactory) {
+            CHIRInterpreter(method, func, blockMap, debugState).iterate()
+          }
         }
       }
       dbgPrinter.debugNodes("All graph after BCP")
@@ -342,7 +353,7 @@ trait CHIRParser
 
       bv.terminator match {
         case t: CHIR.Goto => goto(t)
-        case CHIR.Exit => exit()
+        case _: CHIR.Exit => exit()
         case t: CHIR.RaiseException => throwOp(t)
         case t: (CHIR.TryApply |
           CHIR.TryInvoke |
@@ -365,7 +376,7 @@ trait CHIRParser
     blockMap
   }
 
-  private class CHIRInterpreter(method: Method, func: CHIR.Func, blockMap: BlockMap)(implicit pkg: CHIR.Package, resolver: CHIRResolver) extends AbstractInterpreter {
+  private class CHIRInterpreter(method: Method, func: CHIR.Func, blockMap: BlockMap, debugState: mutable.ArrayBuffer[CHIR.DebugLocation])(implicit pkg: CHIR.Package, resolver: CHIRResolver) extends AbstractInterpreter {
     interpreter =>
 
     case class CatchProxy()
@@ -527,6 +538,11 @@ trait CHIRParser
         }
       }
 
+      def parseExpressionWithPosition(e: CHIR.Expression, block: Block, state: State): Unit = {
+        e.debugLoc.foreach(debugState.addOne)
+        parseExpression(e, block, state)
+      }
+
       val anchor = block.outCtrl match {
         case anchor: HandlerAnchor => anchor
         case x => assert(x == block.blockEnd); null
@@ -560,7 +576,7 @@ trait CHIRParser
         // Parse regular expressions
         processBlock(block) {
           for (e <- spine) {
-            parseExpression(e, block, state)
+            parseExpressionWithPosition(e, block, state)
           }
         }
 
@@ -569,7 +585,7 @@ trait CHIRParser
         processBlock(terminatorBlock) {
           onCommit.withCallback(registerXCtrl(_, state, anchor.xHandler)) {
             state.add(anchor)
-            parseExpression(terminator, terminatorBlock, state)
+            parseExpressionWithPosition(terminator, terminatorBlock, state)
           }
         }
 
@@ -580,7 +596,7 @@ trait CHIRParser
       } else { // Regular block
         processBlock(block) {
           for (e <- blockMap(block).expressions) {
-            parseExpression(e, block, state)
+            parseExpressionWithPosition(e, block, state)
           }
         }
         block
@@ -1866,7 +1882,7 @@ trait CHIRParser
       case _: CHIR.Goto =>
         assert(block.blockEnd.isInstanceOf[Goto])
 
-      case CHIR.Exit =>
+      case _: CHIR.Exit =>
         val retType = rootMethod.getReturnType
         val retVal = if (retType.isZST) {
           Void()
@@ -2056,7 +2072,7 @@ trait CHIRParser
         }
         state(e) = value
 
-      case CHIR.GetException =>
+      case _: CHIR.GetException =>
         state(e) = state(catchProxy)
 
       case e: CHIR.RawArrayInitByValue =>
