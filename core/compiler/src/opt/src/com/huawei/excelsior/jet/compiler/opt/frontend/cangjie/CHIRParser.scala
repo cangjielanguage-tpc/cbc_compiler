@@ -2171,16 +2171,25 @@ trait CHIRParser
         _name
       }
 
-      val method = refType match {
+      def findMethod(methodName: String): Method = refType match {
         case refType: (SignatureType.InstantiatedType | SignatureType.CangjieEnum) =>
           val cparams = genericParams(refType)
           val lparams = Seq.empty[SignatureType] //FIXME
-          declType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig, MethodSignature.equalInstantiated(cparams, lparams))
+          declType.findDeclaredMethodOrNullWithSigEq(xstr(methodName), sig, MethodSignature.equalInstantiated(cparams, lparams))
         case _ =>
           // TODO: generic extend funcs
-          declType.findDeclaredMethodOrNull(xstr(name), sig)
+          declType.findDeclaredMethodOrNull(xstr(methodName), sig)
 
       }
+
+      // A static virtual bridge is imported under its public name, while the
+      // CHIR body is emitted as a local `$raw` method. A direct call on the
+      // concrete type must target that body rather than the imported bridge.
+      val publicMethod = findMethod(name)
+      val rawMethod = Option.when(isStatic && resolver.isImported(func) && publicMethod != null && publicMethod.getCHIRDef.isEmpty) {
+        findMethod(s"${name}$$raw")
+      }.filter(_ != null)
+      val method = rawMethod.getOrElse(publicMethod)
       assert(method != null, s"cannot find method '$name' with signature '${sig.toJETSignature}' in class '${declType.getName}'")
 
       val mak =
