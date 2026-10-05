@@ -365,6 +365,11 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     f.attributes.contains(Attribute.Unreachable)
   }
 
+  /** Abstract method that FE changed to global (still abstract) function. */
+  def isGlobalAbstractFunc(f: CHIR.Func): Boolean = {
+    f.declaringDef.isEmpty && f.attributes.contains(CHIR.Attribute.Abstract)
+  }
+
   private def isFunctionalType(t: CHIR.CustomTypeDef): Boolean = {
     t.annotations exists isAutoEnv
   }
