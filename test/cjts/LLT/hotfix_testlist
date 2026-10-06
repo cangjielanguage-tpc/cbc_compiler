@@ -224,6 +224,10 @@ compiler/Sema/class/class_static_member_func_inheritance_1.cj
 compiler/Sema/class/interface_access_control/toplevel_interface_access_control1/main.cj
 compiler/Sema/class/interface_member_variable_check_04.cj
 compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic02.cj
+compiler/CHIR/InvokeStatic/invokeStaticRtti.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_02.cj
+compiler/Sema/interface/interface_default_impl/static_defaule_impl_class.cj
+compiler/Sema/interface/interface_default_impl/static_func_call_unimpl_prop.cj
 
 # bug: #46 (CBC-compiler generated call.interf.g to "non-boxed" method which is absent in method table)
 compiler/CHIR/CHIR2HLIR/record/mut/record_mut_ok_6.cj
@@ -295,6 +299,20 @@ compiler/Sema/varray/varray_cffi/varray_cstruct02.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
 compiler/CHIR/CHIR2HLIR/typeCast/float2intExceed.cj
 compiler/CHIR/CHIR2HLIR/exception/try86.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/int16/inttoint16.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/int16/uinttoint16.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/int32/inttoint32.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/int32/uinttoint32.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/int64/uinttoint64.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/int8/inttoint8.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/int8/uinttoint8.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/uint16/inttouint16.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/uint16/uinttouint16.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/uint32/inttouint32.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/uint32/uinttouint32.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/uint64/inttouint64.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/inttouint8.cj
+compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/uinttouint8.cj
 
 # bug 80 (Precise line numbers in stack traces)
 compiler/CHIR/DCE/do_nothing_on_reflect.cj
@@ -398,6 +416,15 @@ compiler/Sema/generics/generic_static_field_prop/generic_static_prop06.cj
 compiler/Sema/record/static_init/static_init_01.cj
 compiler/Sema/type_infer/infer_member_access_with_enum_ctor_succ.cj
 
+# bug 92 (Support extends of AOT types)
+compiler/CHIR/CHIR2HLIR/extend/extend_primitive_overload_operator.cj
+compiler/CHIR/CHIR2HLIR/generic/call31.cj
+compiler/CHIR/UG/VTable/extend/extend1/main.cj
+compiler/CHIR/UG/VTable/extend/extend4/main.cj
+compiler/CHIR/UG/VTable/extend/extend5/main.cj
+compiler/CodegenCJNative/LegacyTests/operatorParenExpr.cj
+compiler/Sema/Extend/extend_lookup/main.cj
+
 # bug 97 (Incorrect dispatch for same-signature interfaces)
 compiler/CHIR/AST2CHIR/BaseUseCase/extend/extend_interface4.cj
 compiler/CHIR/UG/VTable/non_generic/extend_class_multi_level_class.cj
@@ -431,6 +458,7 @@ compiler/Sema/enum/enum_operator_overload.cj
 
 # bug 83 (NumericCast to UInt8 actually casts to I32)
 compiler/CodegenCHIR/tryCatch/tryTypeCast/tryTypeCast_3.cj
+compiler/CodegenCommon/typecast/FPToSI/fp642Int8_1.cj
 
 # bug 63 (Proper parse @C methods with C-struct return type)
 compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
@@ -758,6 +786,7 @@ compiler/CHIR/UG/VTable/generic/non_static/interface_struct02.cj
 compiler/CodegenCJNative/option/option_typecast.cj
 compiler/Sema/PatternMatching/EnumPattern/generic_enum_nested_match.cj
 compiler/Sema/generics/function_generics_list.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
 
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
