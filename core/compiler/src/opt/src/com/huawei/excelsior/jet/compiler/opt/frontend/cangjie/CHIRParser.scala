@@ -1699,7 +1699,7 @@ trait CHIRParser
             state(e) = LConst(0)
 
           case CHIR.Intrinsic.Kind.CPointerInit1 =>
-            val ValueSig(cpointerType: SignatureType.CPointer) = e.args.head
+            state(e) = state(e.args.head)
 
           case CHIR.Intrinsic.Kind.ArrayAcquireRawData =>
             val args = e.args
