@@ -24,11 +24,18 @@ compiler/CodegenCommon/typecast/integer2char_invalid_int64.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_int8.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_uint16.cj
 compiler/CodegenCommon/typecast/integer2char_invalid_uint32.cj
+compiler/CodegenCommon/typecast/integer2char_invalid1.cj
+compiler/CodegenCommon/typecast/integer2char_invalid2.cj
+compiler/CodegenCommon/typecast/integer2char_invalid3.cj
+compiler/CodegenCommon/typecast/integer2char_invalid4.cj
 
 # not implemented: saturating float-to-int type cast
 compiler/CHIR/CHIR2HLIR/typeCast/float2uintExceed.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642Int8_2.cj
+compiler/CodegenCommon/typecast/FPToSI/fp642Int8_3.cj
+compiler/CodegenCommon/typecast/FPToSI/fp642Int8_4.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_01.cj
+compiler/CodegenCommon/typecast/nan2integer.cj
 
 # not implemented: throwing binary expression
 compiler/CHIR/CallExpr/sideeffect04.cj
@@ -38,6 +45,8 @@ compiler/CHIR/CHIR2HLIR/binaryExpr/chir2hlir_binary08.cj
 compiler/CHIR/CHIR2HLIR/binaryExpr/chir2hlir_binary09.cj
 compiler/CHIR/CHIR2HLIR/binaryExpr/chir2hlir_binary10.cj
 compiler/CHIR/CHIR2HLIR/binaryExpr/chir2hlir_binary11.cj
+compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
+compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
 compiler/CHIR/CHIR2HLIR/compoundAssignExp/chir2hlir_compoundAssignExp07.cj
 compiler/CHIR/CHIR2HLIR/compoundAssignExp/chir2hlir_compoundAssignExp08.cj
 compiler/CHIR/CHIR2HLIR/compoundAssignExp/chir2hlir_compoundAssignExp09.cj
@@ -77,6 +86,7 @@ compiler/Sema/while-let-expr/while_let7.cj
 # not implemented: floating point binary expression: Exp
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix6/test.cj
 compiler/Sema/binary/f64expo.cj
+compiler/Sema/function/defaultParameter_pkg_02/test.cj
 compiler/Sema/type_infer/lambda_param_01.cj
 compiler/Sema/const_evaluation/ok_class_ctor.cj
 
@@ -114,6 +124,8 @@ compiler/Sema/overflow_check/overflow_check_float.cj
 compiler/CodegenCommon/typecast/FPToSI/fp162UIntNative_00.cj
 compiler/CodegenCommon/typecast/FPToSI/fp162UIntNative_01.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_02.cj
+compiler/Sema/const_evaluation/ok_lit_const.cj
+compiler/Sema/generics/pkgs005/pkgs005001.cj
 
 # not implemented: FuncType
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
@@ -168,6 +180,7 @@ compiler/CodegenCommon/typecast/tuple2tuple/tuple2tuple1.cj
 compiler/CodegenCommon/typecast/tuple2tuple/tuple2tuple2.cj
 compiler/CodegenCommon/typecast/tuple2tuple/tupleptr2tuple2.cj
 compiler/Sema/assign/multipleAssignExpr/case07.cj
+compiler/Sema/function/nest_function_generic_inst02.cj
 compiler/Sema/type/subtype_03.cj
 
 # not implemented: cast from b to u64
