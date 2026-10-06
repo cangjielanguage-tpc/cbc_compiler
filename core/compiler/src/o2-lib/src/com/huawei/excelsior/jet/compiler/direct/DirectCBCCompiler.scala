@@ -1002,13 +1002,19 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           val elem = arrType.getArrayElemType
           if (elem.isZST) return
           if (elem.isVariableSizeType) return fail("arrayGet of variable-size elem")
-          if (elem.isRecord) return fail("arrayGet of record elem")
           touch(arrV, idxV)
           resultOf(e).foreach(res => touch(res))
           loadToReg(arrV, SCRATCH2)
           asm.nullcheck(SCRATCH2)
           loadToReg(idxV, SCRATCH3)
-          loadArrayElem(elem)
+          if (elem.isRecord) {
+            // Record elements: `index` computes the element address (gc unsafe
+            // — mirrors production genArrayGet); the value is the address.
+            asm.index(SCRATCH, SCRATCH2, SCRATCH3, arrType.toCbc)
+            saveGCMapHere()
+          } else {
+            loadArrayElem(elem)
+          }
           if (isFloat(elem)) {
             storeFloatFromReg(resultOf(e).getOrElse(e.asInstanceOf[CHIR.Value]), FSCRATCH0, elem)
           } else {
@@ -1021,6 +1027,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           val elem = arrType.getArrayElemType
           if (elem.isZST) return
           if (elem.isRecord) return fail("arraySet of record elem")
+          if (elem.isVariableSizeType) return fail("arraySet of variable-size elem")
           touch(arrV, idxV, valV)
           loadToReg(arrV, SCRATCH2)
           asm.nullcheck(SCRATCH2)
