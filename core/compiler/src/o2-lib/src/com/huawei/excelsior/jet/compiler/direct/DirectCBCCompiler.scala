@@ -1505,18 +1505,34 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val calleeAbi = DirectCBCCompiler.platform(env).abi(calleeMt)
       val locs = calleeAbi.paramLocations
       val regLocs = locs.filter(l => l.isReg && l.asReg.isInstanceOf[IR])
-      if (locs.exists(l => !l.isReg)) return fail("stack args")
+      // Stack (tail) parameters: the caller stores each tail arg into the
+      // tail area of its own frame and passes the area's base address in the
+      // tail register (production: initTailRegister in CallGenerator;
+      // callee reads back via LoadTailParam = load [tailReg, n*8]).
+      val tailLocs = locs.filter(l => !l.isReg)
+      if (tailLocs.nonEmpty && tailLocs.size > 4) return fail("too many stack args")
+      val tailBase: Option[IR] = if (tailLocs.isEmpty) None else Some {
+        // Tail area = a typed record-shaped frame slot; its address goes into
+        // the tail register (production: initTailRegister — lea tailReg,
+        // [sp + stackParamsStartOffset]; callee reads via LoadTailParam =
+        // load [tailReg, n * stackSlotSize]).
+        val areaSig = SignatureType.Tuple(tailLocs.map(_ => SignatureType.Int64: SignatureType).toList)
+        val ts = newTypedSlot(areaSig)
+        val tailReg = DirectCBCCompiler.platform(env).tailRegister
+        asm.ldstackrec(tailReg, ts)
+        tailReg
+      }
       // ThisTypeInfo end special: instance callees get the receiver's runtime
       // TI (asm.loadTypeInfoObj); static callees get the static TI of thisType
       // (mirrors CHIRParser.callMethod's ThisTypeInfo arm).
       val thisTi: Option[(IR, Either[IR, SignatureType])] =
         if (!calleeMt.hasThisTypeInfoParameter) None
         else if (calleeMt.hasReceiverParameter) {
-          val rcvLoc = regLocs(calleeStart - 1).asReg.asInstanceOf[IR]
-          Some((regLocs(calleeMt.getThisTypeInfoArgIdx).asReg.asInstanceOf[IR], Left(rcvLoc)))
+          val rcvLoc = locs(calleeStart - 1).asReg.asInstanceOf[IR]
+          Some((locs(calleeMt.getThisTypeInfoArgIdx).asReg.asInstanceOf[IR], Left(rcvLoc)))
         } else {
           val tiSig = if (outerTiSig.containsTypeVariables) sigOf(callArgs.head).get else outerTiSig
-          Some((regLocs(calleeMt.getThisTypeInfoArgIdx).asReg.asInstanceOf[IR], Right(tiSig)))
+          Some((locs(calleeMt.getThisTypeInfoArgIdx).asReg.asInstanceOf[IR], Right(tiSig)))
         }
       // GenericFuncParams (Custom position) sit between the ordinary args and
       // the end specials — exclude them from the ordinary-arg locations.
@@ -1527,10 +1543,11 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         }
         case false => 0
       }
-      val argLocs = regLocs.drop(calleeStart).dropRight(endCount + genParamCount)
+      val argLocs = locs.slice(calleeStart, locs.size - endCount - genParamCount)
+      val firstTailIdx = argLocs.indexWhere(l => !l.isReg)
       // receiver: last start special; its loc sits right before the params
       val recvLoc: Option[IR] =
-        if (calleeMt.hasReceiverParameter) Some(regLocs(calleeStart - 1).asReg.asInstanceOf[IR])
+        if (calleeMt.hasReceiverParameter) Some(locs(calleeStart - 1).asReg.asInstanceOf[IR])
         else None
       // SMutRecord/SMutObject start specials: both receive the record
       // receiver's address (SMutRecArg/SMutObjectArg are address markers in
@@ -1539,8 +1556,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         if (calleeMt.hasMutRecordParameter && !calleeMt.hasReceiverParameter) {
           val base = calleeStart - (if (calleeMt.hasMutObjectParameter) 2 else 1)
           if (calleeMt.hasMutObjectParameter)
-            Seq(regLocs(base).asReg.asInstanceOf[IR], regLocs(base + 1).asReg.asInstanceOf[IR])
-          else Seq(regLocs(base).asReg.asInstanceOf[IR])
+            Seq(locs(base).asReg.asInstanceOf[IR], locs(base + 1).asReg.asInstanceOf[IR])
+          else Seq(locs(base).asReg.asInstanceOf[IR])
         } else Seq.empty
       val (recvVal, paramArgs) =
         if (calleeMt.hasReceiverParameter || calleeMt.hasMutRecordParameter) (Some(callArgs.head), callArgs.tail)
@@ -1560,7 +1577,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       // so IRZ (null) is a safe placeholder; record returns get a zeroed typed
       // slot whose address is passed to the callee
       val sretSlot: Option[StackSlot.Typed] = if (calleeMt.hasRetByValParameter) {
-        val sretLoc = regLocs(0).asReg.asInstanceOf[IR]
+        val sretLoc = locs(0).asReg.asInstanceOf[IR]
         val abiRet = calleeMt.parameterType(calleeMt.getRetByValArgIdx)
         abiRet match {
           case b: SignatureType.Box =>
@@ -1590,13 +1607,33 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       recvVal.zip(recvLoc).foreach { (r, loc) => loadToReg(r, loc) }
       mutLocs.foreach { loc => recvVal.foreach(r => loadToReg(r, loc)) }
       realArgs.zip(argLocs).foreach { (a, loc) =>
-        loc.asReg match {
-          case fr: FR => loadFloatToReg(a, fr)
-          case ir: IR => loadToReg(a, ir)
+        val sig = sigOf(a).get
+        loc match {
+          case l if l.isReg =>
+            l.asReg match {
+              case fr: FR => loadFloatToReg(a, fr)
+              case ir: IR => loadToReg(a, ir)
+            }
+          case _ =>
+            // stack (tail) arg: store into the tail area via raw memory store
+            val i = argLocs.indexOf(loc) - firstTailIdx
+            tailBase.foreach { base =>
+              sig match {
+                case SignatureType.Float32 =>
+                  loadFloatToReg(a, FSCRATCH0)
+                  asm.storeRawMemory(FSCRATCH0, base, StoreAccessKind.from(CbcTypeKind.F32), i * 8)
+                case SignatureType.Float64 =>
+                  loadFloatToReg(a, FSCRATCH0)
+                  asm.storeRawMemory(FSCRATCH0, base, StoreAccessKind.from(CbcTypeKind.F64), i * 8)
+                case s =>
+                  loadToReg(a, SCRATCH)
+                  asm.storeRawMemory(SCRATCH, base, StoreAccessKind.from(cbcKind(s)), i * 8)
+              }
+            }
         }
       }
       if (outerTi)
-        lowerTypeInfo(regLocs(calleeMt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR], outerTiSig)
+        lowerTypeInfo(locs(calleeMt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR], outerTiSig)
       thisTi.foreach { (loc, src) =>
         src match {
           case Left(rcvLoc) => asm.loadTypeInfoObj(loc, rcvLoc) // receiver's runtime TI
@@ -1608,7 +1645,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       ref match {
         case imr: InstantiatedMethodReference if calleeMt.hasGenericFuncParams =>
           imr.instantiatedTypeParameters.zipWithIndex.foreach { (t, i) =>
-            val loc = regLocs(calleeMt.getGenericFuncParamsStartIdx(imr.instantiatedTypeParameters.size) + i)
+            val loc = locs(calleeMt.getGenericFuncParamsStartIdx(imr.instantiatedTypeParameters.size) + i)
             lowerTypeInfo(loc.asReg.asInstanceOf[IR], t)
           }
         case _ =>
@@ -1628,7 +1665,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         case Some(res) if !sigOf(res).forall(_.isZST) && sretSlot.isEmpty =>
           if (calleeMt.hasRetByValParameter && retIsBoxed) {
             // boxed sret: the value is the Box* we passed (in sretLoc register)
-            val sretLoc = regLocs(0).asReg.asInstanceOf[IR]
+            val sretLoc = locs(0).asReg.asInstanceOf[IR]
             storeFromReg(res, sretLoc, sigOf(res).get)
           } else {
             storeFromReg(res, resultReg, sigOf(res).get)
