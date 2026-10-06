@@ -118,7 +118,9 @@ class TestSuite:
         expected = dotexpected(test_name)
         actual = custom_actual if custom_actual is not None else dotactual(test_name)
         diff_err = io.StringIO()
+        t0 = time.monotonic()
         res = await run_async(" ".join(diff(actual, expected)), shell=True, stderr_log=diff_err)
+        await Timings.add('diff', time.monotonic() - t0, timing_chunk)
         return res
 
     async def run_cjc(self, file: str, output_file: str, output_type: str = None,
@@ -163,11 +165,15 @@ class StandaloneTestSuite(TestSuite):
     def __init__(self, toolchain_path: str):
         super().__init__(toolchain_path)
         self.asm_jar = self.toolchain_path + "/tools/bin/cbc-asm.jar"
+        self.asm_jar_cds = dotjsa(self.asm_jar)
         self.compiler_jar = self.toolchain_path + "/tools/bin/cbc-compiler.jar"
+        self.compiler_jar_cds = dotjsa(self.compiler_jar)
         self.compilation_failures = []
         # Reset cds cache if it exists
-        if os.path.isfile(java_cds_archive()):
-            os.remove(java_cds_archive())
+        if os.path.isfile(self.asm_jar_cds):
+            os.remove(self.asm_jar_cds)
+        if os.path.isfile(self.compiler_jar_cds):
+            os.remove(self.compiler_jar_cds)
 
     async def build_test(self, test_name: str):
         test_work_dir, name = test_name.rsplit('/', 1)
@@ -201,7 +207,7 @@ class StandaloneTestSuite(TestSuite):
 
         match in_mode:
             case "asm":
-                compile_asm_to_obj = java_cmd() + ['-jar', self.asm_jar, dotasm(test_name)]
+                compile_asm_to_obj = java_cmd(self.asm_jar_cds) + ['-jar', self.asm_jar, dotasm(test_name)]
 
                 with open(f"{test_work_dir}/asm.out", "w+") as asm_log:
                     asm_err = io.StringIO()
@@ -276,7 +282,7 @@ class StandaloneTestSuite(TestSuite):
 
                     aot_deps_args = [f"-cbcaotdeps={':'.join(aot_so_names)}"] if aot_so_names else []
                     jc_options = f"+IgnoreSourceFileNameForCbc {args.jc_options}"
-                    chir_to_cbc = java_cmd() + ['-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", jc_options] + aot_deps_args + int_chir_files
+                    chir_to_cbc = java_cmd(self.compiler_jar_cds) + ['-jar', self.compiler_jar, f"-outputname={name}", f"{name}.chir", jc_options] + aot_deps_args + int_chir_files
                     cbc_log = io.StringIO()
                     cbc_err = io.StringIO()
                     res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)
@@ -366,14 +372,19 @@ class StandaloneTestSuite(TestSuite):
             return
 
         self.compilation_failures = []
+        global timing_chunk
+        timing_chunk = 'build'
         succeeded: list[str] = await self.build_parallel(tests, self.build_test, args)
+        timing_chunk = 'other'
 
         for test_name, in_mode, msg in self.compilation_failures:
             full_msg = test_failed(test_name, in_mode, msg=msg)
             await self.print_stderr(full_msg)
 
+        timing_chunk = 'run'
         for test in succeeded:
             await self.run_test(test)
+        timing_chunk = 'other'
 
 
 def enabled(name, args):
@@ -397,10 +408,16 @@ async def run_in_env(use_tool_sh: bool, env: dict[str, str], cmd: list[str], cwd
         env['TOOLCHAIN'] = toolchain_path
         cmd = [f'{TestSuite.root_dir}/tool.sh'] + cmd
 
-    return await run_async(cmd, shell=False, log=log, env=env, cwd=cwd, stderr_log=stderr_log)
+    t0 = time.monotonic()
+    res = await run_async(cmd, shell=False, log=log, env=env, cwd=cwd, stderr_log=stderr_log)
+    await Timings.add(classify_cmd(cmd), time.monotonic() - t0, timing_chunk)
+    return res
 
 
 toolchain_path: str = ""
+
+# Current chunk ('build' or 'run') for timing attribution; set by run().
+timing_chunk: str = 'other'
 
 
 def test_failed(name, in_mode="cj", msg=None):
@@ -475,6 +492,9 @@ def test(args):
     print(f"CANGJIE_TOOLCHAIN: {toolchain_path}")
 
     asyncio.run(StandaloneTestSuite(toolchain_path).run(args))
+
+    print()
+    print(Timings.report())
 
     if failedTests:
         print()

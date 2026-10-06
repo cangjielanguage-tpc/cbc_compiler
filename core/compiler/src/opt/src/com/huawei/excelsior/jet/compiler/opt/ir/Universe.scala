@@ -131,14 +131,14 @@ trait Universe extends CompilerEnvironment
     def isEnabled(kind: StatsKind): Boolean =
       statsGlobal.isEnabled(kind)
 
-    def count(kind: StatsKind, event: String, pos: Position = rootMethodPos): Unit =
+    def count(kind: StatsKind, event: => String, pos: Position = rootMethodPos): Unit =
       statsGlobal.count(kind, event, verboseSuffix = s" at ${pos.toString(ignoreNumbers = env.enabled(IgnoreNumbersInPositionsOutput))}")
 
-    def count(kind: StatsKind, event: String, posOwner: Position.Owner): Unit = {
+    def count(kind: StatsKind, event: => String, posOwner: Position.Owner): Unit = {
       count(kind, event, posOwner.posApproximation)
     }
 
-    def value(kind: StatsKind, event: String, num: Double): Unit =
+    def value(kind: StatsKind, event: => String, num: Double): Unit =
       statsGlobal.value(kind, event, num, s" at ${rootMethod.getFullName}")
   }
 

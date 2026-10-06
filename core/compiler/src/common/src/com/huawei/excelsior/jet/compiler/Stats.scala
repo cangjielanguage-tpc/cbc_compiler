@@ -98,7 +98,7 @@ final class Stats(env: Environment) {
 
   def valueResults: collection.Map[KindEvent, List[Double]] = values
 
-  def count(kind: StatsKind, event: String, delta: Long = 1, verboseSuffix: String = ""): Unit = {
+  def count(kind: StatsKind, event: => String, delta: Long = 1, verboseSuffix: String = ""): Unit = {
     if (isEnabled(kind)) {
       assert(delta >= 0L)
       val ke = KindEvent(kind, event)
@@ -112,7 +112,7 @@ final class Stats(env: Environment) {
     }
   }
 
-  def value(kind: StatsKind, event: String, num: Double, verboseSuffix: String = ""): Unit = {
+  def value(kind: StatsKind, event: => String, num: Double, verboseSuffix: => String = ""): Unit = {
     if (isEnabled(kind)) {
       val ke = KindEvent(kind, event)
       values.updateWith(ke) {
