@@ -2,9 +2,9 @@ package com.huawei.excelsior.jet.compiler.chir
 
 import scala.collection.mutable
 
-object PackageWithHelpers {
-  def apply(pkg: CHIR.Package): PackageWithHelpers = {
-    val helperGenerators = CHIRHelperGenerator(pkg).generateHelpers
+object PatchedPackage {
+  def apply(pkg: CHIR.Package): PatchedPackage = {
+    val helperGenerators = CHIRPatchGeneratorFactory(pkg).generateHelpers
 
     val helpersById: mutable.HashMap[Int, CHIR.Func] = mutable.HashMap()
     val helpersByName: mutable.HashMap[String, CHIR.Func] = mutable.HashMap()
@@ -12,13 +12,13 @@ object PackageWithHelpers {
     val startingId: Int = pkg.values.length
 
     val ids = startingId until (startingId + helperGenerators.length)
-    val helpers = helperGenerators.zip(ids).map((helperGen, id) => helperGen(id))
+    val helpers = helperGenerators.zip(ids).map((helperGen, id) => helperGen.generatePatch(id))
 
-    new PackageWithHelpers(pkg, helpers)
+    new PatchedPackage(pkg, helpers)
   }
 }
 
-class PackageWithHelpers(pkg: CHIR.Package, helpers: Seq[CHIR.Func]) extends CHIR.Package {
+class PatchedPackage(pkg: CHIR.Package, helpers: Seq[CHIR.Func]) extends CHIR.Package {
   private val helpersById = helpers.map(h => (h.id.toInt, h)).toMap
   private val helpersByName = helpers.map(h => (h.name, h)).toMap
 

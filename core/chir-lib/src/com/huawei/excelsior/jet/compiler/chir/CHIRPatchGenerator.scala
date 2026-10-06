@@ -2,14 +2,12 @@ package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.common.CodeHelpers
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
-import com.huawei.excelsior.jet.compiler.chir.CHIRHelperGenerator.cjEntryName
+import com.huawei.excelsior.jet.compiler.chir.CHIRHelperGenerator.{cjEntryName, intrinsicsPackageName}
 import com.huawei.excelsior.jet.compiler.chir.dsl.CHIRDSL
 
-import scala.collection.mutable
-
-/** We expect this types to be included in the compiled CHIR package.
+/** We expect this types and functions to be included in the compiled CHIR package.
  *
- * It is not guaranteed that they are included - however we hope that they are.
+ * It is not guaranteed that they are included.
  */
 object AOTDefs {
   def OOM(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat16OutOfMemoryErrorE").get.tpe
@@ -17,15 +15,18 @@ object AOTDefs {
   def String(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat6StringE").get.tpe
   def Error(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat5ErrorE").get.tpe
   def Exception(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat9ExceptionE").get.tpe
+  def arrOfStr(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat5ArrayIRNat6StringEE").get.tpe
   def initException(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat9Exception6<init>HRNat6StringE").get
   def eprintlnFunc(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat8eprintlnHRNat6StringE").get
   def errToString(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat5Error8toStringHv").get
   def handleExFunc(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat15handleExceptionHCNat9ExceptionE").get
-  def atExitCallbacks(implicit pkg: CHIR.Package) = pkg.getFunc("_CNat27CJ_CORE_ExecAtexitCallbacksHv").get
+  def atExitCallbacks(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat27CJ_CORE_ExecAtexitCallbacksHv").get
+  def getCommandLineArgs(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat18getCommandLineArgsHv").get
 }
 
 object CHIRHelperGenerator {
     val cjEntryName = "cj_entry"
+    val intrinsicsPackageName = "cbc_intrinsics"
 }
 
 object ThrowHelper {
@@ -37,7 +38,11 @@ object ThrowHelper {
 
 case class ThrowHelper(name: String, exceptionMsg: String)
 
-class CHIRHelperGenerator(_pkg: CHIR.Package) {
+trait CHIRPatchGenerator {
+  def generatePatch(id: Int): CHIR.Func
+}
+
+class CHIRPatchGeneratorFactory(_pkg: CHIR.Package) {
   implicit val pkg: CHIR.Package = _pkg
 
   private def generateHelper(_id: Long, _name: String,
@@ -50,7 +55,7 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
       def id: Long = _id
       def identifier: String = _name
       def srcCodeIdentifier: String = _name
-      def packageName: String = "cbc_intrinsics"
+      def packageName: String = intrinsicsPackageName
       def kind: Func.Kind = CHIR.Func.Kind.Default
       def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
       def body: Option[CHIR.BlockGroup] = Option(_body)
@@ -87,16 +92,18 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
       gen.local(CHIR.BuiltinType.Nothing, gen.raise(exception, Option.empty))
     }
 
-    def throwHelper(helper: ThrowHelper): Int => CHIR.Func =
-      id => generateHelper(id, helper.name, throwHelperType, throwHelperBody(throwHelper = helper))
+    def throwHelper(helper: ThrowHelper): CHIRPatchGenerator = new CHIRPatchGenerator {
+        override def generatePatch(id: Int): Func = generateHelper(id, helper.name, throwHelperType, throwHelperBody(throwHelper = helper))
+      }
   }
 
-  private class CHIRCJEntryGenerator(userMain: CHIR.Func) {
+  private class CHIRCJEntryGenerator(userMain: CHIR.Func) extends CHIRPatchGenerator {
     private val Bool = CHIR.BuiltinType.Boolean
     private val Unit = CHIR.BuiltinType.Unit
     private val Int64 = CHIR.BuiltinType.Int64
 
-    private def gen(_id: Long): CHIR.Func = {
+    def generatePatch(id: Int): Func = {
+      val _id = id
       new CHIR.Func {
         private var _retVal: CHIR.LocalVar = _
 
@@ -147,8 +154,8 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
           val userMainArgs = if (userMain.tpe.paramTypes.isEmpty) {
             Seq.empty
           } else {
-            val getCmdLineArgsFunc = pkg.getFunc("_CNat18getCommandLineArgsHv").get
-            val ArrOfStr = pkg.getDef("_CNat5ArrayIRNat6StringEE").get.tpe
+            val getCmdLineArgsFunc = AOTDefs.getCommandLineArgs
+            val ArrOfStr = AOTDefs.arrOfStr
             val args = gen.local(ArrOfStr, gen.applyStatic(getCmdLineArgsFunc))
             Seq(args)
           }
@@ -222,19 +229,16 @@ class CHIRHelperGenerator(_pkg: CHIR.Package) {
         }
 
         def annotations: Seq[CHIR.Annotation] = Seq.empty
-        // TODO need some?
         def attributes: Seq[CHIR.Attribute] = Seq.empty
         def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
       }
     }
-
-    def cjEntry: Int => CHIR.Func = id => gen(id)
   }
 
 
-  def generateHelpers: Seq[Int => CHIR.Func] = {
+  def generateHelpers: Seq[CHIRPatchGenerator] = {
     val throwHelperFuncs = ThrowHelper.throwHelpers.map(ThrowHelperGenerator.throwHelper(_))
-    val cjEntry = pkg.getFunc("user.main").map(CHIRCJEntryGenerator(_).cjEntry)
+    val cjEntry = pkg.getFunc("user.main").map(CHIRCJEntryGenerator(_))
     throwHelperFuncs ++ cjEntry.iterator
   }
 }
