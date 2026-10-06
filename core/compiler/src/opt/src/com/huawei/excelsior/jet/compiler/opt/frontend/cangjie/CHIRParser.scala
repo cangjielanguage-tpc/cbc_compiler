@@ -1695,6 +1695,12 @@ trait CHIRParser
                 shouldNotReachHere(cpointerType)
             }
 
+          case CHIR.Intrinsic.Kind.CPointerInit0 =>
+            state(e) = LConst(0)
+
+          case CHIR.Intrinsic.Kind.CPointerInit1 =>
+            state(e) = state(e.args.head)
+
           case CHIR.Intrinsic.Kind.ArrayAcquireRawData =>
             val args = e.args
             val array = state(args.head)

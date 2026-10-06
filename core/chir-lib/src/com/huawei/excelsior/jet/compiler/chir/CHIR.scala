@@ -430,6 +430,8 @@ object CHIR {
       case Preinitialize
       case CPointerRead
       case CPointerWrite
+      case CPointerInit0
+      case CPointerInit1
       case ObjectZeroValue
       case Sqrt
       case Pow
