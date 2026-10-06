@@ -886,20 +886,28 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       case _ => Seq.empty
     }
 
-    private def fieldRef(pathIdx: Long, f: symlevel.Field, refType: SignatureType, fieldType: SignatureType) =
-      asm.adapter.field {
-        if (f != null) symlevel.CangjieFieldReference(pathIdx, f, refType, fieldType)
-        else symlevel.CangjieIndexReference(pathIdx, refType, fieldType)
+    private def fieldRef(pathIdx: Long, f: symlevel.Field, refType: SignatureType, fieldType: SignatureType) = {
+      // Mirrors CodeGeneratorCBC.indexReference: a ConstIndex ref on an
+      // OptionLikeEnum host must declare the tuple (Boolean, payload) layout.
+      val refT = refType match {
+        case t: SignatureType.OptionLikeEnum => SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
+        case t => t
       }
+      asm.adapter.field {
+        if (f != null) symlevel.CangjieFieldReference(pathIdx, f, refT, fieldType)
+        else symlevel.CangjieIndexReference(pathIdx, refT, fieldType)
+      }
+    }
 
     /** Loads the field chain value into SCRATCH: walks each field ref. */
-    /** Field hosts: traceable references (class instances) and boxed records
-      * (e.g. std.core:Array<T> objects) whose chain contains only primitive
-      * or reference fields — nested records would need copy semantics. */
+    /** Field hosts: traceable references (class instances), boxed records
+      * (e.g. std.core:Array<T> objects), and stack-allocated records
+      * (Tuple/Option/NamedRecord) whose chain contains only primitive or
+      * reference fields — nested records would need copy semantics. */
     private def canFieldHost(sig: SignatureType, chain: => Seq[(Long, symlevel.Field, SignatureType, SignatureType)]): Boolean =
       sig.isTraceableReference ||
         (sig.isRecord && !sig.isVariableSizeType && !sig.isZST &&
-          chain.forall { case (_, _, _, ft) => ft.isPrimitive || ft.isTraceableReference })
+          chain.forall { case (_, _, _, ft) => ft.isPrimitive || ft.isTraceableReference || (ft.isRecord && !ft.isVariableSizeType) })
 
     private def translateField(e: CHIR.Field): Unit = {
       val hostSig = sigOf(e.base).getOrElse(return fail("field: unknown host sig"))
@@ -1081,14 +1089,26 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           // CHIRParser (CHIR Tuple / EnumType): nullable Some/None collapse to
           // the payload or null; non-nullable stack-allocate the enum record.
           if (opt.isNullableOption) {
-            e.elementValues match {
-              case Seq(tag: CHIR.IntLiteral, payload) =>
-                touch(e.elementValues: _*)
-                loadToReg(payload, SCRATCH)
-                storeResult(e, SCRATCH, opt.someType)
-                return
-              case _ => return fail("option tuple: unexpected element values")
+            val vals = e.elementValues
+            def tagValue(v: CHIR.Value): Option[Long] = keyOf(v) match {
+              case c: CHIR.Constant => c.literal match {
+                case t: CHIR.IntLiteral => Some(t.value)
+                case t: CHIR.BoolLiteral => Some(if (t.value) 1 else 0)
+                case _ => None
+              }
+              case t: CHIR.IntLiteral => Some(t.value)
+              case t: CHIR.BoolLiteral => Some(if (t.value) 1 else 0)
+              case _ => None
             }
+            if (vals.size == 2 && tagValue(vals(0)).nonEmpty) {
+              val tag = tagValue(vals(0)).get
+              val payload = vals(1)
+              assert(tag == 0 || tag == 1, tag)
+              touch(e.elementValues: _*)
+              loadToReg(payload, SCRATCH)
+              storeResult(e, SCRATCH, opt.someType)
+              return
+            } else return fail("option tuple: unexpected element values")
           } else if (opt.someType.isVariableSizeType) {
             return fail("variable-size option")
           } else {
