@@ -748,7 +748,30 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         // LocalVar (keyOf maps the local to this expr) — materialize its slot.
         storeResult(e, SCRATCH, to)
       } else {
-        fail(s"static cast $from -> $to")
+        val f = from.getOrElse(to)
+        (f, to) match {
+        // Production CHIRParser casts Reference->Reference via CheckCast(trusted)
+        // and Record->Record / Record->Tuple via ReinterpretCast: both are
+        // identity ops at CBC level (register keeps the same address/word).
+        case (_: SignatureType.Reference | _: SignatureType.InstantiatedReference,
+              _: SignatureType.Reference | _: SignatureType.InstantiatedReference) =>
+          loadToReg(e.value, SCRATCH); storeResult(e, SCRATCH, to)
+        case (_: SignatureType.Record | _: SignatureType.InstantiatedRecord,
+              _: SignatureType.Record | _: SignatureType.InstantiatedRecord | _: SignatureType.Tuple) =>
+          loadToReg(e.value, SCRATCH); storeResult(e, SCRATCH, to)
+        case (fe @ SignatureType.OptionLikeEnum(_, _, x), SignatureType.Tuple(Seq(SignatureType.Boolean, y))) =>
+          // Erasure: recursive options widen payload to std.core:Object.
+          assert(x == y || (x == SignatureType.Reference("std.core:Object", jbc = false) && y.isTraceableReference), s"cast from $fe to $to")
+          loadToReg(e.value, SCRATCH); storeResult(e, SCRATCH, to)
+        case (_: SignatureType.ClassBasedEnum, _: SignatureType.Tuple) =>
+          // EnumCast: payload address unchanged
+          loadToReg(e.value, SCRATCH); storeResult(e, SCRATCH, to)
+        case (_: SignatureType.UnionBasedEnum, _: SignatureType.Tuple) =>
+          // ReinterpretCast: payload address unchanged
+          loadToReg(e.value, SCRATCH); storeResult(e, SCRATCH, to)
+        case _ =>
+          fail(s"static cast $from -> $to")
+        }
       }
     }
 
@@ -759,8 +782,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     private def translateAllocate(e: CHIR.Allocate): Unit = {
       val sig = resolver.typeSig(e.allocatedType)
       if (sig.isZST) return
-      slotOfAny(e, sig) // null-init before newobj's GC point
       if (sig.isTraceableReference) {
+        slotOfAny(e, sig) // null-init before newobj's GC point
         val allocType = sig match { case SignatureType.Box(t) => t; case t => t }
         asm.newobj(allocType.toCbc)
         saveGCMapHere()
@@ -771,6 +794,13 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         // zero value
         asm.movi32(SCRATCH, 0)
         asm.storeUntyped(SCRATCH, StoreAccessKind.from(cbcKind(sig)), StackSlot.Untyped(slotOfAny(e, sig)))
+      } else if (sig.isRecord) {
+        // Production CHIRParser.Allocate for records: StackAlloc.Local(sig,
+        // zeroed) — a zeroed typed frame slot. Record value = its address.
+        val ts = newTypedSlot(sig)
+        if (sig.hasRefFields) asm.zerorefs(ts)
+        asm.ldstackrec(SCRATCH, ts)
+        storeResult(e, SCRATCH, sig)
       } else {
         fail(s"allocate $sig")
       }
@@ -1021,31 +1051,59 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     /** Tuple construction: stack-allocate a record for the tuple and store
       * each element via a const-index field reference. */
     private def translateTuple(e: CHIR.Tuple): Unit = {
-      val tupleSig = resolver.typeSig(e.resultTpe) match {
+      val resSig = resolver.typeSig(e.resultTpe)
+      val tupleSig: SignatureType = resSig match {
         case t: SignatureType.Tuple => t
+        case opt: SignatureType.OptionLikeEnum =>
+          // CHIR materializes Option construction as a 2-tuple (tag, payload);
+          // the storage layout is the option enum itself. Production
+          // CHIRParser (CHIR Tuple / EnumType): nullable Some/None collapse to
+          // the payload or null; non-nullable stack-allocate the enum record.
+          if (opt.isNullableOption) {
+            e.elementValues match {
+              case Seq(tag: CHIR.IntLiteral, payload) =>
+                touch(e.elementValues: _*)
+                loadToReg(payload, SCRATCH)
+                storeResult(e, SCRATCH, opt.someType)
+                return
+              case _ => return fail("option tuple: unexpected element values")
+            }
+          } else if (opt.someType.isVariableSizeType) {
+            return fail("variable-size option")
+          } else {
+            opt
+          }
         case other => return fail(s"tuple with non-tuple sig $other")
       }
       if (tupleSig.isVariableSizeType) return fail("variable-size tuple")
-      if (tupleSig.params.length != e.elementValues.length)
-        return fail(s"tuple arity ${e.elementValues.length} vs ${tupleSig.params.length}")
+      if (tupleSig match {
+            case t: SignatureType.Tuple => t.params.length != e.elementValues.length
+            case _ => e.elementValues.length != 2 // option enum: tag + payload
+          })
+        return fail(s"tuple arity ${e.elementValues.length} vs $tupleSig")
       val ts = newTypedSlot(tupleSig)
       if (tupleSig.hasRefFields) asm.zerorefs(ts)
       touch(e.elementValues: _*)
       val refSig = tupleSig.toCbc
-      e.elementValues.zipWithIndex.foreach { (v, i) =>
-        val elemSig = tupleSig.params(i)
-        if (!elemSig.isZST) {
-          val fr = com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.ConstIndexFieldReference(refSig, i, elemSig.toCbc)
-          if (isFloat(elemSig)) {
-            loadFloatToReg(v, FSCRATCH0)
-            asm.st(FSCRATCH0, ts, fr)
-          } else {
-            loadToReg(v, SCRATCH)
-            asm.st(SCRATCH, ts, fr)
-          }
+      def storeElem(i: Int, v: CHIR.Value, elemSig: SignatureType): Unit = {
+        if (elemSig.isZST) return
+        val fr = com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.ConstIndexFieldReference(refSig, i, elemSig.toCbc)
+        if (isFloat(elemSig)) {
+          loadFloatToReg(v, FSCRATCH0)
+          asm.st(FSCRATCH0, ts, fr)
+        } else {
+          loadToReg(v, SCRATCH)
+          asm.st(SCRATCH, ts, fr)
         }
       }
-      // the tuple value is the address of its buffer (CBC record convention)
+      tupleSig match {
+        case t: SignatureType.Tuple =>
+          e.elementValues.zipWithIndex.foreach { (v, i) => storeElem(i, v, t.params(i)) }
+        case _ =>
+          // OptionLikeEnum layout: field 0 = Boolean tag, field 1 = payload
+          e.elementValues.zipWithIndex.foreach { (v, i) => storeElem(i, v, if (i == 0) SignatureType.Boolean else tupleSig.asInstanceOf[SignatureType.OptionLikeEnum].someType) }
+      }
+      // the tuple/option value is the address of its buffer (CBC record convention)
       asm.ldstackrec(SCRATCH, ts)
       storeResult(e, SCRATCH, tupleSig)
     }
