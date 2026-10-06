@@ -283,6 +283,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       builder.setTypeName(method.getDeclaringClass.getName)
       builder.setSignature(method.getSignature.toCbc)
       buildFlags(builder)
+      builder.setGenericParamCount(method.getGenericParamCount)
 
       if (method.hasSourceFile) {
         builder.setSourceFile(method.getSourceFile.toString)
@@ -319,19 +320,32 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       val modifiers = method.getCJModifiers
 
       // TODO: set virtual flag for methods, that are supposed to be in vtable
-      if (method.isCangjieForeign) builder.addFlag(MethodFlag.FOREIGN)
-      if (method.isPublic)         builder.addFlag(MethodFlag.PUBLIC)
-      if (method.isPrivate)        builder.addFlag(MethodFlag.PRIVATE)
-      if (method.isProtected)      builder.addFlag(MethodFlag.PROTECTED)
-      if (method.isStatic)         builder.addFlag(MethodFlag.STATIC)
-      if (method.isAbstract)       builder.addFlag(MethodFlag.ABSTRACT)
+      if (method.isCangjieForeign) builder += MethodFlag.FOREIGN
+      if (method.isPublic)         builder += MethodFlag.PUBLIC
+      if (method.isPrivate)        builder += MethodFlag.PRIVATE
+      if (method.isProtected)      builder += MethodFlag.PROTECTED
+      if (method.isStatic)         builder += MethodFlag.STATIC
+      if (method.isAbstract)       builder += MethodFlag.ABSTRACT
 
-      if (method.hasRetByValParameter)      builder.addFlag(MethodFlag.SRET)
-      if (method.hasOuterTypeInfoParameter) builder.addFlag(MethodFlag.HAS_OUTER_TI)
-      if (method.hasThisTypeInfoParameter)  builder.addFlag(MethodFlag.HAS_THIS_TI)
-      if (method.hasReferenceReceiver)      builder.addFlag(MethodFlag.REF_RECEIVER)
-      if (method.hasRecordReceiver)         builder.addFlag(MethodFlag.REC_RECEIVER)
-      if (method.hasMutRecordParameter)     builder.addFlag(MethodFlag.MUT) // TODO: is it correct?
+      if (method.hasRetByValParameter)      builder += MethodFlag.SRET
+      if (method.hasOuterTypeInfoParameter) builder += MethodFlag.HAS_OUTER_TI
+
+      if (method.hasThisTypeInfoParameter)  builder += MethodFlag.HAS_THIS_TI
+      if (method.hasMutRecordParameter)     builder += MethodFlag.MUT
+
+      if (method.hasReceiverParameter) {
+        import TypeKind.*
+        import SignatureType.*
+        val receiver = method.getMethodType.parameterType(method.getReceiverArgIdx)
+        (Wrapper.skip(receiver), receiver.symKindErased) match {
+          case (_, x) if x.isReference     => builder += MethodFlag.REF_RECEIVER
+          case (_, x) if x.isFloatingPoint => builder += MethodFlag.FPRIM_RECEIVER
+          case (_, RECORD)                 => builder += MethodFlag.REC_RECEIVER
+          case (Unit, _)                   => builder += MethodFlag.REC_RECEIVER
+          case (_, VOID)                   => shouldNotReachHere(s"Unexpected type kind VOID for $receiver in method $method")
+          case _                           => builder += MethodFlag.PRIM_RECEIVER
+        }
+      }
 
       if (isVirtual(method)) builder.addFlag(MethodFlag.VIRTUAL)
 

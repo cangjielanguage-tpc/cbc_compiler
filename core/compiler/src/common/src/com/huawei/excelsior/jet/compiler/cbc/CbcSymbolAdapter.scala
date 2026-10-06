@@ -14,7 +14,7 @@ import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{DirectCallAotData, 
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.SymbolAdapter
 import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, RawData}
 import com.huawei.excelsior.jet.compiler.TypeProvider
-import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.env
+import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.{coldStringsForWorkersOut, env}
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.*
 import com.huawei.excelsior.jet.compiler.symlevel.*
@@ -77,16 +77,35 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         case _ => notImplemented(symbol.accessKind)
       }
       val signature = symbol.method.getSignature.instantiate(cparams, Seq.empty).toCbc
+      val typeVars = symbol match {
+        case imr: InstantiatedMethodReference =>
+          imr.instantiatedTypeParameters.map(_.toCbc)
+        case _ => Seq.empty
+      }
 
       val mt = symbol.methodType
       val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
       if (mt.hasRetByValParameter)      flags += MethodRefFlag.SRET
       if (mt.hasOuterTypeInfoParameter) flags += MethodRefFlag.HAS_OUTER_TI
+      
       if (mt.hasThisTypeInfoParameter)  flags += MethodRefFlag.HAS_THIS_TI
-      if (mt.hasReferenceReceiver)      flags += MethodRefFlag.REF_RECEIVER
-      if (mt.hasRecordReceiver)         flags += MethodRefFlag.REC_RECEIVER
-      if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT // TODO: is it correct?
-      CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData)
+      if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT
+
+      if (mt.hasReceiverParameter) {
+        import TypeKind.*
+        import SignatureType.*
+        val receiver = mt.parameterType(mt.getReceiverArgIdx)
+        (Wrapper.skip(receiver), receiver.symKindErased) match {
+          case (_, x) if x.isReference     => flags += MethodRefFlag.REF_RECEIVER
+          case (_, x) if x.isFloatingPoint => flags += MethodRefFlag.FPRIM_RECEIVER
+          case (_, RECORD)                 => flags += MethodRefFlag.REC_RECEIVER
+          case (Unit, _)                   => flags += MethodRefFlag.REC_RECEIVER
+          case (_, VOID)                   => shouldNotReachHere(s"Unexpected type kind VOID for $receiver in method $method")
+          case _                           => flags += MethodRefFlag.PRIM_RECEIVER
+        }
+      }
+
+      CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData, typeVars = typeVars)
     case symbol: CangjieFieldReference => // Field reference
       symbol.field match {
         case None => CbcFileFormat.NoneFieldReference(symbol.fieldType.toCbc)

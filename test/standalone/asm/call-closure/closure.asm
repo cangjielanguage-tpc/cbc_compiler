@@ -56,9 +56,9 @@
       mov.ref IR12, IR1
       @dead IR1, IR2, IR9
     shared:
-      mov.ref IR1, IR12
-      call.closure ()I64
-      @dead IR1
+      load.type.info.obj IR2, IR12
+      call.closure ()I64, IR12, IR2
+      @dead IR2
       @live.prim IR1
 
       box IR1, IR2, I64
@@ -104,7 +104,7 @@
     @flags VIRTUAL SRET
     @code
       ;; pass current args as args to next call
-      call.direct IR1, #getstr
+      call.direct #getstr
       @live.prim IR1
       ret.64 IR1
     @end
@@ -140,11 +140,11 @@
     @code
       movi.64 IR1, 0
       movi.64 IR2, 1
-      call.direct IR1, #guess
+      call.direct #guess, IR1, IR2
       @dead IR1, IR2
 
       ; dynamically test whether we are executing on aarch64 or x64
-      call.direct IR1, #sret
+      call.direct #sret
       @live.prim IR1
       st.static IR1, #sret_flag
       @dead IR1
@@ -152,8 +152,9 @@
       new.closure default:MyLambda@ref
       mov.ref IR11, IR1
       @dead IR1
+      load.type.info.obj IR2, IR11
 
-      call.closure ()I64
+      call.closure ()I64, IR11, IR2
       @live.prim IR1
 
       bcci.64 EQ, IR1, 42, success1
@@ -176,12 +177,13 @@ no_sret_shift:
       ; check call.closure sret in concrete context
       prepare.rec $0
       ld.stack.rec IR9, $0
-      mov.ref IR1, IR11
-      call.closure ()std.core.String@arec
-      @dead IR1, IR9
+      load.type.info.obj IR3, IR11
+
+      call.closure ()std.core.String@arec, IR9, IR11, IR3
+      @dead IR9, IR3
 
       ld.stack.rec IR1, $0
-      call.direct IR1, #print
+      call.direct #print, IR1
       @dead IR1
 
       ; check generic call closure
@@ -198,8 +200,9 @@ no_sret_shift:
 
       prepare.rec $1
       ld.stack.rec IR9, $1
+      @dead IR2
       load.type.info.obj IR2, IR1
-      call.closure.g ()%0
+      call.closure.g ()%0, IR9, IR1, IR2
       @dead IR1, IR2, IR9
 
       ld.typed IR1, $1, #index_ref_1
@@ -222,12 +225,12 @@ has_sret_shift:
       ; check call.closure sret in concrete context
       prepare.rec $0
       ld.stack.rec IR1, $0
-      mov.ref IR2, IR11
-      call.closure ()std.core:String@arec
+      load.type.info.obj IR2, IR11
+      call.closure ()std.core:String@arec, IR1, IR11, IR2
       @dead IR1, IR2
 
       ld.stack.rec IR1, $0
-      call.direct IR1, #print
+      call.direct #print, IR1
       @dead IR1
 
       ; check generic call closure
@@ -242,7 +245,7 @@ has_sret_shift:
       prepare.rec $1
       ld.stack.rec IR1, $1
       load.type.info.obj IR3, IR2
-      call.closure.g ()%0
+      call.closure.g ()%0, IR1, IR2, IR3
       @dead IR1, IR2, IR3
 
       ld.typed IR1, $1, #index_ref_1

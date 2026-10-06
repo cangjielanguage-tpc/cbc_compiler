@@ -46,7 +46,7 @@
       add.64 IR13, IR5, IR6
       add.64 IR13, IR13, IR7
 
-      call.direct IR1, #testSum
+      call.direct #testSum, IR1
       @dead IR1
       @live.prim IR1
 

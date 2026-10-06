@@ -35,7 +35,7 @@
     @code
       movi.64 IR1, 42 ; first arg on aarch64
       movi.64 IR2, 42 ; first arg on x86_64 (due to Unit ret-by-val taking up IR1)
-      call.direct IR1, #notify
+      call.direct #notify
       @dead IR1
 
       movi.64 IR1, 0x0
@@ -47,14 +47,14 @@
 @type default
   @method main()I64
     @code
-      call.direct IR1, #init
+      call.direct #init
 
       new.closure default:MyLambda@ref
 
       spawn IR1, ()I64
       @dead IR1
 
-      call.direct IR1, #wait
+      call.direct #wait
 
       movi.64 IR1, 0x0
       ret.64 IR1

@@ -20,7 +20,7 @@
   @end
 
   @method foo()Void
-    @flags VIRTUAL
+    @flags VIRTUAL REF_RECEIVER
     @code
       movi.64 IR1, 0x10
       ret.64 IR1
@@ -28,13 +28,13 @@
   @end
 @end
 
-@method_ref virt_foo = default:Foo@ref foo()Void
+@method_ref virt_foo = default:Foo@ref foo()Void [REF_RECEIVER]
 
 @type default
   @method main()I64
     @code
       newobj default:Foo@ref
-      call.virt IR1, #virt_foo
+      call.virt #virt_foo, IR1
       @dead IR1
       @live.prim IR1
       ret.64 IR1

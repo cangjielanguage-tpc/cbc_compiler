@@ -7,15 +7,15 @@
 @aot.interface fooLink = 0
 
 @method_ref getI = aot:C@aref getI()aot:I@aref #getILink
-@method_ref foo = aot:I@aref foo(aot:I@aref)I64 #fooLink
+@method_ref foo = aot:I@aref foo()I64 [REF_RECEIVER] #fooLink
 
 @type default
 
   @method main()I64
     @code
-      call.direct IR1, #getI
+      call.direct #getI
       @live.ref IR1
-      call.interf IR1, #foo
+      call.interf #foo, IR1
       @dead IR1
       @live.prim IR1
       ret.64 IR1

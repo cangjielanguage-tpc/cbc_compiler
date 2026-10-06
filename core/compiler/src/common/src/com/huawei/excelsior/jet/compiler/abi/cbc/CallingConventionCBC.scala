@@ -22,7 +22,7 @@ object CallingConventionCBC extends CallingConventionCache[IR, FR] {
   )
 
   val fRegs = RegFile(Array(FR0, FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15),
-    volatiles = Array(FR0, FR1, FR2, FR3, FR4, FR5, FR6, FR7),
+    volatiles = Array(FR0, FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR15), // FIXME: make volatiles=allRegs; register allocation is not ready for that
     headArea = Array(FR0, FR1, FR2, FR3, FR4, FR5, FR6, FR7)
   )
 

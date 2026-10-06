@@ -126,18 +126,26 @@ object CbcFileFormat {
 
   sealed trait Flag {
     def mask: Int
+    def value: Int = mask
   }
 
   sealed trait Flags[F <: Flag] {
     def mask: Int
-    def contains(f: F) = (f.mask & this.mask) != 0
+    def contains(f: F): Boolean = (f.mask & this.mask) == f.value
   }
 
   object Flags {
     sealed trait Companion[F <: Flag, FS <: Flags[F]] {
       def apply(mask: Int): FS
-      def apply(flags: IterableOnce[F]): FS = apply(flags.iterator.map(_.mask).fold(0)(_ | _))
       def empty: FS = apply(Seq.empty)
+
+      def apply(flags0: IterableOnce[F]): FS = {
+        val flags = flags0.iterator.toSeq
+        apply(flags.foldLeft(0)((l, r) =>
+          assert((r.mask & l) == 0, s"$r is not disjoint with $flags")
+          l | r.value
+        ))
+      }
     }
   }
 
@@ -182,38 +190,46 @@ object CbcFileFormat {
     case ENUM      extends TypeFlag(0x0200)
   }
 
-  // TODO move access kinds out of flags
-  enum MethodFlag(val mask: Int) extends Flag {
-    case PUBLIC    extends MethodFlag(0x0001)
-    case PRIVATE   extends MethodFlag(0x0002)
-    case PROTECTED extends MethodFlag(0x0003)
+  enum MethodFlag(val mask: Int, override val value: Int) extends Flag {
+    case PUBLIC    extends MethodFlag(0x3, 0x0000)
+    case PRIVATE   extends MethodFlag(0x3, 0x0001)
+    case PROTECTED extends MethodFlag(0x3, 0x0002)
 
-    case STATIC   extends MethodFlag(0x0004)
-    case FINAL    extends MethodFlag(0x0008)
-    case FOREIGN  extends MethodFlag(0x0010)
-    case ABSTRACT extends MethodFlag(0x0020)
-    case MUT      extends MethodFlag(0x0040) // has MUT <=> has extra parameter (not just source-level indicator)
-    case VIRTUAL  extends MethodFlag(0x0080)
-    case AOT      extends MethodFlag(0x0100)
-    case PKG_INIT extends MethodFlag(0x0200)
-    case LIT_INIT extends MethodFlag(0x0400)
+    case FINAL        extends MethodFlag(0x0008, 0x0008)
+    case FOREIGN      extends MethodFlag(0x0010, 0x0010)
+    case ABSTRACT     extends MethodFlag(0x0020, 0x0020)
+    case SRET         extends MethodFlag(0x0040, 0x0040)
+    case VIRTUAL      extends MethodFlag(0x0080, 0x0080)
+    case AOT          extends MethodFlag(0x0100, 0x0100)
+    case PKG_INIT     extends MethodFlag(0x0200, 0x0200)
+    case LIT_INIT     extends MethodFlag(0x0400, 0x0400)
+    case HAS_OUTER_TI extends MethodFlag(0x0800, 0x0800)
 
-    case SRET         extends MethodFlag(0x0800)
-    case HAS_THIS_TI  extends MethodFlag(0x1000)
-    case HAS_OUTER_TI extends MethodFlag(0x2000)
-    case REC_RECEIVER extends MethodFlag(0x4000)
-    case REF_RECEIVER extends MethodFlag(0x8000)
+    // enum on 0x1000, 0x2000, 0x4000, mask = 0x7000
+    case STATIC         extends MethodFlag(0x7000, 0x1000 * 0) // default enum value
+    case HAS_THIS_TI    extends MethodFlag(0x7000, 0x1000 * 1)
+    case MUT            extends MethodFlag(0x7000, 0x1000 * 2) // has MUT <=> has extra parameter (not just source-level indicator)
+    case REC_RECEIVER   extends MethodFlag(0x7000, 0x1000 * 3)
+    case REF_RECEIVER   extends MethodFlag(0x7000, 0x1000 * 4)
+    case PRIM_RECEIVER  extends MethodFlag(0x7000, 0x1000 * 5)
+    case FPRIM_RECEIVER extends MethodFlag(0x7000, 0x1000 * 6)
   }
 
-  enum MethodRefFlag(val mask: Int) extends Flag {
-    case SRET         extends MethodRefFlag(0x01)
-    case HAS_THIS_TI  extends MethodRefFlag(0x02)
-    case HAS_OUTER_TI extends MethodRefFlag(0x04)
-    case MUT          extends MethodRefFlag(0x08)
-    case HAS_FTVARS   extends MethodRefFlag(0x10)
-    case AOT          extends MethodRefFlag(0x20)
-    case REC_RECEIVER extends MethodRefFlag(0x40)
-    case REF_RECEIVER extends MethodRefFlag(0x80)
+  enum MethodRefFlag(val mask: Int, override val value: Int) extends Flag {
+    case SRET         extends MethodRefFlag(0x01, 0x01)
+    case HAS_OUTER_TI extends MethodRefFlag(0x02, 0x02)
+    case HAS_FTVARS   extends MethodRefFlag(0x04, 0x04)
+
+    // enum on 0x8, 0x10, 0x20 bits, mask = 0x38
+    case STATIC         extends MethodRefFlag(0x38, 0x8 * 0) // default enum value
+    case HAS_THIS_TI    extends MethodRefFlag(0x38, 0x8 * 1)
+    case MUT            extends MethodRefFlag(0x38, 0x8 * 2)
+    case REC_RECEIVER   extends MethodRefFlag(0x38, 0x8 * 3)
+    case REF_RECEIVER   extends MethodRefFlag(0x38, 0x8 * 4)
+    case PRIM_RECEIVER  extends MethodRefFlag(0x38, 0x8 * 5)
+    case FPRIM_RECEIVER extends MethodRefFlag(0x38, 0x8 * 6)
+
+    case AOT          extends MethodRefFlag(0x40, 0x40)
   }
 
   enum FieldFlag(val mask: Int) extends Flag {
@@ -296,31 +312,6 @@ object CbcFileFormat {
                              aotData: Option[AotData] = None,
                              typeVars: Seq[Signature] = Seq.empty) extends BytecodeReference
 
-  // TODO: References to fields should be encoded without specifying `refType` part.
-  //       Memory location can be specified by triple `(base, offset, type)`, where
-  //       `base` can be either:
-  //         - typed stack slot;
-  //         - untyped stack slot;
-  //         - register;
-  //         - static/global field;
-  //       `offset` designates a position relative to `base`, which is encoded as field/index sequence.
-  //       `type` designates a type of memory location.
-  //       Note that for some cases `base` is already typed (typed stack slot, static field),
-  //       so following `FieldReference` would duplicate a type that is already known.
-  //       Moreover, for cases where the type of `base` is unknown - we must add type
-  //       specifiers to `index` encodings:
-  //       ```
-  //       mem.head.typed ts { // <-- type of element can be deduced from the `ts`
-  //         const.index 10, TypeOfElement
-  //         load reg }
-  //       ```
-  //       Such inconsistency causes either excessive complexities in decoding side
-  //       or inefficiencies in instruction encodings.
-  //       To avoid it, it is better to:
-  //         - always provide a type of a `base`;
-  //         - remove type specifiers from field references and index operations;
-  //       It will be sufficient to compute the final `type` of memory location,
-  //       just by sequentially applying operations.
   sealed trait FieldReference extends BytecodeReference
   sealed trait FieldReferenceWithType extends FieldReference {
     def refType: Signature
@@ -394,6 +385,9 @@ object CbcFileFormat {
       def setSourceFullName(linkageName: String): Unit
       def setLinkageName(fullName: String): Unit
       def setSourceFile(fileName: String): Unit
+      def setGenericParamCount(n: Int): Unit
+
+      def +=(flag: MethodFlag): Unit = addFlag(flag)
     }
   }
 
@@ -542,10 +536,11 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     private var typeName: String = _
     private var signature: Signature = _
     private var codeBuilder: Option[MethodCodeBuilder] = None
-    private var flags: Int = 0
+    private var flags = mutable.ArrayBuffer.empty[MethodFlag]
     private var linkageName: Option[String] = None
     private var sourceFullName: Option[String] = None
     private var sourceFile: Option[String] = None
+    private var genericParamCount: Int = 0
 
     override def setName(name: String): Unit = this.name = name
 
@@ -560,12 +555,13 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     }
 
     override def addFlag(flag: MethodFlag): Unit = {
-      flags |= flag.mask
+      flags += flag
     }
 
     override def setLinkageName(fullName: String): Unit = this.linkageName = Some(fullName)
     override def setSourceFullName(linkageName: String): Unit = this.sourceFullName = Some(linkageName)
     override def setSourceFile(fileName: String): Unit = this.sourceFile = Some(fileName)
+    override def setGenericParamCount(n: Int): Unit = this.genericParamCount = n
 
     def build(): CbcFileFormat.Method = Method(
       name = name.nn,
@@ -575,7 +571,8 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
       flags = MethodFlags(flags),
       sourceFullName = sourceFullName,
       sourceFile = sourceFile,
-      linkageName = linkageName
+      linkageName = linkageName,
+      genericParameters = genericParamCount
     )
   }
   

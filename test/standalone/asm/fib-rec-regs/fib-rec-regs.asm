@@ -8,7 +8,7 @@
   @method main()I64
     @code
       movi.64 IR1, 0x7
-      call.direct IR1, #default.fib
+      call.direct #default.fib, IR1
       ret.64 IR1
     @end
   @end
@@ -21,12 +21,12 @@
       bcci.64 LE, IR1, 0x1, r
       mov.64 IR12, IR1
       subi.64 IR1, IR1, 0x1
-      call.direct IR1, #default.fib
+      call.direct #default.fib, IR1
       mov.64 IR11, IR1
       @dead IR1
       subi.64 IR1, IR12, 0x2
       @dead IR12
-      call.direct IR1, #default.fib
+      call.direct #default.fib, IR1
       add.64 IR1, IR1, IR11
       @dead IR11
 r:

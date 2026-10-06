@@ -227,11 +227,6 @@ class CodeGenerator extends isa12.forked.Assembler with SymbolAdapter {
   def st_uslot(src: FR, tk: CbcTypeKind, us: Long): Unit = storeUntyped(src, tk, StackSlot.Untyped(us.toInt))
   def st_uslot(src: Long, us: Long): Unit = storeUntypedImm(src, StackSlot.Untyped(us.toInt))
 
-  // calls
-  def call_direct(mr: MethodReference, rd: IR): Unit = callDirect(rd, BytecodeReferenceSymbol(mr))
-  def call_virt(mr: MethodReference, rd: IR): Unit   = callVirt(rd, BytecodeReferenceSymbol(mr))
-  def call_interf(mr: MethodReference, rd: IR): Unit = callInterf(rd, BytecodeReferenceSymbol(mr))
-
   // allocs
   def newobj(rd: IR, sig: Signature): Unit = newobj(BytecodeReferenceSymbol(sig)).ensuring(rd == IR.IR1)
   def newarr(rd: IR, ry: IR, sig: Signature): Unit = newarr(sig).ensuring(rd == IR.IR1 && ry == IR.IR2)

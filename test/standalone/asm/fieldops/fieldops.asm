@@ -250,14 +250,14 @@
             ld.field IR1, IR8, #L4C_f1
             ; }
             movi.64 IR2, 4
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; memexpr {
             ld.field IR1, IR8, #L4C_f2
             ; }
             movi.64 IR2, 42
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; Reading level 4
@@ -266,14 +266,14 @@
             ld.field IR1, IR8, #L4C_f3, #L4_f1
             ; }
             movi.64 IR2, 4
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; memexpr {
             ld.field IR1, IR8, #L4C_f3, #L4_f2
             ; }
             movi.64 IR2, 42
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; Reading level 2
@@ -281,14 +281,14 @@
             ; memexpr {
             ld.field IR1, IR8, #L4C_f3, #L4_f3, #L3_f1, #L2a_f1
             ; }
-            call.direct IR1, #aot.checkObj
+            call.direct #aot.checkObj, IR1
             @dead IR1
 
             ; memexpr {
             ld.field IR1, IR8, #L4C_f3, #L4_f3, #L3_f2, #L2b_f1
             ; }
             movi.64 IR2, 2
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; Reading level 1
@@ -297,13 +297,13 @@
             ld.field IR1, IR8, #L4C_f3, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
             ; }
             movi.64 IR2, 1
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; memexpr {
             ld.field IR1, IR8, #L4C_f3, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
             ; }
-            call.direct IR1, #aot.checkObj
+            call.direct #aot.checkObj, IR1
             @dead IR1
 
             @dead IR8
@@ -368,14 +368,14 @@
             ld.static IR1, #staticRec_ref, #L4_f1
             ; }
             movi.64 IR2, 4
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; memexpr {
             ld.static IR1, #staticRec_ref, #L4_f2
             ; }
             movi.64 IR2, 42
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; Reading level 2
@@ -383,14 +383,14 @@
             ; memexpr {
             ld.static IR1, #staticRec_ref, #L4_f3, #L3_f1, #L2a_f1
             ; }
-            call.direct IR1, #aot.checkObj
+            call.direct #aot.checkObj, IR1
             @dead IR1
 
             ; memexpr {
             ld.static IR1, #staticRec_ref, #L4_f3, #L3_f2, #L2b_f1
             ; }
             movi.64 IR2, 2
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; Reading level 1
@@ -399,13 +399,13 @@
             ld.static IR1, #staticRec_ref, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
             ; }
             movi.64 IR2, 1
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; memexpr {
             ld.static IR1, #staticRec_ref, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
             ; }
-            call.direct IR1, #aot.checkObj
+            call.direct #aot.checkObj, IR1
             @dead IR1
 
             movi.64 IR1, 1
@@ -464,14 +464,14 @@
             ld.typed IR1, $0, #L4_f1
             ; }
             movi.64 IR2, 4
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; memexpr {
             ld.typed IR1, $0, #L4_f2
             ; }
             movi.64 IR2, 42
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; Reading level 2
@@ -479,14 +479,14 @@
             ; memexpr {
             ld.typed IR1, $0, #L4_f3, #L3_f1, #L2a_f1
             ; }
-            call.direct IR1, #aot.checkObj
+            call.direct #aot.checkObj, IR1
             @dead IR1
 
             ; memexpr {
             ld.typed IR1, $0, #L4_f3, #L3_f2, #L2b_f1
             ; }
             movi.64 IR2, 2
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; Reading level 1
@@ -495,13 +495,13 @@
             ld.typed IR1, $0, #L4_f3, #L3_f1, #L2a_f2, #L1a_f1
             ; }
             movi.64 IR2, 1
-            call.direct IR1, #aot.checkPrim
+            call.direct #aot.checkPrim, IR1, IR2
             @dead IR1, IR2
 
             ; memexpr {
             ld.typed IR1, $0, #L4_f3, #L3_f2, #L2b_f2, #L1b_f1
             ; }
-            call.direct IR1, #aot.checkObj
+            call.direct #aot.checkObj, IR1
             @dead IR1
 
             movi.64 IR1, 1
@@ -514,29 +514,29 @@
         @code
             movi.64 IR11, 0
 
-            call.direct IR1, #default.prepare
+            call.direct #default.prepare
 
-            call.direct IR1, #default.testStoreRegHead
+            call.direct #default.testStoreRegHead
             @live.prim IR1
             add.64 IR11, IR11, IR1
             @dead IR1
 
-            call.direct IR1, #default.testLoadRegHead
+            call.direct #default.testLoadRegHead
             @live.prim IR1
             add.64 IR11, IR11, IR1
             @dead IR1
 
-            call.direct IR1, #default.testStoreStaticHead
+            call.direct #default.testStoreStaticHead
             @live.prim IR1
             add.64 IR11, IR11, IR1
             @dead IR1
 
-            call.direct IR1, #default.testLoadStaticHead
+            call.direct #default.testLoadStaticHead
             @live.prim IR1
             add.64 IR11, IR11, IR1
             @dead IR1
 
-            call.direct IR1, #default.testStoreLoadTypedHead
+            call.direct #default.testStoreLoadTypedHead
             @live.prim IR1
             add.64 IR11, IR11, IR1
             @dead IR1

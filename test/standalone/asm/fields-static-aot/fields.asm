@@ -18,7 +18,7 @@
 
   @method main()I64
     @code
-      call.direct IR1, #packageInitRef
+      call.direct #packageInitRef
 
       movi.64 IR1, 40
       st.static IR1, #gFieldRef
@@ -29,7 +29,7 @@
 
       @dead IR1
       movi.64 IR1, 2
-      call.direct IR1, #testAssign
+      call.direct #testAssign, IR1
 
       @dead IR1
       movi.64 IR1, 0
