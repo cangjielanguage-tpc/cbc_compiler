@@ -787,6 +787,13 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           asm.bfx(SCRATCH, SCRATCH2, resW, Width.W32, false, 0, 32 min t.bits)
         case (SignatureType.UnicodeChar32, SignatureType.UnicodeChar32) =>
           loadToReg(e.value, SCRATCH)
+        // float <-> integral conversions (production: ValueConvert -> asm.convert)
+        case (f: SignatureType.Integral, t: SignatureType.FloatingPoint) =>
+          loadToReg(e.value, SCRATCH2)
+          asm.convert(com.huawei.excelsior.jet.assembler.AsmType.F32, if (f.bits <= 32) com.huawei.excelsior.jet.assembler.AsmType.I32 else com.huawei.excelsior.jet.assembler.AsmType.I64, SCRATCH, SCRATCH2)
+        case (f: SignatureType.FloatingPoint, t: SignatureType.Integral) =>
+          loadToReg(e.value, SCRATCH2)
+          asm.convert(if (t.bits <= 32) com.huawei.excelsior.jet.assembler.AsmType.I32 else com.huawei.excelsior.jet.assembler.AsmType.I64, com.huawei.excelsior.jet.assembler.AsmType.F32, SCRATCH, SCRATCH2)
         case _ => fail(s"numeric cast $from -> $to")
       }
       emitCast()
@@ -1041,6 +1048,29 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           resultOf(e).foreach(res => touch(res))
           loadToReg(ex, SCRATCH)
           storeResult(e, SCRATCH, exceptionSig)
+        case Kind.Abs | Kind.Fabs =>
+          // abs: if (arg < 0) -arg else arg (production lowers CHIR Abs to
+          // exactly this); float args use the FABS instruction
+          val Seq(x) = e.args
+          val rsig = resultOf(e).flatMap(sigOf).orElse(sigOf(x)).getOrElse(return fail("abs: unknown sig"))
+          touch(x)
+          resultOf(e).foreach(res => touch(res))
+          if (rsig match { case _: SignatureType.FloatingPoint => true; case _ => false }) {
+            loadFloatToReg(x, FSCRATCH1)
+            asm.fabs(FSCRATCH0, FSCRATCH1, Width.W64)
+            resultOf(e).foreach(res => storeFloatFromReg(res, FSCRATCH0, rsig))
+          } else {
+            loadToReg(x, SCRATCH2)
+            val negLab = asm.newLabel
+            val done = asm.newLabel
+            asm.bcc(BranchOp.LT, SCRATCH2, IRZ, Width.W64, negLab)
+            resultOf(e).foreach(res => storeFromReg(res, SCRATCH2, rsig))
+            asm.jmp(done)
+            asm.bind(negLab)
+            asm.neg(SCRATCH, SCRATCH2, Width.W64)
+            resultOf(e).foreach(res => storeFromReg(res, SCRATCH, rsig))
+            asm.bind(done)
+          }
         case Kind.ArrayGet | Kind.ArrayGetUnchecked | Kind.ArrayGetRefUnchecked =>
           val Seq(arrV, idxV) = e.args
           val arrType = sigOf(arrV).getOrElse(return fail("arrayGet: unknown array sig"))
