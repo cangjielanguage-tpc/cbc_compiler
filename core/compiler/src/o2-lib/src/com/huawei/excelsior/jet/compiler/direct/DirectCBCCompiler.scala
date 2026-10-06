@@ -178,6 +178,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
 
     private val slotOf = mutable.HashMap.empty[AnyRef, Int]
     private val slotTypes = mutable.ArrayBuffer.empty[SignatureType]
+    private val slotStringDone = mutable.HashSet.empty[AnyRef]
     // typed (stack-allocated record) frame slots: declared to the engine via
     // stackAllocatedTypeSigs so the runtime frame layout places them after the
     // untyped region and traces their ref fields for GC
@@ -304,7 +305,27 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       case l: CHIR.BoolLiteral => asm.movi32(reg, if (l.value) 1 else 0)
       case l: CHIR.RuneLiteral => asm.movi64(reg, l.value)
       case _: CHIR.NullLiteral => asm.mov(reg, IRZ, reference = true)
+      case l: CHIR.StringLiteral =>
+        // String used as an operand: materialize once into a typed slot
+        // (cached per literal), then load the record address from it.
+        val sig = sigOf(l).getOrElse(stringSig)
+        val idx = materializeStringSlot(l, sig)
+        asm.loadUntyped(reg, LoadAccessKind.from(cbcKind(sig)), StackSlot.Untyped(idx))
       case other => fail(s"literal ${other.getClass.getSimpleName}")
+    }
+
+    /** Emits (once per literal) initConstString into a fresh typed slot and
+      * stores the record address into an untyped slot keyed by the literal. */
+    private def materializeStringSlot(lit: CHIR.StringLiteral, sig: SignatureType): Int = {
+      val idx = slotOfAny(lit, sig)
+      if (!slotStringDone.contains(lit)) {
+        val ts = newTypedSlot(sig)
+        asm.initConstString(ts, new ConstStringSymbol(lit.value))
+        asm.ldstackrec(SCRATCH, ts)
+        asm.storeUntyped(SCRATCH, StoreAccessKind.from(cbcKind(sig)), StackSlot.Untyped(idx))
+        slotStringDone += lit
+      }
+      idx
     }
 
     /** Loads a float value into an FR register (from slot only; literals bail). */
