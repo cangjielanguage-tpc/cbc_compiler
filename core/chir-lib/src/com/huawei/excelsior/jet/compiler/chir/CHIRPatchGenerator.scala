@@ -102,8 +102,7 @@ class CHIRPatchGeneratorFactory(_pkg: CHIR.Package) {
     private val Unit = CHIR.BuiltinType.Unit
     private val Int64 = CHIR.BuiltinType.Int64
 
-    def generatePatch(id: Int): Func = {
-      val _id = id
+    def generatePatch(_id: Int): Func = {
       new CHIR.Func {
         private var _retVal: CHIR.LocalVar = _
 
