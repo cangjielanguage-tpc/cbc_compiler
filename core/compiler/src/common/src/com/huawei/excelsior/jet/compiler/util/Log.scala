@@ -30,11 +30,11 @@ import scala.util.Using
   */
 abstract class Log {
   def isEnabled: Boolean
-  def apply(msg: String): Unit
-  def apply(msg: String, posOwner: Position.Owner): Unit = apply(msg, posOwner.posApproximation)
-  def apply(msg: String, pos: Position): Unit = apply(s"$msg at ${pos.toString(ignoreNumbers = Log.env.enabled(IgnoreNumbersInPositionsOutput))}")
-  def inSession[T](msg: String)(action: => T): T
-  def inSession[T](msg: String, codeUnit: CodeUnit)(action: => T): T = inSession(s"$msg in $codeUnit")(action)
+  def apply(msg: => String): Unit
+  def apply(msg: => String, posOwner: Position.Owner): Unit = apply(msg, posOwner.posApproximation)
+  def apply(msg: => String, pos: Position): Unit = apply(s"$msg at ${pos.toString(ignoreNumbers = Log.env.enabled(IgnoreNumbersInPositionsOutput))}")
+  def inSession[T](msg: => String)(action: => T): T
+  def inSession[T](msg: => String, codeUnit: CodeUnit)(action: => T): T = inSession(s"$msg in $codeUnit")(action)
   protected def close(): Unit
 }
 
@@ -111,8 +111,8 @@ object Log {
 
 private class LogStub extends Log {
   override def isEnabled: Boolean = false
-  override def apply(msg: String): Unit = {}
-  override def inSession[T](msg: String)(action: => T) = action
+  override def apply(msg: => String): Unit = {}
+  override def inSession[T](msg: => String)(action: => T) = action
   override def close(): Unit = {}
 }
 
@@ -121,10 +121,10 @@ private class LogImpl(log: TextOutput, env: Environment, kind: Kind) extends Log
 
   override def isEnabled: Boolean = true
 
-  override def apply(msg: String): Unit =
+  override def apply(msg: => String): Unit =
     msgBufs.head += msg
 
-  override def inSession[T](msg: String)(action: => T) = {
+  override def inSession[T](msg: => String)(action: => T) = {
     msgBufs.push(new mutable.ListBuffer[String])
     try {
       action
