@@ -8,7 +8,7 @@
 
 package com.huawei.excelsior.jet.compiler.direct
 
-import com.huawei.excelsior.jet.assembler.{Label, Segment, Width}
+import com.huawei.excelsior.jet.assembler.{Label, Location, Segment, Width}
 import com.huawei.excelsior.jet.assembler.cbc.{CbcTypeKind, ExceptionTable, StackSlot}
 import com.huawei.excelsior.jet.assembler.cbc.Register.FR
 import com.huawei.excelsior.jet.assembler.cbc.Register.FR.FR0
@@ -153,6 +153,10 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     private implicit val typeProvider: TypeProvider = env.getTypeProvider
 
     private var bail_ : Boolean = false
+    /** Own-method ABI param registers (set during entry spill) — used to read
+      * the method's own generic func params and outer TI. */
+    private var ownParamLocs: Seq[Location] = Seq.empty
+    private var ownOuterTiLoc: Option[IR] = None
     private def fail(msg: String): Unit = {
       if (sys.env.contains("DIRECT_CBC_BAIL")) System.err.println(s"DIRECT-CBC bail $method: $msg")
       bail_ = true
@@ -392,7 +396,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
                _: CHIR.GetElementRef | _: CHIR.StoreElementRef | _: CHIR.Intrinsic |
                _: CHIR.RawArrayAllocate | _: CHIR.RawArrayLiteralInit |
                _: CHIR.Invoke | CHIR.GetException | _: CHIR.Debug |
-               _: CHIR.Tuple | _: CHIR.StringLiteral =>
+               _: CHIR.Tuple | _: CHIR.StringLiteral |
+               _: CHIR.Box | _: CHIR.UnboxToValue =>
             // individually translatable (or no-op); per-expr checks happen in
             // the translators
             ()
@@ -419,16 +424,22 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
             // Mirrors CHIRParser.parseEntryBlock: the receiver is the CHIR
             // params head and maps to the ABI's receiver slot; the remaining
             // params map from startSpecialParamsCount onward. End special
-            // params (OuterTI) occupy trailing locs and are ignored here.
+            // params (OuterTI) and Custom params (GenericFuncParams) occupy
+            // trailing/middle locs and are ignored here (but remembered: the
+            // generic ones are read as own TI sources).
             val mt = method.getMethodType
             val hasRcv = mt.hasReceiverParameter || mt.hasMutRecordParameter
             val rcvIdx = if (mt.hasReceiverParameter) mt.getReceiverArgIdx else mt.getMutRecordArgIdx
             val (rcv, rest) = if (hasRcv) (Some(params.head), params.tail) else (None, params)
             val start = mt.startSpecialParamsCount
+            val genCount = if (mt.hasGenericFuncParams) method.getGenericInfo.constraints.size else 0
             // trailing end-special locs (OuterTI) exist but carry no CHIR param
-            if (start + rest.size + mt.endSpecialParamsCount != regLocs.size)
-              fail(s"special params: start=$start rest=${rest.size} end=${mt.endSpecialParamsCount} regLocs=${regLocs.size}")
+            if (start + rest.size + genCount + mt.endSpecialParamsCount != regLocs.size)
+              fail(s"special params: start=$start rest=${rest.size} gen=$genCount end=${mt.endSpecialParamsCount} regLocs=${regLocs.size}")
             else {
+              ownParamLocs = regLocs.toSeq
+              if (mt.hasOuterTypeInfoParameter)
+                ownOuterTiLoc = Some(regLocs(mt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR])
               touch(params: _*)
               rcv.foreach(p => storeFromReg(p, regLocs(rcvIdx).asReg.asInstanceOf[IR], sigOf(p).get))
               rest.zipWithIndex.foreach { (p, i) =>
@@ -498,6 +509,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           case e: CHIR.RawArrayAllocate => translateRawArrayAllocate(e)
           case e: CHIR.RawArrayLiteralInit => translateRawArrayLiteralInit(e)
           case e: CHIR.Tuple => translateTuple(e)
+          case e: CHIR.Box => translateBox(e)
+          case e: CHIR.UnboxToValue => translateUnbox(e)
           case e: CHIR.StringLiteral => translateStringLiteral(e, e)
           case _: CHIR.Debug => () // debug bookkeeping: no-op
           case e => return fail(s"expr ${e.getClass.getSimpleName}")
@@ -1156,6 +1169,55 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       storeResult(e, SCRATCH, tupleSig)
     }
 
+    /** Box: allocate a heap box holding `value` (mirrors CHIRParser's CHIR.Box
+      * arm + genBox; passthrough when the value is already a heap object). */
+    private def translateBox(e: CHIR.Box): Unit = {
+      val v = e.value
+      val baseType = sigOf(v).getOrElse(return fail("box: unknown value sig"))
+      val resSig = resolver.typeSig(e.targetTpe)
+      touch(v)
+      if (baseType.isVariableSizeType || baseType.isTraceableReference ||
+        (baseType match {
+          case o: SignatureType.OptionLikeEnum => o.someType.isVariableSizeType
+          case _ => false
+        })) {
+        // passthrough: value is already a heap object
+        loadToReg(v, SCRATCH)
+        storeResult(e, SCRATCH, resSig)
+        return
+      }
+      loadToReg(v, SCRATCH)
+      if (baseType.containsTypeVariables) lowerTypeInfo(SCRATCH2, baseType)
+      asm.box(SCRATCH, SCRATCH3, baseType.toCbc)
+      saveGCMapHere()
+      storeResult(e, SCRATCH3, resSig)
+    }
+
+    /** UnboxToValue/CastToConcrete (mirrors CHIRParser's arm + genUnbox):
+      * passthrough unless the operand is a heap box holding a value type. */
+    private def translateUnbox(e: CHIR.UnboxToValue): Unit = {
+      val baseType = resolver.typeSig(e.targetTpe)
+      if (baseType.isZST) return
+      val v = e.value
+      touch(v)
+      val operandIsBox = sigOf(v).exists(s =>
+        s.isTraceableReference || s.isInstanceOf[SignatureType.Box])
+      val passthrough =
+        (baseType.isRecord && (baseType match {
+          case o: SignatureType.OptionLikeEnum => o.someType.isTypeVariable
+          case _ => false
+        })) || baseType.isTraceableReference ||
+        !operandIsBox
+      if (passthrough) {
+        loadToReg(v, SCRATCH)
+        storeResult(e, SCRATCH, baseType)
+      } else {
+        loadToReg(v, SCRATCH2)
+        asm.unbox(SCRATCH, SCRATCH2, baseType.toCbc)
+        storeResult(e, SCRATCH, baseType)
+      }
+    }
+
     private def translateRawArrayLiteralInit(e: CHIR.RawArrayLiteralInit): Unit = {
       val arrType = sigOf(e.array).getOrElse(return fail("literalInit: unknown array sig"))
       if (!arrType.isArray) return fail(s"literalInit on non-array $arrType")
@@ -1273,7 +1335,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val outerTiSig = if (calleeMt.hasReceiverParameter) sigOf(callArgs.head).get
                        else SignatureType.fromSymType(calleeMethod.getDeclaringClass)
       val outerTi = calleeMt.hasOuterTypeInfoParameter &&
-        !outerTiSig.containsTypeVariables
+        lowerableTypeInfo(outerTiSig)
       if (endCount != 0 && !outerTi)
         return fail(f"callee end special params (TI: end=$endCount outer=${calleeMt.hasOuterTypeInfoParameter} this=${calleeMt.hasThisTypeInfoParameter} tv=${outerTiSig.containsTypeVariables})")
       val calleeStart = calleeMt.startSpecialParamsCount
@@ -1308,7 +1370,16 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           val tiSig = if (outerTiSig.containsTypeVariables) sigOf(callArgs.head).get else outerTiSig
           Some((regLocs(calleeMt.getThisTypeInfoArgIdx).asReg.asInstanceOf[IR], Right(tiSig)))
         }
-      val argLocs = regLocs.drop(calleeStart).dropRight(endCount)
+      // GenericFuncParams (Custom position) sit between the ordinary args and
+      // the end specials — exclude them from the ordinary-arg locations.
+      val genParamCount = calleeMt.hasGenericFuncParams match {
+        case true => ref match {
+          case imr: InstantiatedMethodReference => imr.instantiatedTypeParameters.size
+          case _ => fail("generic func params on non-instantiated reference"); 0
+        }
+        case false => 0
+      }
+      val argLocs = regLocs.drop(calleeStart).dropRight(endCount + genParamCount)
       // receiver: last start special; its loc sits right before the params
       val recvLoc: Option[IR] =
         if (calleeMt.hasReceiverParameter) Some(regLocs(calleeStart - 1).asReg.asInstanceOf[IR])
@@ -1366,13 +1437,22 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         }
       }
       if (outerTi)
-        asm.loadTypeInfoSig(regLocs(calleeMt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR],
-          outerTiSig.toCbc)
+        lowerTypeInfo(regLocs(calleeMt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR], outerTiSig)
       thisTi.foreach { (loc, src) =>
         src match {
           case Left(rcvLoc) => asm.loadTypeInfoObj(loc, rcvLoc) // receiver's runtime TI
-          case Right(sig)   => asm.loadTypeInfoSig(loc, sig.toCbc) // static TI
+          case Right(sig)   => lowerTypeInfo(loc, sig)          // static TI (possibly generic)
         }
+      }
+      // GenericFuncParams (universal-generic callee): load the TI of each
+      // instantiated type parameter (mirrors callMethod's GenericFuncParams arm)
+      ref match {
+        case imr: InstantiatedMethodReference if calleeMt.hasGenericFuncParams =>
+          imr.instantiatedTypeParameters.zipWithIndex.foreach { (t, i) =>
+            val loc = regLocs(calleeMt.getGenericFuncParamsStartIdx(imr.instantiatedTypeParameters.size) + i)
+            lowerTypeInfo(loc.asReg.asInstanceOf[IR], t)
+          }
+        case _ =>
       }
       val resultReg = {
         val rl = calleeAbi.resultLocation
@@ -1395,6 +1475,61 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
             storeFromReg(res, resultReg, sigOf(res).get)
           }
         case _ =>
+      }
+    }
+
+    /** Whether a runtime-TI value can be materialized for this sig
+      * (mirrors the arms of CHIRParser.loadTypeInfo). */
+    private def lowerableTypeInfo(t: SignatureType): Boolean =
+      !t.containsTypeVariables || (t match {
+        case _: SignatureType.ClassTypeVariable | _: SignatureType.LocalTypeVariable => true
+        case _: SignatureType.InstantiatedType | _: SignatureType.ArraySlice |
+             _: SignatureType.CangjieArray | _: SignatureType.VArray |
+             _: SignatureType.Tuple | _: SignatureType.CangjieEnum => true
+        case _ => false
+      })
+
+    /** Materializes the runtime TypeInfo of `t` into `dst` (mirrors
+      * CHIRParser.loadTypeInfo + CodeGeneratorCBC lowering):
+      *  - no typevars: loadTypeInfoSig;
+      *  - class/local typevar: typeArg(outer TI / own generic param);
+      *  - instantiated composite: loadTypeInfoGeneric(uninstantiated) + typeArgs. */
+    private def lowerTypeInfo(dst: IR, t: SignatureType): Unit = {
+      if (!t.containsTypeVariables) {
+        asm.loadTypeInfoSig(dst, t.toCbc)
+        return
+      }
+      t match {
+        case tv: SignatureType.ClassTypeVariable =>
+          // TI of a class type parameter: extract from the outer TI
+          val outerTiLoc = ownOuterTiLoc.getOrElse(
+            return fail("typevar TI: method has no outer TI param"))
+          asm.typeArg(outerTiLoc, tv.idx, dst)
+        case tv: SignatureType.LocalTypeVariable =>
+          // TI of the method's own type parameter: passed as a generic func param
+          val genCount = method.getGenericInfo.constraints.size
+          val loc = ownParamLocs.lift(
+            method.getMethodType.getGenericFuncParamsStartIdx(genCount) + tv.idx)
+            .getOrElse(return fail(s"typevar TI: no own generic param idx ${tv.idx}"))
+          asm.mov(dst, loc.asReg.asInstanceOf[IR], reference = true)
+        case _ =>
+          asm.loadTypeInfoGeneric(dst, t.uninstantiated.toCbc)
+          val params: Seq[SignatureType] = t match {
+            case x: SignatureType.InstantiatedType => x.instantiatedTypeParameters
+            case x: SignatureType.ArraySlice => Seq(x.elemType)
+            case x: SignatureType.CangjieArray => Seq(x.elemType)
+            case x: SignatureType.VArray => Seq(x.elemType)
+            case x: SignatureType.Tuple => x.params
+            case x: SignatureType.CangjieEnum => x.params
+            case x => return fail(s"typevar TI: unexpected sig $x")
+          }
+          // typeArg's TI source must survive: load each arg into SCRATCH3 (a
+          // volatile scratch distinct from dst/outerTiLoc) then extract
+          params.zipWithIndex.foreach { (p, i) =>
+            lowerTypeInfo(SCRATCH3, p)
+            asm.typeArg(SCRATCH3, i, SCRATCH3)
+            if (i == params.length - 1) asm.mov(dst, SCRATCH3, reference = true)
+          }
       }
     }
 
