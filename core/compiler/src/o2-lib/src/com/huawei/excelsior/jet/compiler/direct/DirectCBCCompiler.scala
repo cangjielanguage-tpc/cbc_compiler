@@ -777,6 +777,16 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           val argW = if (f.bits <= 32) Width.W32 else Width.W64
           val resW = if (t.bits <= 32) Width.W32 else Width.W64
           asm.bfx(SCRATCH, SCRATCH2, resW, argW, f.signed, 0, f.bits min t.bits)
+        // rune casts: UnicodeChar32 is a 32-bit unsigned reinterpret
+        case (f: SignatureType.Integral, SignatureType.UnicodeChar32) =>
+          loadToReg(e.value, SCRATCH2)
+          asm.bfx(SCRATCH, SCRATCH2, Width.W32, Width.W32, f.signed, 0, f.bits min 32)
+        case (SignatureType.UnicodeChar32, t: SignatureType.Integral) =>
+          loadToReg(e.value, SCRATCH2)
+          val resW = if (t.bits <= 32) Width.W32 else Width.W64
+          asm.bfx(SCRATCH, SCRATCH2, resW, Width.W32, false, 0, 32 min t.bits)
+        case (SignatureType.UnicodeChar32, SignatureType.UnicodeChar32) =>
+          loadToReg(e.value, SCRATCH)
         case _ => fail(s"numeric cast $from -> $to")
       }
       emitCast()
@@ -1023,6 +1033,14 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     private def translateIntrinsic(e: CHIR.Intrinsic): Unit = {
       import CHIR.Intrinsic.Kind
       e.kind match {
+        case Kind.BeginCatch =>
+          // identity of the exception value (caught at handler start;
+          // mirrors CHIRParser: state(e) = state(ex))
+          val Seq(ex) = e.args
+          touch(ex)
+          resultOf(e).foreach(res => touch(res))
+          loadToReg(ex, SCRATCH)
+          storeResult(e, SCRATCH, exceptionSig)
         case Kind.ArrayGet | Kind.ArrayGetUnchecked | Kind.ArrayGetRefUnchecked =>
           val Seq(arrV, idxV) = e.args
           val arrType = sigOf(arrV).getOrElse(return fail("arrayGet: unknown array sig"))
@@ -1080,6 +1098,28 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           asm.nullcheck(SCRATCH2)
           asm.lenarr(SCRATCH, SCRATCH2)
           storeResult(e, SCRATCH, resolver.typeSig(e.resultTpe))
+        case Kind.ObjectZeroValue =>
+          // zero-initialized value of the result type (mirrors CHIRParser arm:
+          // StackAlloc.Local for records, null for refs, zero register else)
+          val sig = resolver.typeSig(e.resultTpe)
+          resultOf(e).foreach(res => touch(res))
+          if (sig.isZST) return
+          if (sig.isRecord && !sig.isVariableSizeType) {
+            val ts = newTypedSlot(sig)
+            if (sig.hasRefFields) asm.zerorefs(ts)
+            asm.ldstackrec(SCRATCH, ts)
+            storeResult(e, SCRATCH, sig)
+          } else if (sig.isVariableSizeType || sig.isTraceableReference) {
+            storeResult(e, IRZ, sig)
+          } else if (isFloat(sig)) {
+            resultOf(e) match {
+              case Some(res) => storeFloatFromReg(res, FSCRATCH0, sig) // FSCRATCH0 is zero
+              case None => ()
+            }
+          } else {
+            asm.movi64(SCRATCH, 0)
+            storeResult(e, SCRATCH, sig)
+          }
         case other => fail(s"intrinsic $other")
       }
     }
@@ -1142,7 +1182,14 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
               loadToReg(payload, SCRATCH)
               storeResult(e, SCRATCH, opt.someType)
               return
-            } else return fail(s"option tuple: unexpected element values n=${vals.size} tag=${keyOf(vals.headOption.getOrElse(null)).getClass.getSimpleName}")
+            }
+            // None: single tag element (production `Seq(IConst(c)) => Null()`)
+            if (vals.size == 1 && tagValue(vals(0)).nonEmpty) {
+              touch(e.elementValues: _*)
+              storeResult(e, IRZ, opt.someType)
+              return
+            }
+            return fail(s"option tuple: unexpected element values n=${vals.size} tag=${keyOf(vals.headOption.getOrElse(null)).getClass.getSimpleName} lit=${vals.map(keyOf).headOption.collect{case c: CHIR.Constant => c.literal.getClass.getSimpleName}.mkString}")
           } else if (opt.someType.isVariableSizeType) {
             return fail("variable-size option")
           } else {
@@ -1153,7 +1200,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       if (tupleSig.isVariableSizeType) return fail("variable-size tuple")
       if (tupleSig match {
             case t: SignatureType.Tuple => t.params.length != e.elementValues.length
-            case _ => e.elementValues.length != 2 // option enum: tag + payload
+            case _: SignatureType.OptionLikeEnum => e.elementValues.isEmpty || e.elementValues.length > 2
+            case _ => true
           })
         return fail(s"tuple arity ${e.elementValues.length} vs $tupleSig")
       val ts = newTypedSlot(tupleSig)
@@ -1174,9 +1222,14 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       tupleSig match {
         case t: SignatureType.Tuple =>
           e.elementValues.zipWithIndex.foreach { (v, i) => storeElem(i, v, t.params(i)) }
-        case _ =>
-          // OptionLikeEnum layout: field 0 = Boolean tag, field 1 = payload
-          e.elementValues.zipWithIndex.foreach { (v, i) => storeElem(i, v, if (i == 0) SignatureType.Boolean else tupleSig.asInstanceOf[SignatureType.OptionLikeEnum].someType) }
+        case _: SignatureType.OptionLikeEnum =>
+          // OptionLikeEnum layout: field 0 = Boolean tag, field 1 = payload.
+          // A single element is tag-only (None / Some-with-no-payload form,
+          // production `Seq(IConst(c)) => StoreFieldSeq(tag)`).
+          e.elementValues.zipWithIndex.foreach { (v, i) =>
+            storeElem(i, v, if (i == 0) SignatureType.Boolean else tupleSig.asInstanceOf[SignatureType.OptionLikeEnum].someType)
+          }
+        case _ => fail(s"tuple with non-tuple sig $tupleSig")
       }
       // the tuple/option value is the address of its buffer (CBC record convention)
       asm.ldstackrec(SCRATCH, ts)
@@ -1445,8 +1498,10 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
             (calleeStart == 1 && calleeMt.hasRetByValParameter && !calleeMt.hasReceiverParameter &&
               (retIsZST || retIsRecord || retIsBoxed)) ||
             (calleeStart == 2 && calleeMt.hasRetByValParameter && calleeMt.hasReceiverParameter &&
-              (retIsZST || retIsRecord || retIsBoxed))))
-        return fail(s"callee special params start=$calleeStart (sret=${calleeMt.hasRetByValParameter} ret=${calleeMt.returnType})")
+              (retIsZST || retIsRecord || retIsBoxed)) ||
+            (calleeStart == 2 && !calleeMt.hasRetByValParameter && retIsZST &&
+              calleeMt.hasMutRecordParameter && calleeMt.hasMutObjectParameter)))
+        return fail(s"callee special params start=$calleeStart (sret=${calleeMt.hasRetByValParameter} ret=${calleeMt.returnType} specials=${calleeMt.specialParameters.elements.mkString(",")})")
       val calleeAbi = DirectCBCCompiler.platform(env).abi(calleeMt)
       val locs = calleeAbi.paramLocations
       val regLocs = locs.filter(l => l.isReg && l.asReg.isInstanceOf[IR])
@@ -1477,8 +1532,18 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val recvLoc: Option[IR] =
         if (calleeMt.hasReceiverParameter) Some(regLocs(calleeStart - 1).asReg.asInstanceOf[IR])
         else None
+      // SMutRecord/SMutObject start specials: both receive the record
+      // receiver's address (SMutRecArg/SMutObjectArg are address markers in
+      // production; the entry side treats the SMutRecord param as the receiver).
+      val mutLocs: Seq[IR] =
+        if (calleeMt.hasMutRecordParameter && !calleeMt.hasReceiverParameter) {
+          val base = calleeStart - (if (calleeMt.hasMutObjectParameter) 2 else 1)
+          if (calleeMt.hasMutObjectParameter)
+            Seq(regLocs(base).asReg.asInstanceOf[IR], regLocs(base + 1).asReg.asInstanceOf[IR])
+          else Seq(regLocs(base).asReg.asInstanceOf[IR])
+        } else Seq.empty
       val (recvVal, paramArgs) =
-        if (calleeMt.hasReceiverParameter) (Some(callArgs.head), callArgs.tail)
+        if (calleeMt.hasReceiverParameter || calleeMt.hasMutRecordParameter) (Some(callArgs.head), callArgs.tail)
         else (None, callArgs)
       val realArgs = paramArgs.filter(a => sigOf(a).forall(!_.isZST))
       if (realArgs.size != argLocs.size) {
@@ -1523,6 +1588,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         }
       } else None
       recvVal.zip(recvLoc).foreach { (r, loc) => loadToReg(r, loc) }
+      mutLocs.foreach { loc => recvVal.foreach(r => loadToReg(r, loc)) }
       realArgs.zip(argLocs).foreach { (a, loc) =>
         loc.asReg match {
           case fr: FR => loadFloatToReg(a, fr)
