@@ -1,6 +1,6 @@
 An exception has occurred:
 IllegalArgumentException
-	 at aot::test4_helper2(Int64, Int64)(SOURCE:0)
+	 at aot::test4_helper2(Int64, Int64)(SOURCE:5)
 	 at default::TestClass::test4_helper1(Int64, Int64)(unknown:69)
 	 at default::test4(Int64, Int64)(unknown:77)
 	 at default::user.main()(unknown:93)

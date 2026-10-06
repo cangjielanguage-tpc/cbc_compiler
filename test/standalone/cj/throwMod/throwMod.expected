@@ -1,6 +1,6 @@
 An exception has occurred:
 ArithmeticException
-	 at cangjie.runtime.cbcengine.helper::throwImplicitException(Int64)(/workspace/cbc-engine/tools/launcher/build/cbcengine-helper.cj:6)
+	 at cangjie.runtime.cbcengine.helper::throwImplicitException(Int64)(SOURCE:6)
 	 at default::foo(Int64, Int64)(unknown:6)
 	 at default::user.main()(unknown:2)
 	 at default::user.main.invoke()(unknown:0)
