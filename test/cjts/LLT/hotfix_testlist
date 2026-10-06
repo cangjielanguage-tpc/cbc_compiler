@@ -314,19 +314,6 @@ compiler/CHIR/CHIR2HLIR/overflow_typecast/uint64/inttouint64.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/inttouint8.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/uinttouint8.cj
 
-# bug 80 (Precise line numbers in stack traces)
-compiler/CHIR/DCE/do_nothing_on_reflect.cj
-compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl1.cj
-compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl2.cj
-compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl3.cj
-compiler/CodegenCJNative/demangle/decl/nested_package/main.cj
-compiler/CodegenCJNative/reflect/reflect_02.cj
-compiler/CodegenCJNative/reflect/reflect_03.cj
-compiler/CodegenCJNative/reflect/reflect_04.cj
-compiler/CodegenCJNative/runtime/stacktrace.cj
-compiler/CodegenCJNative/trycatch/unreachable.cj
-compiler/CodegenCommon/dec/throw.cj
-
 # bug 81 (CHIR.GetRTTI could have explicit parameter (not always ReceiverParam))
 compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
 
