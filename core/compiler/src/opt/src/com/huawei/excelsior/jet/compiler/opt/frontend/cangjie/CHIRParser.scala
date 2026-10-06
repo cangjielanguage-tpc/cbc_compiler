@@ -688,6 +688,7 @@ trait CHIRParser
         import SignatureType.*
 
         val ValueSig(sig) = e.leftOperand
+        val ValueSig(rsig) = e.rightOperand
         val lraw = state(e.leftOperand)
         val rraw = state(e.rightOperand)
 
@@ -695,7 +696,7 @@ trait CHIRParser
 
         def adjustRes(n: Node) = if (resSig == Float16) ValueConvert(AsmType.F32, AsmType.F16)(n) else n
 
-        def adjustArg(n: Node) = sig match {
+        def adjustArg(n: Node, argSig: SignatureType) = argSig match {
           case Float16 =>
             ValueConvert(AsmType.F16, AsmType.F32)(n)
           case sig: SignatureType.Integral if sig.isShortIntegral =>
@@ -704,8 +705,8 @@ trait CHIRParser
             n
         }
 
-        val l = adjustArg(lraw)
-        val r = adjustArg(rraw)
+        val l = adjustArg(lraw, sig)
+        val r = adjustArg(rraw, rsig)
 
         val tpe = if (sig == Float16) FloatType else l.tpe
 
@@ -769,9 +770,14 @@ trait CHIRParser
                 shouldNotReachHere("checked binary expression")
               case CHIR.OverflowStrategy.Throwing =>
                 val width = sig.toAsm.width
-                val normalizedArgs = Seq(l, r) map { n =>
-                  CheckedOp.normalizeArg(n.tpe, width, signed, n)
+                val larg = CheckedOp.normalizeArg(tpe, width, signed, l)
+                val rarg = e.kind match {
+                  case CHIR.Binary.Kind.LShift | CHIR.Binary.Kind.RShift =>
+                    val ValueSig(countSig: Integral) = e.rightOperand
+                    BitFieldExtract(tpe, 0, Math.min(countSig.bits, typeSizeInBits(tpe)), countSig.signed, r)
+                  case _ => CheckedOp.normalizeArg(tpe, width, signed, r)
                 }
+                val normalizedArgs = Seq(larg, rarg)
                 e.kind match {
                   case CHIR.Binary.Kind.Add => CheckedOp(tpe, width, CheckedOp.Kind.ADD, signed, method.isManaged)(normalizedArgs: _*)
                   case CHIR.Binary.Kind.Sub => CheckedOp(tpe, width, CheckedOp.Kind.SUB, signed, method.isManaged)(normalizedArgs: _*)
