@@ -33,7 +33,7 @@ import com.huawei.excelsior.jet.compiler.o2lib.opt.VZCModule
 import com.huawei.excelsior.jet.compiler.o2lib.fe.pcOModule as pcO
 import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironment as LE
 import com.huawei.excelsior.jet.compiler.symlevel
-import com.huawei.excelsior.jet.compiler.symlevel.{Method, MethodReference, MethodReferenceAccessKind as MAK, SignatureType}
+import com.huawei.excelsior.jet.compiler.symlevel.{ConstStringSymbol, Method, MethodReference, MethodReferenceAccessKind as MAK, SignatureType}
 import com.huawei.excelsior.jet.compiler.types.CompiledType
 import com.huawei.excelsior.jet.compiler.{Pass, TypeProvider}
 
@@ -178,6 +178,15 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
 
     private val slotOf = mutable.HashMap.empty[AnyRef, Int]
     private val slotTypes = mutable.ArrayBuffer.empty[SignatureType]
+    // typed (stack-allocated record) frame slots: declared to the engine via
+    // stackAllocatedTypeSigs so the runtime frame layout places them after the
+    // untyped region and traces their ref fields for GC
+    private val typedSigs = mutable.ArrayBuffer.empty[SignatureType]
+
+    private def newTypedSlot(sig: SignatureType): StackSlot.Typed = {
+      typedSigs += sig
+      StackSlot.Typed(typedSigs.length - 1)
+    }
 
     private def slot(v: CHIR.Value, sig: SignatureType): Int = slotOfAny(keyOf(v), sig)
 
@@ -361,7 +370,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
                _: CHIR.StaticCast | _: CHIR.Allocate | _: CHIR.Field |
                _: CHIR.GetElementRef | _: CHIR.StoreElementRef | _: CHIR.Intrinsic |
                _: CHIR.RawArrayAllocate | _: CHIR.RawArrayLiteralInit |
-               _: CHIR.Invoke | CHIR.GetException | _: CHIR.Debug =>
+               _: CHIR.Invoke | CHIR.GetException | _: CHIR.Debug |
+               _: CHIR.Tuple | _: CHIR.StringLiteral =>
             // individually translatable (or no-op); per-expr checks happen in
             // the translators
             ()
@@ -466,6 +476,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           case CHIR.GetException => () // catchEx emitted at handler start
           case e: CHIR.RawArrayAllocate => translateRawArrayAllocate(e)
           case e: CHIR.RawArrayLiteralInit => translateRawArrayLiteralInit(e)
+          case e: CHIR.Tuple => translateTuple(e)
+          case e: CHIR.StringLiteral => translateStringLiteral(e, e)
           case _: CHIR.Debug => () // debug bookkeeping: no-op
           case e => return fail(s"expr ${e.getClass.getSimpleName}")
         }
@@ -992,6 +1004,52 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       storeResult(e, IR1, arrayType)
     }
 
+    /** String literal: materialize a stack-allocated String record initialized
+      * from the method's constant-string pool; the value is the record's
+      * address (CBC record convention). */
+    private lazy val stringSig: SignatureType =
+      SignatureType.fromSymType(resolver.findClass("std.core:String").get)
+
+    private def translateStringLiteral(e0: CHIR.Expression, lit: CHIR.StringLiteral): Unit = {
+      val sig = sigOf(lit).getOrElse(stringSig)
+      val ts = newTypedSlot(sig)
+      asm.initConstString(ts, new ConstStringSymbol(lit.value))
+      asm.ldstackrec(SCRATCH, ts)
+      storeResult(e0, SCRATCH, sig)
+    }
+
+    /** Tuple construction: stack-allocate a record for the tuple and store
+      * each element via a const-index field reference. */
+    private def translateTuple(e: CHIR.Tuple): Unit = {
+      val tupleSig = resolver.typeSig(e.resultTpe) match {
+        case t: SignatureType.Tuple => t
+        case other => return fail(s"tuple with non-tuple sig $other")
+      }
+      if (tupleSig.isVariableSizeType) return fail("variable-size tuple")
+      if (tupleSig.params.length != e.elementValues.length)
+        return fail(s"tuple arity ${e.elementValues.length} vs ${tupleSig.params.length}")
+      val ts = newTypedSlot(tupleSig)
+      if (tupleSig.hasRefFields) asm.zerorefs(ts)
+      touch(e.elementValues: _*)
+      val refSig = tupleSig.toCbc
+      e.elementValues.zipWithIndex.foreach { (v, i) =>
+        val elemSig = tupleSig.params(i)
+        if (!elemSig.isZST) {
+          val fr = com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.ConstIndexFieldReference(refSig, i, elemSig.toCbc)
+          if (isFloat(elemSig)) {
+            loadFloatToReg(v, FSCRATCH0)
+            asm.st(FSCRATCH0, ts, fr)
+          } else {
+            loadToReg(v, SCRATCH)
+            asm.st(SCRATCH, ts, fr)
+          }
+        }
+      }
+      // the tuple value is the address of its buffer (CBC record convention)
+      asm.ldstackrec(SCRATCH, ts)
+      storeResult(e, SCRATCH, tupleSig)
+    }
+
     private def translateRawArrayLiteralInit(e: CHIR.RawArrayLiteralInit): Unit = {
       val arrType = sigOf(e.array).getOrElse(return fail("literalInit: unknown array sig"))
       if (!arrType.isArray) return fail(s"literalInit on non-array $arrType")
@@ -1110,10 +1168,13 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         return fail(f"callee end special params (TI: end=$endCount outer=${calleeMt.hasOuterTypeInfoParameter} this=${calleeMt.hasThisTypeInfoParameter} tv=${outerTiSig.containsTypeVariables})")
       if (calleeMt.hasThisTypeInfoParameter) return fail("callee ThisTypeInfo param")
       val calleeStart = calleeMt.startSpecialParamsCount
-      val retIsZST = calleeMt.returnType.isZST
+      val retSig = calleeMt.returnType
+      val retIsZST = retSig.isZST
+      val retIsRecord = retSig.isRecord && !retSig.isVariableSizeType
       if (!(calleeStart == 0 ||
             (calleeStart == 1 && calleeMt.hasReceiverParameter && !calleeMt.hasRetByValParameter) ||
-            (calleeStart == 2 && calleeMt.hasRetByValParameter && calleeMt.hasReceiverParameter && retIsZST)))
+            (calleeStart == 2 && calleeMt.hasRetByValParameter && calleeMt.hasReceiverParameter &&
+              (retIsZST || retIsRecord))))
         return fail(s"callee special params start=$calleeStart (sret=${calleeMt.hasRetByValParameter} ret=${calleeMt.returnType})")
       val calleeAbi = DirectCBCCompiler.platform(env).abi(calleeMt)
       val locs = calleeAbi.paramLocations
@@ -1139,11 +1200,20 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       realArgs.foreach(a => sigOf(a) match { case Some(s) if !s.isZST => slot(a, s); case _ => })
       resultOf(e).foreach(res => sigOf(res) match { case Some(s) if !s.isZST => slot(res, s); case _ => })
       // sret pointer (RetByVal): ZST returns are never written by the callee,
-      // so IRZ (null) is a safe placeholder
-      if (calleeMt.hasRetByValParameter) {
+      // so IRZ (null) is a safe placeholder; record returns get a zeroed typed
+      // slot whose address is passed to the callee
+      val sretSlot: Option[StackSlot.Typed] = if (calleeMt.hasRetByValParameter) {
         val sretLoc = regLocs(0).asReg.asInstanceOf[IR]
-        asm.mov(sretLoc, IRZ, reference = true)
-      }
+        if (retIsRecord) {
+          val ts = newTypedSlot(retSig)
+          if (retSig.hasRefFields) asm.zerorefs(ts)
+          asm.ldstackrec(sretLoc, ts) // address of the buffer
+          Some(ts)
+        } else {
+          asm.mov(sretLoc, IRZ, reference = true)
+          None
+        }
+      } else None
       recvVal.zip(recvLoc).foreach { (r, loc) => loadToReg(r, loc) }
       realArgs.zip(argLocs).foreach { (a, loc) =>
         loc.asReg match {
@@ -1160,8 +1230,13 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
       if (isVirtual) asm.callVirt(resultReg, ref) else asm.callDirect(resultReg, ref)
       saveGCMapHere()
+      sretSlot.foreach { ts =>
+        // the record value is the address of its buffer (CBC record convention)
+        asm.ldstackrec(SCRATCH, ts)
+        storeResult(e, SCRATCH, retSig)
+      }
       resultOf(e) match {
-        case Some(res) if !sigOf(res).forall(_.isZST) =>
+        case Some(res) if !sigOf(res).forall(_.isZST) && sretSlot.isEmpty =>
           storeFromReg(res, resultReg, sigOf(res).get)
         case _ =>
       }
@@ -1240,7 +1315,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         /* tailParamCount */ 0, /* untypedStackSlotsCount */ slotTypes.length,
         /* usedNonVolIRegsMask */ 0, /* usedNonVolFRegsMask */ 0, /* maxCalleeStackArgsCount */ 0,
         /* mayHaveNativeCalls */ false,
-        /* stackAllocatedTypeSigs */ Seq.empty, /* variableSizeTypes */ Seq.empty)
+        /* stackAllocatedTypeSigs */ typedSigs.toList, /* variableSizeTypes */ Seq.empty)
     }
   }
 }
