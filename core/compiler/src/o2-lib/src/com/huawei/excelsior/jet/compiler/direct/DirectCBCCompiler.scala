@@ -157,6 +157,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       * the method's own generic func params and outer TI. */
     private var ownParamLocs: Seq[Location] = Seq.empty
     private var ownOuterTiLoc: Option[IR] = None
+    private var ownThisTiLoc: Option[IR] = None
     private def fail(msg: String): Unit = {
       if (sys.env.contains("DIRECT_CBC_BAIL")) System.err.println(s"DIRECT-CBC bail $method: $msg")
       bail_ = true
@@ -397,7 +398,9 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
                _: CHIR.RawArrayAllocate | _: CHIR.RawArrayLiteralInit |
                _: CHIR.Invoke | CHIR.GetException | _: CHIR.Debug |
                _: CHIR.Tuple | _: CHIR.StringLiteral |
-               _: CHIR.Box | _: CHIR.UnboxToValue =>
+               _: CHIR.Box | _: CHIR.UnboxToValue |
+               _: CHIR.RawArrayInitByValue | _: CHIR.InstanceOf |
+               _: CHIR.GetRTTIStatic =>
             // individually translatable (or no-op); per-expr checks happen in
             // the translators
             ()
@@ -440,6 +443,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
               ownParamLocs = regLocs.toSeq
               if (mt.hasOuterTypeInfoParameter)
                 ownOuterTiLoc = Some(regLocs(mt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR])
+              if (mt.hasThisTypeInfoParameter)
+                ownThisTiLoc = Some(regLocs(mt.getThisTypeInfoArgIdx).asReg.asInstanceOf[IR])
               touch(params: _*)
               rcv.foreach(p => storeFromReg(p, regLocs(rcvIdx).asReg.asInstanceOf[IR], sigOf(p).get))
               rest.zipWithIndex.foreach { (p, i) =>
@@ -511,6 +516,16 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           case e: CHIR.Tuple => translateTuple(e)
           case e: CHIR.Box => translateBox(e)
           case e: CHIR.UnboxToValue => translateUnbox(e)
+          case e: CHIR.RawArrayInitByValue => translateRawArrayInitByValue(e)
+          case e: CHIR.InstanceOf => translateInstanceOf(e)
+          case e: CHIR.GetRTTIStatic =>
+            // production: this-method's TI param (asserts hasThisTypeInfoParameter)
+            if (!method.getMethodType.hasThisTypeInfoParameter)
+              return fail("GetRTTIStatic: method has no ThisTypeInfo param")
+            ownThisTiLoc match {
+              case Some(loc) => storeResult(e, loc, SignatureType.ThisTypeInfo)
+              case None => return fail("GetRTTIStatic: no own TI loc")
+            }
           case e: CHIR.StringLiteral => translateStringLiteral(e, e)
           case _: CHIR.Debug => () // debug bookkeeping: no-op
           case e => return fail(s"expr ${e.getClass.getSimpleName}")
@@ -1073,7 +1088,6 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val elem = resolver.typeSig(e.elementType)
       if (elem.isZST) return
       if (elem.isVariableSizeType) return fail("raw array of variable-size elem")
-      if (elem.isRecord) return fail("raw array of record elem")
       val arrayType = SignatureType.CangjieArray(elem)
       touch(e.size)
       slotOfAny(e, arrayType) // null-init before newarr's GC point
@@ -1128,7 +1142,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
               loadToReg(payload, SCRATCH)
               storeResult(e, SCRATCH, opt.someType)
               return
-            } else return fail("option tuple: unexpected element values")
+            } else return fail(s"option tuple: unexpected element values n=${vals.size} tag=${keyOf(vals.headOption.getOrElse(null)).getClass.getSimpleName}")
           } else if (opt.someType.isVariableSizeType) {
             return fail("variable-size option")
           } else {
@@ -1218,24 +1232,103 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
     }
 
+    /** RawArrayInitByValue: fill array elements with a value (mirrors
+      * CHIRParser arm + lowerAJArrayFill): loop storing each element.
+      * Records are copied into their inline element slots. */
+    private def translateRawArrayInitByValue(e: CHIR.RawArrayInitByValue): Unit = {
+      val arrType = sigOf(e.array).getOrElse(return fail("rawArrayInit: unknown array sig"))
+      if (!arrType.isArray) return fail(s"rawArrayInit on non-array $arrType")
+      val elem = arrType.getArrayElemType
+      if (elem.isZST) return
+      if (elem.isVariableSizeType) return fail("rawArrayInit of variable-size elem")
+      touch(e.array, e.size, e.initValue)
+      loadToReg(e.array, SCRATCH2)
+      asm.nullcheck(SCRATCH2)
+      // loop index in IR4, array length in IR5
+      asm.movi32(IR4, 0)
+      loadToReg(e.size, IR5)
+      val loop = asm.newLabel
+      val done = asm.newLabel
+      asm.bind(loop)
+      asm.bcc(BranchOp.UGE, IR4, IR5, Width.W64, done)
+      if (elem.isRecord) {
+        loadToReg(e.initValue, SCRATCH)
+        asm.index(SCRATCH3, SCRATCH2, IR4, arrType.toCbc)
+        asm.copy(SCRATCH2, SCRATCH3, SCRATCH2, SCRATCH, elem.toCbc)
+        saveGCMapHere()
+      } else {
+        if (elem.isTraceableReference) {
+          loadToReg(e.initValue, SCRATCH)
+          asm.starrObj(SCRATCH2, IR4, SCRATCH)
+        } else if (isFloat(elem)) {
+          loadFloatToReg(e.initValue, FSCRATCH0)
+          asm.starr(elem.toAsm, SCRATCH2, IR4, FSCRATCH0)
+        } else {
+          loadToReg(e.initValue, SCRATCH)
+          asm.starr(elem.toAsm, SCRATCH2, IR4, SCRATCH)
+        }
+      }
+      asm.addi(Width.W64, IR4, IR4, 1)
+      asm.jmp(loop)
+      asm.bind(done)
+    }
+
+    /** InstanceOf: type test (mirrors CHIRParser arm + genInstanceOf). */
+    private def translateInstanceOf(e: CHIR.InstanceOf): Unit = {
+      val tpe = resolver.typeSig(e.testType)
+      touch(e.obj)
+      resultOf(e).foreach(res => touch(res))
+      val resSig = SignatureType.Boolean
+      if (tpe.isTraceableReference) {
+        loadToReg(e.obj, SCRATCH2)
+        asm.isInstanceOf(SCRATCH, SCRATCH2, tpe.toCbc)
+        storeResult(e, SCRATCH, resSig)
+      } else {
+        // non-reference test type: box the operand first (production Box arm);
+        // only value-type operands reach here
+        val objSig = sigOf(e.obj).getOrElse(return fail("instanceOf: unknown obj sig"))
+        if (objSig.isVariableSizeType || objSig.isTraceableReference) {
+          loadToReg(e.obj, SCRATCH2)
+        } else {
+          loadToReg(e.obj, SCRATCH)
+          if (objSig.containsTypeVariables) lowerTypeInfo(SCRATCH2, objSig)
+          asm.box(SCRATCH, SCRATCH2, objSig.toCbc)
+          saveGCMapHere()
+        }
+        asm.isInstanceOf(SCRATCH, SCRATCH2, tpe.toCbc)
+        storeResult(e, SCRATCH, resSig)
+      }
+    }
+
     private def translateRawArrayLiteralInit(e: CHIR.RawArrayLiteralInit): Unit = {
       val arrType = sigOf(e.array).getOrElse(return fail("literalInit: unknown array sig"))
       if (!arrType.isArray) return fail(s"literalInit on non-array $arrType")
       val elem = arrType.getArrayElemType
       if (elem.isZST) return
-      if (elem.isRecord) return fail("literalInit of record elem")
+      if (elem.isVariableSizeType) return fail("literalInit of variable-size elem")
       touch(e.array)
       loadToReg(e.array, SCRATCH2)
       asm.nullcheck(SCRATCH2)
       e.elementValues.zipWithIndex.foreach { (v, i) =>
         if (!sigOf(v).forall(_.isZST)) {
-          loadToReg(v, SCRATCH)
-          asm.movi32(SCRATCH3, i)
-          if (elem.isTraceableReference) asm.starrObj(SCRATCH2, SCRATCH3, SCRATCH)
-          else if (isFloat(elem)) {
-            loadFloatToReg(v, FSCRATCH0)
-            asm.starr(elem.toAsm, SCRATCH2, SCRATCH3, FSCRATCH0)
-          } else asm.starr(elem.toAsm, SCRATCH2, SCRATCH3, SCRATCH)
+          if (elem.isRecord) {
+            // record elements live inline: compute the element address (Index)
+            // and copy the record value into it (mirrors CHIRParser.arrayPut
+            // needsCopy arm)
+            loadToReg(v, SCRATCH)
+            asm.movi32(SCRATCH3, i)
+            asm.index(SCRATCH3, SCRATCH2, SCRATCH3, arrType.toCbc)
+            asm.copy(SCRATCH2, SCRATCH3, SCRATCH2, SCRATCH, elem.toCbc)
+            saveGCMapHere()
+          } else {
+            loadToReg(v, SCRATCH)
+            asm.movi32(SCRATCH3, i)
+            if (elem.isTraceableReference) asm.starrObj(SCRATCH2, SCRATCH3, SCRATCH)
+            else if (isFloat(elem)) {
+              loadFloatToReg(v, FSCRATCH0)
+              asm.starr(elem.toAsm, SCRATCH2, SCRATCH3, FSCRATCH0)
+            } else asm.starr(elem.toAsm, SCRATCH2, SCRATCH3, SCRATCH)
+          }
         }
       }
     }
@@ -1594,6 +1687,19 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           asm.jmp(blockLabel(normal))
           bindBlockEnd(b)
         }
+      case m: CHIR.MultiBranch =>
+        // table switch lowered as a compare chain (production lowerSwitch uses
+        // bisected ifs on CBC)
+        loadToReg(m.condition, IR4)
+        val pairs = m.caseValues.zip(m.normalBlocks)
+        val defaultLbl = blockLabel(m.defaultBlock)
+        pairs.zipWithIndex.foreach { case ((cv, blk), i) =>
+          val next = if (i == pairs.length - 1) defaultLbl else asm.newLabel
+          asm.bcc(BranchOp.NE, IR4, cv, Width.W64, next)
+          asm.jmp(blockLabel(blk))
+          if (i != pairs.length - 1) asm.bind(next)
+        }
+        bindBlockEnd(b)
       case other => fail(s"terminator ${other.getClass.getSimpleName}")
     }
 
