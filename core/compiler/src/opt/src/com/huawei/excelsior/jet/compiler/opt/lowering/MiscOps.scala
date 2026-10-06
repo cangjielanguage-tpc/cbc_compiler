@@ -486,6 +486,29 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
     continue(whileCheck.falseExit)
   }
 
+  private[lowering] def lowerCangjieArrayFillGeneric(arrayFill: CangjieArrayFillGeneric): Unit = {
+    val array = arrayFill.array
+    val arrayType = arrayFill.arrayType
+    val elementType = arrayType.getArrayElemType
+
+    val header = continue(Goto())
+    val index = Proxy(LongType)(header)
+
+    val whileCheck = If(Cmp(index.tpe, Condition.ULT)(index, CangjieArrayLength(array)))
+
+    continue(whileCheck.trueExit)
+
+    val field = IndexFieldReferenceGeneric(arrayType, elementType)(index, arrayFill.arrayTypeInfo)
+    StoreFieldSeq(array, array, arrayFill.value, field, arrayFill.elementTypeInfo)
+
+    val backEdge = Goto()
+    header.addArg(backEdge)
+    assert(header.args.size == 2)
+    index.replaceBy(Phi(index.tpe)(header, LConst(0), Add(index, LConst(1))))
+
+    continue(whileCheck.falseExit)
+  }
+
   private[lowering] def lowerThreeCmp(threeCmp: ThreeCmp): Node = {
     // TODO: use conditional moves
     val op = threeCmp.op

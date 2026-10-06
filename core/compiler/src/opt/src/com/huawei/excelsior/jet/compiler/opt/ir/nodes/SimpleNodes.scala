@@ -2015,6 +2015,31 @@ trait SimpleNodes { self: Universe with Nodes =>
     def unapply(x: CopyStructure) = Some(x.structureType, x.dstBaseRef, x.dst, x.srcBaseRef, x.src)
   }
 
+  class CopyStructureGeneric private(proto: CopyStructureGeneric.Proto)
+    extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {
+    def dstBaseRef = arg(2)
+    def dst = arg(3)
+    def srcBaseRef = arg(4)
+    def src = arg(5)
+    def typeInfo = arg(6)
+    def srcBaseRef_=(x: Node): Unit = updateArg(4, x)
+    def src_=(x: Node): Unit = updateArg(5, x)
+    def structureType = proto.structureType
+  }
+
+  object CopyStructureGeneric {
+    case class Proto private[CopyStructureGeneric](structureType: SignatureType)
+      extends FixedArgs[CopyStructureGeneric](ControlType, MemoryType, TRefType, AddrIntType, TRefType, AddrIntType, AddrIntType)(ControlType)
+        with ControlMemoryTagged[CopyStructureGeneric] {
+      assert(structureType.containsTypeVariables, structureType)
+      override def newInstance() = new CopyStructureGeneric(this)
+    }
+
+    def proto(x: SignatureType) = Prototype.intern(Proto(x))
+    def apply(x: SignatureType)(dstBaseRef: Node, dst: Node, srcBaseRef: Node, src: Node, typeInfo: Node) =
+      proto(x)(dstBaseRef, dst, srcBaseRef, src, typeInfo)
+  }
+
   class CopyStructureCBC private(proto: CopyStructureCBC.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {
     require(!env.enabled(UseIsa12) || !(proto.hasStaticDst && proto.hasStaticSrc)) // both dst and src cannot be static fields in the same time
 

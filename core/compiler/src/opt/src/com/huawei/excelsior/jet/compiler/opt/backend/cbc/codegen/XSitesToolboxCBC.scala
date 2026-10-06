@@ -32,7 +32,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
     case n: LoadStaticFieldSeq if n.resType.isVariableSizeType => true
     case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeq |
          _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric |
-         _: AssignGeneric | _: NewGeneric => true
+         _: AssignGeneric | _: NewGeneric | _: CopyStructureGeneric => true
     case _ => super.needXSite(node)
   }
 
@@ -45,7 +45,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
     case n: LoadStaticFieldSeq if n.resType.isVariableSizeType => XSiteKind.CALL
     case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeq |
          _: OptionPayloadGeneric | _: NewNoneOptionGeneric | _: NewSomeOptionGeneric |
-         _: AssignGeneric | _: NewGeneric => XSiteKind.CALL
+         _: AssignGeneric | _: NewGeneric | _: CopyStructureGeneric => XSiteKind.CALL
     case WithImplicitCheck(_: DivisorCheck) => XSiteKind.DIV_WITH_CHECK
     case _ => super.xSiteKind(node)
   }
@@ -53,6 +53,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
   override def xSiteTargetRef(node: Node): MethodReference = node match {
     case _: New | _: NewArray | _: NewArrayGeneric | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => null // Note that direct non-deferred calls don't use `methodRef` from `xSite`
     case _: InterfaceCastCBC => null
+    case _: CopyStructureGeneric => null
     case WithImplicitCheck(_: DivisorCheck) => null
     case _ => super.xSiteTargetRef(node)
   }

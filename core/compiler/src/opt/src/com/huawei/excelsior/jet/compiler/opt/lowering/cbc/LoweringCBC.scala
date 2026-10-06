@@ -42,7 +42,7 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
     case pf: PutJavaFieldOperation if pf.field.isAJFlat => SPINAL
 
     case _: NewArrayCopy => super.shouldBeLoweredCases(node)
-    case _: NewArrayMimic | _: AJArrayFill => COMPLEX
+    case _: NewArrayMimic | _: AJArrayFill | _: CangjieArrayFillGeneric => COMPLEX
     case _: AbstractNullCheck => super.shouldBeLoweredCases(node)
 
     case _: ErrorRTSCall | _: PreparationCheck => super.shouldBeLoweredCases(node)

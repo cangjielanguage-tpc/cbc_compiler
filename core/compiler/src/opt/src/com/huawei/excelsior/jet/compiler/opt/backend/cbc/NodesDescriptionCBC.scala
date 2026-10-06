@@ -61,7 +61,7 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
       | DivisorCheck | FDiv | MathIntrinsic | Cmp | TypeTest | Shift | ReinterpretCast | ValueConvert | BitFieldExtract | New
       | BitcodeDeferred.New | NewArray | NewArrayGeneric | BitcodeDeferred.NewArray | Evacuate | AbstractNullCheck | SingletonObject | LoadTailParam
       | GetField | FieldChainRead | PutField | FieldChainWrite | ExtractEnrichment | DepriveOperation | EnrichOperation
-      | CopyStructure | CopyStructureCBC | Throw | CheckedOp | EndLocalUnmovable
+      | CopyStructure | CopyStructureGeneric | CopyStructureCBC | Throw | CheckedOp | EndLocalUnmovable
       | MutFuncArgNode | MutFunc.Combine | Return | UniversalGeneric.ConvertHolder | BulldozerHint
       | LoadTypeInfoGeneric | GenericTypeArg
       | LoadFieldSeq | StoreFieldSeq | GetFieldSeqRef | LoadStaticFieldSeq | StoreStaticFieldSeq | GetStaticFieldSeqRef) => true

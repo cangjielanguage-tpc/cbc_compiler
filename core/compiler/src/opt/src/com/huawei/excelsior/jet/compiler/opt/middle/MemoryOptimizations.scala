@@ -513,7 +513,7 @@ trait MemoryOptimizations extends AliasAnalysis { self: Universe =>
       case (_: AbstractCall | _: Clinit | _: PackageInit | _: PackageInitCheck | _: AJCallerClass
           | _: WriteBarrier
           | _: StoreLoadForCell
-          | _: CopyStructure // TODO: rewise
+          | _: CopyStructure | _: CopyStructureGeneric // TODO: rewise
           | _: InitStringRecord // TODO: rewise
           | _ : DelayedGet | _ : DelayedPut // TODO: rewise
           | _: DelayedMethodAddr // TODO: rewise

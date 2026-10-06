@@ -15,5 +15,8 @@ main() {
     setElement(records, 1, (4, "replacement"))
     println(getElement(records, 1)[1])
 
+    allocateEmptyArray<Int64>()
+    println(repeatedArrayElement<Int64>(7))
+    println(arrayOf<Int64>(9)[0])
     println(foo())
 }

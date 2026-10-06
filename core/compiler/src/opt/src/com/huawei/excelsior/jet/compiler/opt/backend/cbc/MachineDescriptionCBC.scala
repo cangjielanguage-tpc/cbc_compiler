@@ -247,7 +247,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | New | BitcodeDeferred.New | NewArray | NewArrayGeneric | BitcodeDeferred.NewArray | DivisorCheck | Evacuate | BitFieldExtract
       | Clinit | PackageInit | PackageInitCheck | GCPoint | AbstractNullCheck | SingletonObject
       | DepriveOperation | EnrichOperation | EnrichCBC | ExtractEnrichment | FieldChainWrite | Neg | MutFunc.Combine
-      | CopyStructure | CopyStructureCBC | Throw | InterfaceCastCBC | CatchCBC | EndLocalUnmovable | DebugBreakpoint
+      | CopyStructure | CopyStructureGeneric | CopyStructureCBC | Throw | InterfaceCastCBC | CatchCBC | EndLocalUnmovable | DebugBreakpoint
       | LoadMemory | StoreMemory | InitStringRecord | ThisTypeInfoCBC | ThisTypeInfoByCBC
       | GetFieldSeqRef | GetStaticFieldSeqRef
       | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | UnboxLea

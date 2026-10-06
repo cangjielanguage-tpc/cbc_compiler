@@ -2055,23 +2055,31 @@ trait CHIRParser
         state(e) = state(catchProxy)
 
       case e: CHIR.RawArrayInitByValue =>
-        val array = state(e.array).asInstanceOf[NewArray]
+        val array = state(e.array)
+        val (lengths, arrayType) = array match {
+          case n: NewArray => (n.lengths, n.allocType)
+          case n: NewArrayGeneric => (n.lengths, n.allocType)
+        }
         val len = state(e.size)
         val value = state(e.initValue)
-        assert(array.lengths == Seq(len), s"RawArrayInitByValue($array, $len, $value)")
-        val arrayType = array.allocType
+        assert(lengths == Seq(len), s"RawArrayInitByValue($array, $len, $value)")
         if (arrayType.getArrayElemType.isZST) {
           stats.count(StatsKind.ArrayZeroingElimination, "Unit array zeroing eliminated on parsing", array)
+        } else if (arrayType.getArrayElemType.isVariableSizeType) {
+          CangjieArrayFillGeneric(arrayType)(array, value, loadTypeInfo(arrayType), loadTypeInfo(arrayType.getArrayElemType))
         } else {
           AJArrayFill(arrayType, arrayType.getArrayElemType)(array, value,
             if (arrayType.isRecordArray) maybeDerivedPtrBase(value) else DerivedPtr.Local())
         }
 
       case e: CHIR.RawArrayLiteralInit =>
-        val array = state(e.array).asInstanceOf[NewArray]
+        val array = state(e.array)
+        val (lengths, arrayType) = array match {
+          case n: NewArray => (n.lengths, n.allocType)
+          case n: NewArrayGeneric => (n.lengths, n.allocType)
+        }
         val values = e.elementValues.map(state.apply)
-        assert(array.lengths == Seq(LConst(values.size)), s"RawArrayLiteralInit($array, $values)")
-        val arrayType = array.allocType
+        assert(lengths == Seq(LConst(values.size)), s"RawArrayLiteralInit($array, $values)")
         if (arrayType.getArrayElemType.isZST) {
           // Nothing to do
 
@@ -2533,7 +2541,11 @@ trait CHIRParser
 
     private def copy(sig: SignatureType, to: Node, from: Node): Node = {
       assert(sig.isRecord, sig)
-      CopyStructure(sig)(maybeDerivedPtrBase(to), to, maybeDerivedPtrBase(from), from)
+      if (sig.containsTypeVariables) {
+        CopyStructureGeneric(sig)(maybeDerivedPtrBase(to), to, maybeDerivedPtrBase(from), from, loadTypeInfo(sig))
+      } else {
+        CopyStructure(sig)(maybeDerivedPtrBase(to), to, maybeDerivedPtrBase(from), from)
+      }
     }
 
     private def typeInfoSigs(fields: Seq[CangjieReferenceNode]): Seq[SignatureType] = {

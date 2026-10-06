@@ -838,6 +838,18 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    private def genCopyStructureGeneric(c: CopyStructureGeneric): Unit = {
+      addXSite(c)
+      (c.dstBaseRef, c.dst, c.srcBaseRef, c.src, c.typeInfo) match {
+        case (IReg(dstBase), IReg(dst), IReg(srcBase), IReg(src), IReg(ti)) =>
+          asm.copy(dstBase, dst, srcBase, src, ti)
+          if (valueOf(c.dstBaseRef).producer.isInstanceOf[DerivedPtr.Local]) {
+            mark(dst, LocalType.CLEARED)
+          }
+        case _ => shouldNotReachHere(c)
+      }
+    }
+
     override protected def genLoadTailParam(ltp: LoadTailParam): Unit = (ltp, ltp.tpe) match {
       case (LoadTailParam(IReg(tailReg), offset), tpe) =>
         val Reg(dst) = ltp
@@ -1327,6 +1339,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: LoadMemory                 => genLoadMemory(x)
         case x: StoreMemory                => genStoreMemory(x)
         case x: CopyStructure              => genCopyStructure(x)
+        case x: CopyStructureGeneric       => genCopyStructureGeneric(x)
         case x: InitObj                    => genInitObj(x)
         case x: EndLocalUnmovable          => genEndLocalUnmovable(x)
         case x: CatchCBC                   => genCatch(x)

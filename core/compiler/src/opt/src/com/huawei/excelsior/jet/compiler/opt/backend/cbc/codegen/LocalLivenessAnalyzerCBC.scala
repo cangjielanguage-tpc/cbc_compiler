@@ -99,7 +99,7 @@ trait LocalLivenessAnalyzerCBC { self: Universe with BackEndCBC =>
     case _: Call => true // hints should be inserted to the middle of CBC-instructions pattern
     case _: PreCall => true // no actions needed
     case _: (StackZeroing | EndLocalUnmovable) => true // complex semantics
-    case _: (StoreMemory | CopyStructure | CopyStructureCBC | InitStringRecord) => true // could not process using general logic
+    case _: (StoreMemory | CopyStructure | CopyStructureGeneric | CopyStructureCBC | InitStringRecord) => true // could not process using general logic
     case _: Return if Isa12Mode => true // transfers incoming value to ABI-fixed register
     case _ => false
   }
