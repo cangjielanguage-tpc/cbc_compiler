@@ -1102,6 +1102,13 @@ trait ForkedAssembler {
       .bits(_.w4(dst).w4(ti))
   }
 
+  def lea_cforeign(dst: IR, mr: MethodReference): Unit = instr {
+    stream
+      .opc8(Opcode.LeaCForeign)
+      .bits(_.w4(analyzer.prim(dst)).w4(0))
+      .sym16(mr)
+  }
+
   // endregion
 }
 
@@ -1180,12 +1187,6 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
   def newarrfillnonconst(dst: IR, len: IR, value: IR, ftc_sig_id: Symbol): Unit = notImplemented("assembler newarrfillnonconst")
 
   def lea_us(dst: IR, us: StackSlot.Untyped): Unit = shouldNotReachHere("rec tracing unsafe operation. TODO: special tail instruction")
-  def lea_cforeign(dst: IR, methodId: Symbol): Unit = instr {
-    stream
-      .opc8(Opcode.LeaCForeign)
-      .bits(_.w4(analyzer.prim(dst)).w4(0))
-      .sym16(adapter.method(methodId))(this)
-  }
 
   def callIndirect(rd: IR, target: IR): Unit = instr {
     val t = analyzer.usePrim(target)

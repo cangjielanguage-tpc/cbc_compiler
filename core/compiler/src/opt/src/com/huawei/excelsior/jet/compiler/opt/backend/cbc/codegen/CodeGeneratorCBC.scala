@@ -1020,7 +1020,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           asm.movi64(dst, c)
 
         case (IReg(dst), AddrConst(_, m: Method, 0)) if m.isCangjieForeign =>
-          asm.lea_cforeign(dst, new MethodReference(m, MethodReferenceAccessKind.STATIC).getPermanent)
+          val mr = asm.adapter.method(new MethodReference(m, MethodReferenceAccessKind.STATIC).getPermanent)
+          asm.lea_cforeign(dst, mr)
 
         case (FReg(dst), FConst(c)) =>
           asm.fmovi(dst, c, W32)
