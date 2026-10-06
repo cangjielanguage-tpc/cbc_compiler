@@ -23,7 +23,7 @@ import com.huawei.excelsior.jet.compiler.opt.middle.{ContextTypesRecalculation, 
 import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsing, DetailedParsingLogs, FailArrayAcquireRawData, PackageInitFromMain}
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CangjieEnumWrapper, fromSymType}
-import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
+import com.huawei.excelsior.jet.compiler.symlevel.{CallConv, CallKind, CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.ScalaCollections.*
 import com.huawei.excelsior.jet.util.{Closure, Numbering, ScalaCollections}
@@ -395,8 +395,12 @@ trait CHIRParser
           case x: CHIR.LocalVar => x.associatedExpr
           case x => x
         }
-        val i = localValues.number(v)
-        locals(i).deref ensuring (_ != null)
+        v match {
+          case f: CHIR.Func => valueOfFunc(f)
+          case _ =>
+            val i = localValues.number(v)
+            locals(i).deref ensuring (_ != null)
+        }
       }
 
       def update(x: StateValue, value: Node): Unit = {
@@ -458,6 +462,15 @@ trait CHIRParser
         for ((x, y) <- this.locals zip that.locals) action(x.deref, y.deref)
 
         super.foreachPair(that)(action)
+      }
+      
+      def valueOfFunc(f: CHIR.Func): Node = {
+        val declClass = f.declaringDef.flatMap(resolver.symType).map(asClassType).getOrElse(resolver.findClass(f.packageName).get)
+        val isStatic = declClass.isCangjiePackage || f.attributes.contains(CHIR.Attribute.Static)
+        val (sig, _, _, _) = resolver.functionSig(f.tpe, hasReceiver = !isStatic)
+        val method = declClass.findDeclaredMethodOrNull(xstr(resolver.symName(f)), sig)
+        assert(method != null, s"cannot find method for function value ${resolver.symName(f)}")
+        SymbolAddress(method)
       }
     }
 
@@ -636,6 +649,7 @@ trait CHIRParser
           case v: CHIR.GlobalVar => v.tpe
           case v: CHIR.LocalVar => v.tpe
           case v: CHIR.Parameter => v.tpe
+          case v: CHIR.Func => v.tpe
       }))
     }
 
@@ -1025,8 +1039,21 @@ trait CHIRParser
             state(e) = n
         }
 
+      // Indirect call
+      case e: CHIR.Apply if !e.callee.isInstanceOf[CHIR.Func] =>
+        val (calleeVal, argVals) = (e.callee, e.args)
+        val retType = resolver.typeSig(e.resultTpe)
+        val paramTypes = argVals.map { case ValueSig(sig) => sig }
+        if (retType.isRecord || paramTypes.exists(_.isRecord)) {
+          notImplemented("CFunc call with record ABI")
+        }
+        val mt = MethodType(MethodSignature(retType, paramTypes), CallConv.CCALL, CallKind.CJ_FOREIGN, MethodType.SpecialParamSet(), false)
+        val args = argVals.map(state.apply)
+        val call = Call(new MethodReference(mt, MAK.STATIC))(state(calleeVal) +: args: _*)
+        state(e) = call
+
       case e: CHIR.Apply =>
-        val func = e.callee
+        val func = e.callee.asInstanceOf[CHIR.Func]
 
         val thisType = e.thisType.map(resolver.typeSig)
 

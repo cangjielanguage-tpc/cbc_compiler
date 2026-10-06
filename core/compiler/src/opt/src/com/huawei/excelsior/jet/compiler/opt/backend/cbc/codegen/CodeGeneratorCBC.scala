@@ -978,9 +978,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           case DirectCall(method) if !targetRef.hasMethod => directCCall(method)
           case AnyVirtualCall() => virtualCall()
           case CJIntrinsic(intrinsicType) => intrinsicCall(intrinsicType)
-          case _ =>
+          case _ if call.methodType.isCJForeign =>
             val IReg(targetReg) = call.target
-            asm.callIndirect(targetReg, call.methodType)
+            asm.callIndirect(resultReg, targetReg)
         }
       }
     }

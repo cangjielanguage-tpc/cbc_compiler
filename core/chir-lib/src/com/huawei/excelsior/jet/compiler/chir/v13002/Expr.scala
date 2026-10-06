@@ -16,7 +16,7 @@ final class TryAllocateImpl(allocation: AllocateBase)(implicit provider: CHIRIte
 class ApplyImpl(e: ApplyBase)(implicit provider: CHIRItemProvider) extends CHIR.Apply {
   private val fc = e.base
   private val ex = fc.base
-  lazy val Seq(callee: CHIR.Func, args: _*) = mapOperands(ex)
+  lazy val Seq(callee: CHIR.Value, args: _*) = mapOperands(ex)
   def thisType: Option[CHIR.Type] = provider.getType[CHIR.Type](fc.objType)
   def thisArg: CHIR.Value = args.head
   def instantiatedTypeArgs = fc.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]

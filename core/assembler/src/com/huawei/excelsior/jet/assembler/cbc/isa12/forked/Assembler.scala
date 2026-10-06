@@ -1179,10 +1179,21 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
   def newarrfillconst(dst: IR, len: IR, value: Long, ftc_sig_id: Symbol): Unit = notImplemented("assembler newarrfillconst")
   def newarrfillnonconst(dst: IR, len: IR, value: IR, ftc_sig_id: Symbol): Unit = notImplemented("assembler newarrfillnonconst")
 
-  def callIndirect(targetReg: IR, sig_id: Symbol): Unit = notImplemented("assembler callIndirect")
-
   def lea_us(dst: IR, us: StackSlot.Untyped): Unit = shouldNotReachHere("rec tracing unsafe operation. TODO: special tail instruction")
-  def lea_cforeign(dst: IR, method_id: Symbol): Unit = notImplemented("assembler lea_cforeign")
+  def lea_cforeign(dst: IR, methodId: Symbol): Unit = instr {
+    stream
+      .opc8(Opcode.LeaCForeign)
+      .bits(_.w4(analyzer.prim(dst)).w4(0))
+      .sym16(adapter.method(methodId))(this)
+  }
+
+  def callIndirect(rd: IR, target: IR): Unit = instr {
+    val t = analyzer.usePrim(target)
+    stream
+      .opc8(Opcode.CallCFunc)
+      .bits(_.w4(rd).w4(t))
+    saveState()
+  }
 }
 
 object Assembler {
@@ -1340,6 +1351,8 @@ object Assembler {
     case SBinImm16
     case SBinImm32
     case SBinImm64
+    case LeaCForeign
+    case CallCFunc
   }
 
   enum RegSymGroup extends Ordinal {
