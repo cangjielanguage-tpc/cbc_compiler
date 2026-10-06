@@ -18,5 +18,6 @@ main() {
     allocateEmptyArray<Int64>()
     println(repeatedArrayElement<Int64>(7))
     println(arrayOf<Int64>(9)[0])
+    println(arrayify<Int64>({ => 5 })()[0])
     println(foo())
 }

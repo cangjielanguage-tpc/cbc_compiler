@@ -21,3 +21,7 @@ public func repeatedArrayElement<T>(value: T): T {
 public func arrayOf<T>(value: T): Array<T> {
     [value]
 }
+
+public func arrayify<T>(body: () -> T): () -> Array<T> {
+    { => [ body() ] }
+}
