@@ -33,7 +33,7 @@ import com.huawei.excelsior.jet.compiler.o2lib.opt.VZCModule
 import com.huawei.excelsior.jet.compiler.o2lib.fe.pcOModule as pcO
 import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironment as LE
 import com.huawei.excelsior.jet.compiler.symlevel
-import com.huawei.excelsior.jet.compiler.symlevel.{ConstStringSymbol, Method, MethodReference, MethodReferenceAccessKind as MAK, SignatureType}
+import com.huawei.excelsior.jet.compiler.symlevel.{ConstStringSymbol, InstantiatedMethodReference, Method, MethodReference, MethodReferenceAccessKind as MAK, SignatureType}
 import com.huawei.excelsior.jet.compiler.types.CompiledType
 import com.huawei.excelsior.jet.compiler.{Pass, TypeProvider}
 
@@ -1194,7 +1194,6 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     // ------------------------------------------------------------------
 
     private def translateApply(e: CHIR.Apply): Unit = {
-      if (e.instantiatedTypeArgs.nonEmpty) return fail("generic apply")
       val f: CHIR.Func = e.callee
       val calleeMethod = findCallee(f)
       if (calleeMethod == null) return fail(s"callee not found: ${resolver.symName(f)}")
@@ -1204,7 +1203,12 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val mak = if (calleeMethod.isStatic) MAK.STATIC
                 else if (calleeMethod.isCangjieMut) MAK.MUT
                 else MAK.SPECIAL
-      val ref = new MethodReference(calleeMethod, mak, CompiledType(calleeMethod.getDeclaringClass))
+      val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
+      val ref =
+        if (lparams.isEmpty) new MethodReference(calleeMethod, mak, CompiledType(calleeMethod.getDeclaringClass))
+        else if (!calleeMethod.hasUniversalGenericContext) return fail("generic apply: callee lacks universal generic context")
+        else new InstantiatedMethodReference(calleeMethod, mak, lparams,
+          SignatureType.fromSymType(calleeMethod.getDeclaringClass), None)
       emitCall(e, calleeMethod, e.args, ref, isVirtual = false)
     }
 
@@ -1276,12 +1280,17 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val retSig = calleeMt.returnType
       val retIsZST = retSig.isZST
       val retIsRecord = retSig.isRecord && !retSig.isVariableSizeType
+      val retIsBoxed = retSig.isVariableSizeType ||
+        (calleeMt.hasRetByValParameter && {
+          val abiRet = calleeMt.parameterType(calleeMt.getRetByValArgIdx)
+          abiRet.isInstanceOf[SignatureType.Box] || abiRet == SignatureType.Address
+        })
       if (!(calleeStart == 0 ||
             (calleeStart == 1 && calleeMt.hasReceiverParameter && !calleeMt.hasRetByValParameter) ||
             (calleeStart == 1 && calleeMt.hasRetByValParameter && !calleeMt.hasReceiverParameter &&
-              (retIsZST || retIsRecord)) ||
+              (retIsZST || retIsRecord || retIsBoxed)) ||
             (calleeStart == 2 && calleeMt.hasRetByValParameter && calleeMt.hasReceiverParameter &&
-              (retIsZST || retIsRecord))))
+              (retIsZST || retIsRecord || retIsBoxed))))
         return fail(s"callee special params start=$calleeStart (sret=${calleeMt.hasRetByValParameter} ret=${calleeMt.returnType})")
       val calleeAbi = DirectCBCCompiler.platform(env).abi(calleeMt)
       val locs = calleeAbi.paramLocations
@@ -1323,14 +1332,30 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       // slot whose address is passed to the callee
       val sretSlot: Option[StackSlot.Typed] = if (calleeMt.hasRetByValParameter) {
         val sretLoc = regLocs(0).asReg.asInstanceOf[IR]
-        if (retIsRecord) {
-          val ts = newTypedSlot(retSig)
-          if (retSig.hasRefFields) asm.zerorefs(ts)
-          asm.ldstackrec(sretLoc, ts) // address of the buffer
-          Some(ts)
-        } else {
-          asm.mov(sretLoc, IRZ, reference = true)
-          None
+        val abiRet = calleeMt.parameterType(calleeMt.getRetByValArgIdx)
+        abiRet match {
+          case b: SignatureType.Box =>
+            // Variable-sized (boxed) return: callee writes a Box*; allocate it
+            // on the heap like production (New(box) in callMethod RetByVal arm).
+            asm.newobj(b.toCbc)
+            asm.mov(sretLoc, IR1, reference = true)
+            saveGCMapHere()
+            None
+          case SignatureType.Address if !retIsRecord =>
+            // Type-variable sret: production stores the boxed value into a
+            // freshly allocated Object; caller value = the Box* we passed.
+            asm.newobj(SignatureType.Box(retSig).toCbc)
+            asm.mov(sretLoc, IR1, reference = true)
+            saveGCMapHere()
+            None
+          case _ if retIsRecord =>
+            val ts = newTypedSlot(retSig)
+            if (retSig.hasRefFields) asm.zerorefs(ts)
+            asm.ldstackrec(sretLoc, ts) // address of the buffer
+            Some(ts)
+          case _ =>
+            asm.mov(sretLoc, IRZ, reference = true)
+            None
         }
       } else None
       recvVal.zip(recvLoc).foreach { (r, loc) => loadToReg(r, loc) }
@@ -1362,7 +1387,13 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
       resultOf(e) match {
         case Some(res) if !sigOf(res).forall(_.isZST) && sretSlot.isEmpty =>
-          storeFromReg(res, resultReg, sigOf(res).get)
+          if (calleeMt.hasRetByValParameter && retIsBoxed) {
+            // boxed sret: the value is the Box* we passed (in sretLoc register)
+            val sretLoc = regLocs(0).asReg.asInstanceOf[IR]
+            storeFromReg(res, sretLoc, sigOf(res).get)
+          } else {
+            storeFromReg(res, resultReg, sigOf(res).get)
+          }
         case _ =>
       }
     }
