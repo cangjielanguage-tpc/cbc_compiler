@@ -134,11 +134,11 @@ def dotchir(name):
 def dotobfdotmap(name):
     return f'{name}.obf.map'
 
-def java_cds_archive():
-    return '/tmp/cbc-compiler.jsa'
+def dotjsa(name):
+    return f'{name}.jsa'
 
 
-def java_cmd():
+def java_cmd(cds_archive):
     """Resolves the java executable path via JAVA_HOME or system PATH."""
     java_home = os.getenv('JAVA_HOME')
     if java_home:
@@ -152,11 +152,11 @@ def java_cmd():
 
     java_version = _get_java_major_version(base)
     args = [base]
-    if java_version and java_version >= 21:
+    if cds_archive and java_version and java_version >= 21:
         args.extend([
             '-XX:TieredStopAtLevel=1',
             '-XX:+AutoCreateSharedArchive',
-            f'-XX:SharedArchiveFile={java_cds_archive()}',
+            f'-XX:SharedArchiveFile={cds_archive}',
         ])
     return args
 
