@@ -1220,17 +1220,18 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val endCount = calleeMt.endSpecialParamsCount
       val outerTiSig = if (calleeMt.hasReceiverParameter) sigOf(callArgs.head).get
                        else SignatureType.fromSymType(calleeMethod.getDeclaringClass)
-      val outerTi = endCount == 1 && calleeMt.hasOuterTypeInfoParameter &&
+      val outerTi = calleeMt.hasOuterTypeInfoParameter &&
         !outerTiSig.containsTypeVariables
       if (endCount != 0 && !outerTi)
         return fail(f"callee end special params (TI: end=$endCount outer=${calleeMt.hasOuterTypeInfoParameter} this=${calleeMt.hasThisTypeInfoParameter} tv=${outerTiSig.containsTypeVariables})")
-      if (calleeMt.hasThisTypeInfoParameter) return fail("callee ThisTypeInfo param")
       val calleeStart = calleeMt.startSpecialParamsCount
       val retSig = calleeMt.returnType
       val retIsZST = retSig.isZST
       val retIsRecord = retSig.isRecord && !retSig.isVariableSizeType
       if (!(calleeStart == 0 ||
             (calleeStart == 1 && calleeMt.hasReceiverParameter && !calleeMt.hasRetByValParameter) ||
+            (calleeStart == 1 && calleeMt.hasRetByValParameter && !calleeMt.hasReceiverParameter &&
+              (retIsZST || retIsRecord)) ||
             (calleeStart == 2 && calleeMt.hasRetByValParameter && calleeMt.hasReceiverParameter &&
               (retIsZST || retIsRecord))))
         return fail(s"callee special params start=$calleeStart (sret=${calleeMt.hasRetByValParameter} ret=${calleeMt.returnType})")
@@ -1238,6 +1239,18 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val locs = calleeAbi.paramLocations
       val regLocs = locs.filter(l => l.isReg && l.asReg.isInstanceOf[IR])
       if (locs.exists(l => !l.isReg)) return fail("stack args")
+      // ThisTypeInfo end special: instance callees get the receiver's runtime
+      // TI (asm.loadTypeInfoObj); static callees get the static TI of thisType
+      // (mirrors CHIRParser.callMethod's ThisTypeInfo arm).
+      val thisTi: Option[(IR, Either[IR, SignatureType])] =
+        if (!calleeMt.hasThisTypeInfoParameter) None
+        else if (calleeMt.hasReceiverParameter) {
+          val rcvLoc = regLocs(calleeStart - 1).asReg.asInstanceOf[IR]
+          Some((regLocs(calleeMt.getThisTypeInfoArgIdx).asReg.asInstanceOf[IR], Left(rcvLoc)))
+        } else {
+          val tiSig = if (outerTiSig.containsTypeVariables) sigOf(callArgs.head).get else outerTiSig
+          Some((regLocs(calleeMt.getThisTypeInfoArgIdx).asReg.asInstanceOf[IR], Right(tiSig)))
+        }
       val argLocs = regLocs.drop(calleeStart).dropRight(endCount)
       // receiver: last start special; its loc sits right before the params
       val recvLoc: Option[IR] =
@@ -1282,6 +1295,12 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       if (outerTi)
         asm.loadTypeInfoSig(regLocs(calleeMt.getOuterTypeInfoArgIdx).asReg.asInstanceOf[IR],
           outerTiSig.toCbc)
+      thisTi.foreach { (loc, src) =>
+        src match {
+          case Left(rcvLoc) => asm.loadTypeInfoObj(loc, rcvLoc) // receiver's runtime TI
+          case Right(sig)   => asm.loadTypeInfoSig(loc, sig.toCbc) // static TI
+        }
+      }
       val resultReg = {
         val rl = calleeAbi.resultLocation
         if (rl != null && rl.isReg && rl.asReg.isInstanceOf[IR]) rl.asReg.asInstanceOf[IR] else IR1
