@@ -1006,9 +1006,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           case DirectCall(method) if !targetRef.hasMethod => directCCall(method)
           case AnyVirtualCall() => virtualCall()
           case CJIntrinsic(intrinsicType) => intrinsicCall(intrinsicType)
-          case _ =>
+          case _ if call.methodType.isCJForeign =>
             val IReg(targetReg) = call.target
-            asm.callIndirect(targetReg, call.methodType)
+            asm.callIndirect(resultReg, targetReg)
         }
       }
     }
@@ -1048,7 +1048,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           asm.movi64(dst, c)
 
         case (IReg(dst), AddrConst(_, m: Method, 0)) if m.isCangjieForeign =>
-          asm.lea_cforeign(dst, new MethodReference(m, MethodReferenceAccessKind.STATIC).getPermanent)
+          val mr = asm.adapter.method(new MethodReference(m, MethodReferenceAccessKind.STATIC).getPermanent)
+          asm.lea_cforeign(dst, mr)
 
         case (FReg(dst), FConst(c)) =>
           asm.fmovi(dst, c, W32)
