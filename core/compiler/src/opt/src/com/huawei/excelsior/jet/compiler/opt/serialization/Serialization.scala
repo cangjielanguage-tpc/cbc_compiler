@@ -196,6 +196,7 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: MemBarrier => MemBarrier.Proto
         case _: CheckCast => CheckCast.Proto
         case _: NewArray => NewArray.Proto
+        case _: NewArrayGeneric => NewArrayGeneric.GenericProto
         case _: NewArrayMimic => NewArrayMimic.Proto
         case _: Switch => Switch.Proto
         case _: CondVal => CondVal.Proto

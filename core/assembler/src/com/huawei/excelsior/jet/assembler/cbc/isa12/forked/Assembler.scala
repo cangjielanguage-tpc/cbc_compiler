@@ -480,6 +480,14 @@ trait ForkedAssembler {
     saveState()
   }
 
+  def boxGeneric(src: StackSlot.Typed, dst: IR, ti: IR): Unit = instr {
+    stream // - allocate box at `dst`
+      .opc8(Opcode.BoxTGeneric) // - store primitive value at `src` to box or copy record pointed by `src` to the box
+      .bits(_.w4(analyzer.usePrim(ti)).w4(analyzer.ref(dst)))
+      .ts16(src)
+    saveState()
+  }
+
   def unbox(dst: StackSlot.Typed, src: IR): Unit = instr {
     stream
       .opc8(Opcode.UnboxT)
@@ -776,6 +784,14 @@ trait ForkedAssembler {
       .opc8(Opcode.NewArr)
       .bits(_.w4(analyzer.ref(IR.IR1)).w4(analyzer.usePrim(IR.IR2)))
       .sym16(sig)
+    saveState()
+  }
+
+  def newarrGeneric(ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.NewArrGeneric)
+      .bits(_.w4(analyzer.ref(IR.IR1)).w4(analyzer.usePrim(IR.IR2)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
     saveState()
   }
 
@@ -1093,6 +1109,14 @@ trait ForkedAssembler {
       .bits(_.w4(idx).w4(analyzer.usePrim(ti)))
   }
 
+  def index(dst: IR, src: IR, idx: Long, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.ConstIndexGeneric)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+      .sleb(idx)
+  }
+
   def zeroval(dst: Rg, ti: IR) = instr {
     analyzer.usePrim(ti)
     stream
@@ -1249,6 +1273,7 @@ object Assembler {
     case BinaryImm64
     case Cast
     case NewArr
+    case NewArrGeneric
     case GcPoint
     case PrepareRecord
     case Unused
@@ -1276,6 +1301,7 @@ object Assembler {
     case TypeArg
     case Box
     case BoxT
+    case BoxTGeneric
     case Unbox
     case UnboxT
     case BoxRec
@@ -1327,6 +1353,7 @@ object Assembler {
     case CopyGeneric
     case Index
     case IndexGeneric
+    case ConstIndexGeneric
     case ZeroVal
     case FMathUn32
     case FMathUn64

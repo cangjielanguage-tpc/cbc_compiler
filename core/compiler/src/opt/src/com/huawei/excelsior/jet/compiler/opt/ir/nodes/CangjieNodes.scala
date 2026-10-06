@@ -827,6 +827,27 @@ trait CangjieNodes { self: Universe =>
     def apply(allocType: SignatureType)(allocTypeInfo: Node) = proto(allocType)(allocTypeInfo)
   }
 
+  class NewArrayGeneric private(proto: NewArrayGeneric.GenericProto)
+    extends NodeWithFixedArgs(proto) with AnyNew with CanThrow {
+    override def allocType: SignatureType = proto.allocType
+
+    def allocTypeInfo: Node = arg(2)
+    def length: Node = arg(3)
+    def lengths: Seq[Node] = Seq(length)
+  }
+
+  object NewArrayGeneric {
+    case class GenericProto private[NewArrayGeneric](allocType: SignatureType)
+      extends FixedArgs[NewArrayGeneric](ControlType, MemoryType, AddrType, TypedArrayOperation.lenType(allocType))(TRefType)
+        with ControlMemoryValueTagged[NewArrayGeneric] {
+      require(allocType.isCangjieArray)
+
+      def newInstance(): NewArrayGeneric = new NewArrayGeneric(this)
+    }
+
+    def apply(allocType: SignatureType) = Prototype.intern(GenericProto(allocType))
+  }
+
   /** Factory for cangjie intrinsics that should be generated as call to some runtime function.
    *
    * To add new intrinsic you need to add it to `CJIntrinsicType` enum and add case to `signature` func
@@ -904,7 +925,7 @@ trait CangjieNodes { self: Universe =>
 
   class ConstIndexFieldReference private(proto: ConstIndexFieldReference.Proto)
     extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode {
-    def idx: Int = proto.idx
+    def idx: Long = proto.idx
 
     def refType = proto.refType
     def fieldType = proto.fieldType
@@ -912,15 +933,15 @@ trait CangjieNodes { self: Universe =>
   }
 
   object ConstIndexFieldReference {
-    case class Proto private[ConstIndexFieldReference](idx: Int, refType: SignatureType, fieldType: SignatureType)
+    case class Proto private[ConstIndexFieldReference](idx: Long, refType: SignatureType, fieldType: SignatureType)
       extends FixedArgs[ConstIndexFieldReference]()(AddrIntType)
         with PrototypeStrictNodeClass[ConstIndexFieldReference, ConstIndexFieldReference] {
 
       def newInstance() = new ConstIndexFieldReference(this)
     }
 
-    def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(idx, refType, fieldType))
-    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType): ConstIndexFieldReference = proto(idx, refType, fieldType)()
+    def proto(idx: Long, refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(idx, refType, fieldType))
+    def apply(idx: Long, refType: SignatureType, fieldType: SignatureType): ConstIndexFieldReference = proto(idx, refType, fieldType)()
   }
 
   class IndexFieldReference private(proto: IndexFieldReference.Proto)
@@ -969,7 +990,7 @@ trait CangjieNodes { self: Universe =>
 
   class ConstIndexGeneric private(proto: ConstIndexGeneric.Proto)
     extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNodeGeneric {
-    def idx: Int = proto.idx
+    def idx: Long = proto.idx
 
     def refTypeInfo: Node = arg(0)
 
@@ -979,15 +1000,15 @@ trait CangjieNodes { self: Universe =>
   }
 
   object ConstIndexGeneric {
-    case class Proto private[ConstIndexGeneric](idx: Int, refType: SignatureType, fieldType: SignatureType)
+    case class Proto private[ConstIndexGeneric](idx: Long, refType: SignatureType, fieldType: SignatureType)
       extends FixedArgs[ConstIndexGeneric](AddrIntType)(AddrIntType)
         with PrototypeStrictNodeClass[ConstIndexGeneric, ConstIndexGeneric] {
 
       def newInstance() = new ConstIndexGeneric(this)
     }
 
-    def proto(idx: Int, refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(idx, refType, fieldType))
-    def apply(idx: Int, refType: SignatureType, fieldType: SignatureType)(typeInfo: Node): ConstIndexGeneric = proto(idx, refType, fieldType)(typeInfo)
+    def proto(idx: Long, refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(idx, refType, fieldType))
+    def apply(idx: Long, refType: SignatureType, fieldType: SignatureType)(typeInfo: Node): ConstIndexGeneric = proto(idx, refType, fieldType)(typeInfo)
   }
 
   class IndexFieldReferenceGeneric private(proto: IndexFieldReferenceGeneric.Proto)

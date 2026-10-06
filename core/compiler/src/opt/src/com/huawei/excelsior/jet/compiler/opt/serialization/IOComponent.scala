@@ -144,6 +144,7 @@ trait IOComponent extends BinaryIO { self: Universe =>
     AtomicOps.Simple.Proto,
     ZeroValueGeneric.Proto,
     FieldReferenceNode.Proto, ConstIndexFieldReference.Proto, IndexFieldReference.Proto, FieldReferenceNodeGeneric.Proto, ConstIndexGeneric.Proto, IndexFieldReferenceGeneric.Proto,
+    NewArrayGeneric.GenericProto,
     // Add new prototypes above this line.
     "dummy last element for ease of rebase"
   )

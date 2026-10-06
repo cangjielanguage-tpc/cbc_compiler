@@ -353,7 +353,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         ti
       }
 
-      def indexReference(idx: Int, refType: SignatureType, fieldType: SignatureType): CangjieIndexReference = {
+      def indexReference(idx: Long, refType: SignatureType, fieldType: SignatureType): CangjieIndexReference = {
         val t = refType match {
           case t: SignatureType.OptionLikeEnum =>
             require(!t.isNullableOption)
@@ -413,6 +413,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               val IReg(idx) = fr.idx
               val IReg(ti) = fr.refTypeInfo
               asm.index(scratch, base, idx, ti)
+            case fr: ConstIndexGeneric if fr.refType.isCangjieArray =>
+              val IReg(ti) = fr.refTypeInfo
+              asm.index(scratch, base, fr.idx, ti)
             case fr: CangjieReferenceNodeGeneric =>
               val IReg(ti) = fr.refTypeInfo
               asm.leaGeneric(scratch, base, ti, constrFieldRef(Seq(fr)))
@@ -658,6 +661,16 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
     private def genNewArr(newArr: NewArray): Unit =
       genNewArrImpl(newArr, newArr.allocType, newArr.lengths, newArr.uninitialized)
+
+    private def genNewArrGeneric(newArr: NewArrayGeneric): Unit = {
+      assert(newArr.lengths.size == 1)
+      assert(iReg(newArr.lengths.head) == IR2)
+      assert(iReg(newArr) == IR1)
+      val IReg(ti) = newArr.allocTypeInfo
+      asm.newarrGeneric(ti)
+      addXSite(newArr)
+      saveGCState(newArr)
+    }
 
     private def genNewArrImpl(newArr: Node, allocType: SignatureType, lengths: Seq[Node], zeroValue: Boolean): Unit = {
       assert(lengths.size == 1)
@@ -1102,7 +1115,14 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     private def genBox(n: Box): Unit = {
       val IReg(dst) = n
       n.value match {
-        case sa: HasFrameSlot => asm.box(sa.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot, dst)
+        case sa: HasFrameSlot =>
+          val slot = sa.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot
+          if (n.base.containsTypeVariables) {
+            val IReg(ti) = n.baseTypeInfo
+            asm.boxGeneric(slot, dst, ti)
+          } else {
+            asm.box(slot, dst)
+          }
         case Reg(src)         => asm.box(src, dst, n.base.toCbc)
         case _: Void          => asm.box(IR.IRZ, dst, n.base.toCbc)
       }
@@ -1295,6 +1315,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: ArrayFill                  => genArrayFill(x)
         case x: ArrayIndexCheck            => genArrayIndexCheck(x)
         case x: NewArray                   => genNewArr(x)
+        case x: NewArrayGeneric            => genNewArrGeneric(x)
         case x: NewArrayFill               => genNewArrFill(x)
         case x: PackageInitCheck           => genPackageInitCheck(x)
         case x: InstanceOf                 => genInstanceOf(x)

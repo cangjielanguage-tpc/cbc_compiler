@@ -495,6 +495,9 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case NewArray.Proto =>
           NewArray(read.sigType())
 
+        case NewArrayGeneric.GenericProto =>
+          NewArrayGeneric(read.sigType())
+
         case NewArrayMimic.Proto =>
           NewArrayMimic(read.sigType(), read.bool())
 

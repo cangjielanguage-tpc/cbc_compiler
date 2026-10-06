@@ -844,7 +844,11 @@ trait CHIRParser
         val len = state(e.size)
         val elemType = resolver.typeSig(e.elementType)
         val arrayType = SignatureType.CangjieArray(elemType)
-        state(e) = NewArray(arrayType)(len)
+        state(e) = if (arrayType.containsTypeVariables) {
+          NewArrayGeneric(arrayType)(loadTypeInfo(arrayType), len)
+        } else {
+          NewArray(arrayType)(len)
+        }
 
       case e: CHIR.GetElementRef =>
         val memBase = e.base
@@ -2376,17 +2380,17 @@ trait CHIRParser
           case refType if refType.isCangjieLambda =>
             fieldRef(idx + 2) // First two fields are synthesized for lambda function pointers
           case refType: SignatureType.VArray =>
-            createConstIndexNode(idx.toInt, refType, refType.elemType)
+            createConstIndexNode(idx.toLong, refType, refType.elemType)
           case refType: SignatureType.Tuple =>
             val fieldType = refType.params(idx.toInt)
-            createConstIndexNode(idx.toInt, fieldRefType, fieldType)
+            createConstIndexNode(idx.toLong, fieldRefType, fieldType)
           case refType: SignatureType.OptionLikeEnum =>
             assert(!refType.isNullableOption && !refType.someType.isTypeVariable, refType)
             val fieldType = idx match {
               case 0 => SignatureType.Boolean
               case 1 => refType.someType
             }
-            createConstIndexNode(idx.toInt, fieldRefType, fieldType)
+            createConstIndexNode(idx.toLong, fieldRefType, fieldType)
           case refType: (SignatureType.ZeroSizedEnum | SignatureType.PrimitiveBasedEnum | SignatureType.UnionBasedEnum) =>
             shouldNotReachHere(refType)
           case refType =>
@@ -2443,7 +2447,7 @@ trait CHIRParser
     }
 
     private def arrayIndex(arrayType: SignatureType, index: Node): CangjieReferenceNode = index match {
-      case IntegralConst(i) => createConstIndexNode(i.toInt, arrayType, arrayType.getArrayElemType)
+      case IntegralConst(i) => createConstIndexNode(i.toLong, arrayType, arrayType.getArrayElemType)
       case _ => createIndexNode(index, arrayType, arrayType.getArrayElemType)
     }
 
@@ -2582,7 +2586,7 @@ trait CHIRParser
     }
   }
 
-  private def createConstIndexNode(idx: Int, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
+  private def createConstIndexNode(idx: Long, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
     if (refType.isVariableLayoutType) {
       ConstIndexGeneric(idx, refType, fieldType)(loadTypeInfo(refType))
     } else {

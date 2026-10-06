@@ -27,7 +27,7 @@ import scala.collection.mutable.ArrayBuffer
 trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { self: Universe with BackEndCBC with CodeGeneratorCBC =>
 
   final def needXSiteImpl(node: Node): Boolean = node match {
-    case _: New | _: NewArray | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => true // can throw and not lowered to calls
+    case _: New | _: NewArray | _: NewArrayGeneric | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => true // can throw and not lowered to calls
     case _: InterfaceCastCBC => true
     case n: LoadStaticFieldSeq if n.resType.isVariableSizeType => true
     case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeq |
@@ -40,7 +40,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
   override def needXSite(node: Node): Boolean = if !isStandalone then needXSiteImpl(node) else false
 
   override def xSiteKind(node: Node): XSiteKind = node match {
-    case _: New | _: NewArray | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => XSiteKind.CALL
+    case _: New | _: NewArray | _: NewArrayGeneric | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => XSiteKind.CALL
     case _: InterfaceCastCBC => XSiteKind.CALL
     case n: LoadStaticFieldSeq if n.resType.isVariableSizeType => XSiteKind.CALL
     case _: Box | _: SpawnFuture | _: SpawnClosure | _: LoadFieldSeq |
@@ -51,7 +51,7 @@ trait XSitesToolboxCBC extends XSitesToolbox with LocalLivenessAnalyzerCBC { sel
   }
 
   override def xSiteTargetRef(node: Node): MethodReference = node match {
-    case _: New | _: NewArray | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => null // Note that direct non-deferred calls don't use `methodRef` from `xSite`
+    case _: New | _: NewArray | _: NewArrayGeneric | _: NewArrayFill | _: BitcodeDeferred.New | _: BitcodeDeferred.NewArray | _: Clinit => null // Note that direct non-deferred calls don't use `methodRef` from `xSite`
     case _: InterfaceCastCBC => null
     case WithImplicitCheck(_: DivisorCheck) => null
     case _ => super.xSiteTargetRef(node)

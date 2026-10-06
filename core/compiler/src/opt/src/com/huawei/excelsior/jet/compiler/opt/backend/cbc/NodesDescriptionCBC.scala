@@ -30,6 +30,7 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
 
     case _: Evacuate                              => new CustomForm(Seq(ir1Set))
     case _: (NewArray | BitcodeDeferred.NewArray) => new CustomForm(Seq(ir2Set))
+    case _: NewArrayGeneric                       => new CustomForm(Seq(allParamIRegsSet, ir2Set))
     case _: CopyStructureCBC                      => new CustomForm(Seq(copyStructureCbcSet, copyStructureCbcSet))
     case _: MutFunc.Combine                       => new CustomForm(Seq(copyStructureDependentSet, copyStructureDependentSet))
 
@@ -58,7 +59,7 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
   protected def canGenerateWithVolatiles(n: Node) = n match {
     case _: (Transfer | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Add | Sub | Mul | Pow | Neg | LogicalBinaryOp | IDivRemOp
       | DivisorCheck | FDiv | MathIntrinsic | Cmp | TypeTest | Shift | ReinterpretCast | ValueConvert | BitFieldExtract | New
-      | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | AbstractNullCheck | SingletonObject | LoadTailParam
+      | BitcodeDeferred.New | NewArray | NewArrayGeneric | BitcodeDeferred.NewArray | Evacuate | AbstractNullCheck | SingletonObject | LoadTailParam
       | GetField | FieldChainRead | PutField | FieldChainWrite | ExtractEnrichment | DepriveOperation | EnrichOperation
       | CopyStructure | CopyStructureCBC | Throw | CheckedOp | EndLocalUnmovable
       | MutFuncArgNode | MutFunc.Combine | Return | UniversalGeneric.ConvertHolder | BulldozerHint
