@@ -617,7 +617,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
-    // TODO replace ArrayGet with FieldSeq operations
+    // TODO remove ArrayGet node
     private def genArrayGet(arrGet: ArrayGet): Unit = {
       addXSite(arrGet)
       val adapter = asm.adapter
@@ -639,6 +639,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    // TODO remove ArrayPut node
     private def genArrayPut(arrPut: ArrayPut): Unit = (arrPut.inValue0, arrPut.array, arrPut.idx) match {
       case (Reg(value), IReg(arr), IReg(idx)) =>
         addXSite(arrPut)

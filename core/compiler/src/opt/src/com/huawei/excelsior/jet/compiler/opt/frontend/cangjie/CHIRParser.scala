@@ -219,12 +219,12 @@ trait CHIRParser
         val srcIdx = Add(n.srcStart, idx)
         val dstIdx = Add(n.dstStart, idx)
         if (arrayType.getArrayElemType.isRecord) {
-          val srcMem = ArrayGet(arrayType)(n.src, srcIdx)
-          val dstMem = ArrayGet(arrayType)(n.dst, dstIdx)
-          CopyStructure(arrayType.getArrayElemType)(maybeDerivedPtrBase(dstMem), dstMem, maybeDerivedPtrBase(srcMem), srcMem)
+          val srcMem = GetFieldSeqRef(maybeDerivedPtrBase(n.src), n.src, arrayIndex(arrayType, srcIdx))
+          val dstMem = GetFieldSeqRef(maybeDerivedPtrBase(n.dst), n.dst, arrayIndex(arrayType, dstIdx))
+          copy(arrayType.getArrayElemType, dstMem, srcMem)
         } else {
-          val value = ArrayGet(arrayType)(n.src, srcIdx)
-          ArrayPut(arrayType)(n.dst, dstIdx, value)
+          val value = arrayGet(arrayType, n.src, srcIdx)
+          arrayPut(arrayType, n.dst, dstIdx, value)
         }
         val bodyGoto = Goto()
 
@@ -1449,23 +1449,7 @@ trait CHIRParser
             val (array, idx) = args match {
               case Seq(array, idx) => (state(array), state(idx))
             }
-            val elemType = arrayType.getArrayElemType
-            val n = if (elemType.isZST) {
-              Void()
-            } else {
-              val field = arrayIndex(arrayType, idx)
-              if (elemType.isVariableSizeType) {
-                LoadFieldSeq(maybeDerivedPtrBase(array), array, field, loadTypeInfo(elemType))
-              } else if (needsCopy(elemType)) {
-                val local = StackAlloc.Local(elemType)
-                val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
-                copy(elemType, local, addr)
-                local
-              } else {
-                LoadFieldSeq(maybeDerivedPtrBase(array), array, field)
-              }
-            }
-            state(e) = n
+            state(e) = arrayGet(arrayType, array, idx)
 
           case CHIR.Intrinsic.Kind.ArraySetUnchecked |
                CHIR.Intrinsic.Kind.ArraySet =>
@@ -2438,18 +2422,34 @@ trait CHIRParser
 
     private def arrayPut(arrayType: SignatureType, array: Node, idx: Node, value: Node): Unit = {
       val elemType = arrayType.getArrayElemType
-      if (elemType.isZST) {
-        // nop
-      } else {
+      if (!elemType.isZST) {
         val field = arrayIndex(arrayType, idx)
         if (elemType.isVariableSizeType) {
           StoreFieldSeq(maybeDerivedPtrBase(array), array, value, field, loadTypeInfo(elemType))
-        }
-        else if (needsCopy(elemType)) {
+        } else if (needsCopy(elemType)) {
           val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
           copy(elemType, addr, value)
         } else {
           StoreFieldSeq(maybeDerivedPtrBase(array), array, value, field)
+        }
+      }
+    }
+
+    private def arrayGet(arrayType: SignatureType, array: Node, idx: Node): Node = {
+      val elemType = arrayType.getArrayElemType
+      if (elemType.isZST) {
+        Void()
+      } else {
+        val field = arrayIndex(arrayType, idx)
+        if (elemType.isVariableSizeType) {
+          LoadFieldSeq(maybeDerivedPtrBase(array), array, field, loadTypeInfo(elemType))
+        } else if (needsCopy(elemType)) {
+          val local = StackAlloc.Local(elemType)
+          val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
+          copy(elemType, local, addr)
+          local
+        } else {
+          LoadFieldSeq(maybeDerivedPtrBase(array), array, field)
         }
       }
     }
