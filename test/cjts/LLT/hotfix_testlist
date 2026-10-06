@@ -517,6 +517,108 @@ compiler/Sema/optional_chain/trailing_lambda_00.cj
 compiler/Sema/type_infer/lambda_param_06.cj
 compiler/Sema/type_infer/pipe_lambda_overload.cj
 
+# bug 111 (should not reach here: CheckCast got arg with tags ArraySeq(VALUE))
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut01.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut02.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut03.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut04.cj
+compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
+compiler/CodegenCJNative/generic/generic_struct.cj
+compiler/CodegenCJNative/storeElementRef.cj
+compiler/Sema/unusedImport/unusedImport002/unused016/unused016.cj
+
+# bug 112 (crash when calling function from extended interface)
+compiler/Sema/Extend/autobox_try_catch1.cj
+compiler/Sema/Extend/autobox_try_catch2.cj
+compiler/Sema/Extend/interface_default_implement/call_virtual_enum.cj
+compiler/Sema/Extend/interface_default_implement/call_virtual_primitive.cj
+compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
+compiler/CHIR/Generic/testGeneric09.cj
+compiler/CHIR/UG/VTable/non_generic/interface_extend03.cj
+compiler/CodegenCHIR/overflow/add_saturating.cj
+compiler/CodegenCHIR/overflow/add_throwing.cj
+compiler/CodegenCHIR/overflow/add_wrapping.cj
+compiler/CodegenCHIR/overflow/div_saturating.cj
+compiler/CodegenCHIR/overflow/div_throwing.cj
+compiler/CodegenCHIR/overflow/div_wrapping.cj
+compiler/CodegenCHIR/overflow/mod_saturating.cj
+compiler/CodegenCHIR/overflow/mod_throwing.cj
+compiler/CodegenCHIR/overflow/mod_wrapping.cj
+compiler/CodegenCHIR/overflow/mul_saturating.cj
+compiler/CodegenCHIR/overflow/mul_throwing.cj
+compiler/CodegenCHIR/overflow/mul_wrapping.cj
+compiler/CodegenCHIR/overflow/neg_saturating.cj
+compiler/CodegenCHIR/overflow/neg_throwing.cj
+compiler/CodegenCHIR/overflow/neg_wrapping.cj
+compiler/CodegenCHIR/overflow/sub_saturating.cj
+compiler/CodegenCHIR/overflow/sub_throwing.cj
+compiler/CodegenCHIR/overflow/sub_wrapping.cj
+compiler/CodegenCJNative/interface/primitive_extend_interface.cj
+compiler/CodegenCJNative/interface/primitive_extend_interface_generic_constraint.cj
+compiler/Sema/Extend/extend_overload_builtin_op3.cj
+
+# bug 113 (assertion failed: !Engine::Term(term).IsGeneric())
+compiler/CodegenCJNative/interface/record_extend_interface.cj
+compiler/CodegenCJNative/record/implement_interfaces/record_interface_static.cj
+compiler/Sema/box/box_generic_class_03/main.cj
+
+# bug 114 (MatchError X (Integer) in PackageImpl.getExpr)
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut05.cj
+compiler/Sema/OptionalModifiers/optionalModifiers03_1.cj
+compiler/Sema/class/interface_default_implemented_func_valid_1.cj
+
+# bug 115 (loadTypeInfo: should not reach here `Box(Tuple(List(Int64, LocalTypeVariable(0)))))`)
+compiler/Sema/match/nested_pattern/match_nested_in_tuple_005.cj
+compiler/Sema/match/nested_pattern/match_nested_in_tuple_006.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_struct02.cj
+compiler/CodegenCJNative/option/option_typecast.cj
+compiler/Sema/PatternMatching/EnumPattern/generic_enum_nested_match.cj
+compiler/Sema/generics/function_generics_list.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
+
+# bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
+compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
+compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass02.cj
+
+# bug 117 (Resources.sacala: java.lang.IllegalArgumentException: requirement failed: OptionLikeEnum)
+compiler/CodegenCJNative/generic/generic_struct1.cj
+compiler/CodegenCommon/enum/enum_fix_01.cj
+
+# bug 118 (BFX + shifts = fail)
+compiler/CodegenCommon/binary_op/leftshift_1.cj
+compiler/CodegenCommon/binary_op/rightshift_1.cj
+
+# bug 119 (return this from open func causes `should not reach here (extra information: symType for TypeVariable)`)
+compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_5.cj
+compiler/Sema/generics/generic_upperbound_reference_01.cj
+
+# bug 120 (cbc_engine: Conflict found for reference)
+compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
+compiler/Sema/class/class_no_override_modifier_6.cj
+compiler/Sema/Extend/default_implement/default_implement_04.cj
+
+# bug 121 (matching on property function fails with assertion failure)
+compiler/CodegenCommon/licm/licm_00.cj
+compiler/Sema/generics/instantiation/O2_part_gi/disable_instance_in_open.cj
+
+# bug 122 (fail to resolve method)
+compiler/CHIR/UG/VTable/generic/static/class_class02.cj
+compiler/Sema/Extend/extend_imp_type.cj
+compiler/CHIR/CHIR2HLIR/class/class_property/chir_class_property1.cj
+compiler/Sema/class/class_access_control23.cj
+compiler/Sema/class/class_property/property22.cj
+compiler/Sema/class/class_property/property25.cj
+
+# bug 123 (could not find VTable slot for $GenericVirtualFunc)
+compiler/Sema/call/call32.cj
+
+# ignore due to timeouts and environmental problems
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
+compiler/Sema/join_meet/join_perf.cj
+compiler/Sema/operator_overload/timeout_06.cj
+
+### Configuration issues ###
+
 # uses --debug-annotations
 compiler/CHIR/ComputeAnnotations
 
@@ -528,9 +630,6 @@ compiler/CJMP
 
 # uses --dump-chir and expects 0_AST_CHIR.chirtxt in current folder
 compiler/CHIR/AST2CHIR/SetGenericInfo
-
-# stdx is unavailable (TODO: enable)
-API/stdx
 
 # ignore ir_opt tests for now (TODO: enable)
 compiler/CodegenCJNative/ir_opt
@@ -706,11 +805,6 @@ compiler/Sema/generics/generic_subst_perf.cj
 # ignore due to cjts misconfiguration (line 6: $1: unbound variable)
 compiler/CHIR/AST2CHIR/BaseUseCase/function/funcNode.cj
 
-# ignore due to timeouts and environmental problems
-compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
-compiler/Sema/join_meet/join_perf.cj
-compiler/Sema/operator_overload/timeout_06.cj
-
 # broken/misconfigured tests or harness environment (missing keywords, missing generated file, stdin-driven, expected-output mismatch)
 compiler/CHIROpt/DeadCodeElimination/UselessFunction/UselessFunction2.cj
 compiler/CHIROpt/ValueRangeAnalysis/VArray.cj
@@ -719,106 +813,10 @@ compiler/CHIROpt/VarInitCheck/var_circular_dependency.cj
 compiler/CHIROpt/lambda_reduce/thread_lambda_inline.cj
 compiler/Sema/APILevelChecker/hide/mix_macro1.cj
 
-
 # TODO: debug this multi-step/multi-package issues
 compiler/CHIR/UG/VTable/extend/extend4/main.cj
 compiler/CHIR/UG/VTable/extend/extend5/main.cj
 compiler/CodegenCommon/struct/main.cj
-
-# bug 111 (should not reach here: CheckCast got arg with tags ArraySeq(VALUE))
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut01.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut02.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut03.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut04.cj
-compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
-compiler/CodegenCJNative/generic/generic_struct.cj
-compiler/CodegenCJNative/storeElementRef.cj
-compiler/Sema/unusedImport/unusedImport002/unused016/unused016.cj
-
-# bug 112 (crash when calling function from extended interface)
-compiler/Sema/Extend/autobox_try_catch1.cj
-compiler/Sema/Extend/autobox_try_catch2.cj
-compiler/Sema/Extend/interface_default_implement/call_virtual_enum.cj
-compiler/Sema/Extend/interface_default_implement/call_virtual_primitive.cj
-compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
-compiler/CHIR/Generic/testGeneric09.cj
-compiler/CHIR/UG/VTable/non_generic/interface_extend03.cj
-compiler/CodegenCHIR/overflow/add_saturating.cj
-compiler/CodegenCHIR/overflow/add_throwing.cj
-compiler/CodegenCHIR/overflow/add_wrapping.cj
-compiler/CodegenCHIR/overflow/div_saturating.cj
-compiler/CodegenCHIR/overflow/div_throwing.cj
-compiler/CodegenCHIR/overflow/div_wrapping.cj
-compiler/CodegenCHIR/overflow/mod_saturating.cj
-compiler/CodegenCHIR/overflow/mod_throwing.cj
-compiler/CodegenCHIR/overflow/mod_wrapping.cj
-compiler/CodegenCHIR/overflow/mul_saturating.cj
-compiler/CodegenCHIR/overflow/mul_throwing.cj
-compiler/CodegenCHIR/overflow/mul_wrapping.cj
-compiler/CodegenCHIR/overflow/neg_saturating.cj
-compiler/CodegenCHIR/overflow/neg_throwing.cj
-compiler/CodegenCHIR/overflow/neg_wrapping.cj
-compiler/CodegenCHIR/overflow/sub_saturating.cj
-compiler/CodegenCHIR/overflow/sub_throwing.cj
-compiler/CodegenCHIR/overflow/sub_wrapping.cj
-compiler/CodegenCJNative/interface/primitive_extend_interface.cj
-compiler/CodegenCJNative/interface/primitive_extend_interface_generic_constraint.cj
-compiler/Sema/Extend/extend_overload_builtin_op3.cj
-
-# bug 113 (assertion failed: !Engine::Term(term).IsGeneric())
-compiler/CodegenCJNative/interface/record_extend_interface.cj
-compiler/CodegenCJNative/record/implement_interfaces/record_interface_static.cj
-compiler/Sema/box/box_generic_class_03/main.cj
-
-# bug 114 (MatchError X (Integer) in PackageImpl.getExpr)
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut05.cj
-compiler/Sema/OptionalModifiers/optionalModifiers03_1.cj
-compiler/Sema/class/interface_default_implemented_func_valid_1.cj
-
-# bug 115 (loadTypeInfo: should not reach here `Box(Tuple(List(Int64, LocalTypeVariable(0)))))`)
-compiler/Sema/match/nested_pattern/match_nested_in_tuple_005.cj
-compiler/Sema/match/nested_pattern/match_nested_in_tuple_006.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct02.cj
-compiler/CodegenCJNative/option/option_typecast.cj
-compiler/Sema/PatternMatching/EnumPattern/generic_enum_nested_match.cj
-compiler/Sema/generics/function_generics_list.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
-
-# bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
-compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
-compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass02.cj
-
-# bug 117 (Resources.sacala: java.lang.IllegalArgumentException: requirement failed: OptionLikeEnum)
-compiler/CodegenCJNative/generic/generic_struct1.cj
-compiler/CodegenCommon/enum/enum_fix_01.cj
-
-# bug 118 (BFX + shifts = fail)
-compiler/CodegenCommon/binary_op/leftshift_1.cj
-compiler/CodegenCommon/binary_op/rightshift_1.cj
-
-# bug 119 (return this from open func causes `should not reach here (extra information: symType for TypeVariable)`)
-compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_5.cj
-compiler/Sema/generics/generic_upperbound_reference_01.cj
-
-# bug 120 (cbc_engine: Conflict found for reference)
-compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
-compiler/Sema/class/class_no_override_modifier_6.cj
-compiler/Sema/Extend/default_implement/default_implement_04.cj
-
-# bug 121 (matching on property function fails with assertion failure)
-compiler/CodegenCommon/licm/licm_00.cj
-compiler/Sema/generics/instantiation/O2_part_gi/disable_instance_in_open.cj
-
-# bug 122 (fail to resolve method)
-compiler/CHIR/UG/VTable/generic/static/class_class02.cj
-compiler/Sema/Extend/extend_imp_type.cj
-compiler/CHIR/CHIR2HLIR/class/class_property/chir_class_property1.cj
-compiler/Sema/class/class_access_control23.cj
-compiler/Sema/class/class_property/property22.cj
-compiler/Sema/class/class_property/property25.cj
-
-# bug 123 (could not find VTable slot for $GenericVirtualFunc)
-compiler/Sema/call/call32.cj
 
 # driver mangles cjc args ("No such directory: '-lstdx.syntax'") / driver warning noise breaks expected-output compare
 compiler/CHIR/CHIR2HLIR/package/scanDepPkg/test.cj
