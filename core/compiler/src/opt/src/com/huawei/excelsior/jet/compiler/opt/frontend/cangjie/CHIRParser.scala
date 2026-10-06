@@ -2420,45 +2420,6 @@ trait CHIRParser
       }
     }
 
-    private def arrayPut(arrayType: SignatureType, array: Node, idx: Node, value: Node): Unit = {
-      val elemType = arrayType.getArrayElemType
-      if (!elemType.isZST) {
-        val field = arrayIndex(arrayType, idx)
-        if (elemType.isVariableSizeType) {
-          StoreFieldSeq(maybeDerivedPtrBase(array), array, value, field, loadTypeInfo(elemType))
-        } else if (needsCopy(elemType)) {
-          val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
-          copy(elemType, addr, value)
-        } else {
-          StoreFieldSeq(maybeDerivedPtrBase(array), array, value, field)
-        }
-      }
-    }
-
-    private def arrayGet(arrayType: SignatureType, array: Node, idx: Node): Node = {
-      val elemType = arrayType.getArrayElemType
-      if (elemType.isZST) {
-        Void()
-      } else {
-        val field = arrayIndex(arrayType, idx)
-        if (elemType.isVariableSizeType) {
-          LoadFieldSeq(maybeDerivedPtrBase(array), array, field, loadTypeInfo(elemType))
-        } else if (needsCopy(elemType)) {
-          val local = StackAlloc.Local(elemType)
-          val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
-          copy(elemType, local, addr)
-          local
-        } else {
-          LoadFieldSeq(maybeDerivedPtrBase(array), array, field)
-        }
-      }
-    }
-
-    private def arrayIndex(arrayType: SignatureType, index: Node): CangjieReferenceNode = index match {
-      case IntegralConst(i) => createConstIndexNode(i.toLong, arrayType, arrayType.getArrayElemType)
-      case _ => createIndexNode(index, arrayType, arrayType.getArrayElemType)
-    }
-
     private def varrayGet(arrayType: SignatureType.VArray, array: Node, index: Node): Node = {
       val elemType = arrayType.elemType
       if (elemType.isZST) {
@@ -2535,19 +2496,6 @@ trait CHIRParser
       mem
     }
 
-    private def needsCopy(sig: SignatureType): Boolean = {
-      sig.isRecord
-    }
-
-    private def copy(sig: SignatureType, to: Node, from: Node): Node = {
-      assert(sig.isRecord, sig)
-      if (sig.containsTypeVariables) {
-        CopyStructureGeneric(sig)(maybeDerivedPtrBase(to), to, maybeDerivedPtrBase(from), from, loadTypeInfo(sig))
-      } else {
-        CopyStructure(sig)(maybeDerivedPtrBase(to), to, maybeDerivedPtrBase(from), from)
-      }
-    }
-
     private def typeInfoSigs(fields: Seq[CangjieReferenceNode]): Seq[SignatureType] = {
       fields.head.refType +: fields.map(_.fieldType)
     }
@@ -2578,6 +2526,58 @@ trait CHIRParser
     }
     loadTypeInfo(layoutType)
   }
+
+  private def needsCopy(sig: SignatureType): Boolean = {
+    sig.isRecord
+  }
+
+  private def copy(sig: SignatureType, to: Node, from: Node): Node = {
+    assert(sig.isRecord, sig)
+    if (sig.containsTypeVariables) {
+      CopyStructureGeneric(sig)(maybeDerivedPtrBase(to), to, maybeDerivedPtrBase(from), from, loadTypeInfo(sig))
+    } else {
+      CopyStructure(sig)(maybeDerivedPtrBase(to), to, maybeDerivedPtrBase(from), from)
+    }
+  }
+
+  private def arrayPut(arrayType: SignatureType, array: Node, idx: Node, value: Node): Unit = {
+      val elemType = arrayType.getArrayElemType
+      if (!elemType.isZST) {
+        val field = arrayIndex(arrayType, idx)
+        if (elemType.isVariableSizeType) {
+          StoreFieldSeq(maybeDerivedPtrBase(array), array, value, field, loadTypeInfo(elemType))
+        } else if (needsCopy(elemType)) {
+          val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
+          copy(elemType, addr, value)
+        } else {
+          StoreFieldSeq(maybeDerivedPtrBase(array), array, value, field)
+        }
+      }
+    }
+
+    private def arrayGet(arrayType: SignatureType, array: Node, idx: Node): Node = {
+      val elemType = arrayType.getArrayElemType
+      if (elemType.isZST) {
+        Void()
+      } else {
+        val field = arrayIndex(arrayType, idx)
+        if (elemType.isVariableSizeType) {
+          LoadFieldSeq(maybeDerivedPtrBase(array), array, field, loadTypeInfo(elemType))
+        } else if (needsCopy(elemType)) {
+          val local = StackAlloc.Local(elemType)
+          val addr = GetFieldSeqRef(maybeDerivedPtrBase(array), array, field)
+          copy(elemType, local, addr)
+          local
+        } else {
+          LoadFieldSeq(maybeDerivedPtrBase(array), array, field)
+        }
+      }
+    }
+
+    private def arrayIndex(arrayType: SignatureType, index: Node): CangjieReferenceNode = index match {
+      case IntegralConst(i) => createConstIndexNode(i.toLong, arrayType, arrayType.getArrayElemType)
+      case _ => createIndexNode(index, arrayType, arrayType.getArrayElemType)
+    }
 
   private def createNoneReferenceNode(refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
     if (refType.isVariableLayoutType) {
