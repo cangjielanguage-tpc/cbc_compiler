@@ -1934,7 +1934,7 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
       case AJ_LONG_SAFE => CallGCActions(inlineContext.method.hasManagedExecEnv, RT.ExecEnv.safeSectionEntranceFrameAddr,
         checkGCSafeState = env.enabled(GCSafetyChecks))
 
-      case CJ_FOREIGN => CallGCActions(inlineContext.method.hasManagedExecEnv, RT.ExecEnv.nativeWrapperFrameAddr, checkGCSafeState = false)
+      case CJ_FOREIGN => emptyGCActions
 
       case NORMAL => emptyGCActions
     }
