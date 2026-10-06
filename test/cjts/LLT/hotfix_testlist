@@ -242,11 +242,6 @@ compiler/Sema/typealias/typealias18.cj
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
 
-# bug 70 (Unexpected TypeVariable.symType)
-compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_6.cj
-compiler/Sema/forin/forin14.cj
-compiler/Sema/typealias/overload_and_alias1/main.cj
-
 # bug 78 (not found function: native_entry)
 compiler/CodegenCJNative/LegacyTests/native.cj
 compiler/FFI/CFFI/record/small_15.cj
