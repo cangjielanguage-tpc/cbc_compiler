@@ -34,7 +34,7 @@
   @end
 @end
 
-@method_ref qwerty         = aot:A@aref qwerty()I64 #qwerty_data
+@method_ref qwerty         = aot:A@aref qwerty(aot:A@aref)I64 #qwerty_data
 @method_ref packageInitRef = aot@aref packageInit()Unit #packageInit
 
 @type default

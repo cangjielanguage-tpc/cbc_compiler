@@ -139,10 +139,13 @@ object CbcFileFormat {
       def apply(mask: Int): FS
       def empty: FS = apply(Seq.empty)
 
-      def apply(flags: IterableOnce[F]): FS = apply(flags.iterator.foldLeft(0)((l, r) =>
-        assert((r.mask & l) == 0, s"$r is not disjoint with $l")
-        l | r.value
-      ))
+      def apply(flags0: IterableOnce[F]): FS = {
+        val flags = flags0.iterator.toSeq
+        apply(flags.foldLeft(0)((l, r) =>
+          assert((r.mask & l) == 0, s"$r is not disjoint with $flags")
+          l | r.value
+        ))
+      }
     }
   }
 
@@ -203,12 +206,13 @@ object CbcFileFormat {
     case HAS_OUTER_TI extends MethodFlag(0x0800, 0x0800)
 
     // enum on 0x1000, 0x2000, 0x4000, mask = 0x7000
-    case STATIC        extends MethodFlag(0x7000, 0x1000 * 0) // default enum value
-    case HAS_THIS_TI   extends MethodFlag(0x7000, 0x1000 * 1)
-    case MUT           extends MethodFlag(0x7000, 0x1000 * 2) // has MUT <=> has extra parameter (not just source-level indicator)
-    case REC_RECEIVER  extends MethodFlag(0x7000, 0x1000 * 3)
-    case REF_RECEIVER  extends MethodFlag(0x7000, 0x1000 * 4)
-    case PRIM_RECEIVER extends MethodFlag(0x7000, 0x1000 * 5)
+    case STATIC         extends MethodFlag(0x7000, 0x1000 * 0) // default enum value
+    case HAS_THIS_TI    extends MethodFlag(0x7000, 0x1000 * 1)
+    case MUT            extends MethodFlag(0x7000, 0x1000 * 2) // has MUT <=> has extra parameter (not just source-level indicator)
+    case REC_RECEIVER   extends MethodFlag(0x7000, 0x1000 * 3)
+    case REF_RECEIVER   extends MethodFlag(0x7000, 0x1000 * 4)
+    case PRIM_RECEIVER  extends MethodFlag(0x7000, 0x1000 * 5)
+    case FPRIM_RECEIVER extends MethodFlag(0x7000, 0x1000 * 6)
   }
 
   enum MethodRefFlag(val mask: Int, override val value: Int) extends Flag {
@@ -217,12 +221,13 @@ object CbcFileFormat {
     case HAS_FTVARS   extends MethodRefFlag(0x04, 0x04)
 
     // enum on 0x8, 0x10, 0x20 bits, mask = 0x38
-    case STATIC        extends MethodRefFlag(0x38, 0x8 * 0) // default enum value
-    case HAS_THIS_TI   extends MethodRefFlag(0x38, 0x8 * 1)
-    case MUT           extends MethodRefFlag(0x38, 0x8 * 2)
-    case REC_RECEIVER  extends MethodRefFlag(0x38, 0x8 * 3)
-    case REF_RECEIVER  extends MethodRefFlag(0x38, 0x8 * 4)
-    case PRIM_RECEIVER extends MethodRefFlag(0x38, 0x8 * 5)
+    case STATIC         extends MethodRefFlag(0x38, 0x8 * 0) // default enum value
+    case HAS_THIS_TI    extends MethodRefFlag(0x38, 0x8 * 1)
+    case MUT            extends MethodRefFlag(0x38, 0x8 * 2)
+    case REC_RECEIVER   extends MethodRefFlag(0x38, 0x8 * 3)
+    case REF_RECEIVER   extends MethodRefFlag(0x38, 0x8 * 4)
+    case PRIM_RECEIVER  extends MethodRefFlag(0x38, 0x8 * 5)
+    case FPRIM_RECEIVER extends MethodRefFlag(0x38, 0x8 * 6)
 
     case AOT          extends MethodRefFlag(0x40, 0x40)
   }
@@ -380,6 +385,9 @@ object CbcFileFormat {
       def setSourceFullName(linkageName: String): Unit
       def setLinkageName(fullName: String): Unit
       def setSourceFile(fileName: String): Unit
+      def setGenericParamCount(n: Int): Unit
+
+      def +=(flag: MethodFlag): Unit = addFlag(flag)
     }
   }
 
@@ -532,6 +540,7 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     private var linkageName: Option[String] = None
     private var sourceFullName: Option[String] = None
     private var sourceFile: Option[String] = None
+    private var genericParamCount: Int = 0
 
     override def setName(name: String): Unit = this.name = name
 
@@ -552,6 +561,7 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
     override def setLinkageName(fullName: String): Unit = this.linkageName = Some(fullName)
     override def setSourceFullName(linkageName: String): Unit = this.sourceFullName = Some(linkageName)
     override def setSourceFile(fileName: String): Unit = this.sourceFile = Some(fileName)
+    override def setGenericParamCount(n: Int): Unit = this.genericParamCount = n
 
     def build(): CbcFileFormat.Method = Method(
       name = name.nn,
@@ -561,7 +571,8 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
       flags = MethodFlags(flags),
       sourceFullName = sourceFullName,
       sourceFile = sourceFile,
-      linkageName = linkageName
+      linkageName = linkageName,
+      genericParameters = genericParamCount
     )
   }
   

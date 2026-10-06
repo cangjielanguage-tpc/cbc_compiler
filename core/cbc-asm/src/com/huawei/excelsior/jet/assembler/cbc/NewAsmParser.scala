@@ -305,9 +305,14 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       val refType = parseType()
       val name = parseIdent()
       val signature = parseFunctional()
+      val ftvars = if (current.is(LParen)) {
+        parseTypeList(LParen, RParen)
+      } else {
+        Seq.empty
+      }
       val flags = parseMethodRefFlags()
       val aotData = parseAotData()
-      MethodReference(name, refType, signature, flags, aotData = aotData)
+      MethodReference(name, refType, signature, flags, aotData = aotData, ftvars)
     }
 
     def parse[T](expected: => String, default: => T)(pf: PartialFunction[Token, T]): T = {

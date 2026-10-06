@@ -89,12 +89,21 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       if (mt.hasOuterTypeInfoParameter) flags += MethodRefFlag.HAS_OUTER_TI
       
       if (mt.hasThisTypeInfoParameter)  flags += MethodRefFlag.HAS_THIS_TI
-      if (mt.hasReferenceReceiver)      flags += MethodRefFlag.REF_RECEIVER
-      if (mt.hasRecordReceiver)         flags += MethodRefFlag.REC_RECEIVER
       if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT
 
-      if (mt.hasReceiverParameter && !mt.hasReferenceReceiver && !mt.hasRecordReceiver)
-        flags += MethodRefFlag.PRIM_RECEIVER
+      if (mt.hasReceiverParameter) {
+        import TypeKind.*
+        import SignatureType.*
+        val receiver = mt.parameterType(mt.getReceiverArgIdx)
+        (Wrapper.skip(receiver), receiver.symKindErased) match {
+          case (_, x) if x.isReference     => flags += MethodRefFlag.REF_RECEIVER
+          case (_, x) if x.isFloatingPoint => flags += MethodRefFlag.FPRIM_RECEIVER
+          case (_, RECORD)                 => flags += MethodRefFlag.REC_RECEIVER
+          case (Unit, _)                   => flags += MethodRefFlag.REC_RECEIVER
+          case (_, VOID)                   => shouldNotReachHere(s"Unexpected type kind VOID for $receiver in method $method")
+          case _                           => flags += MethodRefFlag.PRIM_RECEIVER
+        }
+      }
 
       CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData, typeVars = typeVars)
     case symbol: CangjieFieldReference => // Field reference

@@ -10,7 +10,7 @@
 @aot.instance i16_Idx  = 2
 @aot.instance i32_Idx  = 3
 
-@method_ref print = aot@aref println()Unit #printLnk
+@method_ref print = aot@aref println(I64)Void #printLnk
 
 @field_ref rec_i8_1 = aot:Foo@arec i8_1 I8 #i8_1_Idx
 @field_ref rec_i8_2 = aot:Foo@arec i8_2 I8 #i8_2_Idx

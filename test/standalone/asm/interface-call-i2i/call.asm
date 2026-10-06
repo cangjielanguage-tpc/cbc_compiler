@@ -41,7 +41,7 @@
   @end
 @end
 
-@method_ref mfoo = default:I@ref foo()Void
+@method_ref mfoo = default:I@ref foo()Void [REF_RECEIVER]
 @type default
   @method main()I64
     @code

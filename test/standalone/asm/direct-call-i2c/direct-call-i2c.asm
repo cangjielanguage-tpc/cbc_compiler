@@ -6,8 +6,8 @@
 @aot.direct printlnLnk  = "_CN3aot9testPrintHl"
 @aot.direct packageInit = "_CGP3aotiiHv"
 
-@method_ref testPrint      = aot@aref testPrint()I64 #printlnLnk
-@method_ref packageInitRef = aot@aref packageInit()Unit #packageInit
+@method_ref testPrint      = aot@aref testPrint(I64)I64 #printlnLnk
+@method_ref packageInitRef = aot@aref packageInit()Void #packageInit
 
 @type default
 

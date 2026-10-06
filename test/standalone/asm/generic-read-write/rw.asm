@@ -5,7 +5,8 @@
 
 @aot.direct invokeLnk = "_CN3aot6invokeIG_HCNY_3FooIG_EG_"
 
-@method_ref invoke = aot@aref invoke(aot:Foo[%%0]@aref, %%0)Void #invokeLnk
+; FIXME: must be instantiated
+@method_ref invoke = aot@aref invoke(aot:Foo[%%0]@aref, %%0)Void (%0) #invokeLnk
 
 @type std.core:Object
   @flags PUBLIC AOT
