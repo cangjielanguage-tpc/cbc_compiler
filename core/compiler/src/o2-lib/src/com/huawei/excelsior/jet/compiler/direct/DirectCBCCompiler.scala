@@ -125,6 +125,12 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     }
     val func: CHIR.Func = resolver.pkg.function(chirDef.id)
     if (func.body.isEmpty) { if (sys.env.contains("DIRECT_CBC_WHY")) System.err.println(why + "empty body"); return false }
+    // Mut methods (SMutRecord/SMutObject receiver specials) use the derived
+    // record ABI that our pointer-based slot model does not reproduce
+    if (method.getMethodType.hasMutRecordParameter) {
+      if (sys.env.contains("DIRECT_CBC_WHY")) System.err.println(why + "mut record method")
+      return false
+    }
 
     if (sys.env.contains("DIRECT_CBC_DUMP") && method.toString.contains(sys.env("DIRECT_CBC_DUMP"))) {
       System.err.println(s"=== CHIR of $method ===")
@@ -1214,6 +1220,9 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val hostSig = sigOf(e.base).getOrElse(return fail("field: unknown host sig"))
       lazy val preChain = fieldChain(hostSig, e.path)
       if (!canFieldHost(hostSig, preChain)) return fail(s"field on non-ref host $hostSig")
+      // A record host needs marker-based (derived-REC) addressing that our
+      // flat slot model cannot reproduce for stack records - fall back
+      if (!hostSig.isTraceableReference) return fail(s"field on record host $hostSig")
       touch(e.base)
       resultOf(e).foreach(res => touch(res))
       val chain = fieldChain(hostSig, e.path)
@@ -1299,7 +1308,18 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val fr = fieldRef(pidx, f, rt, ft)
       if (sys.env.contains("DIRECT_CBC_ARGDUMP"))
         System.err.println(s"[ser] host=${sigOf(e.location)} path=${e.path} field=${f} idx=${f.getFieldIndex} ft=$ft")
-      if (ft.isRecord && !ft.isVariableSizeType) {
+      if (ft.isRecord && ft.isVariableSizeType) {
+        // variable-size record-valued field: production lowers this to a
+        // GENERIC field store (lea.g via the host TI + st.g with the value
+        // TI); a plain typed St with REC kind is not engine-rewritable
+        // regs mirror production: IR5=host TI, IR1=lea dst, IR4=value TI,
+        // SCRATCH2=host ref (base), IR3=value address (src)
+        lowerTypeInfo(IR5, rt)
+        lowerTypeInfo(IR4, ft)
+        loadToReg(e.value, IR3) // address of the value's record memory
+        asm.leaGeneric(IR1, SCRATCH2, IR5, fr)
+        asm.st(IR3, SCRATCH2, IR1, IR4, fr)
+      } else if (ft.isRecord && !ft.isVariableSizeType) {
         // record-valued field: byte copy into the field (plain StoreField
         // with REC kind is not engine-rewritable). Base regs mirror
         // production CopyStructure: dst base = the host record (its own ref
@@ -1310,12 +1330,20 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
             case a: CHIR.Allocate => !resolver.typeSig(a.allocatedType).isTraceableReference
             case _ => false
           }
-          case p: CHIR.Parameter => true // mut receiver = stack record
+          // only a MUT method's receiver is a stack record; a class method's
+          // `this` is a heap reference even though it is a Parameter
+          case p: CHIR.Parameter => method.getMethodType.hasMutRecordParameter
           case _ => false
         }
         val (dstBase, dstAddr) =
-          if (isStackRecord(e.location)) { asm.movbp(SCRATCH3, local = true); (SCRATCH3, SCRATCH2) }
-          else { asm.ld(SCRATCH3, SCRATCH2, fr); (SCRATCH2, SCRATCH3) } // REC load = LD_LEA
+          if (isStackRecord(e.location)) {
+            // stack-record receiver: dst = the FIELD address as a derived REC
+            // (this offset + field offset, LOCAL marker preserved by lea)
+            asm.movbp(SCRATCH3, local = true)
+            asm.lea(SCRATCH, SCRATCH2, fr)
+            (SCRATCH2, SCRATCH)
+          }
+          else { asm.lea(SCRATCH3, SCRATCH2, fr); (SCRATCH2, SCRATCH3) } // explicit Lea: a REC Ld may not establish the derivation
         loadToReg(e.value, SCRATCH) // address of the value's record memory
         asm.movbp(IR4, local = true)
         asm.copy(dstBase, dstAddr, IR4, SCRATCH, ft.toCbc)
@@ -2106,6 +2134,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       // SMutRecord/SMutObject start specials: both receive the record
       // receiver's address (SMutRecArg/SMutObjectArg are address markers in
       // production; the entry side treats the SMutRecord param as the receiver).
+      if (calleeMt.hasMutRecordParameter)
+        return fail("call to mut record method") // derived-record ABI not modeled
       val mutLocs: Seq[IR] =
         if (calleeMt.hasMutRecordParameter && !calleeMt.hasReceiverParameter) {
           val base = calleeStart - (if (calleeMt.hasMutObjectParameter) 2 else 1)
