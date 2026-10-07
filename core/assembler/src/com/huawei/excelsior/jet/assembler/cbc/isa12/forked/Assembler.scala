@@ -608,7 +608,7 @@ trait ForkedAssembler {
     stream
       .opc8(CallInterf)
       .sym16(ref)
-    stream.callArgs(params)
+      .callArgs(params)
     saveState()
   }
 
@@ -622,7 +622,7 @@ trait ForkedAssembler {
       .opc8(Opcode.CallInterfGeneric)
       .write16(outerTiIdx)
       .sym16(ref)
-    stream.callArgs(params)
+      .callArgs(params)
     saveState()
   }
 
@@ -631,7 +631,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.CallDirect)
       .sym16(ref)
-    stream.callArgs(params)
+      .callArgs(params)
     saveState()
   }
 
@@ -640,7 +640,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.CallVirt)
       .sym16(ref)
-    stream.callArgs(params)
+      .callArgs(params)
     saveState()
   }
 
@@ -649,7 +649,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.CallClosure)
       .sym16(tpe)
-    stream.callArgs(params)
+      .callArgs(params)
     saveState()
   }
 
@@ -658,7 +658,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.CallClosureGeneric)
       .sym16(tpe)
-    stream.callArgs(params)
+      .callArgs(params)
     saveState()
   }
 
