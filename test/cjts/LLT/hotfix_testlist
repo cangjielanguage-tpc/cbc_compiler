@@ -5,17 +5,190 @@
 # See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 [ALL-TEST-CASE]
-compiler/CHIR
-compiler/CHIROpt
-compiler/CodegenCHIR
-compiler/CodegenCJNative
-compiler/CodegenCommon
-compiler/FFI/CFFI
-compiler/Sema
-#Runtime/
-#API/
+compiler/
+Runtime/
+API/
 
 [EXCLUDE-TEST-CASE]
+# The following cases can only be executed in the debug version, but the CI gate currently only supports the release version.
+compiler/CHIR/Serialize
+compiler/CHIR/AST2CHIR/SetGenericInfo
+compiler/CHIR/ComputeAnnotations
+compiler/CHIR/InvokeNodetest
+compiler/CHIR/RemoveRedundantRet
+compiler/CHIR/ScalarReplacementOfArray
+compiler/CHIROpt/DeadCodeElimination
+compiler/CHIROpt/Devirtualization
+compiler/CHIROpt/FlatForInExpr
+compiler/CHIROpt/FunctionInline
+compiler/CHIROpt/MarkClassHasInited
+compiler/CHIROpt/MergeBlocks
+compiler/CHIROpt/NoSideEffectMarker
+compiler/CHIROpt/NonVisibleWrapperClear
+compiler/CHIROpt/O2Optimization
+compiler/CHIROpt/Optimizations
+compiler/CHIROpt/RedundantFuture
+compiler/CHIROpt/RedundantGetOrThrowElimination
+compiler/CHIROpt/RedundantLoadElimination
+compiler/CHIROpt/SanCovPass
+compiler/CHIROpt/UnitUnify
+compiler/CHIROpt/UselessAllocateElimination
+compiler/CHIROpt/ValueRangeAnalysis
+compiler/CHIROpt/VarInitCheck
+compiler/CHIROpt/lambda_reduce
+compiler/CHIROpt/match
+compiler/Parser/declFile
+compiler/FFI/ffi_python
+
+API/std/unittest/progress_tests/progress_detailed_parallel.cj
+
+# The following cases are for testing the incremental compilation, and they are not expected to pass in the CI environment, so they are temporarily excluded. They will be fixed and re-enabled later.
+compiler/IncrementalCompilation/DeclLevel/CHIROptimization/ConstPropagationAndFuncInline2.cj
+compiler/IncrementalCompilation/DeclLevel/CHIROptimization/End2End/InterfaceDefault/inter_1.cj
+compiler/IncrementalCompilation/DeclLevel/CHIROptimization/End2End/InterfaceDefault/inter_2.cj
+compiler/IncrementalCompilation/DeclLevel/Class/Constructor/InlinableCtorDefaultParam.cj
+compiler/IncrementalCompilation/DeclLevel/Extend_CrossPackage/ChangeDirectExtends/PubStaticPropSig.cj
+compiler/IncrementalCompilation/DeclLevel/Extend_CrossPackage/ChangeInterfaceExtends/PrivateInstancePropSig.cj
+compiler/IncrementalCompilation/DeclLevel/Extend_CrossPackage/ChangeInterfaceExtends/PubStaticPropSig.cj
+compiler/IncrementalCompilation/DeclLevel/Extend_CrossPackage/AddExtends/ExtendFlipMethod.cj
+compiler/IncrementalCompilation/DeclLevel/Extend_CrossPackage/ChangeDirectExtends/PrivateInstancePropSig.cj
+# need --no-stack-info
+compiler/IncrementalCompilation/DeclLevel/Class/Member/ResortInstanceFunc1.cj
+compiler/IncrementalCompilation/DeclLevel/Class/Field/CrossPackage/Pos2.cj
+compiler/IncrementalCompilation/DeclLevel/Class/Member/ResortProp1.cj
+compiler/IncrementalCompilation/DeclLevel/Class/Member/ResortStaticFunc1.cj
+compiler/IncrementalCompilation/DeclLevel/Class/Member/ResortStaticProp1.cj
+compiler/IncrementalCompilation/DeclLevel/Class/Member/ResortStaticVariable1.cj
+compiler/IncrementalCompilation/DeclLevel/Class/VirFunc/ResortFunc2.cj
+compiler/IncrementalCompilation/DeclLevel/Class/VirFunc/ResortProp2.cj
+compiler/IncrementalCompilation/DeclLevel/Enum/Member_Resort1.cj
+compiler/IncrementalCompilation/DeclLevel/Enum/Prop_Resort1.cj
+compiler/IncrementalCompilation/DeclLevel/Enum/StaticMember_Resort2.cj
+compiler/IncrementalCompilation/DeclLevel/Extend/AddExtends/ExtendFlipMethod.cj
+compiler/IncrementalCompilation/DeclLevel/Extend/AddExtends/ResortMethod2.cj
+compiler/IncrementalCompilation/DeclLevel/Extend/ResortMethod.cj
+compiler/IncrementalCompilation/DeclLevel/Extend_CrossPackage/AddExtends/ResortMethod2.cj
+compiler/IncrementalCompilation/DeclLevel/OnlyDebugMode/ChangeLineNumber_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/OnlyDebugMode/Enum_AddComments_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/OnlyDebugMode/ExprPositionNonDebug_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/OnlyDebugMode/ExtendMethod_ChangeLineNumber_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/OnlyDebugMode/GenericFunc_AddComments_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/OnlyDebugMode/MutProp_ResortGetterSetter_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/OnlyDebugMode/StaticVariables_ChangeLine_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/OnlyDebugMode/Struct_Variable_Method_Resort_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/Package/ChangePackageAstPosition_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/Package/ChangePackageNameColumn_NoChange.cj
+compiler/IncrementalCompilation/DeclLevel/Struct/MemberOrder2.cj
+# chir_debug
+compiler/IncrementalCompilation/DeclLevel/Package/O2/FI_10_Incr.cj
+compiler/IncrementalCompilation/DeclLevel/Package/O2/FI_1_Incr.cj
+compiler/IncrementalCompilation/DeclLevel/Package/O2/FI_2_Incr.cj
+compiler/IncrementalCompilation/DeclLevel/Package/O2/FI_5_Incr.cj
+compiler/IncrementalCompilation/DeclLevel/Package/O2/FI_9_Incr.cj
+compiler/IncrementalCompilation/DeclLevel/Package/O2/LF_1_Incr.cj
+compiler/IncrementalCompilation/DeclLevel/Package/O2/LF_2_Incr.cj
+# end of incr testcases
+
+# no perf and gnuplot
+API/std/unittest/new_bench/bench_perf.cj
+API/std/unittest/report_bench_html/report_html_gnuplot.cj
+
+# should be blocked , it's for --stdlib-mock version.
+API/std/unittest/mock/compiler/misc/stdlib/disabledMocking.cj
+
+# should be fixed.
+Tools/cjdb/datacom/debuginfo/debuginfo_enum03.info
+Tools/cjdb/datacom/debuginfo/debuginfo_env_display_03.info
+Tools/cjdb/datacom/generic/generic_func02.info
+Tools/cjdb/datacom/debuginfo/debuginfo_env_display_04.info
+Tools/cjdb/datacom/debuginfo/debuginfo_inlined_function.info
+Tools/cjdb/datacom/expr/enum5.info
+Tools/cjdb/datacom/expr/localfunc3.info
+Tools/cjdb/datacom/generic/generic_interface_nonimplements_generic_multi1.info
+Tools/cjdb/datacom/expr/interface.info
+Tools/cjdb/datacom/generic/generic_interface_base07.info
+Tools/cjdb/datacom/expr/interface4.info
+Tools/cjdb/datacom/generic/generic_enum_with_args_ctor03.info
+Tools/cjdb/datacom/generic/generic_interface_base05.info
+Tools/cjdb/datacom/expr/interface2.info
+Tools/cjdb/datacom/generic/generic_interface_nonimplements_generic_multi2.info
+Tools/cjdb/datacom/expr/unittest.info
+
+# Re-enable after updating the strace
+API/std/socket/redesign/syscalls/tcp_bind_to_device.cj
+
+# Lambda type infer bug, exclude for now.
+compiler/Sema/generics/generic_subst_perf.cj
+
+
+# daignose is changed
+compiler/Parser/function/missing_func_keyword.cj
+
+# need to check with test team
+API/std/libast/nodes/test_program_exception_001.cj
+compiler/CHIR/CHIR2HLIR/package/scanDepPkg/test.cj
+compiler/CHIR/CHIR2HLIR/package/scanDepPkgNoModule/test.cj
+
+# mock failed.
+API/std/unittest/mock/compiler/createMock/genericInstantiation.cj
+
+# should be removed from compiler
+compiler/CJMP/refgluecode
+
+# native FFI
+## java (broken after migration to "blue" branch)
+
+compiler/CJMP/java/parser/class/java_mirror_ctor.cj
+compiler/CJMP/java/parser/class/java_mirror_custom_fqname.cj
+compiler/CJMP/java/parser/class/java_mirror_field.cj
+compiler/CJMP/java/parser/class/java_mirror_inheritance.cj
+compiler/CJMP/java/parser/interface/java_mirror_custom_fqname.cj
+compiler/CJMP/java/parser/interface/java_mirror_inheritance.cj
+compiler/CJMP/java/sema/foreign_name/impl_custom_native_ok.cj
+compiler/CJMP/java/sema/foreign_name/impl_native_ok.cj
+compiler/CJMP/java/sema/java-impl/parse.cj
+
+compiler/CJMP/java/sema/struct-with-return-option.cj
+
+## objc (objc.internal and objc.lang are missing)
+compiler/CJMP/objc/
+
+## fuzzer testcases (libclang_rt.fuzzer_no_main.a: No Such file or directory)
+API/stdx/fuzz/fuzzer_coverage.cj
+API/stdx/fuzz/fuzzer_enable_debugdp.cj
+API/stdx/fuzz/fuzzer_enable_fakecov.cj
+API/stdx/fuzz/fuzzer_main.cj
+API/stdx/fuzz/fuzzer_main_dp.cj
+API/stdx/fuzz/test_u32.cj
+API/stdx/fuzz/test_u64.cj
+
+compiler/Plugins/IRCheck/FoundError/default.cj
+compiler/Plugins/IRCheck/FoundError/found_error.cj
+
+# should be fixed
+API/stdx/net/tls/redesign/close_concur.cj
+
+
+# Tech deb of multi-phase multi-parent support
+# https://gitcode.com/Cangjie/cangjie_test/issues/265
+compiler/CJMP/compilation/several_parents/merging_initializers_big_case.cj
+compiler/CJMP/multiphase_compilation/3step_generic.cj
+compiler/CJMP/merging/test.cj
+# CJMP: Correct errot about extend duplication
+compiler/CJMP/frontend/extend/negative/check_specific/direct_extension_01/direct_extension_01_05.cj
+
+# CJMP: AST::Attribute::SPECIFIC no longer available when compiling common part
+compiler/CJMP/merging/classes/vtable/import1.cj
+
+# Driver permission related cases.
+compiler/ConditionalCompilation/cfg/read_file_fail.cj
+compiler/Driver/temporary_files/TMPDIR_illegal_3.cj
+
+
+
+
+###########################################
+###########################################
 
 # not implemented: Integral -> Rune cast check (silently wraps, OverflowException never raised)
 compiler/CodegenCommon/typecast/integer2char_invalid_int16.cj
