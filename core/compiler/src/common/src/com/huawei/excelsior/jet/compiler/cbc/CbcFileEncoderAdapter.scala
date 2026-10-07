@@ -86,7 +86,12 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
 
     builder.setBytecodeVersion(Assembler.BYTECODE_VERSION)
 
-    val (cbcDeps, aotDeps) = allClasses.filter(_.isCangjiePackage).partition(_.isCHIRDef)
+    val (cbcDeps, aotDeps) = {
+      val p = allClasses.filter(_.isCangjiePackage).partition(_.isCHIRDef)
+      if (sys.env.contains("DIRECT_CBC_DEBUG2"))
+        System.err.println(s"[deps] cbcDeps=${p._1.map(_.getName).mkString(",")} aotDeps=${p._2.map(_.getName).mkString(",")} optCbcAOTDeps=${Option(env.valueOfOrNull(StrOption.CbcAOTDeps))}")
+      p
+    }
     builder.setCbcDeps(cbcDeps.map(_.getName).mkString(":"))
     if (env.defined(StrOption.AllCbcAOTDeps)) {
       builder.setAotDeps(env.valueOf(StrOption.AllCbcAOTDeps))
