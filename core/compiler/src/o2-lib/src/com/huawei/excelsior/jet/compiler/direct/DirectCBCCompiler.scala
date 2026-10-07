@@ -72,9 +72,11 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
   var fallbackNanos: Long = 0L
 
   private val disablePat = sys.env.getOrElse("DIRECT_CBC_DISABLE", "")
+  private def whyHead: String = if (sys.env.contains("DIRECT_CBC_WHY")) "DIRECT-CBC fell back: " else null
 
   override def compileMethod(m: pcO.Method, versioned: symlevel.impl.light.VersionedMethod): Unit = {
     if (versioned != null) {
+      if (sys.env.contains("DIRECT_CBC_WHY")) System.err.println("DIRECT-CBC versioned: " + env.fromO2(m).toString)
       fallback.compileMethod(m, versioned)
       return
     }
@@ -102,6 +104,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       if (sys.env.contains("DIRECT_CBC_LIST")) System.err.println("DIRECT-CBC ok " + env.fromO2(m).toString)
     } else {
       fallbackCount += 1
+      if (sys.env.contains("DIRECT_CBC_WHY")) System.err.println(whyHead + env.fromO2(m).toString)
       fallback.compileMethod(m, versioned)
       fallbackNanos += System.nanoTime() - t1
     }
@@ -109,11 +112,12 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
 
   private def tryDirect(m: pcO.Method): Boolean = {
     val method = env.fromO2(m)
-    if (method.isAbstract || method.isNative) return false
-    val chirDef = m.getCHIRDef.getOrElse(return false)
+    val why = s"DIRECT-CBC skip in method $method: "
+    if (method.isAbstract || method.isNative) { if (sys.env.contains("DIRECT_CBC_WHY")) System.err.println(why + "abstract/native"); return false }
+    val chirDef = m.getCHIRDef.getOrElse { if (sys.env.contains("DIRECT_CBC_WHY")) System.err.println(why + "no CHIRDef"); return false }
     implicit val resolver: CHIRResolver = CHIRLoader.getCHIRResolver(chirDef.source.toString)(env)
     val func: CHIR.Func = resolver.pkg.function(chirDef.id)
-    if (func.body.isEmpty) return false
+    if (func.body.isEmpty) { if (sys.env.contains("DIRECT_CBC_WHY")) System.err.println(why + "empty body"); return false }
 
     if (sys.env.contains("DIRECT_CBC_DUMP") && method.toString.contains(sys.env("DIRECT_CBC_DUMP"))) {
       System.err.println(s"=== CHIR of $method ===")
@@ -126,7 +130,9 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
     }
     val ctx = new MethodContext(method, func, chirDef.source.toString)
-    ctx.translate() && { ctx.send(); true }
+    val ok = ctx.translate() && { ctx.send(); true }
+    if (!ok && sys.env.contains("DIRECT_CBC_WHY")) System.err.println(s"DIRECT-CBC skip2 in method $method: translate/send returned false")
+    ok
   }
 
   private def dumpExpr(e: CHIR.Expression): String = e match {
@@ -138,6 +144,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     case f: CHIR.Field => s"Field(base=${dumpVal(f.base)} path=${f.path})"
     case g: CHIR.GetElementRef => s"GetElementRef(base=${dumpVal(g.base)} path=${g.path})"
     case s: CHIR.StoreElementRef => s"StoreElementRef(loc=${dumpVal(s.location)} path=${s.path} value=${dumpVal(s.value)})"
+    case i: CHIR.Intrinsic => s"Intrinsic(${i.kind} args=${i.args.map(dumpVal).mkString(",")})"
     case t: CHIR.Terminator => s"Terminator(${t.getClass.getSimpleName})"
     case other => other.getClass.getSimpleName
   }
@@ -156,8 +163,19 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     /** Own-method ABI param registers (set during entry spill) — used to read
       * the method's own generic func params and outer TI. */
     private var ownParamLocs: Seq[Location] = Seq.empty
-    private var ownOuterTiLoc: Option[IR] = None
-    private var ownThisTiLoc: Option[IR] = None
+    /** Own OuterTI/ThisTI param location: Left = register, Right = tail slot
+      * index (read back from the tail register at use). */
+    private var ownOuterTiLoc: Option[Either[IR, Int]] = None
+    private var ownThisTiLoc: Option[Either[IR, Int]] = None
+    private def ownTiReg(loc: Either[IR, Int], dst: IR): IR = loc match {
+      case Left(r) => r
+      case Right(slotIdx) =>
+        val tr = DirectCBCCompiler.platform(env).tailRegister
+        asm.loadRawMemory(dst, tr, LoadAccessKind.from(CbcTypeKind.REF), slotIdx.toLong * 8)
+        dst
+    }
+    /** Declaring class is a Cangjie package (production: rootMethod.getDeclaringClass.isCangjiePackage). */
+    private val mDeclClassCangjiePackage: Boolean = method.getDeclaringClass.isCangjiePackage
     private def fail(msg: String): Unit = {
       if (sys.env.contains("DIRECT_CBC_BAIL")) System.err.println(s"DIRECT-CBC bail $method: $msg")
       bail_ = true
@@ -446,11 +464,15 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
             else {
               ownParamLocs = regLocs.toSeq
               if (mt.hasOuterTypeInfoParameter)
-                locs.lift(mt.getOuterTypeInfoArgIdx).filter(_.isReg)
-                  .foreach(l => ownOuterTiLoc = Some(l.asReg.asInstanceOf[IR]))
+                locs.lift(mt.getOuterTypeInfoArgIdx).map {
+                  case l if l.isReg => Left(l.asReg.asInstanceOf[IR])
+                  case l => Right(locs.take(mt.getOuterTypeInfoArgIdx).count(x => !x.isReg))
+                }.foreach(l => ownOuterTiLoc = Some(l))
               if (mt.hasThisTypeInfoParameter)
-                locs.lift(mt.getThisTypeInfoArgIdx).filter(_.isReg)
-                  .foreach(l => ownThisTiLoc = Some(l.asReg.asInstanceOf[IR]))
+                locs.lift(mt.getThisTypeInfoArgIdx).map {
+                  case l if l.isReg => Left(l.asReg.asInstanceOf[IR])
+                  case l => Right(locs.take(mt.getThisTypeInfoArgIdx).count(x => !x.isReg))
+                }.foreach(l => ownThisTiLoc = Some(l))
               touch(params: _*)
               rcv.foreach(p => locs.lift(rcvIdx).filter(_.isReg)
                 .foreach(l => storeFromReg(p, l.asReg.asInstanceOf[IR], sigOf(p).get)))
@@ -548,7 +570,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
             if (!method.getMethodType.hasThisTypeInfoParameter)
               return fail("GetRTTIStatic: method has no ThisTypeInfo param")
             ownThisTiLoc match {
-              case Some(loc) => storeResult(e, loc, SignatureType.ThisTypeInfo)
+              case Some(loc) => storeResult(e, ownTiReg(loc, SCRATCH), SignatureType.ThisTypeInfo)
               case None => return fail("GetRTTIStatic: no own TI loc")
             }
           case e: CHIR.GetRTTI =>
@@ -1135,9 +1157,15 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         case Kind.ArrayBuiltinCopyTo =>
           // copy loop (production CHIRParser lowers ArrayBuiltInCopyTo to a
           // while loop of ArrayGet/ArrayPut or CopyStructure for records)
-          if (e.args.size != 6) return fail(s"arrayCopyTo: unexpected arity ${e.args.size}")
-          val Seq(arrTypeV, srcV, dstV, srcStartV, dstStartV, lenV) = e.args
-          val arrType = sigOf(arrTypeV).getOrElse(return fail("arrayCopyTo: unknown array sig"))
+          // arity 6: (arrayType sig, src, dst, srcStart, dstStart, len)
+          // arity 5: (src, dst, srcStart, dstStart, len) — elem type from src sig
+          val (arrTypeV, srcV, dstV, srcStartV, dstStartV, lenV) = e.args match {
+            case Seq(a, b, c, d, f, g) => (Some(a), b, c, d, f, g)
+            case Seq(b, c, d, f, g)    => (None, b, c, d, f, g)
+            case _ => return fail(s"arrayCopyTo: unexpected arity ${e.args.size}")
+          }
+          val arrType = arrTypeV.flatMap(sigOf).orElse(sigOf(srcV))
+            .getOrElse(return fail("arrayCopyTo: unknown array sig"))
           if (!arrType.isArray) return fail(s"arrayCopyTo on non-array $arrType")
           val elem = arrType.getArrayElemType
           if (elem.isZST) return
@@ -1283,6 +1311,71 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           asm.nullcheck(SCRATCH2)
           asm.lenarr(SCRATCH, SCRATCH2)
           storeResult(e, SCRATCH, resolver.typeSig(e.resultTpe))
+        case Kind.ArrayAcquireRawData =>
+          // MCC_AcquireRawData(array, bool* isCopy) -> raw pointer
+          // (production: RTSCall(RTSProc.CJ_AcquireRawData)(array))
+          val Seq(arrV) = e.args
+          val arrSig = sigOf(arrV).getOrElse(return fail("acquireRawData: unknown array sig"))
+          slot(arrV, arrSig)
+          resultOf(e).foreach(res => touch(res))
+          val proc = env.getRTSProc(com.huawei.excelsior.jet.compiler.RTSProc.CJ_AcquireRawData)
+          val procMt = proc.getMethodType
+          val procLocs = DirectCBCCompiler.platform(env).abi(procMt).paramLocations
+          loadToReg(arrV, procLocs(0).asReg.asInstanceOf[IR])
+          // isCopy out-param: address of a local 8-byte record slot
+          val isCopyTs = newTypedSlot(SignatureType.Tuple(SignatureType.Int64 :: Nil))
+          asm.ldstackrec(procLocs(1).asReg.asInstanceOf[IR], isCopyTs)
+          saveGCMapHere()
+          asm.callDirect(IR1, methodRef(proc))
+          storeResult(e, IR1, resolver.typeSig(e.resultTpe))
+        case Kind.ArrayReleaseRawData =>
+          // MCC_ReleaseRawData(array, rawPtr) (production: RTSCall(CJ_ReleaseRawData))
+          val Seq(arrV, ptrV) = e.args
+          val arrSig = sigOf(arrV).getOrElse(return fail("releaseRawData: unknown array sig"))
+          val ptrSig = sigOf(ptrV).getOrElse(return fail("releaseRawData: unknown ptr sig"))
+          slot(arrV, arrSig); slot(ptrV, ptrSig)
+          val proc = env.getRTSProc(com.huawei.excelsior.jet.compiler.RTSProc.CJ_ReleaseRawData)
+          val procMt = proc.getMethodType
+          val procLocs = DirectCBCCompiler.platform(env).abi(procMt).paramLocations
+          loadToReg(arrV, procLocs(0).asReg.asInstanceOf[IR])
+          loadToReg(ptrV, procLocs(1).asReg.asInstanceOf[IR])
+          saveGCMapHere()
+          asm.callDirect(IR1, methodRef(proc))
+          resultOf(e).foreach(res => touch(res))
+        case Kind.Preinitialize =>
+          // package-init: store initializer constants into static fields
+          // (production CHIRParser Preinitialize arm)
+          resolver.pkg.values.foreach {
+            case g: CHIR.GlobalVar if !resolver.isImported(g) =>
+              val s = sigOf(g).getOrElse(return fail(s"preinit: unknown sig for ${g.identifier}"))
+              if (!s.isZST && g.initializer.isDefined && !isFloat(s)) {
+                val f = staticFieldOf(g)
+                val fr = asm.adapter.field(symlevel.CangjieFieldReference(f, SignatureType.fromSymType(f.getDeclaringClass), f.getType))
+                g.initializer.get match {
+                  case CHIR.UnitLiteral => ()
+                  case _: CHIR.NullLiteral => asm.mov(SCRATCH, IRZ, reference = true)
+                  case v: CHIR.IntLiteral =>
+                    if (s == SignatureType.Int8 || s == SignatureType.Int16 || s == SignatureType.Int32 ||
+                        s == SignatureType.UInt8 || s == SignatureType.UInt16 || s == SignatureType.UInt32)
+                      asm.movi32(SCRATCH, v.value.toInt)
+                    else asm.movi64(SCRATCH, v.value)
+                  case v: CHIR.BoolLiteral => asm.movi32(SCRATCH, if (v.value) 1 else 0)
+                  case v: CHIR.RuneLiteral => asm.movi32(SCRATCH, v.value.toInt)
+                  case v: CHIR.StringLiteral =>
+                    // materialize the literal into a typed slot; the static
+                    // field holds its address (production: StackAlloc.Local +
+                    // Copy)
+                    val litSig = sigOf(v).getOrElse(stringSig)
+                    val ts = newTypedSlot(litSig)
+                    asm.initConstString(ts, new ConstStringSymbol(v.value))
+                    asm.ldstackrec(SCRATCH, ts)
+                  case _: CHIR.Func => () // called explicitly from global init
+                  case _ => return fail(s"preinit: unexpected initializer for ${g.identifier}")
+                }
+                asm.st(SCRATCH, fr)
+              }
+            case _ => ()
+          }
         case Kind.ObjectZeroValue =>
           // zero-initialized value of the result type (mirrors CHIRParser arm:
           // StackAlloc.Local for records, null for refs, zero register else)
@@ -1928,10 +2021,21 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
       t match {
         case tv: SignatureType.ClassTypeVariable =>
-          // TI of a class type parameter: extract from the outer TI
-          val outerTiLoc = ownOuterTiLoc.getOrElse(
-            return fail("typevar TI: method has no outer TI param"))
-          asm.typeArg(outerTiLoc, tv.idx, dst)
+          // TI of a class type parameter: production (CHIRParser.loadTypeInfo)
+          // uses the method's own generic func param when the declaring class
+          // is a Cangjie-package class, else the outer TI
+          val ownGeneric = mDeclClassCangjiePackage && method.getMethodType.hasGenericFuncParams
+          if (ownGeneric) {
+            val genCount = method.getGenericInfo.constraints.size
+            val loc = ownParamLocs.lift(
+              method.getMethodType.getGenericFuncParamsStartIdx(genCount) + tv.idx)
+              .getOrElse(return fail(s"typevar TI: no own generic param idx ${tv.idx}"))
+            asm.mov(dst, loc.asReg.asInstanceOf[IR], reference = true)
+          } else {
+            val outerTiLoc = ownOuterTiLoc.getOrElse(
+              return fail(f"typevar TI: method has no outer TI param (cjPkg=$mDeclClassCangjiePackage genParams=${method.getMethodType.hasGenericFuncParams})"))
+            asm.typeArg(ownTiReg(outerTiLoc, SCRATCH2), tv.idx, dst)
+          }
         case tv: SignatureType.LocalTypeVariable =>
           // TI of the method's own type parameter: passed as a generic func param
           val genCount = method.getGenericInfo.constraints.size
