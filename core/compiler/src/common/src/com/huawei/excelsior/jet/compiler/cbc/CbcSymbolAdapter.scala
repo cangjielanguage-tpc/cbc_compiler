@@ -76,7 +76,11 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         case VIRTUAL => Option.when(refType.isInstanceOf[CbcFileFormat.AotTypeSignature])(InterfaceCallAotData(symbol.explicitVNum.get)) // TODO: improve if needed
         case _ => notImplemented(symbol.accessKind)
       }
-      val signature = symbol.method.getSignature.instantiate(cparams, Seq.empty).toCbc
+      val signature = if (symbol.methodType.areVarArgsInitialized) {
+        symbol.methodType.signature.instantiate(cparams, Seq.empty).toCbc
+      } else {
+        symbol.method.getSignature.instantiate(cparams, Seq.empty).toCbc
+      }
 
       val mt = symbol.methodType
       val flags = mutable.ArrayBuffer.empty[MethodRefFlag]

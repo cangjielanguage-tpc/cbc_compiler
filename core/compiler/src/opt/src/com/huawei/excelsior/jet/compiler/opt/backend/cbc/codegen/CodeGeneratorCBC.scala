@@ -891,8 +891,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     override protected def initTailRegister(call: Call): Unit = ()
 
     override protected def genCallImpl(call: Call): Unit = {
-      if (call.abi.isVarArgs) {
-        notImplemented("calls with varargs in CBC (JET-13417)");
+      if (call.abi.isJETVarArgs) {
+        notImplemented("JET-style varargs in CBC");
       }
 
       if (call.methodType.isCJForeign ||

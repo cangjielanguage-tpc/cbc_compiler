@@ -88,7 +88,8 @@ trait SpecialSteps { self: Universe with BackEnd =>
             val offs = loc.offset + abi.stackParamsStartOffset + // TODO-NEW-ABI: eliminate uses of `stackParamsStartOffset`
               // To avoid our code segment spoiling, we put stack params above it
               // and repush them before call (CodeGeneratorAmd64.beforeCallActions).
-              (if (abi.spoilsCallerFrameDescriptor(rootMethod.getMethodType)) Env.stackSlotSize else 0)
+              // CBC passes stack params in place over SP at the call, so no shift is needed there.
+              (if (targetArch != CBC && abi.spoilsCallerFrameDescriptor(rootMethod.getMethodType)) Env.stackSlotSize else 0)
 
             // Create slot even if it won't be written with Void value so that all tail slots would have proper offsets.
             val slot = slotForArg(edge.source.tpe, offs)

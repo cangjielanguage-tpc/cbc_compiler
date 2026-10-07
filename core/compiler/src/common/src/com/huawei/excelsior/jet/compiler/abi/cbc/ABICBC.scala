@@ -34,8 +34,8 @@ class ABICBC private[cbc](_methodType: MethodType) extends ABI[IR, FR](_methodTy
       if idx >= 0 then idx min _limit else _limit
     }
 
-    if (isVarArgs) {
-      notImplemented("calls with varargs in CBC (JET-13417)");
+    if (isJETVarArgs) {
+      notImplemented("JET-style varargs in CBC");
     }
 
     if (hasAltLocationParametersOrResult) {

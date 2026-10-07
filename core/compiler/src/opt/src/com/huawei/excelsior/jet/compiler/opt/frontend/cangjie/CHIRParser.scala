@@ -1089,8 +1089,19 @@ trait CHIRParser
           val paramTypes = argVals.map {
             case ValueSig(sig) => sig
           }
+          val target1 = if (func.tpe.hasVarArg) {
+            val namedCount = target.methodType.parameterCount
+            val mt = target.methodType
+            target.withMethodType(mt.copy(
+              signature = mt.signature.copy(parameterTypes = mt.signature.parameterTypes.toSeq ++ paramTypes.drop(namedCount)),
+              callConv = CallConv.CCALL,
+              isVarArgs = true,
+              firstVarArg = namedCount))
+          } else {
+            target
+          }
           val retType = resolver.typeSig(e.resultTpe)
-          val call = callMethod(target, outerType, thisType, retType, paramTypes, args, None)
+          val call = callMethod(target1, outerType, thisType, retType, paramTypes, args, None)
           state(e) = call
 
         case _ => // Indirect call
@@ -2190,13 +2201,7 @@ trait CHIRParser
         } else {
           MAK.SPECIAL
         }
-      val target = new MethodReference(method, mak, CompiledType(refType))
-      assert(vararg == target.method.isVarArgs)
-      if (vararg) {
-        notImplemented("vararg")
-      } else {
-        target
-      }
+      new MethodReference(method, mak, CompiledType(refType))
     }
 
     private def calcABIArgs(target: MethodReference, args: Seq[Node])(paramNode: SpecialParameter => Iterable[Node]): Seq[Node] = {
@@ -2246,7 +2251,13 @@ trait CHIRParser
         }
       }
 
-      val ugArgs = for ((a, (from, to)) <- args zip (paramTypes zip target.method.getSignature.parameterTypes.map(ABI.makeABISigType)))
+      val declTos = target.method.getSignature.parameterTypes.map(ABI.makeABISigType)
+      val tos = if (target.methodType.areVarArgsInitialized) {
+        declTos ++ target.methodType.varArgTypes.map(ABI.makeABISigType).toSeq
+      } else {
+        declTos
+      }
+      val ugArgs = for ((a, (from, to)) <- args zip (paramTypes zip tos))
         yield adjustArg(a, from, to)
 
       lazy val abiRetValType = target.methodType.parameterType(target.methodType.getRetByValArgIdx)
