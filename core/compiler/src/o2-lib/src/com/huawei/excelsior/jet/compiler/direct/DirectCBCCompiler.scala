@@ -1108,7 +1108,16 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       if (sig.isTraceableReference) {
         slotOfAny(e, sig) // null-init before newobj's GC point
         val allocType = sig match { case SignatureType.Box(t) => t; case t => t }
-        asm.newobj(allocType.toCbc)
+        if (allocType.isCangjieLambda) {
+          if (containsUnsubstitutedTypeVars(allocType))
+            return fail(s"generic closure alloc $allocType") // needs newClosureGeneric TI
+          // closure: the engine builds the capture layout from the
+          // functional sig (a newobj of the closure class crashes TI
+          // resolution of the FUNCTIONAL-typed captured fields)
+          asm.newClosure(SCRATCH, allocType.toCbc)
+        } else {
+          asm.newobj(allocType.toCbc)
+        }
         saveGCMapHere()
         asm.storeUntyped(SCRATCH, StoreAccessKind.from(cbcKind(sig)), StackSlot.Untyped(slotOfAny(e, sig)))
       } else if (sig.isVariableSizeType) {
@@ -2255,7 +2264,17 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         val rl = calleeAbi.resultLocation
         if (rl != null && rl.isReg && rl.asReg.isInstanceOf[FR]) rl.asReg.asInstanceOf[FR] else FR1
       }
-      if (isVirtual) asm.callVirt(resultReg, ref) else asm.callDirect(resultReg, ref)
+      val closureInvoke = ref.refType.sigType.isCangjieClosure &&
+        (ref.method.getName == "$InstVirtualFunc" || ref.method.getName == "$GenericVirtualFunc")
+      if (closureInvoke) {
+        // closure dispatch: the engine routes via the functional TI in IR_ACC
+        if (ref.method.getName == "$GenericVirtualFunc")
+          asm.callClosureGeneric(resultReg, ref.refType.sigType.toCbc)
+        else
+          asm.callClosure(resultReg, ref.refType.sigType.toCbc)
+      }
+      else if (isVirtual) asm.callVirt(resultReg, ref)
+      else asm.callDirect(resultReg, ref)
       saveGCMapHere(tailRefSlots)
       sretSlot.foreach { ts =>
         // the record value is the address of its buffer (CBC record convention)
