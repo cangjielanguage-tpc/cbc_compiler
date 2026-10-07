@@ -190,7 +190,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
             ClassBasedEnum(symName(t), t.genericTypeParams.map(typeSig))
         }
       case t: CHIR.FuncType if t.isC =>
-        CPointer(Tuple(t.paramTypes.map(typeSig) :+ typeSig(t.returnType)))
+        CPointer(MethodSignature(t.paramTypes.map(typeSig): _*)(typeSig(t.returnType)))
       case t: CHIR.FuncType =>
         notImplemented("FuncType")
       case t: CHIR.GenericType =>

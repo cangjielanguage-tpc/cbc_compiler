@@ -470,6 +470,7 @@ trait CHIRParser
         val (sig, _, _, _) = resolver.functionSig(f.tpe, hasReceiver = !isStatic)
         val method = declClass.findDeclaredMethodOrNull(xstr(resolver.symName(f)), sig)
         assert(method != null, s"cannot find method for function value ${resolver.symName(f)}")
+        assert(method.isCangjieForeign)
         SymbolAddress(method)
       }
     }
@@ -1039,72 +1040,71 @@ trait CHIRParser
             state(e) = n
         }
 
-      // Indirect call
-      case e: CHIR.Apply if !e.callee.isInstanceOf[CHIR.Func] =>
-        val (calleeVal, argVals) = (e.callee, e.args)
-        val retType = resolver.typeSig(e.resultTpe)
-        val paramTypes = argVals.map { case ValueSig(sig) => sig }
-        if (retType.isRecord || paramTypes.exists(_.isRecord)) {
-          notImplemented("CFunc call with record ABI")
-        }
-        val mt = MethodType(MethodSignature(retType, paramTypes), CallConv.CCALL, CallKind.CJ_FOREIGN, MethodType.SpecialParamSet(), false)
-        val args = argVals.map(state.apply)
-        val call = Call(new MethodReference(mt, MAK.STATIC))(state(calleeVal) +: args: _*)
-        state(e) = call
+      case e: CHIR.Apply => e.callee match {
+        case func: CHIR.Func => // Direct call
+          val func = e.callee.asInstanceOf[CHIR.Func]
+          val thisType = e.thisType.map(resolver.typeSig)
+          val declClass = func.declaringDef
+            .flatMap(resolver.symType)
+            .map(asClassType)
+            .getOrElse(resolver.findClass(func.packageName).get)
 
-      case e: CHIR.Apply =>
-        val func = e.callee.asInstanceOf[CHIR.Func]
+          val declType = thisType.filter(t => t.isRecord || t.isReference || t.isEnum) match {
+            case Some(_) if declClass.isCangjieExtend =>
+              SignatureType.fromSymType(declClass)
+            case Some(t) =>
+              if (func.attributes.contains(Attribute.Static)) {
+                t
+              } else {
+                val argType = resolver.typeSig(e.thisArg match {
+                  case arg: CHIR.LocalVar => arg.tpe
+                  case arg: CHIR.GlobalVar => arg.tpe
+                  case arg: CHIR.Parameter => arg.tpe
+                })
+                assert(asClassType(argType) == declClass, s"$argType != $declClass")
+                argType
+              }
+            case _ => SignatureType.fromSymType(declClass)
+          }
 
-        val thisType = e.thisType.map(resolver.typeSig)
+          val name = resolver.symName(func)
+          val _target = calcMethodRef(declClass, declType, name, func)
 
-        val declClass = func.declaringDef
-          .flatMap(resolver.symType)
-          .map(asClassType)
-          .getOrElse(resolver.findClass(func.packageName).get)
+          // TODO: add instantiated type parameters to base MethodReference
+          val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
+          val target = if (lparams.nonEmpty) {
+            _target.toInstantiatedMethodReference(lparams, declType)
+          } else {
+            _target
+          }
+          val argVals = e.args
+          val outerType = if (asClassType(declType).isCangjieExtend) thisType else Some(declType)
 
-        val declType = thisType.filter(t => t.isRecord || t.isReference || t.isEnum) match {
-          case Some(_) if declClass.isCangjieExtend =>
-            SignatureType.fromSymType(declClass)
-          case Some(t) =>
-            if (func.attributes.contains(Attribute.Static)) {
-              t
-            } else {
-              val argType = resolver.typeSig(e.thisArg match {
-                case arg: CHIR.LocalVar => arg.tpe
-                case arg: CHIR.GlobalVar => arg.tpe
-                case arg: CHIR.Parameter => arg.tpe
-              })
-              assert(asClassType(argType) == declClass, s"$argType != $declClass")
-              argType
-            }
-          case _ => SignatureType.fromSymType(declClass)
-        }
+          val args = argVals match {
+            case Seq(gv: CHIR.GlobalVar, rest: _*) =>
+              GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(gv)) +: rest.map(state.apply)
+            case _ =>
+              argVals.map(state.apply)
+          }
+          val paramTypes = argVals.map {
+            case ValueSig(sig) => sig
+          }
+          val retType = resolver.typeSig(e.resultTpe)
+          val call = callMethod(target, outerType, thisType, retType, paramTypes, args, None)
+          state(e) = call
 
-        val name = resolver.symName(func)
-        val _target = calcMethodRef(declClass, declType, name, func)
-
-        // TODO: add instantiated type parameters to base MethodReference
-        val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
-        val target = if (lparams.nonEmpty) {
-          _target.toInstantiatedMethodReference(lparams, declType)
-        } else {
-          _target
-        }
-        val argVals = e.args
-        val outerType = if (asClassType(declType).isCangjieExtend) thisType else Some(declType)
-
-        val args = argVals match {
-          case Seq(gv: CHIR.GlobalVar, rest: _*) =>
-            GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(gv)) +: rest.map(state.apply)
-          case _ =>
-            argVals.map(state.apply)
-        }
-        val paramTypes = argVals.map {
-          case ValueSig(sig) => sig
-        }
-        val retType = resolver.typeSig(e.resultTpe)
-        val call = callMethod(target, outerType, thisType, retType, paramTypes, args, None)
-        state(e) = call
+        case _ => // Indirect call
+          val (calleeVal, argVals) = (e.callee, e.args)
+          val retType = resolver.typeSig(e.resultTpe)
+          val paramTypes = argVals.map { case ValueSig(sig) => sig }
+          if (retType.isRecord || paramTypes.exists(_.isRecord)) {
+            notImplemented("CFunc call with record ABI")
+          }
+          val mt = MethodType(MethodSignature(retType, paramTypes), CallConv.CCALL, CallKind.CJ_FOREIGN, MethodType.SpecialParamSet(), false)
+          val args = argVals.map(state.apply)
+          val call = Call(new MethodReference(mt, MAK.STATIC))(state(calleeVal) +: args: _*)
+          state(e) = call
+      }
 
       case e: CHIR.Invoke =>
         val methodArgVal = e.callee
