@@ -773,7 +773,7 @@ trait CHIRParser
                 val larg = CheckedOp.normalizeArg(tpe, width, signed, l)
                 val rarg = e.kind match {
                   case CHIR.Binary.Kind.LShift | CHIR.Binary.Kind.RShift =>
-                    val ValueSig(countSig: Integral) = e.rightOperand
+                    val countSig = rsig.asInstanceOf[Integral]
                     BitFieldExtract(tpe, 0, Math.min(countSig.bits, typeSizeInBits(tpe)), countSig.signed, r)
                   case _ => CheckedOp.normalizeArg(tpe, width, signed, r)
                 }
