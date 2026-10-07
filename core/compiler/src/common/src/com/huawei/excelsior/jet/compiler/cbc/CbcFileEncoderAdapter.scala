@@ -334,17 +334,17 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       if (method.hasMutRecordParameter)     builder += MethodFlag.MUT
 
       if (method.hasReceiverParameter) {
-        import TypeKind.*
         import SignatureType.*
         val receiver = method.getMethodType.parameterType(method.getReceiverArgIdx)
-        (Wrapper.skip(receiver), receiver.symKindErased) match {
-          case (_, x) if x.isReference     => builder += MethodFlag.REF_RECEIVER
-          case (_, x) if x.isFloatingPoint => builder += MethodFlag.FPRIM_RECEIVER
-          case (_, RECORD)                 => builder += MethodFlag.REC_RECEIVER
-          case (Unit, _)                   => builder += MethodFlag.REC_RECEIVER
-          case (_, VOID)                   => shouldNotReachHere(s"Unexpected type kind VOID for $receiver in method $method")
-          case _                           => builder += MethodFlag.PRIM_RECEIVER
-        }
+
+        builder.addFlag(receiver match {
+          case Unit               => MethodFlag.REC_RECEIVER
+          case _: FloatingPoint   => MethodFlag.FPRIM_RECEIVER
+          case x if x.isPrimitive => MethodFlag.PRIM_RECEIVER
+          case x if x.isRecord    => MethodFlag.REC_RECEIVER
+          case x if x.isReference => MethodFlag.REF_RECEIVER
+          case _                  => shouldNotReachHere(s"Unexpected receiver type $receiver in method $method")
+        })
       }
 
       if (isVirtual(method)) builder.addFlag(MethodFlag.VIRTUAL)

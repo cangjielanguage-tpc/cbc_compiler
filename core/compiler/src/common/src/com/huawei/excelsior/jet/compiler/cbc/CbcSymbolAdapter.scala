@@ -14,7 +14,7 @@ import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{DirectCallAotData, 
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.SymbolAdapter
 import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, RawData}
 import com.huawei.excelsior.jet.compiler.TypeProvider
-import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.{coldStringsForWorkersOut, env}
+import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.env
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.*
 import com.huawei.excelsior.jet.compiler.symlevel.*
@@ -92,17 +92,16 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT
 
       if (mt.hasReceiverParameter) {
-        import TypeKind.*
         import SignatureType.*
         val receiver = mt.parameterType(mt.getReceiverArgIdx)
-        (Wrapper.skip(receiver), receiver.symKindErased) match {
-          case (_, x) if x.isReference     => flags += MethodRefFlag.REF_RECEIVER
-          case (_, x) if x.isFloatingPoint => flags += MethodRefFlag.FPRIM_RECEIVER
-          case (_, RECORD)                 => flags += MethodRefFlag.REC_RECEIVER
-          case (Unit, _)                   => flags += MethodRefFlag.REC_RECEIVER
-          case (_, VOID)                   => shouldNotReachHere(s"Unexpected type kind VOID for $receiver in method $method")
-          case _                           => flags += MethodRefFlag.PRIM_RECEIVER
-        }
+        flags.addOne(receiver match {
+          case Unit               => MethodRefFlag.REC_RECEIVER
+          case _: FloatingPoint   => MethodRefFlag.FPRIM_RECEIVER
+          case x if x.isPrimitive => MethodRefFlag.PRIM_RECEIVER
+          case x if x.isRecord    => MethodRefFlag.REC_RECEIVER
+          case x if x.isReference => MethodRefFlag.REF_RECEIVER
+          case _                  => shouldNotReachHere(s"Unexpected receiver type $receiver in method $method")
+        })
       }
 
       CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData, typeVars = typeVars)

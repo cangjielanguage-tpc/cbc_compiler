@@ -585,7 +585,7 @@ abstract class Method extends Symbol with Member with ConstantPoolObject with Fr
 
   @Deprecated
   def getGenericInfo: GenericInfo
-  
+
   def getGenericParamCount: Int = if (isUniversalGeneric) getGenericInfo.constraints.length else 0
 
   protected def jcaOptionEnabled(name: String): Boolean

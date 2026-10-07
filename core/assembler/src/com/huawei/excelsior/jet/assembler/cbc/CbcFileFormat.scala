@@ -139,8 +139,7 @@ object CbcFileFormat {
       def apply(mask: Int): FS
       def empty: FS = apply(Seq.empty)
 
-      def apply(flags0: IterableOnce[F]): FS = {
-        val flags = flags0.iterator.toSeq
+      def apply(flags: Iterable[F]): FS = {
         apply(flags.foldLeft(0)((l, r) =>
           assert((r.mask & l) == 0, s"$r is not disjoint with $flags")
           l | r.value
