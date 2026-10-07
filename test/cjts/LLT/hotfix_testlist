@@ -584,10 +584,6 @@ compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass02.cj
 compiler/CodegenCJNative/generic/generic_struct1.cj
 compiler/CodegenCommon/enum/enum_fix_01.cj
 
-# bug 118 (BFX + shifts = fail)
-compiler/CodegenCommon/binary_op/leftshift_1.cj
-compiler/CodegenCommon/binary_op/rightshift_1.cj
-
 # bug 119 (return this from open func causes `should not reach here (extra information: symType for TypeVariable)`)
 compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_5.cj
 compiler/Sema/generics/generic_upperbound_reference_01.cj
