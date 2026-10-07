@@ -277,10 +277,16 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     private val FSCRATCH0 = FR0
     private val FSCRATCH1 = FR1
 
-    private def widthOf(sig: SignatureType): Width = sig.toAsm match {
-      case com.huawei.excelsior.jet.assembler.AsmType.I64 | com.huawei.excelsior.jet.assembler.AsmType.U64 |
-           com.huawei.excelsior.jet.assembler.AsmType.F64 | com.huawei.excelsior.jet.assembler.AsmType.PTR => Width.W64
-      case _ => Width.W32
+    private def widthOf(sig: SignatureType): Width = sig match {
+      case SignatureType.Int8  => Width.W8
+      case SignatureType.UInt8 => Width.W8
+      case SignatureType.Int16  => Width.W16
+      case SignatureType.UInt16 => Width.W16
+      case _ => sig.toAsm match {
+        case com.huawei.excelsior.jet.assembler.AsmType.I64 | com.huawei.excelsior.jet.assembler.AsmType.U64 |
+             com.huawei.excelsior.jet.assembler.AsmType.F64 | com.huawei.excelsior.jet.assembler.AsmType.PTR => Width.W64
+        case _ => Width.W32
+      }
     }
 
     private def isFloat(sig: SignatureType): Boolean = sig match {
@@ -843,27 +849,52 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         loadToReg(e.leftOperand, SCRATCH2)
         loadToReg(e.rightOperand, SCRATCH3)
         val (l, r) = (SCRATCH2, SCRATCH3)
+        // sub-32-bit operands must be (sign/zero-)extended to their natural
+        // width first — mirrors production's bfx before narrow checked ops
+        if (w == Width.W8 || w == Width.W16) {
+          val signed = lsig match { case i: SignatureType.Integral => i.signed; case _ => true }
+          asm.bfx(l, l, Width.W32, Width.W32, signed, 0, if (w == Width.W8) 8 else 16)
+          asm.bfx(r, r, Width.W32, Width.W32, signed, 0, if (w == Width.W8) 8 else 16)
+        }
+        val unsigned = lsig.isInstanceOf[SignatureType.Integral] && !lsig.asInstanceOf[SignatureType.Integral].signed
+        val saturating = e.overflowStrategy == CHIR.OverflowStrategy.Saturating
         e.kind match {
-          case CHIR.Binary.Kind.Add => if (throwing) asm.cadd(SCRATCH, l, r, w) else asm.add(w, SCRATCH, l, r)
-          case CHIR.Binary.Kind.Sub => if (throwing) asm.csub(SCRATCH, l, r, w) else asm.sub(w, SCRATCH, l, r)
-          case CHIR.Binary.Kind.Mul => if (throwing) asm.cmul(SCRATCH, l, r, w) else asm.mul(w, SCRATCH, l, r)
+          case CHIR.Binary.Kind.Add =>
+            if (throwing) (if (unsigned) asm.cuadd(SCRATCH, l, r, w) else asm.cadd(SCRATCH, l, r, w))
+            else if (saturating) (if (unsigned) asm.suadd(SCRATCH, l, r, w) else asm.sadd(SCRATCH, l, r, w))
+            else asm.add(w, SCRATCH, l, r)
+          case CHIR.Binary.Kind.Sub =>
+            if (throwing) (if (unsigned) asm.cusub(SCRATCH, l, r, w) else asm.csub(SCRATCH, l, r, w))
+            else if (saturating) (if (unsigned) asm.susub(SCRATCH, l, r, w) else asm.ssub(SCRATCH, l, r, w))
+            else asm.sub(w, SCRATCH, l, r)
+          case CHIR.Binary.Kind.Mul =>
+            if (throwing) (if (unsigned) asm.cumul(SCRATCH, l, r, w) else asm.cmul(SCRATCH, l, r, w))
+            else if (saturating) (if (unsigned) asm.sumul(SCRATCH, l, r, w) else asm.smul(SCRATCH, l, r, w))
+            else asm.mul(w, SCRATCH, l, r)
           case CHIR.Binary.Kind.Div =>
             asm.divisorCheck(r)
-            if (throwing) asm.cdiv(SCRATCH, l, r, w)
-            else if (lsig.isInstanceOf[SignatureType.Integral] && !lsig.asInstanceOf[SignatureType.Integral].signed) asm.udiv(w, SCRATCH, l, r)
+            if (throwing) asm.cdiv(SCRATCH, l, r, w) // production: checked div is always signed
+            else if (saturating) (if (unsigned) asm.sudiv(SCRATCH, l, r, w) else asm.sdiv(SCRATCH, l, r, w))
+            else if (unsigned) asm.udiv(w, SCRATCH, l, r)
             else asm.div(w, SCRATCH, l, r)
           case CHIR.Binary.Kind.Mod =>
             asm.divisorCheck(r)
-            if (lsig.isInstanceOf[SignatureType.Integral] && !lsig.asInstanceOf[SignatureType.Integral].signed) asm.urem(w, SCRATCH, l, r)
+            if (saturating) (if (unsigned) asm.sumod(SCRATCH, l, r, w) else asm.smod(SCRATCH, l, r, w))
+            else if (unsigned) asm.urem(w, SCRATCH, l, r)
             else asm.rem(w, SCRATCH, l, r)
-          case CHIR.Binary.Kind.LShift => maskShift(w); asm.lsl(w, SCRATCH, l, r)
+          case CHIR.Binary.Kind.LShift =>
+            // mask only the wrapping form; the checked form must observe the
+            // unmasked amount to detect b >= width
+            if (!throwing && !saturating) maskShift(w)
+            if (throwing) asm.clsh(SCRATCH, l, r, w) else asm.lsl(w, SCRATCH, l, r)
           case CHIR.Binary.Kind.RShift =>
             val signed = lsig match {
               case i: SignatureType.Integral => i.signed
               case _ => true
             }
-            maskShift(w)
-            if (signed) asm.asr(w, SCRATCH, l, r) else asm.lsr(w, SCRATCH, l, r)
+            if (!throwing && !saturating) maskShift(w)
+            if (throwing) (if (signed) asm.crsh(SCRATCH, l, r, w) else asm.cursh(SCRATCH, l, r, w))
+            else if (signed) asm.asr(w, SCRATCH, l, r) else asm.lsr(w, SCRATCH, l, r)
           case CHIR.Binary.Kind.And => asm.and(w, SCRATCH, l, r)
           case CHIR.Binary.Kind.Or => asm.or(w, SCRATCH, l, r)
           case CHIR.Binary.Kind.Xor => asm.xor(w, SCRATCH, l, r)
@@ -955,8 +986,12 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
             }
           } else {
             val throwing = e.overflowStrategy == CHIR.OverflowStrategy.Throwing
+            val saturating = e.overflowStrategy == CHIR.OverflowStrategy.Saturating
+            val unsigned = sig match { case i: SignatureType.Integral => !i.signed; case _ => false }
             loadToReg(e.operand, SCRATCH2)
-            if (throwing) asm.cneg(SCRATCH, SCRATCH2, w) else asm.neg(SCRATCH, SCRATCH2, w)
+            if (throwing) (if (unsigned) asm.cuneg(SCRATCH, SCRATCH2, w) else asm.cneg(SCRATCH, SCRATCH2, w))
+            else if (saturating) asm.sneg(SCRATCH, SCRATCH2, w)
+            else asm.neg(SCRATCH, SCRATCH2, w)
             resultOf(e) match {
               case Some(res) => storeFromReg(res, SCRATCH, sig)
               case None => fail("unary without result")
@@ -2039,7 +2074,9 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           val rcvLoc = locs(calleeStart - 1).asReg.asInstanceOf[IR]
           Some((tiLocOf, Left(rcvLoc)))
         } else {
-          val tiSig = if (outerTiSig.containsTypeVariables) sigOf(callArgs.head).get else outerTiSig
+          val tiSig = if (containsUnsubstitutedTypeVars(outerTiSig)) sigOf(callArgs.head).get else outerTiSig
+          if (!lowerableTypeInfo(tiSig))
+            return fail(s"this-TI not lowerable: $tiSig") // engine cannot build generic wrapper TIs
           Some((tiLocOf, Right(tiSig)))
         }
       // GenericFuncParams (Custom position) sit between the ordinary args and
@@ -2209,9 +2246,14 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           }
         case _ =>
       }
-      val resultReg = {
+      val retIsFloat = retSig == SignatureType.Float32 || retSig == SignatureType.Float64
+      val resultReg: IR = {
         val rl = calleeAbi.resultLocation
         if (rl != null && rl.isReg && rl.asReg.isInstanceOf[IR]) rl.asReg.asInstanceOf[IR] else IR1
+      }
+      val resultFReg: FR = {
+        val rl = calleeAbi.resultLocation
+        if (rl != null && rl.isReg && rl.asReg.isInstanceOf[FR]) rl.asReg.asInstanceOf[FR] else FR1
       }
       if (isVirtual) asm.callVirt(resultReg, ref) else asm.callDirect(resultReg, ref)
       saveGCMapHere(tailRefSlots)
@@ -2226,6 +2268,8 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
             // boxed sret: the value is the Box* we passed (in sretLoc register)
             val sretLoc = locs(0).asReg.asInstanceOf[IR]
             storeFromReg(res, sretLoc, sigOf(res).get)
+          } else if (retIsFloat) {
+            storeFloatFromReg(res, resultFReg, retSig)
           } else {
             storeFromReg(res, resultReg, sigOf(res).get)
           }
@@ -2235,12 +2279,26 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
 
     /** Whether a runtime-TI value can be materialized for this sig
       * (mirrors the arms of CHIRParser.loadTypeInfo). */
+    /** Like SignatureType.containsTypeVariables but also treats generic
+      * class references (CangjieSymReference over a generic ClassType, whose
+      * own check misses the typevars) as unlowerable — the engine cannot
+      * build generic wrapper TIs at runtime. */
+    private def containsUnsubstitutedTypeVars(t: SignatureType): Boolean = t match {
+      case r: SignatureType.CangjieSymReference =>
+        val gi = r.tpe.getGenericInfo
+        gi != null && gi.constraints.nonEmpty
+      case _ => t.containsTypeVariables
+    }
+
     private def lowerableTypeInfo(t: SignatureType): Boolean =
-      !t.containsTypeVariables || (t match {
+      !containsUnsubstitutedTypeVars(t) || (t match {
         case _: SignatureType.ClassTypeVariable | _: SignatureType.LocalTypeVariable => true
-        case _: SignatureType.InstantiatedType | _: SignatureType.ArraySlice |
+        case _: SignatureType.ArraySlice |
              _: SignatureType.CangjieArray | _: SignatureType.VArray |
              _: SignatureType.Tuple | _: SignatureType.CangjieEnum => true
+        // InstantiatedType: the engine cannot build generic wrapper TIs at
+        // runtime (e.g. Hashable<K>); only concrete instantiations resolve
+        case it: SignatureType.InstantiatedType => !it.containsTypeVariables
         case _ => false
       })
 
