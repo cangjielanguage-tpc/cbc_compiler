@@ -2060,21 +2060,16 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val calleeMethod = refClass.findDeclaredMethodOrNull(xstr(name), gsig)
       if (calleeMethod == null) return fail(s"invoke: method not found: $name")
       val mak = if (isStatic) MAK.STATIC else MAK.VIRTUAL
-      // A generic callee (declaring class is generic) must be dispatched with
-      // a universal-generic method reference: the engine builds the method
-      // table per instantiation (production: Ref.Instantiated ->
-      // universalGenericCall -> call.interf.g). Type arguments come from the
-      // receiver's instantiated interface type when available.
-      val declGeneric = Option(calleeMethod.getDeclaringClass.getGenericInfo)
-        .exists(_.constraints.nonEmpty)
-      val instArgs = resolver.typeSig(e.thisType) match {
-        case it: SignatureType.InstantiatedType => it.instantiatedTypeParameters
-        case _ => genericParamsOf(thisType)
-      }
-      val ref =
-        if (declGeneric && instArgs.nonEmpty)
-          new InstantiatedMethodReference(calleeMethod, mak, instArgs, refType, Some(vnum))
-        else new MethodReference(calleeMethod, mak, CompiledType(refType), vnum)
+      // NOTE: a generic callee (e.g. an interface method declared on a generic
+      // interface like std.core:ToString<T>) should ideally get an
+      // InstantiatedMethodReference and call.interf.g dispatch (production:
+      // Ref.Instantiated -> universalGenericCall). The naive declaring-class
+      // check broke non-generic interface dispatch (the engine reported
+      // 'expected interface ... is not in class ...'), so for now we keep the
+      // plain reference; the correct CHIR-level signal is the callee ref kind
+      // (Ref.InstantiatedInstanceMethod), which we cannot see from the
+      // symlevel Method alone.
+      val ref = new MethodReference(calleeMethod, mak, CompiledType(refType), vnum)
 
       emitCall(e, calleeMethod, sourceArgVals, ref, isVirtual = !isStatic)
     }
@@ -2338,15 +2333,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
       val closureInvoke = ref.refType.sigType.isCangjieClosure &&
         (ref.method.getName == "$InstVirtualFunc" || ref.method.getName == "$GenericVirtualFunc")
-      if (isVirtual && ref.isInstanceOf[InstantiatedMethodReference]) {
-        // universal-generic interface call: engine dispatches via the outer TI
-        val tiLoc = locs(calleeMt.getOuterTypeInfoArgIdx)
-        val ti: IR | StackSlot.Untyped =
-          if (tiLoc.isReg) tiLoc.asReg.asInstanceOf[IR]
-          else StackSlot.Untyped(locs.take(calleeMt.getOuterTypeInfoArgIdx).count(l => !l.isReg))
-        asm.callInterfGeneric(ti, asm.adapter.method(ref.getPermanent))
-      }
-      else if (closureInvoke) {
+      if (closureInvoke) {
         // closure dispatch: the engine routes via the functional TI in IR_ACC
         if (ref.method.getName == "$GenericVirtualFunc")
           asm.callClosureGeneric(resultReg, ref.refType.sigType.toCbc)
