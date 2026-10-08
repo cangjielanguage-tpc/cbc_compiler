@@ -1430,7 +1430,7 @@ trait CHIRParser
             assert(pkg.packageInitFunc == func, method)
             for (v <- pkg.values) v match {
               case g: CHIR.GlobalVar if !resolver.isImported(g) =>
-                val declType = g.declaringDef.flatMap(resolver.symType).getOrElse(resolver.findClass(pkg.name).get)
+                val declType = g.declaringDef.flatMap(resolver.symType).getOrElse(resolver.findClass(g.packageName).get)
                 val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
                 assert(field.isStatic, field)
                 val value = g.initializer.map {
