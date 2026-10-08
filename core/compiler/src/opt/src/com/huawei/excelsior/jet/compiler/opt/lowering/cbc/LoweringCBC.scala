@@ -29,9 +29,12 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
     val arrayType = arrayFill.arrayType
     val elementType = arrayType.getArrayElemType
 
+    // Start new block to guarantee valid creation of loop index in header with exactly one forward edge.
+    // Backward edge will be added later, when Proxy is replaced by Phi function.
     val header = continue(Goto())
     val index = Proxy(LongType)(header)
 
+    // TODO: JET-17408
     val whileCheck = If(Cmp(index.tpe, Condition.ULT)(index, CangjieArrayLength(array)))
 
     continue(whileCheck.trueExit)
@@ -44,6 +47,7 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
       StoreFieldSeq(array, array, arrayFill.value, field)
     }
 
+    // Add backward edge and replace Proxy with proper Phi function.
     val backEdge = Goto()
     header.addArg(backEdge)
     assert(header.args.size == 2)

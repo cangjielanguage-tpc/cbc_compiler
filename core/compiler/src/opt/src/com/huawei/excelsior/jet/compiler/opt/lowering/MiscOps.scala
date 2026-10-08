@@ -447,6 +447,7 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
     }
   }
 
+  // TODO: replace with CBC overridden version
   /** Splits ArrayFill to a series of ArrayPut operations. */
   private[lowering] def lowerAJArrayFill(arrayFill: AJArrayFill): Unit = {
     val array = arrayFill.array
@@ -491,9 +492,12 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
     val arrayType = arrayFill.arrayType
     val elementType = arrayType.getArrayElemType
 
+    // Start new block to guarantee valid creation of loop index in header with exactly one forward edge.
+    // Backward edge will be added later, when Proxy is replaced by Phi function.
     val header = continue(Goto())
     val index = Proxy(LongType)(header)
 
+    // TODO: JET-17408
     val whileCheck = If(Cmp(index.tpe, Condition.ULT)(index, CangjieArrayLength(array)))
 
     continue(whileCheck.trueExit)
@@ -501,6 +505,7 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
     val field = IndexFieldReferenceGeneric(arrayType, elementType)(index, arrayFill.arrayTypeInfo)
     StoreFieldSeq(array, array, arrayFill.value, field, arrayFill.elementTypeInfo)
 
+    // Add backward edge and replace Proxy with proper Phi function.
     val backEdge = Goto()
     header.addArg(backEdge)
     assert(header.args.size == 2)

@@ -1,6 +1,15 @@
-import genericarray.*
+extend <T> Array<T> {
+  func foo(x: T) {
+    this.size
+  }
+}
 
-main(): Int64 {
-    println(baz("foo"))
-    0
+func baz<T>(x: T): Int64 {
+  let arr: Array<T> = [x, x]
+  arr.foo(x)
+}
+
+main() {
+  println(baz("foo"))
+  0
 }

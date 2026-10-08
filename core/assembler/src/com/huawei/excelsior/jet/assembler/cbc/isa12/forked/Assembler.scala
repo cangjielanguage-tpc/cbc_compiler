@@ -482,7 +482,7 @@ trait ForkedAssembler {
 
   def boxGeneric(src: StackSlot.Typed, dst: IR, ti: IR): Unit = instr {
     stream // - allocate box at `dst`
-      .opc8(Opcode.BoxTGeneric) // - store primitive value at `src` to box or copy record pointed by `src` to the box
+      .opc8(Opcode.BoxTGeneric)
       .bits(_.w4(analyzer.usePrim(ti)).w4(analyzer.ref(dst)))
       .ts16(src)
     saveState()
