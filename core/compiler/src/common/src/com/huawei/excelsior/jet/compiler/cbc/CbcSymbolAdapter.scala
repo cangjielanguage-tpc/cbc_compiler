@@ -96,6 +96,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         val receiver = mt.parameterType(mt.getReceiverArgIdx)
         flags.addOne(receiver match {
           case Unit               => MethodRefFlag.REC_RECEIVER
+          case Nothing            => MethodRefFlag.PRIM_RECEIVER
           case _: FloatingPoint   => MethodRefFlag.FPRIM_RECEIVER
           case x if x.isPrimitive => MethodRefFlag.PRIM_RECEIVER
           case x if x.isRecord    => MethodRefFlag.REC_RECEIVER

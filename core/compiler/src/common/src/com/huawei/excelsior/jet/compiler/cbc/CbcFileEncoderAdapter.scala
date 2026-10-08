@@ -339,6 +339,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
 
         builder.addFlag(receiver match {
           case Unit               => MethodFlag.REC_RECEIVER
+          case Nothing            => MethodFlag.PRIM_RECEIVER
           case _: FloatingPoint   => MethodFlag.FPRIM_RECEIVER
           case x if x.isPrimitive => MethodFlag.PRIM_RECEIVER
           case x if x.isRecord    => MethodFlag.REC_RECEIVER
