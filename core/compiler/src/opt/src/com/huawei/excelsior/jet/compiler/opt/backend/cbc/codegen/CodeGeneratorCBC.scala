@@ -339,8 +339,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genFieldSeqOperation(n: FieldSeqOperation): Unit = {
-      addXSite(n)
-
       val adapter = asm.adapter
 
       val fieldRefs = n.refs
@@ -491,6 +489,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               asm.st(reg, baseRef, IR1, resultTI, NoneFieldReference())
             } else {
               asm.ld(reg, baseRef, IR1, resultTI, NoneFieldReference())
+              addXSite(n)
+              saveGCState(n)
             }
           } else {
             if (store) {
@@ -499,10 +499,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               asm.ld(reg, baseRef, IR1, field)
             }
           }
-          addXSite(n)
-          saveGCState(n)
         }
-        if (store) addXSite(n)
       }
 
       n match {
