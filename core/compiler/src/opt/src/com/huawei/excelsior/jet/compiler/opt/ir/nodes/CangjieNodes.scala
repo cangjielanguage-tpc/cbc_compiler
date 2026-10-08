@@ -833,7 +833,6 @@ trait CangjieNodes { self: Universe =>
 
     def allocTypeInfo: Node = arg(2)
     def length: Node = arg(3)
-    def lengths: Seq[Node] = Seq(length)
   }
 
   object NewArrayGeneric {

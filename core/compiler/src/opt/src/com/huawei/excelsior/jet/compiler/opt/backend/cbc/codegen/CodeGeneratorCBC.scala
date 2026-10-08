@@ -664,8 +664,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       genNewArrImpl(newArr, newArr.allocType, newArr.lengths, newArr.uninitialized)
 
     private def genNewArrGeneric(newArr: NewArrayGeneric): Unit = {
-      assert(newArr.lengths.size == 1)
-      assert(iReg(newArr.lengths.head) == IR2)
+      assert(iReg(newArr.length) == IR2)
       assert(iReg(newArr) == IR1)
       val IReg(ti) = newArr.allocTypeInfo
       asm.newarrGeneric(ti)
@@ -755,8 +754,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genCopyStructure(c: CopyStructure): Unit = {
-      addXSite(c)
-
       val adapter = asm.adapter
 
       (c.dstBaseRef, c.dst, c.srcBaseRef, c.src) match
@@ -840,7 +837,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genCopyStructureGeneric(c: CopyStructureGeneric): Unit = {
-      addXSite(c)
       (c.dstBaseRef, c.dst, c.srcBaseRef, c.src, c.typeInfo) match {
         case (IReg(dstBase), IReg(dst), IReg(srcBase), IReg(src), IReg(ti)) =>
           asm.copy(dstBase, dst, srcBase, src, ti)

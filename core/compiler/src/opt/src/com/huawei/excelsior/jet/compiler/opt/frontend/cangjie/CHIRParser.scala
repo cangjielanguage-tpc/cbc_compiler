@@ -2040,13 +2040,15 @@ trait CHIRParser
 
       case e: CHIR.RawArrayInitByValue =>
         val array = state(e.array)
-        val (lengths, arrayType) = array match {
-          case n: NewArray => (n.lengths, n.allocType)
-          case n: NewArrayGeneric => (n.lengths, n.allocType)
+        val (length, arrayType) = array match {
+          case n: NewArray =>
+            assert(n.lengths.size == 1)
+            (n.lengths.head, n.allocType)
+          case n: NewArrayGeneric => (n.length, n.allocType)
         }
         val len = state(e.size)
         val value = state(e.initValue)
-        assert(lengths == Seq(len), s"RawArrayInitByValue($array, $len, $value)")
+        assert(length == len, s"RawArrayInitByValue($array, $len, $value)")
         if (arrayType.getArrayElemType.isZST) {
           stats.count(StatsKind.ArrayZeroingElimination, "Unit array zeroing eliminated on parsing", array)
         } else if (arrayType.getArrayElemType.isVariableSizeType) {
@@ -2058,12 +2060,14 @@ trait CHIRParser
 
       case e: CHIR.RawArrayLiteralInit =>
         val array = state(e.array)
-        val (lengths, arrayType) = array match {
-          case n: NewArray => (n.lengths, n.allocType)
-          case n: NewArrayGeneric => (n.lengths, n.allocType)
+        val (length, arrayType) = array match {
+          case n: NewArray =>
+            assert(n.lengths.size == 1)
+            (n.lengths.head, n.allocType)
+          case n: NewArrayGeneric => (n.length, n.allocType)
         }
         val values = e.elementValues.map(state.apply)
-        assert(lengths == Seq(LConst(values.size)), s"RawArrayLiteralInit($array, $values)")
+        assert(length == LConst(values.size), s"RawArrayLiteralInit($array, $values)")
         if (arrayType.getArrayElemType.isZST) {
           // Nothing to do
 
@@ -2575,7 +2579,7 @@ trait CHIRParser
     }
 
     private def arrayIndex(arrayType: SignatureType, index: Node): CangjieReferenceNode = index match {
-      case IntegralConst(i) => createConstIndexNode(i.toLong, arrayType, arrayType.getArrayElemType)
+      case IntegralConst(i) => createConstIndexNode(i, arrayType, arrayType.getArrayElemType)
       case _ => createIndexNode(index, arrayType, arrayType.getArrayElemType)
     }
 
