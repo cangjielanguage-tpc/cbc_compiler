@@ -605,9 +605,6 @@ compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
 # bug 125: storeFieldSeq for tuple with Varray
 compiler/CodegenCJNative/reflect/reflect_09.cj
 
-# bug 126: Cannot invoke "com.huawei.excelsior.jet.compiler.symlevel.Field.isStatic()" because "field" is null
-compiler/Sema/annotation/ok_class_05.cj
-
 # bug 127: Unknown size for type ?std.core:Option<Nothing>
 compiler/Sema/call/call_error_report_04.cj
 
