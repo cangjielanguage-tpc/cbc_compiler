@@ -929,6 +929,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           shouldNotReachHere(s"Incorrect method type: ${mr.methodType}")
         }
       }
+      
+      def indirectCall(): Unit = {
+        val IReg(targetReg) = call.target
+        asm.callIndirect(targetReg, callArgLocations)
+      }
 
       def directCall(): Unit = {
         val permanent = targetRef.getPermanent
@@ -987,9 +992,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           case DirectCall(method) if !targetRef.hasMethod => directCCall(method)
           case AnyVirtualCall() => virtualCall()
           case CJIntrinsic(intrinsicType) => intrinsicCall(intrinsicType)
-          case _ if call.methodType.isCJForeign =>
-            val IReg(targetReg) = call.target
-            asm.callIndirect(resultReg, targetReg)
+          case _ if call.methodType.isCJForeign => indirectCall()
         }
       }
     }
