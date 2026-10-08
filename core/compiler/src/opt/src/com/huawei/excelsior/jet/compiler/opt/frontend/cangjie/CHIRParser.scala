@@ -1373,7 +1373,7 @@ trait CHIRParser
           case (from @ OptionLikeEnum(_, _, x), to @ Tuple(Seq(Boolean, y))) =>
             // Have to account for erasure in case of recursive option types
             assert(x == y || (x == ReferenceType.cangjieStdCoreObject.sigType && y.isTraceableReference), s"cast from $from to $to")
-            if (from.isNullableOption || x.isTypeVariable) {
+            if (from.isNullableOption || x.isVariableSizeType) {
               EnumCast(from)(value)
             } else {
               ReinterpretCast(fromTpe, toTpe)(value)
@@ -1767,7 +1767,7 @@ trait CHIRParser
             case CHIR.BuiltinType.Float32 => FConst(v.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.toDouble)
             case CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => IntegralConst(AddrType)(v)
-            case _: CHIR.CustomType | _: CHIR.VArrayType => IntegralConst(AddrType)(v)
+            case _: CHIR.CustomType | _: CHIR.VArrayType | _: CHIR.TupleType => IntegralConst(AddrType)(v)
           }
         }
         val value = e.literal match {
