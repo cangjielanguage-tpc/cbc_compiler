@@ -1261,6 +1261,16 @@ trait CHIRParser
           }
         }
 
+        // Select the bound when the comparison holds, using an all-ones mask.
+        def clampSide(v: Node, tpe: ValueType, bound: Long, cond: Condition): Node = {
+          val boundC = IntegralConst(tpe)(bound)
+          val c = CondVal(Cmp(tpe, cond)(v, boundC))
+          val cW = BFX(tpe, 0, 32, signExtension = false, c)
+          val mask = Sub(IntegralConst(tpe)(0), cW)
+          val notMask = Xor(mask, IntegralConst(tpe)(-1))
+          Or(And(notMask, v), And(mask, boundC))
+        }
+
         val n = (from, to) match {
           case (from: (Reference | InstantiatedReference | TypeVariable), to: (Reference | InstantiatedReference)) =>
             // TODO: remove this case when numeric cast will handle only *numeric* types
@@ -1303,21 +1313,12 @@ trait CHIRParser
 
                 // Branchless clamp via condition masks:
                 //   c = (v > bound); mask = -c (all ones if over); v' = (v & ~mask) | (bound & mask)
-                def clampSide(v: Node, bound: Long, cond: Condition): Node = {
-                  val boundC = IntegralConst(fromTpe)(bound)
-                  val c = CondVal(Cmp(fromTpe, cond)(v, boundC))
-                  val cW = BFX(fromTpe, 0, 32, signExtension = false, c)
-                  val mask = Sub(IntegralConst(fromTpe)(0), cW)
-                  val notMask = Xor(mask, IntegralConst(fromTpe)(-1))
-                  Or(And(notMask, v), And(mask, boundC))
-                }
-
                 var v = value
                 if (upperNeeded) {
-                  v = clampSide(v, hi, hiCond)
+                  v = clampSide(v, fromTpe, hi, hiCond)
                 }
                 if (lowerNeeded) {
-                  v = clampSide(v, lo, loCond)
+                  v = clampSide(v, fromTpe, lo, loCond)
                 }
                 v
               }
@@ -1355,13 +1356,15 @@ trait CHIRParser
             }
 
             toAsm match {
-              case U32 =>
-                // Value could be converted to bigger signed type and then zero-extended to target type.
-                val i64 = ValueConvert(fpFromAsm, I64)(fpValue)
-                BitFieldExtract.Truncate(i64)
-              case _ =>
-                val adjToAsm = if (toAsm.isShortIntegral) I32 else toAsm
-                ValueConvert(fpFromAsm, adjToAsm)(fpValue)
+              case U8 | U16 =>
+                // Floating-point casts saturate even with OverflowWrapping.
+                // Use the existing signed conversion (NaN -> 0), then clamp
+                // before narrowing so constant folding agrees with runtime.
+                val i32 = ValueConvert(fpFromAsm, I32)(fpValue)
+                val nonNegative = clampSide(i32, IntType, 0, Condition.LT)
+                val clamped = clampSide(nonNegative, IntType, (1L << to.bits) - 1, Condition.GT)
+                BFX(toTpe, 0, to.bits, signExtension = false, clamped)
+              case _ => ValueConvert(fpFromAsm, toAsm)(fpValue)
             }
 
           case (from: FloatingPoint, to: FloatingPoint) =>
