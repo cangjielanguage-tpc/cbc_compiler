@@ -610,6 +610,3 @@ compiler/Sema/call/call_error_report_04.cj
 
 # bug 128: zero-sized struct assignment failed to compile
 compiler/CodegenCHIR/barrier/globalBarier5.cj
-
-# bug 129: unexpected Rune/Nothing conflict in interface method signature
-compiler/Sema/interface/interface_inheritance_02.cj
