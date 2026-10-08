@@ -28,7 +28,7 @@ import scala.collection.mutable
   *
   * @author liontiger
   */
-class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment) {
+class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   private implicit val typeProvider: TypeProvider = env.getTypeProvider
 
   private val symTypeByTable = mutable.HashMap.empty[CHIR.Type | CHIR.CustomTypeDef, SymType]
@@ -68,7 +68,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
         // rename main-related functions to let interpreter start from "main" entry point
         case v: CHIR.Func if v.identifier == "@user.main" => (v.id, "user.main.invoke", "user.main.invoke")
         case v: CHIR.Func if v.kind == CHIR.Func.Kind.MainEntry => (v.id, "user.main", "user.main")
-        case v: CHIR.Func if v.identifier == CHIRHelperGenerator.cjEntryName => (v.id, "main", "main")
+        case v: CHIR.Func if v.identifier == CHIRPatchGeneratorFactory.cjEntryName => (v.id, "main", "main")
 
         case v: CHIR.Func => (v.id, v.identifier, v.srcCodeIdentifier)
         case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)

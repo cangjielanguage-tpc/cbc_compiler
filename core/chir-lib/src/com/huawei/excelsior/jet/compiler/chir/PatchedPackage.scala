@@ -4,29 +4,26 @@ import scala.collection.mutable
 
 object PatchedPackage {
   def apply(pkg: CHIR.Package): PatchedPackage = {
-    val helperGenerators = CHIRPatchGeneratorFactory(pkg).generateHelpers
-
-    val helpersById: mutable.HashMap[Int, CHIR.Func] = mutable.HashMap()
-    val helpersByName: mutable.HashMap[String, CHIR.Func] = mutable.HashMap()
+    val patchGenerators = CHIRPatchGeneratorFactory(pkg).patchGenerators
 
     val startingId: Int = pkg.values.length
 
-    val ids = startingId until (startingId + helperGenerators.length)
-    val helpers = helperGenerators.zip(ids).map((helperGen, id) => helperGen.generatePatch(id))
+    val ids = startingId until (startingId + patchGenerators.length)
+    val helpers = patchGenerators.zip(ids).flatMap((helperGen, id) => helperGen.generatePatch(id))
 
     new PatchedPackage(pkg, helpers)
   }
 }
 
-class PatchedPackage(pkg: CHIR.Package, helpers: Seq[CHIR.Func]) extends CHIR.Package {
-  private val helpersById = helpers.map(h => (h.id.toInt, h)).toMap
-  private val helpersByName = helpers.map(h => (h.name, h)).toMap
+class PatchedPackage(pkg: CHIR.Package, patches: Seq[CHIR.Func]) extends CHIR.Package {
+  private val patchesById = patches.map(h => (h.id.toInt, h)).toMap
+  private val patchesByName = patches.map(h => (h.name, h)).toMap
 
-  def values: Iterator[CHIR.Value] = pkg.values ++ helpers.iterator
+  def values: Iterator[CHIR.Value] = pkg.values ++ patches.iterator
 
-  def function(idx: Int): CHIR.Func = helpersById.getOrElse(idx, pkg.function(idx))
+  def function(idx: Int): CHIR.Func = patchesById.getOrElse(idx, pkg.function(idx))
 
-  def getFunc(identifier: String): Option[CHIR.Func] = helpersByName.get(identifier).orElse(pkg.getFunc(identifier))
+  def getFunc(identifier: String): Option[CHIR.Func] = patchesByName.get(identifier).orElse(pkg.getFunc(identifier))
 
   // Forwarders
   def getDef(identifier: String): Option[CHIR.CustomTypeDef] = pkg.getDef(identifier)
