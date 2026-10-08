@@ -1148,6 +1148,15 @@ trait ForkedAssembler {
       .sym16(mr)
   }
 
+  def callIndirect(target: IR, params: Seq[Assembler.CallParameter]): Unit = instr {
+    val t = analyzer.usePrim(target)
+    stream
+      .opc8(Opcode.CallCFunc)
+      .bits(_.w4(t).w4(t))
+      .callArgs(params)
+    saveState()
+  }
+
   // endregion
 }
 
@@ -1223,14 +1232,6 @@ class Assembler extends AsmEmitter.WithLiterals with ForkedAssembler { self: Sym
   def newarrfillnonconst(dst: IR, len: IR, value: IR, ftc_sig_id: Symbol): Unit = notImplemented("assembler newarrfillnonconst")
 
   def lea_us(dst: IR, us: StackSlot.Untyped): Unit = shouldNotReachHere("rec tracing unsafe operation. TODO: special tail instruction")
-
-  def callIndirect(rd: IR, target: IR): Unit = instr {
-    val t = analyzer.usePrim(target)
-    stream
-      .opc8(Opcode.CallCFunc)
-      .bits(_.w4(rd).w4(t))
-    saveState()
-  }
 }
 
 object Assembler {
