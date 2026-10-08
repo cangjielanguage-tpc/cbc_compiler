@@ -222,3 +222,77 @@ compiler/Sema/function/unsafe_func_can_only_be_called.cj
 compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_1_2.cj
 compiler/Sema/toplevel/reftype.cj
 compiler/Sema/tuple/tuple2.cj
+
+# stdx packages are not built/available in the hotfix toolchain ("can not find package 'stdx.*'")
+API/stdx
+
+# missing-stdx-package failures, but directories also contain real compiler bugs so no glob patterns
+API/std/core/test_package.cj
+API/std/math/numeric/bigint/test_json.cj
+API/std/runtime/test_signal.cj
+API/std/runtime/test_signal_security.cj
+API/std/runtime/test_signal_unregister.cj
+API/std/runtime/test_signal_unregister_oneSig.cj
+API/std/unittest/bench_results/bench_gc.cj
+API/std/unittest/bench_results/bench_mem.cj
+API/std/unittest/bench_results/bench_time.cj
+API/std/unittest/mock/examples/ui_1.cj
+API/std/unittest/mock/examples/ui_2.cj
+API/std/unittest/mock/examples/ui_3.cj
+API/std/unittest/mock/examples/ui_4.cj
+compiler/Driver/LTO/lto_test6_11.cj
+compiler/Driver/LTO/lto_test6_25.cj
+compiler/Driver/LTO/lto_test6_26.cj
+compiler/Driver/LTO/lto_test6_27.cj
+compiler/Driver/LTO/lto_test6_28.cj
+compiler/Driver/LTO/lto_test6_29.cj
+compiler/Driver/LTO/lto_test6_31.cj
+compiler/Driver/LTO/lto_test6_32.cj
+compiler/Driver/LTO/lto_test6_33.cj
+compiler/Driver/linkage/dynamic_linkage/t.cj
+
+# missing stdx.unittest.data / template APIs (undeclared Sample/Ema/Measurements/BenchRawMeasurement)
+API/std/unittest/gnuplot_svg_fix/fix_svg_test.cj
+API/std/unittest/new_bench/stats/bootstrap_test.cj
+API/std/unittest/new_bench/stats/ema_test.cj
+API/std/unittest/new_bench/stats/measurements_test.cj
+API/std/unittest/new_bench/stats/normal_dist_test.cj
+API/std/unittest/new_bench/stats/sample_test.cj
+API/std/unittest/new_bench/stats/statistics_sample_test.cj
+API/std/unittest/template_engine/template_test.cj
+
+# AOP aspect plugin library is missing ("No such file or directory: '/libstdx.collect_aspects.so'")
+compiler/Plugins/AOP_tests
+
+# macro plugin .so link failures ('/usr/bin/ld' ... lib-macro_*.so) - hotfix toolchain cannot build macro plugins
+API/std/libast/exprs/performExpr/test_dump_001.cj
+API/std/libast/exprs/performExpr/test_dump_002.cj
+API/std/libast/exprs/performExpr/test_exception_001.cj
+API/std/libast/exprs/resumeExpr/test_dump_001.cj
+API/std/libast/exprs/resumeExpr/test_dump_002.cj
+API/std/libast/exprs/resumeExpr/test_dump_003.cj
+API/std/libast/exprs/resumeExpr/test_exception_001.cj
+API/std/libast/exprs/try_expr/test_handlers_001.cj
+API/std/libast/patterns/commandtypepattern/test_dump_001.cj
+API/std/libast/patterns/commandtypepattern/test_dump_002.cj
+API/std/libast/walker/test_all_exprs_break_traverse_001.cj
+compiler/IncrementalCompilation/DeclLevel/GlobalFunc/ToForeign_Full.cj
+compiler/IncrementalCompilation/DeclLevel/GlobalFunc/ToForeign_Full_2.cj
+compiler/Macro/debug/call_eh.cj
+compiler/Macro/parse/import.cj
+compiler/Macro/parse/import_debug_macro.cj
+compiler/Macro/replace/literal.cj
+
+# launcher-wrapper: '<test>.out: command not found' - cbc pipeline produced no runnable output
+compiler/ConstEval/testInterface.cj
+compiler/ConstEval/testTry.cj
+
+# multi-file/multi-package staging broken ('expected at least one source code file')
+compiler/Modules/multiple_package/src/main.cj
+compiler/Modules/reexport_alias/reexport_alias_03/main.cj
+
+# broken test staging ("cp: cannot stat 'test2/*'")
+compiler/Driver/options/obfuscation/test_layout/test4.info
+
+# incremental compilation: not supported by hotfix toolchain
+compiler/IncrementalCompilation
