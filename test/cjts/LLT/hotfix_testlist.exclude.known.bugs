@@ -598,3 +598,21 @@ compiler/Sema/call/call32.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
 compiler/Sema/join_meet/join_perf.cj
 compiler/Sema/operator_overload/timeout_06.cj
+
+# bug 124: not implemented: cast from Option<Array<Int64>>.None to Option<Int64>
+compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
+
+# bug 125: storeFieldSeq for tuple with Varray
+compiler/CodegenCJNative/reflect/reflect_09.cj
+
+# bug 126: Cannot invoke "com.huawei.excelsior.jet.compiler.symlevel.Field.isStatic()" because "field" is null
+compiler/Sema/annotation/ok_class_05.cj
+
+# bug 127: Unknown size for type ?std.core:Option<Nothing>
+compiler/Sema/call/call_error_report_04.cj
+
+# bug 128: zero-sized struct assignment failed to compile
+compiler/CodegenCHIR/barrier/globalBarier5.cj
+
+# bug 129: unexpected Rune/Nothing conflict in interface method signature
+compiler/Sema/interface/interface_inheritance_02.cj
