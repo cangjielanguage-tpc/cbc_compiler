@@ -2695,6 +2695,7 @@ trait CHIRParser
         case t: VArray            => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
         case t: Tuple             => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
         case t: CangjieEnum       => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
+        case t: SignatureType.Box => loadTypeInfo(t.base)
         case t => shouldNotReachHere(t)
       }
     } else {

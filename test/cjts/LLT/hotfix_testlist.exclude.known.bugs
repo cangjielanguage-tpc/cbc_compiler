@@ -538,15 +538,6 @@ compiler/CodegenCJNative/interface/record_extend_interface.cj
 compiler/CodegenCJNative/record/implement_interfaces/record_interface_static.cj
 compiler/Sema/box/box_generic_class_03/main.cj
 
-# bug 115 (loadTypeInfo: should not reach here `Box(Tuple(List(Int64, LocalTypeVariable(0)))))`)
-compiler/Sema/match/nested_pattern/match_nested_in_tuple_005.cj
-compiler/Sema/match/nested_pattern/match_nested_in_tuple_006.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct02.cj
-compiler/CodegenCJNative/option/option_typecast.cj
-compiler/Sema/PatternMatching/EnumPattern/generic_enum_nested_match.cj
-compiler/Sema/generics/function_generics_list.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
-
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass02.cj
