@@ -53,12 +53,12 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
     }
 
-    def globalName(_v: CHIR.Func | CHIR.GlobalVar): String = {
-      val (isWrappedMethod, wrappedMethod) = _v match {
+    def globalName(v: CHIR.Func | CHIR.GlobalVar): String = {
+      val (isWrappedMethod, wrappedMethod) = v match {
         case v: CHIR.Func => (getMethodWrappers(v).nonEmpty, getWrappedMethod(v))
         case v: CHIR.GlobalVar => (false, None)
       }
-      val (id, identifier, srcName) = _v match {
+      val (id, identifier, srcName) = v match {
         // rename main-related functions to let interpreter start from "main" entry point
         case v: CHIR.Func if v.identifier == "@user.main" => (v.id, "user.main.invoke", "user.main.invoke")
         case v: CHIR.Func if v.kind == CHIR.Func.Kind.MainEntry => (v.id, "user.main", "user.main")
@@ -67,21 +67,21 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
         case v: CHIR.Func => (v.id, v.identifier, wrappedMethod.map(_.srcCodeIdentifier).getOrElse(v.srcCodeIdentifier))
         case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
       }
-      val isPrivate = _v.attributes.contains(CHIR.Attribute.Private)
-      val isOperator = _v.attributes.contains(CHIR.Attribute.Operator)
-      val isInitializer = _v.attributes.contains(CHIR.Attribute.Initializer)
-      val isPackageGlobal = _v.declaringDef.isEmpty
-      val suffix = if (isGenericInstantiated(_v)) {
+      val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
+      val isOperator = v.attributes.contains(CHIR.Attribute.Operator)
+      val isInitializer = v.attributes.contains(CHIR.Attribute.Initializer)
+      val isPackageGlobal = v.declaringDef.isEmpty
+      val suffix = if (isGenericInstantiated(v)) {
         // TODO another way without id usage?
         assert(id > 0)
         s"$$instantiated$$${pkg.name}$$$id"
       } else {
         ""
       }
-      getOverrideSrcFuncType(_v) match {
+      getOverrideSrcFuncType(v) match {
         case Some(funcType) if !isOperator =>
-          val f = _v.asInstanceOf[CHIR.Func]
-          val d = wrappedMethod.getOrElse(_v).declaringDef.get
+          val f = v.asInstanceOf[CHIR.Func]
+          val d = wrappedMethod.getOrElse(v).declaringDef.get
           val vtableFuncs = d.vtables.flatMap(_.vMethods)
           vtableFuncs.find(_.instance == f) match {
             case Some(m) => m.name
