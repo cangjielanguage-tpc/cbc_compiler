@@ -12,7 +12,7 @@ import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BytecodeReferenceSy
 import com.huawei.excelsior.jet.assembler.cbc.{Register, StackSlot}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.CC
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{Opcode, Ordinal}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.{CallParameter, Opcode, Ordinal}
 import com.huawei.excelsior.jet.assembler.fixups.Relocation
 import com.huawei.excelsior.jet.assembler.fixups.RelocationKind.{CBC_ID16, CBC_ID32}
 import com.huawei.excelsior.jet.assembler.{AsmType, Segment, Symbol}
@@ -44,6 +44,15 @@ trait ByteStream {
   final def uleb(x: Long): ByteStream = {
     LEB128Encoder.encodeULEB128(x, write8)
     this
+  }
+
+  /** Writes locations of call arguments, every one of them increased by one, so
+    * that a zero terminates the list for the reader. */
+  final def callArgs(params: Seq[CallParameter]): ByteStream = {
+    for (param <- params.iterator) {
+      uleb(param.idx + 1)
+    }
+    uleb(0)
   }
 
   final def ts16(ts: StackSlot.Typed): ByteStream = write16(ts.idx)

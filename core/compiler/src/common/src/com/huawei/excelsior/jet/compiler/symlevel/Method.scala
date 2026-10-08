@@ -583,7 +583,10 @@ abstract class Method extends Symbol with Member with ConstantPoolObject with Fr
   final def isRecordInitializer: Boolean =
     (isAJReplaced && getAJReplacement.isAJRecordInitializer) || this.isAJRecordInitializer
 
+  @Deprecated
   def getGenericInfo: GenericInfo
+
+  def getGenericParamCount: Int = if (isUniversalGeneric) getGenericInfo.constraints.length else 0
 
   protected def jcaOptionEnabled(name: String): Boolean
 

@@ -41,12 +41,12 @@
   @end
 @end
 
-@method_ref mfoo = default:I@ref foo()Void
+@method_ref mfoo = default:I@ref foo()Void [REF_RECEIVER]
 @type default
   @method main()I64
     @code
       newobj default:Foo@ref
-      call.interf IR1, #mfoo
+      call.interf #mfoo, IR1
       @dead IR1
       @live.prim IR1
       ret.64 IR1

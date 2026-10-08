@@ -305,9 +305,14 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       val refType = parseType()
       val name = parseIdent()
       val signature = parseFunctional()
+      val ftvars = if (current.is(LParen)) {
+        parseTypeList(LParen, RParen)
+      } else {
+        Seq.empty
+      }
       val flags = parseMethodRefFlags()
       val aotData = parseAotData()
-      MethodReference(name, refType, signature, flags, aotData = aotData)
+      MethodReference(name, refType, signature, flags, aotData = aotData, ftvars)
     }
 
     def parse[T](expected: => String, default: => T)(pf: PartialFunction[Token, T]): T = {
@@ -681,6 +686,22 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       }
       frs.toSeq
     }
+
+    def params: Seq[Assembler.CallParameter] = {
+      val buf = mutable.ArrayBuffer.empty[Assembler.CallParameter]
+      while (!stream.current.isEnd) {
+        buf += (stream.consume() match {
+          case Kw(k) if Conversion.iregs.contains(k) => Assembler.ParamIReg(Conversion.iregMapping(k))
+          case Kw(k) if Conversion.fregs.contains(k) => Assembler.ParamFReg(Conversion.fregMapping(k))
+          case Token.StackSlot(_, _, value) => Assembler.ParamUntyped(Untyped(value.toInt))
+          case t =>
+            errors += stream.newError("failed to parse call parameter (ireg, freg, or untyped slot)", t)
+            Assembler.ParamIReg(Register.IR.IRZ)
+        })
+        if (stream.current.is(Comma)) stream.consume()
+      }
+      buf.toSeq
+    }
   }
 
   private trait Labels {
@@ -841,6 +862,7 @@ private trait ArgStream {
   def tk: BuiltinSignature
   def ldk: LoadAccessKind
   def stk: StoreAccessKind
+  def params: Seq[Assembler.CallParameter]
 }
 
 private object ArgParseError extends Throwable
@@ -1181,11 +1203,11 @@ private object InstructionParser {
   instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, number = s.int) }
 
   // calls
-  instr("call.direct")    { (a, s) => a.callDirect(s.ireg, s.method) }
-  instr("call.virt")      { (a, s) => a.callVirt(s.ireg, s.method) }
-  instr("call.interf")    { (a, s) => a.callInterf(s.ireg, s.method) }
-  instr("call.closure")   { (a, s) => a.callClosure(IR.IR1, s.tpe) }
-  instr("call.closure.g") { (a, s) => a.callClosureGeneric(IR.IR1, s.tpe) }
+  instr("call.direct")    { (a, s) => a.callDirect(s.method, s.params) }
+  instr("call.virt")      { (a, s) => a.callVirt(s.method, s.params) }
+  instr("call.interf")    { (a, s) => a.callInterf(s.method, s.params) }
+  instr("call.closure")   { (a, s) => a.callClosure(s.tpe, s.params) }
+  instr("call.closure.g") { (a, s) => a.callClosureGeneric(s.tpe, s.params) }
 
   // bfx
   instr("bfxs.32.32")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W32, Width.W32, true,  s.int.toInt, s.int.toInt) }

@@ -357,7 +357,7 @@ trait MachineDescription { self: Universe with BackEnd =>
     case call: Call =>
       if (call.abi.returnType.isZST) invalidSet else setOf(call.abi.resultLocation)
 
-    case copy: Copy if !copy.allowedResults.isUniverse =>
+    case copy: Copy if !copy.allowedResults.isUniverse && !copy.allowedResults.isUniverseWithoutImm =>
       assert(copy.tpe != VoidType)
       // TODO: support universeSet in node allocation mechanics and remove this patch
       copy.allowedResults

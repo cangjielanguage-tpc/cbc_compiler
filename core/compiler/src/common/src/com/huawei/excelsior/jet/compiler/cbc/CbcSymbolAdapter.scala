@@ -77,16 +77,35 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         case _ => notImplemented(symbol.accessKind)
       }
       val signature = symbol.method.getSignature.instantiate(cparams, Seq.empty).toCbc
+      val typeVars = symbol match {
+        case imr: InstantiatedMethodReference =>
+          imr.instantiatedTypeParameters.map(_.toCbc)
+        case _ => Seq.empty
+      }
 
       val mt = symbol.methodType
       val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
       if (mt.hasRetByValParameter)      flags += MethodRefFlag.SRET
       if (mt.hasOuterTypeInfoParameter) flags += MethodRefFlag.HAS_OUTER_TI
+      
       if (mt.hasThisTypeInfoParameter)  flags += MethodRefFlag.HAS_THIS_TI
-      if (mt.hasReferenceReceiver)      flags += MethodRefFlag.REF_RECEIVER
-      if (mt.hasRecordReceiver)         flags += MethodRefFlag.REC_RECEIVER
-      if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT // TODO: is it correct?
-      CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData)
+      if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT
+
+      if (mt.hasReceiverParameter) {
+        import SignatureType.*
+        val receiver = mt.parameterType(mt.getReceiverArgIdx)
+        flags.addOne(receiver match {
+          case Unit               => MethodRefFlag.REC_RECEIVER
+          case Nothing            => MethodRefFlag.PRIM_RECEIVER
+          case _: FloatingPoint   => MethodRefFlag.FPRIM_RECEIVER
+          case x if x.isPrimitive => MethodRefFlag.PRIM_RECEIVER
+          case x if x.isRecord    => MethodRefFlag.REC_RECEIVER
+          case x if x.isReference => MethodRefFlag.REF_RECEIVER
+          case _                  => shouldNotReachHere(s"Unexpected receiver type $receiver in method $method")
+        })
+      }
+
+      CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData, typeVars = typeVars)
     case symbol: CangjieFieldReference => // Field reference
       symbol.field match {
         case None => CbcFileFormat.NoneFieldReference(symbol.fieldType.toCbc)
