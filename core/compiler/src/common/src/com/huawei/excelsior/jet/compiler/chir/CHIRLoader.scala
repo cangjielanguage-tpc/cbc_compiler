@@ -26,8 +26,8 @@ object CHIRLoader {
 
   def getCHIRResolver(source: String)(implicit env: Environment): CHIRResolver = {
     parsedCHIR.get(source).flatMap(_.get).getOrElse {
-      implicit val pkg: CHIR.Package = CHIR.newPackage(source, env.valueOf(CHIRVersion))
-      val resolver = CHIRResolver()
+      val pkg: CHIR.Package = CHIR.newPackage(source, env.valueOf(CHIRVersion))
+      val resolver = CHIRResolver(pkg, env)
       parsedCHIR.put(source, new SoftReference(resolver))
       resolver
     }
