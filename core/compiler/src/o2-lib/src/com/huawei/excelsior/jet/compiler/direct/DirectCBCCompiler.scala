@@ -339,7 +339,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         case c: CHIR.Constant => loadToReg(c.literal, reg)
         case lv: CHIR.LocalVar =>
           if (s.isZST) () // nothing to load
-          else asm.loadUntyped(reg, LoadAccessKind.from(cbcKind(s)), StackSlot.Untyped(slotOfAny(lv, s)))
+          else loadRecOr(reg, s, slotOfAny(lv, s), Option(lv.associatedExpr))
         case p: CHIR.Parameter =>
           if (s.isZST) ()
           else asm.loadUntyped(reg, LoadAccessKind.from(cbcKind(s)), StackSlot.Untyped(slotOfAny(p, s)))
@@ -347,10 +347,28 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
           // defining expression of an aliased local: its slot was filled when
           // the expression was emitted
           if (s.isZST) ()
-          else asm.loadUntyped(reg, LoadAccessKind.from(cbcKind(s)), StackSlot.Untyped(slotOfAny(e, s)))
+          else loadRecOr(reg, s, slotOfAny(e, s), Some(e))
         case other => fail(s"load of ${other.getClass.getSimpleName}")
       }
     }
+
+    /** Loads a value whose home slot holds the ADDRESS of a record living in
+      * a typed result slot (string/rec returned by a call): re-establish the
+      * engine's REC register tracking via ld.stack.rec from the typed slot. */
+    private def loadRecOr(reg: IR, s: SignatureType, slotIdx: Int, definingExpr: Option[CHIR.Expression]): Unit = {
+      val recLike = s.isRecord || s.isInstanceOf[SignatureType.CangjieArray] || cbcKind(s) == CbcTypeKind.REC
+      if (recLike) definingExpr.flatMap(recResultSlots.get) match {
+        case Some(ts) =>
+          asm.ldstackrec(reg, ts)
+          return
+        case None =>
+      }
+      asm.loadUntyped(reg, LoadAccessKind.from(cbcKind(s)), StackSlot.Untyped(slotIdx))
+    }
+
+    /** Typed slots holding record results of calls, keyed by the defining
+      * expression (an Apply whose rec result was written by the callee). */
+    private val recResultSlots = scala.collection.mutable.HashMap.empty[CHIR.Expression, StackSlot.Typed]
 
     private def literalToReg(l: CHIR.Literal, reg: IR): Unit = l match {
       case CHIR.UnitLiteral => ()
@@ -2042,7 +2060,21 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val calleeMethod = refClass.findDeclaredMethodOrNull(xstr(name), gsig)
       if (calleeMethod == null) return fail(s"invoke: method not found: $name")
       val mak = if (isStatic) MAK.STATIC else MAK.VIRTUAL
-      val ref = new MethodReference(calleeMethod, mak, CompiledType(refType), vnum)
+      // A generic callee (declaring class is generic) must be dispatched with
+      // a universal-generic method reference: the engine builds the method
+      // table per instantiation (production: Ref.Instantiated ->
+      // universalGenericCall -> call.interf.g). Type arguments come from the
+      // receiver's instantiated interface type when available.
+      val declGeneric = Option(calleeMethod.getDeclaringClass.getGenericInfo)
+        .exists(_.constraints.nonEmpty)
+      val instArgs = resolver.typeSig(e.thisType) match {
+        case it: SignatureType.InstantiatedType => it.instantiatedTypeParameters
+        case _ => genericParamsOf(thisType)
+      }
+      val ref =
+        if (declGeneric && instArgs.nonEmpty)
+          new InstantiatedMethodReference(calleeMethod, mak, instArgs, refType, Some(vnum))
+        else new MethodReference(calleeMethod, mak, CompiledType(refType), vnum)
 
       emitCall(e, calleeMethod, sourceArgVals, ref, isVirtual = !isStatic)
     }
@@ -2229,13 +2261,23 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
             }
         }
       }
-      realArgs.zip(argLocs).foreach { (a, loc) =>
+      realArgs.zip(argLocs).zipWithIndex.foreach { case ((a, loc), argIdx) =>
         val sig = sigOf(a).get
         loc match {
           case l if l.isReg =>
             l.asReg match {
               case fr: FR => loadFloatToReg(a, fr)
-              case ir: IR => loadToReg(a, ir)
+              case ir: IR =>
+                // generic callee: typevar params receive a Box of the value
+                // (CHIRParser boxTypeVar unifies the sig) — box concrete args
+                calleeMt.parameterType(calleeStart + argIdx) match {
+                  case SignatureType.Box(b) if !sig.isInstanceOf[SignatureType.Box] =>
+                    if (b.containsTypeVariables) return fail(s"generic boxed arg $b")
+                    loadToReg(a, SCRATCH)
+                    asm.box(ir, SCRATCH, SignatureType.Box(b).toCbc)
+                    saveGCMapHere()
+                  case _ => loadToReg(a, ir)
+                }
             }
           case _ => ()
         }
@@ -2296,7 +2338,15 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
       val closureInvoke = ref.refType.sigType.isCangjieClosure &&
         (ref.method.getName == "$InstVirtualFunc" || ref.method.getName == "$GenericVirtualFunc")
-      if (closureInvoke) {
+      if (isVirtual && ref.isInstanceOf[InstantiatedMethodReference]) {
+        // universal-generic interface call: engine dispatches via the outer TI
+        val tiLoc = locs(calleeMt.getOuterTypeInfoArgIdx)
+        val ti: IR | StackSlot.Untyped =
+          if (tiLoc.isReg) tiLoc.asReg.asInstanceOf[IR]
+          else StackSlot.Untyped(locs.take(calleeMt.getOuterTypeInfoArgIdx).count(l => !l.isReg))
+        asm.callInterfGeneric(ti, asm.adapter.method(ref.getPermanent))
+      }
+      else if (closureInvoke) {
         // closure dispatch: the engine routes via the functional TI in IR_ACC
         if (ref.method.getName == "$GenericVirtualFunc")
           asm.callClosureGeneric(resultReg, ref.refType.sigType.toCbc)
@@ -2308,6 +2358,7 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       saveGCMapHere(tailRefSlots)
       sretSlot.foreach { ts =>
         // the record value is the address of its buffer (CBC record convention)
+        recResultSlots(e) = ts // later loads of this result re-track the REC
         asm.ldstackrec(SCRATCH, ts)
         storeResult(e, SCRATCH, retSig)
       }
