@@ -580,10 +580,11 @@ compiler/Sema/class/class_no_override_modifier_5.cj
 # bug 63 (Proper parse @C methods with C-struct return type)
 compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
 
-# bug 101 (compiler incorrectly preserve SRET flag in ABI for overriden methods)
+# bug 132 (Incorrect signature of return type)
 compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
+
+# bug 134 (Incorrect TypeInfo creation of Boxes)
 compiler/CodegenCommon/enum/enum_fix_02.cj
-compiler/Sema/forin/closedrange_rune.cj
 
 # bug 103 (static interface call with generic upper bound)
 compiler/Sema/Extend/interface_default_implement/static_default_impl_call_non_impl_pass.cj
