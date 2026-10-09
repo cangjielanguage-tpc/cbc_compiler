@@ -195,7 +195,7 @@ API/std/reflect/annotations.cj
 API/std/reflect/new_generic_cjnative.cj
 API/std/reflect/dynloading_cjnative_test1.cj
 
-# not implemented: FuncType
+# bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
 compiler/CHIR/CFFIWrapper/cffi01.cj
 compiler/CodegenCHIR/cfunc/cfunc_01.cj

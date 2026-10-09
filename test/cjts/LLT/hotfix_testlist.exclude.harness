@@ -135,6 +135,10 @@ compiler/CHIR/annotation/testAnno08.cj
 compiler/CHIR/annotation/testAnno09.cj
 compiler/CHIR/annotation/reflection_in_gvinit.cj
 compiler/Sema/annotation/ok_param_01.cj
+compiler/CodegenCJNative/reflect/reflect_03.cj
+compiler/CodegenCJNative/reflect/reflect_04.cj
+compiler/CodegenCJNative/reflect/reflect_02.cj
+compiler/CHIR/DCE/do_nothing_on_reflect.cj
 
 # ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
 compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
@@ -192,6 +196,39 @@ compiler/CodegenCJNative/demangle/type/lambda_interface_type1.cj
 compiler/CodegenCJNative/demangle/type/struct_type1.cj
 compiler/CodegenCJNative/demangle/type/tuple_type1.cj
 compiler/CodegenCJNative/demangle/type/tuple_type2.cj
+compiler/DeMangle/Prop/propExtend.cj
+compiler/DeMangle/Operator/pw.cj
+compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl1.cj
+compiler/DeMangle/Organization/org_name.cj
+compiler/DeMangle/Operator/dv.cj
+compiler/DeMangle/Operator/rs.cj
+compiler/DeMangle/Operator/pl.cj
+compiler/Driver/options/stack_trace/format_simple.cj
+compiler/Driver/options/trim_path/trim_path_02.cj
+compiler/DeMangle/Operator/ls.cj
+compiler/DeMangle/Filename/fileHashcodeTest1.cj
+compiler/DeMangle/extendType_is_primitive.cj
+compiler/DeMangle/Operator/ml.cj
+compiler/DeMangle/Operator/an.cj
+compiler/DeMangle/Operator/gt.cj
+compiler/DeMangle/Operator/cl.cj
+compiler/DeMangle/Operator/le.cj
+compiler/DeMangle/Operator/rm.cj
+compiler/DeMangle/Operator/eq.cj
+compiler/DeMangle/Operator/eo.cj
+compiler/DeMangle/Operator/ne.cj
+Runtime/CJNative/global_init_expect.cj
+compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl3.cj
+compiler/DeMangle/Func/testDemangle.cj
+compiler/DeMangle/Prop/propClass.cj
+compiler/Driver/options/trim_path/trim_path2.cj
+compiler/DeMangle/GenericType/genericTy.cj
+compiler/DeMangle/Operator/or.cj
+compiler/DeMangle/Filename/fileName.cj
+compiler/DeMangle/Filename/fileHashcodeTest2.cj
+compiler/DeMangle/Operator/ge.cj
+compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl2.cj
+compiler/DeMangle/Operator/lt.cj
 
 # ignore due to frontend error
 compiler/CHIROpt/VarInitCheck/InitOrder/circular1.cj
