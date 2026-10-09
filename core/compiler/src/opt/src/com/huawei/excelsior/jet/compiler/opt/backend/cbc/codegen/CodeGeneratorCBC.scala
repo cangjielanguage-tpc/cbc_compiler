@@ -887,8 +887,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     override protected def initTailRegister(call: Call): Unit = ()
 
     override protected def genCallImpl(call: Call): Unit = {
-      if (call.abi.isVarArgs) {
-        notImplemented("calls with varargs in CBC (JET-13417)");
+      if (call.methodType.isCJForeign || call.methodType.isCFunc) {
+        mayHaveNativeCalls = true
       }
 
       def callArgLocations: Seq[ForkedISA12Assembler.CallParameter] = {

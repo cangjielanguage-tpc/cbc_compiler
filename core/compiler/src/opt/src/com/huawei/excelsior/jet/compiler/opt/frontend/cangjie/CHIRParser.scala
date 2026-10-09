@@ -1095,7 +1095,7 @@ trait CHIRParser
 
           // TODO: add instantiated type parameters to base MethodReference
           val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
-          val target = if (lparams.nonEmpty) {
+          var target = if (lparams.nonEmpty) {
             _target.toInstantiatedMethodReference(lparams, declType)
           } else {
             _target
@@ -1112,6 +1112,17 @@ trait CHIRParser
           val paramTypes = argVals.map {
             case ValueSig(sig) => sig
           }
+
+          if (func.tpe.hasVarArg) {
+            val namedCount = target.methodType.parameterCount
+            val mt = target.methodType
+            target = target.withMethodType(mt.copy(
+              signature = mt.signature.copy(parameterTypes = mt.signature.parameterTypes.toSeq ++ paramTypes.drop(namedCount)),
+              callConv = CallConv.CCALL,
+              isVarArgs = true,
+              firstVarArg = namedCount))
+          }
+
           val retType = resolver.typeSig(e.resultTpe)
           val call = callMethod(target, outerType, thisType, retType, paramTypes, args, None)
           state(e) = call
@@ -2262,13 +2273,7 @@ trait CHIRParser
         } else {
           MAK.SPECIAL
         }
-      val target = new MethodReference(method, mak, CompiledType(refType))
-      assert(vararg == target.method.isVarArgs)
-      if (vararg) {
-        notImplemented("vararg")
-      } else {
-        target
-      }
+      new MethodReference(method, mak, CompiledType(refType))
     }
 
     private def calcABIArgs(target: MethodReference, args: Seq[Node])(paramNode: SpecialParameter => Iterable[Node]): Seq[Node] = {
@@ -2318,8 +2323,12 @@ trait CHIRParser
         }
       }
 
-      val ugArgs = for ((a, (from, to)) <- args zip (paramTypes zip target.method.getSignature.parameterTypes.map(ABI.makeABISigType)))
-        yield adjustArg(a, from, to)
+      val ugArgs = if (!target.methodType.isCVarArgs) {
+        for ((a, (from, to)) <- args zip (paramTypes zip target.method.getSignature.parameterTypes.map(ABI.makeABISigType)))
+          yield adjustArg(a, from, to)
+      } else {
+        args
+      }
 
       lazy val abiRetValType = target.methodType.parameterType(target.methodType.getRetByValArgIdx)
 
