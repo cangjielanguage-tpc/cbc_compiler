@@ -54,7 +54,7 @@ class CHIRPatchGeneratorFactory(_pkg: CHIR.Package) {
         def id: Long = _id
         def identifier: String = _name
         def srcCodeIdentifier: String = _name
-        def packageName: String = intrinsicsPackageName 
+        def packageName: String = intrinsicsPackageName
         def kind: Func.Kind = CHIR.Func.Kind.Default
         def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
         def body: Option[CHIR.BlockGroup] = Option(_body)
@@ -78,8 +78,8 @@ class CHIRPatchGeneratorFactory(_pkg: CHIR.Package) {
     }
 
     def throwPatchBody(exceptionType: CHIR.Type = AOTDefs.Exception,
-                                exceptionInitFunc: CHIR.Func = AOTDefs.initException,
-                                throwPatch: ThrowPatch): CHIR.BlockGroup = CHIRDSL.genBlockGroup(pkg) { gen =>
+                       exceptionInitFunc: CHIR.Func = AOTDefs.initException,
+                       throwPatch: ThrowPatch): CHIR.BlockGroup = CHIRDSL.genBlockGroup(pkg) { gen =>
       gen.startBlock(gen.entryBlock)
       val exception = gen.local(exceptionType, gen.alloc(exceptionType))
 
@@ -234,12 +234,14 @@ class CHIRPatchGeneratorFactory(_pkg: CHIR.Package) {
 
 
   def patchGenerators: Seq[CHIRPatchGenerator] = {
-    Seq(CHIRThrowPatch(ThrowPatch.symbolResolutionErrorPatch.name,
-      ThrowPatchGenerator.throwPatchType,
-      ThrowPatchGenerator.throwPatchBody(throwPatch = ThrowPatch.symbolResolutionErrorPatch)),
+    Seq(
+      CHIRThrowPatch(ThrowPatch.symbolResolutionErrorPatch.name,
+        ThrowPatchGenerator.throwPatchType,
+        ThrowPatchGenerator.throwPatchBody(throwPatch = ThrowPatch.symbolResolutionErrorPatch)),
       CHIRThrowPatch(ThrowPatch.abstractMethodErrorPatch.name,
         ThrowPatchGenerator.throwPatchType,
         ThrowPatchGenerator.throwPatchBody(throwPatch = ThrowPatch.abstractMethodErrorPatch)),
-      CHIRCJEntryGenerator(_pkg))
+      CHIRCJEntryGenerator(_pkg)
+    )
   }
 }
