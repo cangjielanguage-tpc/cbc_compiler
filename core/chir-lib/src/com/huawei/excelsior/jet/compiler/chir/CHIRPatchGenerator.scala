@@ -44,7 +44,6 @@ trait CHIRPatchGenerator {
   def generatePatch(id: Int): Option[CHIR.Func]
 }
 
-
 class CHIRThrowPatch(_pkg: CHIR.Package, patch: ThrowPatch, _tpe: CHIR.FuncType) extends CHIRPatchGenerator {
   implicit val pkg: CHIR.Package = _pkg
 
