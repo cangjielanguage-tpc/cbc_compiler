@@ -26,7 +26,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, ForkedAssembler}
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Segment, Width}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
-import com.huawei.excelsior.jet.compiler.chir.{CHIRHelperGenerator, ThrowPatch}
+import com.huawei.excelsior.jet.compiler.chir.{CHIRPatchGeneratorFactory, ThrowPatch}
 import xscala.io.*
 
 import scala.PartialFunction.condOpt
@@ -727,7 +727,7 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       val throwHelpers = ThrowPatch.throwPatches
 
       val tb = builder.newTypeBuilder()
-      tb.setName("$P$" + CHIRHelperGenerator.intrinsicsPackageName)
+      tb.setName("$P$" + CHIRPatchGeneratorFactory.intrinsicsPackageName)
       for (helper <- throwHelpers) {
         val mb = tb.newMethodBuilder()
         mb.setName(helper.name)
