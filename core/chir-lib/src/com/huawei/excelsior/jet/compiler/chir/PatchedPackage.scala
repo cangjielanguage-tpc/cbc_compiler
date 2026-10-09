@@ -4,7 +4,13 @@ import scala.collection.mutable
 
 object PatchedPackage {
   def apply(pkg: CHIR.Package): PatchedPackage = {
-    val patchGenerators = CHIRPatchGeneratorFactory(pkg).patchGenerators
+    val patchGenerators = Seq(
+      CHIRThrowPatch(pkg, ThrowPatch.symbolResolutionErrorPatch,
+        ThrowPatchGenerator.throwPatchType),
+      CHIRThrowPatch(pkg, ThrowPatch.abstractMethodErrorPatch,
+        ThrowPatchGenerator.throwPatchType),
+      CHIRCJEntryGenerator(pkg)
+    )
 
     val startingId: Int = pkg.values.length
 
