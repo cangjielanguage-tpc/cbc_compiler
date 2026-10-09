@@ -42,13 +42,34 @@ trait ForkedAssembler {
 
   private val IR_ACC_IDX = 14
 
+  /** Fallback liveness content for emitters when no [[LivenessAnalyzer]] is
+    * wired (e.g. the direct CBC path, whose register usage does not follow
+    * the analyzer's explicit prim/rec/ref marking discipline): every op that
+    * calls saveState() still needs a GC liveness entry at the exact statepoint
+    * position. Returns the conservatively-live reference resources. */
+  var conservativeLiveness: Option[() => Seq[FlowAnalyzer.Resource]] = None
+
   /** Save gc map state gathered using [[LivenessAnalyzer]] */
   def saveState(): Unit = analyzer match {
     case analyzer: LivenessAnalyzer => livenessCollector.saveStates(segment, analyzer.state.toSeq)
-    case _ =>
+    case _ => conservativeLiveness.foreach(f => livenessCollector.saveResources(segment, f(), Seq.empty))
   }
 
   def collectLiveness: LivenessInfoCollector.AllStates = livenessCollector.collect
+
+  /** Records an extra GC liveness entry in the assembler's collector (the one
+    * serialized with the method code), so entries added outside of op
+    * emission (e.g. the direct compiler's conservative maps) land in the same
+    * stream as the op-saveState entries. */
+  def saveExtraLiveness(refs: Seq[FlowAnalyzer.Resource],
+                        pairs: Seq[(FlowAnalyzer.Resource, FlowAnalyzer.Resource)] = Seq.empty): Unit =
+    livenessCollector.saveResources(segment, refs, pairs)
+
+  /** Mut (base, derived) pairs to attach to the next saved liveness state
+    * (usually the state of the call that receives the pair). */
+  def setPendingMutPairs(base: IR, derived: IR): Unit =
+    livenessCollector.setPendingPairs(Seq((base.idx, derived.idx)))
+  def clearPendingMutPairs(): Unit = livenessCollector.setPendingPairs(Seq.empty)
 
   def stream = new SegmentByteStream(segment)
   def instr(action: => Unit): Unit = analyzer.op(action)
@@ -113,7 +134,7 @@ trait ForkedAssembler {
     }
   }
 
-  def movbp(dst: IR, local: Boolean): Unit = {
+  def movbp(dst: IR, local: Boolean): Unit = instr {
     stream
       .opc8(Opcode.MovBP)
       .bits(_.w4(dst).write(0, 3).w1(local))
@@ -229,7 +250,7 @@ trait ForkedAssembler {
   def ssrhi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Rsh, w, d, l, imm)
   def suslhi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.ULsh, w, d, l, imm)
 
-  def atomicLoad(dst: IR, obj: IR, f: FieldReference): Unit = {
+  def atomicLoad(dst: IR, obj: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
     if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.ref(dst)
@@ -242,7 +263,7 @@ trait ForkedAssembler {
       .sym16(f)
   }
 
-  def atomicStore(src: IR, obj: IR, f: FieldReference): Unit = {
+  def atomicStore(src: IR, obj: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
     if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.useRef(src)
@@ -255,7 +276,7 @@ trait ForkedAssembler {
       .sym16(f)
   }
 
-  def cas(dst: IR, obj: IR, src1: IR, src2: IR, f: FieldReference): Unit = {
+  def cas(dst: IR, obj: IR, src1: IR, src2: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
     analyzer.prim(dst)
     if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
@@ -279,7 +300,7 @@ trait ForkedAssembler {
   def atomicFetchOr (dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicFetchOr,  dst, obj, src, f)
   def atomicFetchXor(dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicFetchXor, dst, obj, src, f)
 
-  private def genAtomicOp(o: Opcode, dst: IR, obj: IR, src: IR, f: FieldReference): Unit = {
+  private def genAtomicOp(o: Opcode, dst: IR, obj: IR, src: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
     if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.ref(dst)
@@ -668,7 +689,7 @@ trait ForkedAssembler {
     }
   }
 
-  def loadTailParam(dst: Rg, tailReg: IR, ldk: LoadAccessKind, number: Long): Unit = {
+  def loadTailParam(dst: Rg, tailReg: IR, ldk: LoadAccessKind, number: Long): Unit = instr {
     analyzeLoadDstUse(dst, ldk)
     stream
       .opc8(Opcode.LoadTailParam)
@@ -677,7 +698,7 @@ trait ForkedAssembler {
       .uleb(number)
   }
 
-  def loadRawMemory(dst: Rg, base: IR, ldk: LoadAccessKind, offset: Long) = {
+  def loadRawMemory(dst: Rg, base: IR, ldk: LoadAccessKind, offset: Long) = instr {
     analyzeLoadDstUse(dst, ldk)
     // TODO: optimize VLE encoding, so next `sleb` will be present only if low4 `offset` is too big.
     stream
@@ -687,7 +708,7 @@ trait ForkedAssembler {
       .sleb(scut4(offset))
   }
 
-  def storeRawMemory(src: IR | FR, base: IR, stk: StoreAccessKind, offset: Long): Unit = {
+  def storeRawMemory(src: IR | FR, base: IR, stk: StoreAccessKind, offset: Long): Unit = instr {
     src match {
       case x: IR => analyzer.useAny(x)
       case _ =>
@@ -741,9 +762,9 @@ trait ForkedAssembler {
       .bits(_.w4(lhs).w4(rhs))
   }
 
-  def scc(op: BranchOp, dst: IR, l: IR, r: IR, width: AsmWidth): Unit = {
-    analyzer.prim(dst);
-    analyzer.usePrim(l);
+  def scc(op: BranchOp, dst: IR, l: IR, r: IR, width: AsmWidth): Unit = instr {
+    analyzer.prim(dst)
+    analyzer.usePrim(l)
     analyzer.usePrim(r)
     sccCommon(op, dst, l, r, width)
   }
@@ -877,7 +898,7 @@ trait ForkedAssembler {
 
   def storeUntyped(src: Rg, tk: CbcTypeKind, dst: StackSlot.Untyped): Unit = storeUntyped(src, StoreAccessKind.from(tk), dst)
 
-  def storeUntypedImm(src: Long, dst: StackSlot.Untyped): Unit = {
+  def storeUntypedImm(src: Long, dst: StackSlot.Untyped): Unit = instr {
     stream
       .opc8(Opcode.StoreUntypedImm)
       .write16(analyzer.prim(dst).slot)
@@ -980,7 +1001,7 @@ trait ForkedAssembler {
     analyzer.prim(dst)
   }
 
-  def leaStatic(dst: IR, dstRefBase: IR, fr: FieldReference): Unit = {
+  def leaStatic(dst: IR, dstRefBase: IR, fr: FieldReference): Unit = instr {
     stream
       .opc8(Opcode.Lea_Static)
       .bits(_.w4(dst).w4(dstRefBase))
@@ -1000,7 +1021,7 @@ trait ForkedAssembler {
     analyzer.prim(dst)
   }
 
-  def leaBox(dst: IR, base: IR): Unit = {
+  def leaBox(dst: IR, base: IR): Unit = instr {
     stream
       .opc8(Opcode.LeaBox)
       .bits(_.w4(dst).w4(base))

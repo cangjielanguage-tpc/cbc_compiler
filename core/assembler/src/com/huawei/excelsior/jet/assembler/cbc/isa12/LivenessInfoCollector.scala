@@ -32,14 +32,21 @@ class LivenessInfoCollector {
 
   private val stackCheckStates = mutable.ArrayBuffer.empty[StackCheckState]
 
+  /** Mut (base, derived) pointer pairs to attach to the NEXT saved state and
+    * clear (set by the emitter before a GC/call op, consumed by saveStates).
+    * Indices follow resToIdx. */
+  private var pendingPairs: Seq[(Int, Int)] = Seq.empty
+
+  private[isa12] def setPendingPairs(pairs: Seq[(Int, Int)]): Unit = pendingPairs = pairs
+
   private def resToIdx(res: Resource): Int = res match {
     case ireg: IR => ireg.idx
     case untyped: StackSlot.Untyped => IR.count + untyped.slot
   }
-  
+
   def saveStates(seg: Segment, state: Seq[(Resource, LivenessMark)], dpairs: Seq[(Resource, Resource)] = Seq.empty): Unit = {
     assert(seg != null)
-    
+
     val label = seg.newBoundLabel
     val regsMask = state.collect {
       case (r: IR, LivenessMark.REF) => 1 << r.idx
@@ -47,7 +54,8 @@ class LivenessInfoCollector {
     val slots = state.collect {
       case (us: StackSlot.Untyped, LivenessMark.REF) => us.slot
     }
-    val derivedPairs = dpairs.map((base, derived) => (resToIdx(base), resToIdx(derived)))
+    val derivedPairs = dpairs.map((base, derived) => (resToIdx(base), resToIdx(derived))) ++ pendingPairs
+    pendingPairs = Seq.empty
     liveStates.addOne(LiveState(label, regsMask, slots, derivedPairs))
   }
 

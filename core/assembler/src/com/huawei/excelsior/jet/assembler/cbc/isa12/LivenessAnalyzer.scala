@@ -60,9 +60,14 @@ class LivenessAnalyzer(strict: Boolean = true) extends FlowAnalyzer {
 
   // RESOURCES MANAGEMENT
 
-  private[cbc] def mark[T <: Resource](arg: T, mark: Mark): T = { instructionState.add((arg, mark)).ensuring(inOp); arg }
+  private[cbc] def mark[T <: Resource](arg: T, mark: Mark): T = {
+    instructionState.add((arg, mark)).ensuring(inOp); arg
+  }
   
   override def trans[T <: Resource, U <: Resource](to: T, from: U): Unit = {
+    // IRZ is the constant-zero register: it has no state entry (define() forbids
+    // it) and needs no usage mark; anything assigned from it is a null REF.
+    if (from == IR.IRZ) { mark(to, LivenessMark.REF); return }
     useAny(from) // mark usage for a last use checking
     mark(to, currentState(from))
   }
@@ -70,7 +75,8 @@ class LivenessAnalyzer(strict: Boolean = true) extends FlowAnalyzer {
   private def lastUse[T <: Resource](arg: T): Boolean = instructionState.exists((r, m) => r == arg && m.usage)
 
   private def use[T <: Resource](arg: T, mark: UsageMark): Unit = {
-    assert(arg == IR.IRZ || mark.acceptable(currentState(arg)), s"Resource liveness check failed for $arg with $mark")
+    assert(arg == IR.IRZ || mark.acceptable(currentState(arg)),
+      s"Resource liveness check failed for $arg with $mark (state=${currentState.get(arg)}, blockEntry=${currentBlockState.entryState.get(arg)})")
   }
 
   private def define[T <: Resource](arg: T, mark: LivenessMark): Unit = {
