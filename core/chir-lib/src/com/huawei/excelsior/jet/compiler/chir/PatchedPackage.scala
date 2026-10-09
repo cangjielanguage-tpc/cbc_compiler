@@ -3,10 +3,8 @@ package com.huawei.excelsior.jet.compiler.chir
 object PatchedPackage {
   def apply(pkg: CHIR.Package): PatchedPackage = {
     val patchGenerators = Seq(
-      CHIRThrowPatch(pkg, ThrowPatch.symbolResolutionErrorPatch,
-        ThrowPatchGenerator.throwPatchType),
-      CHIRThrowPatch(pkg, ThrowPatch.abstractMethodErrorPatch,
-        ThrowPatchGenerator.throwPatchType),
+      CHIRThrowPatch(pkg, ThrowPatch.symbolResolutionErrorPatch),
+      CHIRThrowPatch(pkg, ThrowPatch.abstractMethodErrorPatch),
       CHIRCJEntryGenerator(pkg)
     )
 
