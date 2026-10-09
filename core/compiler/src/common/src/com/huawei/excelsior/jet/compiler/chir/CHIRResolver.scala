@@ -240,25 +240,22 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   // Keys - wrapped methods, values - wrappers
-  private val wrappedMethodsCache = mutable.HashMap.empty[CHIR.Func, Seq[CHIR.Func]]
-  private var wrappedMethodsCacheInitialized = false
+  private lazy val wrappedMethodsCache: collection.Map[CHIR.Func, Seq[CHIR.Func]] = {
+    val cache = mutable.HashMap.empty[CHIR.Func, Seq[CHIR.Func]]
 
-  private def initWrappedMethods(): Unit = {
     pkg.values foreach {
       case wrapper: CHIR.Func =>
         for (f <- getWrappedMethod(wrapper)) {
-          val wrappers = wrappedMethodsCache.getOrElse(f, Seq.empty)
-          wrappedMethodsCache(f) = wrapper +: wrappers
+          val wrappers = cache.getOrElse(f, Seq.empty)
+          cache(f) = wrapper +: wrappers
         }
       case _ =>
     }
+
+    cache
   }
 
   def getMethodWrappers(f: CHIR.Func): Seq[CHIR.Func] = {
-    if (!wrappedMethodsCacheInitialized) {
-      initWrappedMethods()
-      wrappedMethodsCacheInitialized = true
-    }
     wrappedMethodsCache.getOrElse(f, Seq.empty)
   }
 
@@ -268,15 +265,14 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
     ScalaCollections.singleton(ms)
   }
 
-  private val typeVarCache = mutable.HashMap.empty[CHIR.GenericType, SignatureType.TypeVariable]
-  private var typeVarCacheInitialized = false
+  private lazy val typeVarCache: collection.Map[CHIR.GenericType, SignatureType.TypeVariable] = {
+    val cache = mutable.HashMap.empty[CHIR.GenericType, SignatureType.TypeVariable]
 
-  private def initTypeVars(): Unit = {
     def fillTypeVars(gTypes: Seq[CHIR.GenericType], local: Boolean): Unit = {
       for ((genericType, i) <- gTypes.zipWithIndex) {
         val typeVar = if (local) SignatureType.LocalTypeVariable(i) else SignatureType.ClassTypeVariable(i)
-        assert(!typeVarCache.contains(genericType) || typeVarCache(genericType) == typeVar, genericType.identifier)
-        typeVarCache(genericType) = typeVar
+        assert(!cache.contains(genericType) || cache(genericType) == typeVar, genericType.identifier)
+        cache(genericType) = typeVar
       }
     }
 
@@ -300,6 +296,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
         }
       case _ =>
     }
+    cache
   }
 
   private def isGlobalGenericLambdaFunc(f: CHIR.Func): Boolean = {
@@ -307,10 +304,6 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   private def typeVariableSig(t: CHIR.GenericType): SignatureType.TypeVariable = {
-    if (!typeVarCacheInitialized) {
-      initTypeVars()
-      typeVarCacheInitialized = true
-    }
     typeVarCache.getOrElse(t, shouldNotReachHere(t.identifier))
   }
 
