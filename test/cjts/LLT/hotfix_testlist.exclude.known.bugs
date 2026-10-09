@@ -112,6 +112,88 @@ compiler/CodegenCommon/typecast/FPToSI/fp162UIntNative_01.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_02.cj
 compiler/Sema/const_evaluation/ok_lit_const.cj
 compiler/Sema/generics/pkgs005/pkgs005001.cj
+API/std/reflect/instanceVariableInfo_test_getValue.cj
+API/std/reflect/instanceVariableInfo_test_setValue.cj
+API/std/reflect/staticVariableInfo_test_getValue.cj
+API/std/reflect/typeInfo_instanceMemberFunction_apply.cj
+API/std/reflect/typeInfo_staticMemberFunctionInfo_apply_cjnative.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_fail/equal/float16.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_fail/less/float16.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_success/equal/float16.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_success/less/float16.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_success/less_or_equal/float16.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_success/not_equal/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_fail/equal/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_fail/less/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_success/equal/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_success/less/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_success/less_or_equal/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_success/not_equal/float16.cj
+API/std/unittest/delta_comparison/isNear.cj
+API/std/unittest/delta_comparison/isNearExpansion.cj
+API/std/unittest/delta_comparison/power_assert/comparison_fail/equal/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_fail/greater/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_fail/greater_or_equal/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_fail/less/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_fail/less_or_equal/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_fail/not_equal/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_success/equal/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_success/greater/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_success/greater_or_equal/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_success/less/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_success/less_or_equal/float16.cj
+API/std/unittest/delta_comparison/power_assert/comparison_success/not_equal/float16.cj
+API/std/unittest/delta_comparison/power_assert/success.cj
+API/std/console/stdout/stdoutwrite_float.cj
+API/std/convert/test_ConvertFloat16.cj
+API/std/core/test_print.cj
+API/std/core/test_print_redirct.cj
+API/std/env/stdout/stdoutwrite_float.cj
+API/std/reflect/typeInfo_built_in_test.cj
+Runtime/CJNative/Klass/primklass_structklass.cj
+API/std/convert/test_ConvertUnexpectedSituation.cj
+API/std/math/test_interface.cj
+API/std/unittest/api/serialization/test_datamodel_field.cj
+API/std/unittest/api/serialization/test_datamodel_struct.cj
+API/std/unittest/api/serialization/test_serialization.cj
+API/std/unittest/prop_test/arbitrary/arbitrary_float.cj
+API/std/unittest/prop_test/full/shrink_test_convergence.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_fail/less_or_equal/float16.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_success/greater/float16.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_success/greater_or_equal/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_fail/less_or_equal/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_success/greater/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_success/greater_or_equal/float16.cj
+API/std/unittest/delta_comparison/assert/output_color.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_fail/not_equal/float16.cj
+API/std/unittest/delta_comparison/expect/output_color.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_fail/not_equal/float16.cj
+API/std/unittest/delta_comparison/power_assert/output_color.cj
+API/std/math/numeric/decimal/test_init.cj
+API/std/math/numeric/decimal/test_round.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_fail/greater_or_equal/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_fail/greater_or_equal/float16.cj
+API/std/unittest/delta_comparison/invalid_args/float16.cj
+API/std/unittest/delta_comparison/invalid_args/relative/float16.cj
+API/std/core/test_comparable.cj
+API/std/random/test_random_next_float.cj
+API/std/convert/test_formatter.cj
+API/std/core/test_hashable.cj
+API/std/core/String/test_string_all.cj
+API/std/core/String/test_string_no_simd.cj
+API/std/core/test_string.cj
+API/std/unittest/diff/floats/different_bitness.cj
+Runtime/CJNative/Class/Define/class_f16_barrier.cj
+compiler/Parser/number/float64_literal_overflow.cj
+API/std/reflect/staticVariableInfo_test_setValue.cj
+API/std/unittest/prop_test/shrink/floats.cj
+API/std/math/numeric/bigint/test_init.cj
+compiler/Driver/test_separate_compilation/export_for_test_extends/main.cj
+API/std/unittest/delta_comparison/assert/primitive_types/comparison_fail/greater/float16.cj
+API/std/unittest/delta_comparison/expect/primitive_types/comparison_fail/greater/float16.cj
+API/std/reflect/annotations.cj
+API/std/reflect/new_generic_cjnative.cj
+API/std/reflect/dynloading_cjnative_test1.cj
 
 # not implemented: FuncType
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
@@ -268,6 +350,7 @@ compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_6.cj
 compiler/Sema/forin/forin14.cj
 compiler/Sema/typealias/overload_and_alias1/main.cj
 compiler/CodegenCommon/enum/enum_07.cj
+API/std/deriving/shrink_t_test.cj
 
 # bug 78 (not found function: native_entry)
 compiler/CodegenCJNative/LegacyTests/native.cj
@@ -280,6 +363,8 @@ compiler/CodegenCJNative/incremental/foreign/foreign1.cj
 compiler/CHIR/CHIR2HLIR/generic/generic_external_use_ffic/main.cj
 compiler/Sema/ffi/bugfix1/c_ffi.cj
 compiler/Sema/varray/varray_cffi/varray_cstruct02.cj
+Runtime/CJNative/Signal/signal001.cj
+compiler/Driver/test_separate_compilation/export_for_test_foreign/main.cj
 
 # bug 79 (Cast Float32 -> Int32 does not throw on overflow)
 compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
@@ -362,6 +447,79 @@ compiler/CHIROpt/DeadCodeElimination/UselessFunction/DCESkipCFunc.cj
 compiler/Sema/varray/varray_cffi/varray_inout.cj
 compiler/Sema/varray/varray_cffi/varray_inout04.cj
 compiler/Sema/varray/varray_cffi/varray_inout05.cj
+## CPOINTER_ADD
+API/std/unittest/prop_test/coverage_guided/cmp/float16.cj
+API/std/unittest/prop_test/coverage_guided/cmp/float32.cj
+API/std/unittest/prop_test/coverage_guided/cmp/float64.cj
+API/std/unittest/prop_test/coverage_guided/cmp/int16.cj
+API/std/unittest/prop_test/coverage_guided/cmp/int32.cj
+API/std/unittest/prop_test/coverage_guided/cmp/int64.cj
+API/std/unittest/prop_test/coverage_guided/cmp/int8.cj
+API/std/unittest/prop_test/coverage_guided/cmp/uint16.cj
+API/std/unittest/prop_test/coverage_guided/cmp/uint32.cj
+API/std/unittest/prop_test/coverage_guided/cmp/uint64.cj
+API/std/unittest/prop_test/coverage_guided/cmp/uint8.cj
+API/std/unittest/prop_test/coverage_guided/compat/macro_class_assert.cj
+API/std/unittest/prop_test/coverage_guided/compat/macro_class_exception.cj
+API/std/unittest/prop_test/coverage_guided/compat/macro_class_expect.cj
+API/std/unittest/prop_test/coverage_guided/compat/macro_class_success.cj
+API/std/unittest/prop_test/coverage_guided/compat/macro_function2_assert.cj
+API/std/unittest/prop_test/coverage_guided/compat/macro_function2_expect.cj
+API/std/unittest/prop_test/coverage_guided/compat/no_arg_class.cj
+API/std/unittest/prop_test/coverage_guided/compat/no_arg_function.cj
+API/std/unittest/prop_test/coverage_guided/compat/strategy_macro.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/float16.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/float32.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/float64.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/int16.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/int32.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/int64.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/int8.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/uint16.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/uint32.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/uint64.cj
+API/std/unittest/prop_test/coverage_guided/fuzztest/uint8.cj
+API/std/unittest/prop_test/coverage_guided/random_source_coverage.cj
+API/std/unittest/prop_test/coverage_guided/special/byte_array.cj
+API/std/unittest/prop_test/coverage_guided/special/custom_arbitrary.cj
+API/std/unittest/prop_test/coverage_guided/special/int_sequence.cj
+API/std/unittest/prop_test/coverage_guided/special/joined_values.cj
+API/std/unittest/prop_test/coverage_guided/special/non_constant.cj
+API/std/unittest/prop_test/coverage_guided/special/one_integer.cj
+API/std/unittest/prop_test/coverage_guided/special/string.cj
+API/std/unittest/prop_test/coverage_guided/special/two_integers.cj
+API/std/unittest/prop_test/coverage_guided/zero_generation.cj
+## CSTRING_INIT
+API/std/core/test_cstring.cj
+## GET_TYPE_FOR_TYPE_PARAMETER
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_interface.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_ret_generic.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/same_package.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/generics/genericExtend.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/generics_with_O2.cj
+API/std/unittest/mock/compiler/misc/instance_member_ref_generic_class.cj
+API/std/unittest/mock/compiler/misc/instance_member_ref_generic_struct.cj
+API/std/unittest/mock/compiler/misc/static_init.cj
+API/std/unittest/mock/framework/extend_selectors_test.cj
+API/std/unittest/mock/framework/framework_sync_test.cj
+API/std/unittest/mock/framework/generic.cj
+API/std/unittest/mock/framework/matching_optionals_test.cj
+API/std/unittest/mock/framework/mode_combinations.cj
+API/std/unittest/mock/framework/named_args_test.cj
+API/std/unittest/mock/framework/none_matcher_test.cj
+API/std/unittest/mock/framework/operator_stub_test.cj
+API/std/unittest/mock/framework/returns_defaults_mode_test.cj
+API/std/unittest/mock/framework/runtime_unwanted_interaction.cj
+API/std/unittest/mock/framework/simple_verify_cardinality_test.cj
+API/std/unittest/mock/framework/simple_verify_matchers_test.cj
+API/std/unittest/mock/framework/spy_test.cj
+API/std/unittest/mock/framework/stub_fields_test.cj
+API/std/unittest/mock/framework/stub_overloads_test.cj
+API/std/unittest/mock/framework/stub_properties_test.cj
+API/std/unittest/mock/framework/synthetic_fields_mode_test.cj
+API/std/unittest/mock/framework/verification_failed_report_test.cj
+API/std/unittest/mock/framework/verify_misconfiguration_test.cj
 
 # bug 90 (genericTypeInfoParam called in method with no genericFuncParams)
 compiler/CHIR/CHIR2HLIR/extend/extend_instantiate_01.cj
@@ -463,6 +621,8 @@ compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00100.cj
 compiler/Sema/IsOrAsExpr/import_generic_as_01/test.cj
 compiler/Sema/class/interface_default_implemented_func_generic_valid_1.cj
 compiler/Sema/class/interface_default_implemented_func_generic_valid_3.cj
+API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
+API/std/unittest/mock/compiler/misc/allowedInheritance.cj
 
 # bug 106 (mut interface method access of generic field)
 compiler/CodegenCJNative/generic/generic_struct2.cj
@@ -512,6 +672,11 @@ compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
 compiler/CodegenCJNative/generic/generic_struct.cj
 compiler/CodegenCJNative/storeElementRef.cj
 compiler/Sema/unusedImport/unusedImport002/unused016/unused016.cj
+compiler/Mangle/CHIR/mut_wrapper/compile_matrix.cj
+compiler/Mangle/CHIR/mut_wrapper/composite_param_types_run.cj
+compiler/Mangle/CHIR/mut_wrapper/mut_member_update_run.cj
+compiler/Mangle/CHIR/mut_wrapper/nominal_param_types_run.cj
+compiler/Mangle/CHIR/mut_wrapper/shadowing_O2_run.cj
 
 # bug 112 (crash when calling function from extended interface)
 compiler/Sema/Extend/autobox_try_catch1.cj
@@ -542,11 +707,34 @@ compiler/CodegenCHIR/overflow/sub_wrapping.cj
 compiler/CodegenCJNative/interface/primitive_extend_interface.cj
 compiler/CodegenCJNative/interface/primitive_extend_interface_generic_constraint.cj
 compiler/Sema/Extend/extend_overload_builtin_op3.cj
+API/std/deriving/equatable_test.cj
+API/std/unittest/new_test_dsl/max_parameters.cj
+API/std/unittest/new_test_dsl/strategy.cj
+API/std/unittest/prop_test/arbitrary_range/arbitrary_range_inrange.cj
+API/std/unittest/prop_test/full/shrink_mix_order.cj
+API/std/unittest/prop_test/full/strategy_macro.cj
+compiler/Mangle/MangledName/mangle15_boxed_base_decl.cj
 
 # bug 113 (assertion failed: !Engine::Term(term).IsGeneric())
 compiler/CodegenCJNative/interface/record_extend_interface.cj
 compiler/CodegenCJNative/record/implement_interfaces/record_interface_static.cj
 compiler/Sema/box/box_generic_class_03/main.cj
+API/std/sort/test_arraySort.cj
+API/std/sort/test_sort_list.cj
+API/std/sort/test_sort_list_exception_safety.cj
+API/std/sort/test_sort_stable.cj
+API/std/sort/test_stableSort.cj
+API/std/unittest/prop_test/generator.cj
+API/std/unittest/prop_test/shrink/shrink.cj
+API/std/unittest/report_test_xml/report_xml_class.cj
+API/std/unittest/report_test_xml/report_xml_empty.cj
+API/std/unittest/report_test_xml/report_xml_parameterized_class.cj
+API/std/unittest/report_test_xml/report_xml_per_package.cj
+API/std/unittest/report_test_xml/report_xml_per_package_api.cj
+API/std/unittest/report_test_xml/report_xml_toplevel.cj
+compiler/CJCov/generic_record.cj
+compiler/CJCov/generic_record_extend_interface_generic_constraint.cj
+compiler/Modules/Package/extend/extend_multiple_exportID/main.cj
 
 # bug 114 (MatchError X (Integer) in PackageImpl.getExpr)
 compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut05.cj
@@ -561,6 +749,10 @@ compiler/CodegenCJNative/option/option_typecast.cj
 compiler/Sema/PatternMatching/EnumPattern/generic_enum_nested_match.cj
 compiler/Sema/generics/function_generics_list.cj
 compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
+API/std/collection/test_TreeMap.cj
+API/std/deriving/generics_test.cj
+API/std/unittest/new_test_dsl/DTS2025052029615.cj
+API/std/unittest/prop_test/arbitrary/arbitrary_hashmap.cj
 
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
@@ -590,9 +782,92 @@ compiler/CHIR/CHIR2HLIR/class/class_property/chir_class_property1.cj
 compiler/Sema/class/class_access_control23.cj
 compiler/Sema/class/class_property/property22.cj
 compiler/Sema/class/class_property/property25.cj
+Runtime/CJNative/Class/Define/class_function_04.cj
+Runtime/CJNative/Interface/interface_static_01.cj
+compiler/CHIR/AST2CHIR/bugfix/bugfix3/main.cj
+compiler/CJCov/generic_class_static_var.cj
+compiler/Macro/basic_expansion/interface_static.cj
+compiler/Parser/ar/parse_support_keyword_context/decl/interface.cj
 
 # bug 123 (could not find VTable slot for $GenericVirtualFunc)
 compiler/Sema/call/call32.cj
+API/std/collection/test_Operation.cj
+API/std/collection/test_collection_endops_coverage.cj
+API/std/collection/test_collection_middleops_coverage.cj
+API/std/collection/test_collection_transformops_coverage.cj
+API/std/collection/test_no_iterable_array_api.cj
+API/std/collection/test_no_iterable_arraylist_api.cj
+API/std/collection/test_no_iterable_linkedlist_api.cj
+API/std/unittest/mock/compiler/createMock/disabledMockingButNoTypeInstances.cj
+API/std/unittest/mock/compiler/createMock/genericWrapperDifferentTypeParams.cj
+API/std/unittest/mock/compiler/createMock/genericWrapperWithFrozen.cj
+API/std/unittest/mock/compiler/createMock/interfaceStaticMethod.cj
+API/std/unittest/mock/compiler/createMock/mutableStruct.cj
+API/std/unittest/mock/compiler/createMock/rewritingCallsInAnotherInit.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods_interface.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/classWithFieldAndExtend.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package_separate.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_same_package_separate.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/basic.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/multiple_foreigns.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/return.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/separate_with_mock_support.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/staticWithForeign.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/topLvlWithForeign.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/varray.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/generics.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/generics/other_package.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/overloading.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/properties.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/staticFields.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/staticMethods.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/staticRefExpr.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/topLevelFunctions.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/topLevelVariables.cj
+API/std/unittest/mock/compiler/misc/DTS2025052839508.cj
+API/std/unittest/mock/compiler/misc/assignWildcard.cj
+API/std/unittest/mock/compiler/misc/coverage_default_funcs.cj
+API/std/unittest/mock/compiler/misc/default_methods_structs.cj
+API/std/unittest/mock/compiler/misc/dontExportInternal.cj
+API/std/unittest/mock/compiler/misc/genericParamReExport.cj
+API/std/unittest/mock/compiler/misc/static_member_ref.cj
+API/std/unittest/mock/compiler/misc/stress_mocks_test.cj
+API/std/unittest/mock/compiler/misc/top_level_var_member_access.cj
+API/std/unittest/mock/compiler/separate/basic/main_assign_test.cj
+API/std/unittest/mock/compiler/separate/basic/main_test.cj
+API/std/unittest/mock/compiler/separate/errors/main_test_no_error.cj
+API/std/unittest/mock/examples/export_custom_matchers.cj
+API/std/unittest/mock/examples/repo_1.cj
+API/std/unittest/mock/framework/bench.cj
+API/std/unittest/mock/framework/mock_spy_frozen_wrappers.cj
+API/std/unittest/mock/framework/topLevelFunctions.cj
+API/std/unittest/mock/framework/top_level_decl_stubs_parsing.cj
+API/std/unittest/mock/integration/expectation_failed.cj
+API/std/unittest/mock/integration/lifetime_violation_classes.cj
+API/std/unittest/mock/integration/lifetime_violation_member_funcs.cj
+API/std/unittest/mock/integration/lifetime_violation_standalone_funcs.cj
+API/std/unittest/mock/integration/non_standard_runes.cj
+API/std/unittest/mock/integration/parametrized.cj
+API/std/unittest/mock/integration/runtime_too_many_invocations.cj
+API/std/unittest/mock/integration/shared_mock.cj
+API/std/unittest/mock/integration/shared_mock_setup.cj
+API/std/unittest/mock/integration/stateful_stub_in_before_all1.cj
+API/std/unittest/mock/integration/stateful_stub_in_before_all2.cj
+API/std/unittest/mock/integration/stateful_stub_in_before_all3.cj
+API/std/unittest/mock/integration/stub_in_before_each.cj
+API/std/unittest/mock/integration/unnecessary_stubbing.cj
+API/std/unittest/mock/integration/using_synthetic_fields.cj
+API/std/unittest/mock/integration/usual_failure.cj
+API/std/unittest/mock/integration/wrong_type_args.cj
+API/std/unittest/prop_test/arbitrary/arbitrary_bool_hashmap.cj
+API/std/unittest/rendering/rendering_main.cj
+API/std/unittest/rendering/rendering_worker.cj
+Runtime/CJNative/Function/function_lambda_01.cj
+compiler/Mangle/new_mangle/fix_same_mangled_name_in_chir.cj
+compiler/Mangle/new_mangle/fix_same_mangled_name_in_chir_3.cj
+compiler/Parser/ar/parser_support_wildcard/positive/lambda_param/2_trailing_lambda_expr/item_after_quest_1.cj
+compiler/Parser/ar/parser_support_wildcard/positive/lambda_param/2_trailing_lambda_expr/item_after_quest_2.cj
+compiler/Parser/ar/parser_support_wildcard/positive/lambda_param/2_trailing_lambda_expr/item_after_quest_4.cj
 
 # ignore due to timeouts and environmental problems
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
@@ -601,6 +876,7 @@ compiler/Sema/operator_overload/timeout_06.cj
 
 # bug 124: not implemented: cast from Option<Array<Int64>>.None to Option<Int64>
 compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
+compiler/CodegenCommon/overflow/cmpfuzz/test_4_main.cj
 
 # bug 125: storeFieldSeq for tuple with Varray
 compiler/CodegenCJNative/reflect/reflect_09.cj
