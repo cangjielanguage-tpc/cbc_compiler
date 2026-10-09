@@ -1,7 +1,5 @@
 package com.huawei.excelsior.jet.compiler.chir
 
-import scala.collection.mutable
-
 object PatchedPackage {
   def apply(pkg: CHIR.Package): PatchedPackage = {
     val patchGenerators = Seq(
@@ -15,9 +13,9 @@ object PatchedPackage {
     val startingId: Int = pkg.values.length
 
     val ids = startingId until (startingId + patchGenerators.length)
-    val helpers = patchGenerators.zip(ids).flatMap((helperGen, id) => helperGen.generatePatch(id))
+    val generators = patchGenerators.zip(ids).flatMap((generator, id) => generator.generatePatch(id))
 
-    new PatchedPackage(pkg, helpers)
+    new PatchedPackage(pkg, generators)
   }
 }
 
