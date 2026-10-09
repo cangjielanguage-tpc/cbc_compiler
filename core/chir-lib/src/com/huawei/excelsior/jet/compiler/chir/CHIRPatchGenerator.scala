@@ -48,21 +48,6 @@ trait CHIRPatchGenerator {
 class CHIRThrowPatch(_pkg: CHIR.Package, patch: ThrowPatch, _tpe: CHIR.FuncType) extends CHIRPatchGenerator {
   implicit val pkg: CHIR.Package = _pkg
 
-  def throwPatchBody(exceptionType: CHIR.Type = AOTDefs.Exception,
-                     exceptionInitFunc: CHIR.Func = AOTDefs.initException,
-                     throwPatch: ThrowPatch): CHIR.BlockGroup = CHIRDSL.genBlockGroup(_pkg) { gen =>
-    gen.startBlock(gen.entryBlock)
-    val exception = gen.local(exceptionType, gen.alloc(exceptionType))
-
-    val exceptionMsg = gen.local(AOTDefs.String, gen.const(AOTDefs.String, throwPatch.exceptionMsg))
-
-    gen.apply(exceptionInitFunc, Some(exceptionType), Some(exception), exception, exceptionMsg)
-
-    gen.local(CHIR.BuiltinType.Void, gen.apply(exceptionInitFunc, Some(exceptionType), Some(exception), exception, exceptionMsg))
-
-    gen.local(CHIR.BuiltinType.Nothing, gen.raise(exception, Option.empty))
-  }
-
   def generatePatch(_id: Int): Option[Func] = {
     Option(new CHIR.Func {
       def tpe: CHIR.FuncType = _tpe
@@ -72,7 +57,20 @@ class CHIRThrowPatch(_pkg: CHIR.Package, patch: ThrowPatch, _tpe: CHIR.FuncType)
       def packageName: String = intrinsicsPackageName
       def kind: Func.Kind = CHIR.Func.Kind.Default
       def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
-      def body: Option[CHIR.BlockGroup] = Option(throwPatchBody(throwPatch = patch))
+      def body: Option[CHIR.BlockGroup] = Option(CHIRDSL.genBlockGroup(_pkg) { gen =>
+        val exceptionType: CHIR.Type = AOTDefs.Exception
+        val exceptionInitFunc: CHIR.Func = AOTDefs.initException
+        gen.startBlock(gen.entryBlock)
+        val exception = gen.local(exceptionType, gen.alloc(exceptionType))
+
+        val exceptionMsg = gen.local(AOTDefs.String, gen.const(AOTDefs.String, patch.exceptionMsg))
+
+        gen.apply(exceptionInitFunc, Some(exceptionType), Some(exception), exception, exceptionMsg)
+
+        gen.local(CHIR.BuiltinType.Void, gen.apply(exceptionInitFunc, Some(exceptionType), Some(exception), exception, exceptionMsg))
+
+        gen.local(CHIR.BuiltinType.Nothing, gen.raise(exception, Option.empty))
+      })
       def params: Seq[CHIR.Parameter] = Seq.empty
       def retVal: Option[CHIR.LocalVar] = Option.empty
       def annotations: Seq[CHIR.Annotation] = Seq.empty
