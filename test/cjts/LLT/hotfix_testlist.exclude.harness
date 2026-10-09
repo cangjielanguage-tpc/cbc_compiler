@@ -6,6 +6,11 @@
 # no debugger support in near future
 Tools/cjdb
 
+# environment: /usr/bin/env: ‘bash’: No such file or directory
+compiler/Driver/cross_compile/sysroot_option/sysroot_mock.cj
+compiler/Driver/cross_compile/toolchain_option/toolchain_mock.cj
+compiler/Driver/cross_compile/sysroot_option/sysroot_priority.cj
+
 # multi-step/multi-package issues, hotfix toolchain does not support such scenarios
 compiler/CHIR/UG/VTable/extend/extend4/main.cj
 compiler/CHIR/UG/VTable/extend/extend5/main.cj
