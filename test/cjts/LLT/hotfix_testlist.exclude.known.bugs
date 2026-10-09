@@ -577,10 +577,6 @@ compiler/Sema/box/call_boxed_super_02.cj
 compiler/Sema/class/class_no_override_modifier_4.cj
 compiler/Sema/class/class_no_override_modifier_5.cj
 
-# bug 83 (NumericCast to UInt8 actually casts to I32)
-compiler/CodegenCHIR/tryCatch/tryTypeCast/tryTypeCast_3.cj
-compiler/CodegenCommon/typecast/FPToSI/fp642Int8_1.cj
-
 # bug 63 (Proper parse @C methods with C-struct return type)
 compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
 
