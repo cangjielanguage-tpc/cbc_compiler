@@ -273,7 +273,6 @@ final class UnboxToRefImpl(val e: Expression)(implicit val provider: CHIRItemPro
 final class UnboxToValueImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.UnboxToValue {
 }
 
-
 final class CastToConcreteImpl(val e: Expression)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.CastToConcrete {
 }
 

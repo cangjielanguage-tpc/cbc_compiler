@@ -53,7 +53,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
     }
 
-    def globalName(v: CHIR.Func | CHIR.GlobalVar): String = {
+    def memberName(v: CHIR.Func | CHIR.GlobalVar): String = {
       val (isWrappedMethod, wrappedMethod) = v match {
         case v: CHIR.Func => (getMethodWrappers(v).nonEmpty, getWrappedMethod(v))
         case v: CHIR.GlobalVar => (false, None)
@@ -106,8 +106,8 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       case v: CHIR.ClassDef => typeDefName(v)
       case v: CHIR.EnumDef => typeDefName(v) // TODO: support proper Enum
       case v: CHIR.ExtendDef => typeDefName(v)
-      case v: CHIR.Func => globalName(v)
-      case v: CHIR.GlobalVar => globalName(v)
+      case v: CHIR.Func => memberName(v)
+      case v: CHIR.GlobalVar => memberName(v)
       case v: CHIR.FuncSig => v.name
     }) ensuring (_.nonEmpty)
   }
@@ -263,8 +263,9 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def getWrappedMethod(f: CHIR.Func): Option[CHIR.Func] = {
-    // TODO: assert only one
-    f.annotations.collectFirst { case m: CHIR.WrappedRawMethod => m.rawMethod }
+    val ms = f.annotations.collect { case m: CHIR.WrappedRawMethod => m.rawMethod }
+    assert(ms.size <= 1, ms)
+    ScalaCollections.singleton(ms)
   }
 
   private val typeVarCache = mutable.HashMap.empty[CHIR.GenericType, SignatureType.TypeVariable]
