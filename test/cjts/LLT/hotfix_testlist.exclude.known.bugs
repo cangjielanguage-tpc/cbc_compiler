@@ -86,7 +86,7 @@ compiler/Sema/binary/binary_infer.cj
 compiler/Sema/tuple/tupleAccess2.cj
 compiler/CodegenCJNative/record/override_primitive_generic_return_with_concrete_type.cj
 
-# not implemented: FLOAT16
+# bug 135 (not implemented: FLOAT16)
 compiler/CodegenCJNative/LegacyTests/typesFp16.cj
 compiler/CHIR/CHIR2HLIR/array/array_09.cj
 compiler/CHIR/NoSideEffectMark/noSideEffect01.cj
@@ -194,6 +194,11 @@ API/std/unittest/delta_comparison/expect/primitive_types/comparison_fail/greater
 API/std/reflect/annotations.cj
 API/std/reflect/new_generic_cjnative.cj
 API/std/reflect/dynloading_cjnative_test1.cj
+API/std/io/StringWriter/StringWriter_UTF8_Float16.cj
+API/std/binary/binary_test.cj
+API/std/unittest/diff/floats/nan.cj
+API/std/unittest/prop_test/coverage/random_source.cj
+API/std/core/StringBuilder/test_append.cj
 
 # bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
