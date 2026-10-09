@@ -35,6 +35,11 @@ trait CangjieNodes { self: Universe =>
     // Object reference of derived pointer or Global/Local base handle
     // (see DerivedPtr.BaseHandle).
     def baseRef: Node
+    
+    def splitFields: (Seq[CangjieReferenceNode], Seq[CangjieReferenceNode]) = {
+      val suffixSize = if (resType.isVariableSizeType) 0 else refs.reverseIterator.takeWhile(_.isPlain).size
+      refs.splitAt(refs.size - suffixSize)
+    }
   }
 
   object FieldSeqOperation {
@@ -875,6 +880,11 @@ trait CangjieNodes { self: Universe =>
     def refType: SignatureType
     def fieldType: SignatureType
     def maybeField: Option[Field]
+
+    def isPlain: Boolean = this match {
+      case _: FieldReferenceNode | _: ConstIndexFieldReference => true
+      case _ => false
+    }
   }
 
   sealed trait CangjieReferenceNodeGeneric extends CangjieReferenceNode {

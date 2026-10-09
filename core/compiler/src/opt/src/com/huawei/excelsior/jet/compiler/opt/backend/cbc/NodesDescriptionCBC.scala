@@ -40,6 +40,9 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
 
     case _: LoadTypeInfoGeneric => loadTypeInfoGenericForm
 
+    case _: (LoadFieldSeq | StoreFieldSeq) => fieldChainOpForm
+    case _: (LoadStaticFieldSeq | StoreStaticFieldSeq)  => fieldChainOpForm
+
     case _: Return if Isa12Mode => simpleForm
 
     case _ => super.nodeClassFormImpl(node)
@@ -63,7 +66,8 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
       | CopyStructure | CopyStructureCBC | Throw | CheckedOp | EndLocalUnmovable
       | MutFuncArgNode | MutFunc.Combine | Return | UniversalGeneric.ConvertHolder | BulldozerHint
       | LoadTypeInfoGeneric | GenericTypeArg
-      | LoadFieldSeq | StoreFieldSeq | GetFieldSeqRef | LoadStaticFieldSeq | StoreStaticFieldSeq | GetStaticFieldSeqRef) => true
+      | GetFieldSeqRef | GetStaticFieldSeqRef
+      | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq) => true
 
     case x: BitcodeDeferred.FieldOp => x.hasObj
 
@@ -139,5 +143,9 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
       // 0th argument is inCtrl, so the rest of arguments are mapped to IR one-to-one
       setOf(IR.fromOrdinal(e.targetArgIndex))
     }
+  }
+
+  private lazy val fieldChainOpForm: NodeForm = new NodeForm {
+    override protected def argumentRegisters(e: Edge): ResourceSet = if (e.source.isFP) allFRegsSet else allIRegsExceptIR1
   }
 }

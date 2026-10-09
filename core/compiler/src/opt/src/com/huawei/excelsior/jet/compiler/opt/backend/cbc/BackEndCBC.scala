@@ -50,6 +50,7 @@ trait BackEndCBC
   val stdTmp1StdTmp2Set = ir1Set | ir2Set
   val allParamIRegsExceptStdTmp1AndStdTmp2 = allParamIRegsSet &~ stdTmp1StdTmp2Set
   val allParamIRegsExceptIR7 = allParamIRegsSet &~ ir7Set
+  val allIRegsExceptIR1 = allIRegsSet &~ ir1Set
 
   val volatileIRegsSet = setOf(frame.abi.volatileIRegs)
   val volatileFRegsSet = setOf(frame.abi.volatileFRegs)
