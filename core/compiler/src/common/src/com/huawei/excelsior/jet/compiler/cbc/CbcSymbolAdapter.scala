@@ -104,7 +104,11 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         case VIRTUAL | STATIC_VIRTUAL => Option.when(refType.isInstanceOf[CbcFileFormat.AotTypeSignature])(InterfaceCallAotData(symbol.explicitVNum.get)) // TODO: improve if needed
         case _ => notImplemented(symbol.accessKind)
       }
-      val signature = symbol.method.getSignature.instantiate(cparams, Seq.empty).toCbc
+      val signature = if (symbol.methodType.areVarArgsInitialized) {
+        symbol.methodType.signature.instantiate(cparams, Seq.empty).toCbc
+      } else {
+        symbol.method.getSignature.instantiate(cparams, Seq.empty).toCbc
+      }
       val typeVars = symbol match {
         case imr: InstantiatedMethodReference =>
           imr.instantiatedTypeParameters.map(_.toCbc)
