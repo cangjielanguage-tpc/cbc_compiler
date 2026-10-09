@@ -1760,7 +1760,9 @@ trait CHIRParser
         def intConst(v: Long, l: CHIR.Literal): Node = {
           l.tpe match {
             case CHIR.BuiltinType.Int8 | CHIR.BuiltinType.Int16 | CHIR.BuiltinType.Int32 |
-                 CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 | CHIR.BuiltinType.Boolean => IConst(v.toInt)
+                 CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 | 
+                 CHIR.BuiltinType.Boolean |
+                 CHIR.BuiltinType.Rune => IConst(v.toInt)
             case CHIR.BuiltinType.Int64 | CHIR.BuiltinType.IntNative |
                  CHIR.BuiltinType.UInt64 | CHIR.BuiltinType.UIntNative => LConst(v)
             case CHIR.BuiltinType.Float16 => notImplemented(s"FLOAT16: $v")
