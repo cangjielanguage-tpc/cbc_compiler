@@ -261,7 +261,7 @@ object CHIRBuilder {
         val hasOuterTypeInfo = true // All member functions have outer type info parameter
         val hasThisTypeInfoParam = modifiers.contains(STATIC)
         val linkageName = resolver.linkageName(m)
-        val hasMutParam = rcvSig.isRecord && modifiers.contains(Modifier.CJ_MUT)
+        val hasMutParam = rcvSig.isRecord && modifiers.contains(Modifier.CJ_MUT) && resolver.getOverrideSrcFuncType(m).isEmpty
         val rcvParam = if (hasMutParam) None else rcv map {
           case t: SignatureType.OptionLikeEnum if t.someType.isTypeVariable => SignatureType.Box(t)
           case t => t
@@ -339,55 +339,38 @@ object CHIRBuilder {
       fillMethods(symType, d, resolver.typeSig(d.tpe))
     }
 
-    // Restore abstract methods that FE changed to global (still abstract) functions
-
-    object GlobalAbstractFunc {
-      def unapply(f: CHIR.Func): Option[CHIR.Type] = {
-        if (f.declaringDef.isEmpty && f.attributes.contains(CHIR.Attribute.Abstract)) {
-          val funcType = f.tpe
-          Some(funcType.receiverType)
-        } else {
-          None
-        }
-      }
-    }
-
-    for (v <- pkg.values) v match {
-      case m @ GlobalAbstractFunc(declType) if !resolver.isDeadFunction(m) =>
-        val symType = asClassType(resolver.symType(declType).get)
-        val name = resolver.symName(m)
-        val modifiers = resolver.symModifiers(m)
-        assert(!modifiers.contains(STATIC), name)
-        assert(modifiers.contains(ABSTRACT), name)
-        val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
-        val genericInfo = resolver.genericInfo(m)
-        val genericFuncParamsCount = m.genericTypeParams.size
-        val hasOuterTypeInfo = true // All member functions have outer type info parameter
-        val hasThisTypeInfoParam = modifiers.contains(STATIC)
-        val linkageName = resolver.linkageName(m)
-
-        val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
-          ABI.Description(rcv, hasMutParam = false, hasThisTypeInfoParam,
-          isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount),
-          m.sourceFile)
-        virtMethods(m) = symMethod
-
-        if (symType.isCHIRDef) {
-          builder.markAsCHIRDef(symMethod, m.id.toInt, overwrite = false)
-        }
-        m.kind match {
-          case CHIR.Func.Kind.ClassCtor | CHIR.Func.Kind.PrimalClassCtor |
-               CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>
-            builder.markAsConstructor(symMethod)
-          case _ =>
-        }
-
-      case _ =>
-    }
-
     // -----------------------------------------------
     // Fill symlevel type vtable
     // -----------------------------------------------
+
+    def restoreGlobalAbstractFunc(m: CHIR.Func, symType: SymClassType): Method = {
+      val name = resolver.symName(m)
+      val modifiers = resolver.symModifiers(m)
+      assert(modifiers.contains(ABSTRACT), name)
+      val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
+      val genericInfo = resolver.genericInfo(m)
+      val genericFuncParamsCount = m.genericTypeParams.size
+      val hasOuterTypeInfo = true // All member functions have outer type info parameter
+      val hasThisTypeInfoParam = modifiers.contains(STATIC)
+      val linkageName = resolver.linkageName(m)
+
+      val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
+        ABI.Description(rcv, hasMutParam = false, hasThisTypeInfoParam,
+          isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount),
+          m.sourceFile)
+      virtMethods(m) = symMethod
+
+      if (symType.isCHIRDef) {
+        builder.markAsCHIRDef(symMethod, m.id.toInt, overwrite = false)
+      }
+      m.kind match {
+        case CHIR.Func.Kind.ClassCtor | CHIR.Func.Kind.PrimalClassCtor |
+             CHIR.Func.Kind.StructCtor | CHIR.Func.Kind.PrimalStructCtor =>
+          builder.markAsConstructor(symMethod)
+        case _ =>
+      }
+      symMethod
+    }
 
     def getVTable(symType: SymClassType, d: CHIR.CustomTypeDef): CHIRVTable = {
       val objectExtDef = Option.when(!symType.isInterface && !symType.isRecord)(CHIRVTable.ExtDef(
@@ -403,11 +386,11 @@ object CHIRBuilder {
               if (resolver.isDeadFunction(impl)) {
                 Seq.empty
               } else {
-                val implParent = impl match {
-                  case GlobalAbstractFunc(t) => t
-                  case impl => impl.declaringDef.get
+                val symImpl = if (resolver.isGlobalAbstractFunc(impl)) {
+                  restoreGlobalAbstractFunc(impl, symType)
+                } else {
+                  virtMethods(impl)
                 }
-                assert(implParent != null, symType)
                 val lparams = m.genericTypeParams
                 val mods = resolver.symModifiers(m)
                 val isStatic = mods.contains(STATIC)
@@ -415,7 +398,7 @@ object CHIRBuilder {
                   m.name,
                   resolver.functionSig(m.tpe, hasReceiver = false)._1, // This signature does not ever contain receiver (TODO: verify it)
                   lparams.map(resolver.typeSig),
-                  Option(virtMethods(m.instance)),
+                  Option(symImpl),
                   mods,
                   resolver.functionSig(m.originalType, hasReceiver = !isStatic)._1,
                   resolver.typeSig(m.parentType),

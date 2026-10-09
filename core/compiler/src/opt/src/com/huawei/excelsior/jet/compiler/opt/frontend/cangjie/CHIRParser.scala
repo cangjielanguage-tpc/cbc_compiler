@@ -1376,7 +1376,7 @@ trait CHIRParser
           case (from @ OptionLikeEnum(_, _, x), to @ Tuple(Seq(Boolean, y))) =>
             // Have to account for erasure in case of recursive option types
             assert(x == y || (x == ReferenceType.cangjieStdCoreObject.sigType && y.isTraceableReference), s"cast from $from to $to")
-            if (from.isNullableOption || x.isTypeVariable) {
+            if (from.isNullableOption || x.isVariableSizeType) {
               EnumCast(from)(value)
             } else {
               ReinterpretCast(fromTpe, toTpe)(value)
@@ -1772,7 +1772,7 @@ trait CHIRParser
             case CHIR.BuiltinType.Float32 => FConst(v.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.toDouble)
             case CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => IntegralConst(AddrType)(v)
-            case _: CHIR.CustomType | _: CHIR.VArrayType => IntegralConst(AddrType)(v)
+            case _: CHIR.CustomType | _: CHIR.VArrayType | _: CHIR.TupleType => IntegralConst(AddrType)(v)
           }
         }
         val value = e.literal match {
@@ -2062,27 +2062,30 @@ trait CHIRParser
         }
         state(e) = res
 
-      case e: (CHIR.UnboxToValue | CHIR.CastToConcrete) =>
+      case e: (CHIR.UnboxToValue | CHIR.UnboxToRef | CHIR.CastToConcrete) =>
         val base = state(e.value)
-        val baseType = resolver.typeSig(e.targetTpe)
-        val value = if (baseType.isZST) {
+        val targetType = resolver.typeSig(e.targetTpe)
+        val value = if (targetType.isZST) {
           Void()
-        } else if (baseType.isRecord) {
-          baseType match {
+        } else if (targetType.isRecord) {
+          targetType match {
             case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
               base
             case _ =>
               if (base.tpe.isTraceableRefType) {
-                UnboxRec(baseType)(loadTypeInfo(baseType), base)
+                e match {
+                  case _: CHIR.UnboxToRef => UnboxLea(targetType)(base)
+                  case _ => UnboxRec(targetType)(loadTypeInfo(targetType), base)
+                }
               } else {
                 base
               }
           }
-        } else if (baseType.isTraceableReference) {
+        } else if (targetType.isTraceableReference) {
           base
         } else {
           if (base.tpe.isTraceableRefType) {
-            Unbox(baseType)(loadTypeInfo(baseType), base)
+            Unbox(targetType)(loadTypeInfo(targetType), base)
           } else {
             base
           }
@@ -2663,6 +2666,7 @@ trait CHIRParser
           assert(rcv.num == rootMethod.getMutRecordArgIdx)
           rootMethodParam(rootMethod.getMutObjectArgIdx)
         case rcv: UnboxLea => rcv.value
+        case rcv: UnboxRec => rcv.value
       }
       n.replaceBy(actual)
     }
@@ -2696,6 +2700,7 @@ trait CHIRParser
         case t: VArray            => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
         case t: Tuple             => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
         case t: CangjieEnum       => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
+        case t: SignatureType.Box => loadTypeInfo(t.base)
         case t => shouldNotReachHere(t)
       }
     } else {

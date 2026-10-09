@@ -659,21 +659,6 @@ compiler/Sema/optional_chain/trailing_lambda_00.cj
 compiler/Sema/type_infer/lambda_param_06.cj
 compiler/Sema/type_infer/pipe_lambda_overload.cj
 
-# bug 111 (should not reach here: CheckCast got arg with tags ArraySeq(VALUE))
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut01.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut02.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut03.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut04.cj
-compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
-compiler/CodegenCJNative/generic/generic_struct.cj
-compiler/CodegenCJNative/storeElementRef.cj
-compiler/Sema/unusedImport/unusedImport002/unused016/unused016.cj
-compiler/Mangle/CHIR/mut_wrapper/compile_matrix.cj
-compiler/Mangle/CHIR/mut_wrapper/composite_param_types_run.cj
-compiler/Mangle/CHIR/mut_wrapper/mut_member_update_run.cj
-compiler/Mangle/CHIR/mut_wrapper/nominal_param_types_run.cj
-compiler/Mangle/CHIR/mut_wrapper/shadowing_O2_run.cj
-
 # bug 112 (crash when calling function from extended interface)
 compiler/Sema/Extend/autobox_try_catch1.cj
 compiler/Sema/Extend/autobox_try_catch2.cj
@@ -731,24 +716,6 @@ API/std/unittest/report_test_xml/report_xml_toplevel.cj
 compiler/CJCov/generic_record.cj
 compiler/CJCov/generic_record_extend_interface_generic_constraint.cj
 compiler/Modules/Package/extend/extend_multiple_exportID/main.cj
-
-# bug 114 (MatchError X (Integer) in PackageImpl.getExpr)
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct_mut05.cj
-compiler/Sema/OptionalModifiers/optionalModifiers03_1.cj
-compiler/Sema/class/interface_default_implemented_func_valid_1.cj
-
-# bug 115 (loadTypeInfo: should not reach here `Box(Tuple(List(Int64, LocalTypeVariable(0)))))`)
-compiler/Sema/match/nested_pattern/match_nested_in_tuple_005.cj
-compiler/Sema/match/nested_pattern/match_nested_in_tuple_006.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_struct02.cj
-compiler/CodegenCJNative/option/option_typecast.cj
-compiler/Sema/PatternMatching/EnumPattern/generic_enum_nested_match.cj
-compiler/Sema/generics/function_generics_list.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
-API/std/collection/test_TreeMap.cj
-API/std/deriving/generics_test.cj
-API/std/unittest/new_test_dsl/DTS2025052029615.cj
-API/std/unittest/prop_test/arbitrary/arbitrary_hashmap.cj
 
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
