@@ -44,12 +44,19 @@ trait CHIRPatchGenerator {
   def generatePatch(id: Int): Option[CHIR.Func]
 }
 
-class CHIRThrowPatch(_pkg: CHIR.Package, patch: ThrowPatch, _tpe: CHIR.FuncType) extends CHIRPatchGenerator {
+class CHIRThrowPatch(_pkg: CHIR.Package, patch: ThrowPatch) extends CHIRPatchGenerator {
   implicit val pkg: CHIR.Package = _pkg
 
   def generatePatch(_id: Int): Option[Func] = {
     Option(new CHIR.Func {
-      def tpe: CHIR.FuncType = _tpe
+      def tpe: CHIR.FuncType = new CHIR.FuncType {
+        def paramTypes: Seq[CHIR.Type] = Seq.empty
+        def paramTypesWithoutReceiver: Seq[CHIR.Type] = Seq.empty
+        def receiverType: CHIR.Type = CodeHelpers.shouldNotCallThis(s"receiver type is not expected for internal throw helper")
+        def returnType: CHIR.Type = CHIR.BuiltinType.Nothing
+        def isC: Boolean = false
+        def hasVarArg: Boolean = false
+      }
       def id: Long = _id
       def identifier: String = patch.name
       def srcCodeIdentifier: String = patch.name
@@ -76,17 +83,6 @@ class CHIRThrowPatch(_pkg: CHIR.Package, patch: ThrowPatch, _tpe: CHIR.FuncType)
       def attributes: Seq[CHIR.Attribute] = Seq.empty
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
     })
-  }
-}
-
-object ThrowPatchGenerator {
-  def throwPatchType: CHIR.FuncType = new CHIR.FuncType {
-    def paramTypes: Seq[CHIR.Type] = Seq.empty
-    def paramTypesWithoutReceiver: Seq[CHIR.Type] = Seq.empty
-    def receiverType: CHIR.Type = CodeHelpers.shouldNotCallThis(s"receiver type is not expected for internal throw helper")
-    def returnType: CHIR.Type = CHIR.BuiltinType.Nothing
-    def isC: Boolean = false
-    def hasVarArg: Boolean = false
   }
 }
 
