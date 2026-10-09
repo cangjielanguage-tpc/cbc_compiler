@@ -854,3 +854,7 @@ compiler/Sema/call/call_error_report_04.cj
 
 # bug 128: zero-sized struct assignment failed to compile
 compiler/CodegenCHIR/barrier/globalBarier5.cj
+
+# bug 136 (support CHIR.Debug)
+compiler/Sema/generics/instantiation_rearrange/rearrange02.cj
+compiler/Sema/generics/instantiation_rearrange/rearrange03.cj
