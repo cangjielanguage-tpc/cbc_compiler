@@ -10,6 +10,8 @@ package com.huawei.excelsior.jet.compiler.symlevel
 
 import com.huawei.excelsior.jet.assembler.Symbol
 
+import scala.annotation.tailrec
+
 case class CangjieFieldReference(idx: Long, field: Option[Field], refType: SignatureType, fieldType: SignatureType) extends Symbol
 
 object CangjieFieldReference {
@@ -23,4 +25,14 @@ object CangjieFieldReference {
     new CangjieFieldReference(0, None, refType, fieldType)
 }
 
-case class CangjieIndexReference(idx: Long, refType: SignatureType, fieldType: SignatureType) extends Symbol
+case class CangjieIndexReference(idx: Long, refType: SignatureType, fieldType: SignatureType) extends Symbol {
+  require(checkConstIndexRefType(refType), refType)
+}
+
+// Note: no Options here!
+@tailrec
+private def checkConstIndexRefType(t: SignatureType): Boolean = t match {
+  case _: (SignatureType.Tuple | SignatureType.VArray | SignatureType.CangjieArray) => true
+  case t: SignatureType.Box => checkConstIndexRefType(t.base)
+  case _ => false
+}

@@ -20,6 +20,7 @@ import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field,
 
 import java.lang.Double.doubleToRawLongBits
 import java.lang.Float.floatToRawIntBits
+import scala.annotation.tailrec
 
 trait CangjieNodes { self: Universe =>
 
@@ -915,6 +916,7 @@ trait CangjieNodes { self: Universe =>
     case class Proto private[ConstIndexFieldReference](idx: Int, refType: SignatureType, fieldType: SignatureType)
       extends FixedArgs[ConstIndexFieldReference]()(AddrIntType)
         with PrototypeStrictNodeClass[ConstIndexFieldReference, ConstIndexFieldReference] {
+      require(checkConstIndexRefType(refType), refType)
 
       def newInstance() = new ConstIndexFieldReference(this)
     }
@@ -936,6 +938,7 @@ trait CangjieNodes { self: Universe =>
     case class Proto private[IndexFieldReference](refType: SignatureType, fieldType: SignatureType)
       extends FixedArgs[IndexFieldReference](AddrIntType)(AddrIntType)
         with PrototypeStrictNodeClass[IndexFieldReference, IndexFieldReference] {
+      require(checkNonConstIndexRefType(refType), refType)
 
       def newInstance() = new IndexFieldReference(this)
     }
@@ -982,6 +985,7 @@ trait CangjieNodes { self: Universe =>
     case class Proto private[ConstIndexGeneric](idx: Int, refType: SignatureType, fieldType: SignatureType)
       extends FixedArgs[ConstIndexGeneric](AddrIntType)(AddrIntType)
         with PrototypeStrictNodeClass[ConstIndexGeneric, ConstIndexGeneric] {
+      require(checkConstIndexRefType(refType), refType)
 
       def newInstance() = new ConstIndexGeneric(this)
     }
@@ -1005,11 +1009,26 @@ trait CangjieNodes { self: Universe =>
     case class Proto private[IndexFieldReferenceGeneric](refType: SignatureType, fieldType: SignatureType)
       extends FixedArgs[IndexFieldReferenceGeneric](AddrIntType, AddrIntType)(AddrIntType)
         with PrototypeStrictNodeClass[IndexFieldReferenceGeneric, IndexFieldReferenceGeneric] {
+      require(checkNonConstIndexRefType(refType), refType)
 
       def newInstance() = new IndexFieldReferenceGeneric(this)
     }
 
     def proto(refType: SignatureType, fieldType: SignatureType) = Prototype.intern(Proto(refType, fieldType))
     def apply(refType: SignatureType, fieldType: SignatureType)(idx: Node, typeInfo: Node): IndexFieldReferenceGeneric = proto(refType, fieldType)(idx, typeInfo)
+  }
+
+  @tailrec
+  private def checkConstIndexRefType(t: SignatureType): Boolean = t match {
+    case _: (SignatureType.Tuple | SignatureType.OptionLikeEnum | SignatureType.VArray | SignatureType.CangjieArray) => true
+    case t: SignatureType.Box => checkConstIndexRefType(t.base)
+    case _ => false
+  }
+
+  @tailrec
+  private def checkNonConstIndexRefType(t: SignatureType): Boolean = t match {
+    case _: (SignatureType.VArray | SignatureType.CangjieArray) => true
+    case t: SignatureType.Box => checkNonConstIndexRefType(t.base)
+    case _ => false
   }
 }

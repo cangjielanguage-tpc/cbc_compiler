@@ -354,13 +354,14 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
 
       def indexReference(idx: Int, refType: SignatureType, fieldType: SignatureType): CangjieIndexReference = {
-        val t = refType match {
+        def adjustRefType(t: SignatureType): SignatureType = t match {
+          case t: SignatureType.Box => SignatureType.Box(adjustRefType(t.base))
           case t: SignatureType.OptionLikeEnum =>
             require(!t.isNullableOption)
             SignatureType.Tuple(Seq(SignatureType.Boolean, t.someType))
           case t => t
         }
-        CangjieIndexReference(idx, t, fieldType)
+        CangjieIndexReference(idx, adjustRefType(refType), fieldType)
       }
 
       def getBaseLocation(n: Node): IR | StackSlot.Typed = n match {
