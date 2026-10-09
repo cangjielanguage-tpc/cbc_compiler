@@ -2072,7 +2072,7 @@ trait CHIRParser
             case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
               base
             case _ =>
-              if (base.tpe.isTraceableRefType) {
+              if (base.tpe.isTraceableRefType && !targetType.isVariableSizeType) {
                 e match {
                   case _: CHIR.UnboxToRef => UnboxLea(targetType)(base)
                   case _ => UnboxRec(targetType)(loadTypeInfo(targetType), base)
