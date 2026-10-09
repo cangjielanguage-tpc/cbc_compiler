@@ -277,7 +277,7 @@ object CHIRBuilder {
         val hasRetByVal = overrideSig.exists(_.returnType.isTypeVariable)
 
         // TODO: explain
-        val symMethods = if (rcvSig.isVariableSizeType) {
+        val symMethods = if (rcvSig.isVariableSizeType && !modifiers.contains(STATIC)) {
 
           val mutMethod = Option.when(hasMutParam) {
             val mutName = resolver.mutWithoutTI(name)
