@@ -63,6 +63,7 @@ class CHIRThrowPatch(_pkg: CHIR.Package, patch: ThrowPatch) extends CHIRPatchGen
       def packageName: String = intrinsicsPackageName
       def kind: Func.Kind = CHIR.Func.Kind.Default
       def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
+      def sourceFile: Option[String] = Option.empty
       def body: Option[CHIR.BlockGroup] = Option(CHIRDSL.genBlockGroup(_pkg) { gen =>
         val exceptionType: CHIR.Type = AOTDefs.Exception
         val exceptionInitFunc: CHIR.Func = AOTDefs.initException
@@ -109,6 +110,8 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
 
         def hasVarArg: Boolean = false
       }
+
+      def sourceFile: Option[String] = Option.empty
 
       def id: Long = _id
 
