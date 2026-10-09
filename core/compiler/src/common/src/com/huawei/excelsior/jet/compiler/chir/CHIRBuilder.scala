@@ -343,7 +343,6 @@ object CHIRBuilder {
     // Fill symlevel type vtable
     // -----------------------------------------------
 
-    // Restore abstract methods that FE changed to global (still abstract) functions
     def restoreGlobalAbstractFunc(m: CHIR.Func, symType: SymClassType): Method = {
       val name = resolver.symName(m)
       val modifiers = resolver.symModifiers(m)
