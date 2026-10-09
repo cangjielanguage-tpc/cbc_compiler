@@ -858,3 +858,29 @@ compiler/CodegenCHIR/barrier/globalBarier5.cj
 # bug 136 (support CHIR.Debug)
 compiler/Sema/generics/instantiation_rearrange/rearrange02.cj
 compiler/Sema/generics/instantiation_rearrange/rearrange03.cj
+
+# bug 137 ((Int32) -> Unit lambda does not return Unit)
+API/std/socket/redesign/methods/socket_keep_alive_config.cj
+API/std/socket/redesign/props/tcp_props_keep_alive.cj
+compiler/Sema/generics/generic_member/pkg01/main.cj
+compiler/Sema/lambda/lambda05.cj
+compiler/Sema/lambda/lambda06.cj
+API/std/socket/redesign/vars/socket_keep_alive_vars.cj
+compiler/CHIR/CHIR2HLIR/class_and_interface/class_and_interface_01.cj
+Runtime/CJNative/Record/record_generic_02.cj
+compiler/CHIR/CHIR2HLIR/globalVariable/globalvariable05.cj
+compiler/CHIR/CHIR2HLIR/package/finalizer/main.cj
+compiler/CJCov/global_capture.cj
+compiler/CodegenCJNative/interface/class_extend_interface.cj
+compiler/CodegenCJNative/interface/class_extend_interface_generic_constraint.cj
+compiler/CodegenCJNative/lambda/global_capture.cj
+compiler/Macro/replace/interface_decl.cj
+compiler/Sema/InitializationCheck/static_variable_use_before_init_02/file1.cj
+compiler/Sema/InitializationCheck/static_variable_use_before_init_06/file1.cj
+compiler/Sema/class/interface_default_implemented_func_valid_6.cj
+compiler/Sema/class/static_init/generic_class_static_init_01/main.cj
+compiler/Sema/class/static_init/generic_class_static_init_02/main.cj
+compiler/Sema/class/static_init/static_init_05.cj
+compiler/Sema/enum/enum27.cj
+compiler/Sema/match/bugfix/match_001.cj
+compiler/Sema/record/static_init/generic_struct_static_init_01/main.cj
