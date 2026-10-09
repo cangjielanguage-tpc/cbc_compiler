@@ -175,10 +175,9 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   /////////////////////////////////////////////////////////////////////////////
 
   override protected def volatileRegistersOnAnyExit(node: Node, file: RegFile): ResourceSet = (node match {
-    case lfsg: LoadFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(lfsg.fields) => ir1Set
-    case sfsg: StoreFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(sfsg.fields) => ir1Set
-    case lfsg: LoadStaticFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(lfsg.fields) => ir1Set
-    case sfsg: StoreStaticFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(sfsg.fields) => ir1Set
+    case op: (LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq) if file == IREG =>
+      val (prefix, _) = op.asInstanceOf[FieldSeqOperation].splitFields
+      if prefix.isEmpty then emptySet else ir1Set
 
     case cp: CopyStructureCBC if file == IREG => {
       if      (cp.hasComplexDst && cp.hasComplexSrc) stdTmp1StdTmp2Set
@@ -241,7 +240,8 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case _ if noCodeShouldBeGenerated(node) => true
 
     case op: (LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq) =>
-      !FieldSeqOperation.hasGeneric(op.fields)
+      val (prefix, _) = op.asInstanceOf[FieldSeqOperation].splitFields
+      prefix.isEmpty
 
     case _: (BlockEnd | CheckedOp | SaturatingOp | CheckedUnary | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Transfer | FieldChainRead
       | Add | Sub | IDivRemOp | Mul | Pow | Cmp | CondVal | FDiv | MathIntrinsic | LogicalBinaryOp | GetField | PutField

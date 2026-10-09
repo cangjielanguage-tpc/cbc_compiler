@@ -391,16 +391,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
       }
 
-      def isPlainField(field: Node): Boolean = field match {
-        case _: FieldReferenceNode | _: ConstIndexFieldReference => true
-        case _ => false
-      }
-
       @tailrec
-      def genLeaChain(scratch: IR, base: IR, fields: Seq[Node]): Unit = {
+      def genLeaChain(scratch: IR, base: IR, fields: Seq[CangjieReferenceNode]): Unit = {
         if (fields.isEmpty) return
 
-        val (plain, rest) = fields.span(isPlainField)
+        val (plain, rest) = fields.span(_.isPlain)
         if (plain.nonEmpty) {
           asm.lea(scratch, base, constrFieldRef(plain))
           genLeaChain(scratch, scratch, rest)
@@ -429,14 +424,14 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           None
       }
 
-      def genAddress(dst: IR, fields: Seq[Node]): Unit = baseLocation match {
+      def genAddress(dst: IR, fields: Seq[CangjieReferenceNode]): Unit = baseLocation match {
         case Some(base: IR) => fields match {
           case Seq(f: (FieldReferenceNode | FieldReferenceNodeGeneric)) if f.maybeField.isEmpty => // none field ref does not need lea
           case _ => genLeaChain(dst, base, fields)
         }
         case Some(_: StackSlot.Typed) => notImplemented("lea for typed slots")
         case None =>
-          val (plain, rest) = fields.span(isPlainField)
+          val (plain, rest) = fields.span(_.isPlain)
           require(plain.nonEmpty, "A static chain must start with a fixed-layout static field")
           val IReg(baseRef) = n.baseRef
           asm.leaStatic(dst, baseRef, constrFieldRef(plain))
@@ -451,8 +446,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
         val Reg(reg) = value
 
-        val suffixSize = if (n.resType.isVariableSizeType) 0 else fieldRefs.reverseIterator.takeWhile(isPlainField).size
-        val (prefix, suffix) = fieldRefs.splitAt(fieldRefs.size - suffixSize)
+        val (prefix, suffix) = n.splitFields
         val field = if (suffix.nonEmpty) {
           constrFieldRef(suffix)
         } else {
