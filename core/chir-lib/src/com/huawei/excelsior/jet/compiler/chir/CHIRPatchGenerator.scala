@@ -31,7 +31,7 @@ object CHIRPatchGeneratorFactory {
 
 object ThrowPatch {
   val symbolResolutionErrorPatch = ThrowPatch("throwSymbolResolutionError", "CBC internal error: symbol resolution error")
-  val abstractMethodErrorPatch = ThrowPatch("throwAbstractMethodError", "CBC internal error: symbol resolution error")
+  val abstractMethodErrorPatch = ThrowPatch("throwAbstractMethodCallError", "CBC internal error: symbol resolution error")
   def throwPatches: Seq[ThrowPatch] = Seq(
     symbolResolutionErrorPatch,
     abstractMethodErrorPatch
