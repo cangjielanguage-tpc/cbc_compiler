@@ -521,6 +521,9 @@ compiler/CHIROpt/DeadCodeElimination/UselessFunction/DCESkipCFunc.cj
 compiler/Sema/varray/varray_cffi/varray_inout.cj
 compiler/Sema/varray/varray_cffi/varray_inout04.cj
 compiler/Sema/varray/varray_cffi/varray_inout05.cj
+API/std/unittest/mock/compiler/misc/foreign_inout_param_struct.cj
+compiler/Macro/inout/inout_m2.cj
+compiler/Macro/inout/inout_m5.cj
 ## CPOINTER_ADD
 API/std/unittest/prop_test/coverage_guided/cmp/float16.cj
 API/std/unittest/prop_test/coverage_guided/cmp/float32.cj
