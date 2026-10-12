@@ -810,10 +810,6 @@ compiler/Modules/Package/extend/extend_multiple_exportID/main.cj
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass02.cj
 
-# bug 119 (return this from open func causes `should not reach here (extra information: symType for TypeVariable)`)
-compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_5.cj
-compiler/Sema/generics/generic_upperbound_reference_01.cj
-
 # bug 120 (cbc_engine: Conflict found for reference)
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
 compiler/Sema/class/class_no_override_modifier_6.cj

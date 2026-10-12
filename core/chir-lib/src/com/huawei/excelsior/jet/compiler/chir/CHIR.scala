@@ -210,6 +210,13 @@ object CHIR {
     def baseType: Type
   }
 
+  object RefType {
+    def skip(t: Type): Type = t match {
+      case t: RefType => t.baseType
+      case t => t
+    }
+  }
+
   trait RawArrayType extends Type {
     def elementType: Type
     def dimension: Long
