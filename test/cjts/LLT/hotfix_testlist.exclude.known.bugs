@@ -337,10 +337,6 @@ compiler/Sema/generics/pkgs0029_generic_class_ai_demo/main.cj
 compiler/Sema/generics/tupleClone.cj
 compiler/Sema/typealias/typealias23.cj
 
-# bug 55 (Incorrect dispatch for "specialized and inherited twice" generic interface)
-compiler/Sema/interface/generic_interface_inheritance
-compiler/CHIR/UG/VTable/generic/static/interface_class03.cj
-
 # bug 67 (C-struct getRetByValArgIdx crash)
 compiler/FFI/CFFI/record/small_0.cj
 compiler/FFI/CFFI/record/small_1.cj
