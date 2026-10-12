@@ -16,7 +16,7 @@ import com.huawei.excelsior.jet.assembler.cbc.Register.FR.FR1
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
+import com.huawei.excelsior.jet.assembler.cbc.isa12.{LivenessAnalyzer, LivenessInfoCollector}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler as ForkedAssembler
 import com.huawei.excelsior.jet.codeemitter.BranchOp
 import com.huawei.excelsior.jet.common.XString.xstr
@@ -196,6 +196,14 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       bail_ = true
     }
 
+    /** Marks a register as a live REFERENCE at the current analyzer state
+      * (used for the mut-call base register; the derived register is marked
+      * REC by ldstackrec and must NOT be traced as a regular ref). */
+    private def analyzerMarkRef(r: IR): Unit = asm.analyzer match {
+      case la: LivenessAnalyzer => asm.instr { la.ref(r) }
+      case _ =>
+    }
+
     /** Signature type of a value (literals carry their own type). */
     private def sigOf(v: CHIR.Value): Option[SignatureType] = v match {
       case lv: CHIR.LocalVar => Some(resolver.typeSig(lv.tpe))
@@ -209,6 +217,9 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
     // LocalVars that have an associatedExpr are SSA aliases of the defining
     // expression (the interpreter reads/writes through to it), so canonicalize
     // the slot key: every expression owns a slot; plain locals own their own.
+    // unique key for a call's sret cell slot (identity semantics like keyOf)
+    private case class SretCellKey(e: CHIR.Expression)
+
     private def keyOf(v: CHIR.Value): AnyRef = v match {
       case lv: CHIR.LocalVar if lv.associatedExpr != null => lv.associatedExpr
       case x => x
@@ -1238,9 +1249,66 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val hostSig = sigOf(e.base).getOrElse(return fail("field: unknown host sig"))
       lazy val preChain = fieldChain(hostSig, e.path)
       if (!canFieldHost(hostSig, preChain)) return fail(s"field on non-ref host $hostSig")
-      // A record host needs marker-based (derived-REC) addressing that our
-      // flat slot model cannot reproduce for stack records - fall back
-      if (!hostSig.isTraceableReference) return fail(s"field on record host $hostSig")
+      // Record hosts: (a) variable-size records (std.core:Array<T>) are heap
+      // objects — value = object pointer with a TI header, fields load with a
+      // plain Ld like class hosts; (b) fixed-size records (Range, Tuple, …)
+      // are unboxed — the slot content IS the record's memory address (REC),
+      // fields are addressed by LOCAL-marker Lea + raw load (a plain Ld is
+      // not engine-rewritable against a record base).
+      if (!hostSig.isTraceableReference) {
+        touch(e.base)
+        resultOf(e).foreach(res => touch(res))
+        val chain = fieldChain(hostSig, e.path)
+        if (chain.isEmpty) return
+        val lastType = chain.last._3
+        if (lastType.isZST || chain.last._4.isZST) return
+        val dst = StackSlot.Untyped(slotOfAny(e, lastType))
+        if (hostSig.isVariableSizeType) {
+          loadToReg(e.base, SCRATCH2)
+          asm.nullcheck(SCRATCH2)
+          emitFieldChainLoad(chain, dst)
+          return
+        }
+        // unboxed struct: slot content = record address
+        loadToReg(e.base, SCRATCH2)
+        var i = 0
+        while (i < chain.length) {
+          val (pidx, f, rt, ft) = chain(i)
+          val fr = fieldRef(pidx, f, rt, ft)
+          if (i == chain.length - 1) {
+            asm.movbp(SCRATCH3, local = true) // LOCAL derivation: no header offset
+            asm.lea(SCRATCH, SCRATCH2, fr)
+            ft match {
+              case SignatureType.Float64 =>
+                asm.loadRawMemory(FSCRATCH0, SCRATCH, LoadAccessKind.LD_F64, 0)
+                asm.storeUntyped(FSCRATCH0, StoreAccessKind.ST_F64, dst)
+              case SignatureType.Float32 =>
+                asm.loadRawMemory(FSCRATCH0, SCRATCH, LoadAccessKind.LD_F32, 0)
+                asm.storeUntyped(FSCRATCH0, StoreAccessKind.ST_F32, dst)
+              case t if t.isRecord && !t.isVariableSizeType =>
+                // record-valued field: the value IS its address
+                asm.storeUntyped(SCRATCH, StoreAccessKind.from(CbcTypeKind.REC), dst)
+              case t =>
+                asm.loadRawMemory(SCRATCH, SCRATCH, LoadAccessKind.from(cbcKind(t)), 0)
+                asm.storeUntyped(SCRATCH, StoreAccessKind.from(cbcKind(t)), dst)
+            }
+          } else {
+            // intermediate: record fields are inline (address continues),
+            // reference fields are dereferenced
+            if (ft.isRecord && !ft.isVariableSizeType) {
+              asm.movbp(SCRATCH3, local = true)
+              asm.lea(SCRATCH2, SCRATCH2, fr)
+            } else {
+              asm.movbp(SCRATCH3, local = true)
+              asm.lea(SCRATCH, SCRATCH2, fr)
+              asm.loadRawMemory(SCRATCH, SCRATCH, LoadAccessKind.from(cbcKind(ft)), 0)
+              asm.mov(SCRATCH2, SCRATCH, reference = false)
+            }
+          }
+          i += 1
+        }
+        return
+      }
       touch(e.base)
       resultOf(e).foreach(res => touch(res))
       val chain = fieldChain(hostSig, e.path)
@@ -1999,12 +2067,46 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
                 else if (calleeMethod.isCangjieMut) MAK.MUT
                 else MAK.SPECIAL
       val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
-      val ref =
-        if (lparams.isEmpty) new MethodReference(calleeMethod, mak, CompiledType(calleeMethod.getDeclaringClass))
-        else if (!calleeMethod.hasUniversalGenericContext) return fail("generic apply: callee lacks universal generic context")
-        else new InstantiatedMethodReference(calleeMethod, mak, lparams,
-          SignatureType.fromSymType(calleeMethod.getDeclaringClass), None)
-      emitCall(e, calleeMethod, e.args, ref, isVirtual = false)
+      // thisType of the apply (the extend's instantiated receiver type for
+      // extend methods): provides the OuterTI and the class-typevar subst
+      val applyThisType = e.thisType.map(resolver.typeSig).filterNot(_.containsTypeVariables)
+      // Generic-CLASS methods instantiated at the call site (e.g. the extend
+      // method @std.core:Array<%0>.[] called on Array<Int64>): production
+      // calcMethodRef resolves the INSTANTIATED AOT symbol via sig equality
+      // (findDeclaredMethodOrNullWithSigEq + equalInstantiated) — calling the
+      // generic symbol directly would crash the callee. Universal-generic
+      // callees (method-level %%0 with hasUniversalGenericContext, e.g. min)
+      // stay generic: their typevar is bound at runtime via GenericFuncParams.
+      // Generic-CLASS methods instantiated at the call site (e.g. the extend
+      // method Array.[] called on Array<Int64>): keep the generic Method
+      // entity (its MethodType + generic sigs drive the ABI via csubst) but
+      // build the reference with the INSTANTIATED refClass — the encoder then
+      // emits the instantiated AOT symbol (@std.core:Array<Int64>.[]),
+      // matching production calcMethodRef (declType = the receiver's
+      // instantiated type, CompiledType(refType) in the reference).
+      // Universal-generic callees (method-level %%0, e.g. min) with no
+      // concrete receiver keep the plain generic reference.
+      // The instantiated refClass is only safe for AOT-resolvable callees
+      // (getCHIRDef.isEmpty — the encoder then emits the AOT linkage name).
+      // For methods with a CHIR def (e.g. the synthesized generic no-arg
+      // constructor Array<T>()) the encoder emits a CBC-definition reference
+      // resolved against the GENERIC type def — instantiate the refType there
+      // and the engine fails with 'Failed to resolve method' (array-22).
+      val ref = applyThisType match {
+        case Some(it: SignatureType.InstantiatedType) if calleeMethod.getCHIRDef.isEmpty =>
+          new MethodReference(calleeMethod, mak, CompiledType(it))
+        case _ if lparams.isEmpty =>
+          new MethodReference(calleeMethod, mak, CompiledType(calleeMethod.getDeclaringClass))
+        case _ if !calleeMethod.hasUniversalGenericContext =>
+          return fail("generic apply: callee lacks universal generic context")
+        case _ =>
+          new InstantiatedMethodReference(calleeMethod, mak, lparams,
+            SignatureType.fromSymType(calleeMethod.getDeclaringClass), None)
+      }
+      emitCall(e, calleeMethod, e.args, ref, isVirtual = false,
+        thisTypeOv = applyThisType,
+        lsubst = lparams,
+        csubst = applyThisType.map(genericParamsOf).getOrElse(Seq.empty))
     }
 
     /** Virtual/static dispatch through the CHIR vtable (mirrors CHIRParser's
@@ -2057,7 +2159,17 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
       val refType = extDef.extType.instantiate(genericParamsOf(thisType), Seq.empty)
       val refClass = symlevel.Type.asClassType(refType)
-      val calleeMethod = refClass.findDeclaredMethodOrNull(xstr(name), gsig)
+      // Generic-CLASS extend methods instantiated at the call site: resolve
+      // the INSTANTIATED AOT symbol (production calcMethodRef uses sig-eq with
+      // equalInstantiated). Fall back to the plain generic lookup otherwise.
+      val calleeMethod = {
+        val cparams = genericParamsOf(thisType)
+        val inst = if (cparams.nonEmpty)
+          refClass.findDeclaredMethodOrNullWithSigEq(xstr(name), gsig,
+            symlevel.MethodSignature.equalInstantiated(cparams, Seq.empty))
+        else null
+        if (inst != null) inst else refClass.findDeclaredMethodOrNull(xstr(name), gsig)
+      }
       if (calleeMethod == null) return fail(s"invoke: method not found: $name")
       val mak = if (isStatic) MAK.STATIC else MAK.VIRTUAL
       // NOTE: a generic callee (e.g. an interface method declared on a generic
@@ -2084,22 +2196,33 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       *   - Receiver: consumes callArgs.head;
       * the remaining CHIR args map onto the ordinary parameter locations. */
     private def emitCall(e: CHIR.Expression, calleeMethod: Method, callArgs: Seq[CHIR.Value],
-                         ref: MethodReference, isVirtual: Boolean): Unit = {
+                         ref: MethodReference, isVirtual: Boolean,
+                         thisTypeOv: Option[SignatureType] = None,
+                         lsubst: Seq[SignatureType] = Seq.empty,
+                         csubst: Seq[SignatureType] = Seq.empty): Unit = {
       val calleeMt = calleeMethod.getMethodType
+      // Caller-side instantiation of the callee's type variables (universal-
+      // generic callees: the method/class typevars in its ABI sigs are bound
+      // at THIS call site, mirroring production symlevel substitution).
+      def sub(t: SignatureType): SignatureType =
+        if (lsubst.isEmpty && csubst.isEmpty) t else t.instantiate(csubst, lsubst)
       val endCount = calleeMt.endSpecialParamsCount
-      val outerTiSig = if (calleeMt.hasReceiverParameter) sigOf(callArgs.head).get
-                       else SignatureType.fromSymType(calleeMethod.getDeclaringClass)
+      val outerTiSig0 = if (calleeMt.hasReceiverParameter) sigOf(callArgs.head).get
+                        else thisTypeOv.getOrElse(SignatureType.fromSymType(calleeMethod.getDeclaringClass))
+      // a generic extend's OuterTI is the INSTANTIATED this-type at the call
+      // site (production: outerType = thisType for extends)
+      val outerTiSig = sub(outerTiSig0)
       val outerTi = calleeMt.hasOuterTypeInfoParameter &&
         lowerableTypeInfo(outerTiSig)
       if (endCount != 0 && !outerTi)
         return fail(f"callee end special params (TI: end=$endCount outer=${calleeMt.hasOuterTypeInfoParameter} this=${calleeMt.hasThisTypeInfoParameter} tv=${outerTiSig.containsTypeVariables})")
       val calleeStart = calleeMt.startSpecialParamsCount
-      val retSig = calleeMt.returnType
+      val retSig = sub(calleeMt.returnType)
       val retIsZST = retSig.isZST
       val retIsRecord = retSig.isRecord && !retSig.isVariableSizeType
       val retIsBoxed = retSig.isVariableSizeType ||
         (calleeMt.hasRetByValParameter && {
-          val abiRet = calleeMt.parameterType(calleeMt.getRetByValArgIdx)
+          val abiRet = sub(calleeMt.parameterType(calleeMt.getRetByValArgIdx))
           abiRet.isInstanceOf[SignatureType.Box] || abiRet == SignatureType.Address
         })
       if (!(calleeStart == 0 ||
@@ -2158,18 +2281,20 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       val recvLoc: Option[IR] =
         if (calleeMt.hasReceiverParameter) Some(locs(calleeStart - 1).asReg.asInstanceOf[IR])
         else None
-      // SMutRecord/SMutObject start specials: both receive the record
-      // receiver's address (SMutRecArg/SMutObjectArg are address markers in
-      // production; the entry side treats the SMutRecord param as the receiver).
-      if (calleeMt.hasMutRecordParameter)
-        return fail("call to mut record method") // derived-record ABI not modeled
-      val mutLocs: Seq[IR] =
-        if (calleeMt.hasMutRecordParameter && !calleeMt.hasReceiverParameter) {
-          val base = calleeStart - (if (calleeMt.hasMutObjectParameter) 2 else 1)
+      // SMutRecord/SMutObject start specials: the mut-function ABI is the
+      // (derivedPtr, baseRef) pair — derived = the struct's own address, base =
+      // the host (object ref, or the Local/Global base-pointer marker).
+      // Production locates them positionally (getMutRecordArgIdx etc.);
+      // use the same indices here instead of offset arithmetic.
+      case class MutPair(rec: IR, obj: Option[IR])
+      val mutPair: Option[MutPair] =
+        if (sys.env.contains("DIRECT_CBC_NOMUT"))
+          return fail("mut-record callee disabled (DIRECT_CBC_NOMUT)")
+        else if (!calleeMt.hasMutRecordParameter) None
+        else Some(MutPair(
+          locs(calleeMt.getMutRecordArgIdx).asReg.asInstanceOf[IR],
           if (calleeMt.hasMutObjectParameter)
-            Seq(locs(base).asReg.asInstanceOf[IR], locs(base + 1).asReg.asInstanceOf[IR])
-          else Seq(locs(base).asReg.asInstanceOf[IR])
-        } else Seq.empty
+            Some(locs(calleeMt.getMutObjectArgIdx).asReg.asInstanceOf[IR]) else None))
       val (recvVal, paramArgs) =
         if (calleeMt.hasReceiverParameter || calleeMt.hasMutRecordParameter) (Some(callArgs.head), callArgs.tail)
         else (None, callArgs)
@@ -2194,33 +2319,69 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       // sret pointer (RetByVal): ZST returns are never written by the callee,
       // so IRZ (null) is a safe placeholder; record returns get a zeroed typed
       // slot whose address is passed to the callee
+      // deferred final sret-register setup (must run AFTER all arg/TI loads:
+      // load.ti force-writes IR1, tail-arg loads use SCRATCH=IR1)
+      var sretLate: Option[() => Unit] = None
       val sretSlot: Option[StackSlot.Typed] = if (calleeMt.hasRetByValParameter) {
         val sretLoc = locs(0).asReg.asInstanceOf[IR]
-        val abiRet = calleeMt.parameterType(calleeMt.getRetByValArgIdx)
+        val rawAbiRet = calleeMt.parameterType(calleeMt.getRetByValArgIdx)
+        val abiRet = sub(calleeMt.parameterType(calleeMt.getRetByValArgIdx))
+        // Generic RetByVal ABI (Box-with-typevars / Address arms) is
+        // experimental: the Address arm (AOT Array.[]) works, but the
+        // concrete-Box arm + Box-host field loads still miscompile
+        // (ret-struct-vst SIGSEGV: Box* result read via a wrong REC slot).
+        // Default OFF; enable with DIRECT_CBC_GENERIC_SRET for bench work.
+        if ((rawAbiRet.containsTypeVariables || rawAbiRet == SignatureType.Address)
+            && !sys.env.contains("DIRECT_CBC_GENERIC_SRET"))
+          return fail(s"generic boxed sret $rawAbiRet")
         abiRet match {
           case b: SignatureType.Box =>
-            if (b.containsTypeVariables)
-              return fail(s"generic boxed sret $b") // engine needs a static TI; production erases via symlevel substitution
             // Variable-sized (boxed) return: callee writes a Box*; allocate it
             // on the heap like production (New(box) in callMethod RetByVal arm).
-            asm.newobj(b.toCbc)
-            asm.mov(sretLoc, IR1, reference = true)
+            if (b.containsTypeVariables) {
+              // generic box: NewGeneric(box)(loadTypeInfo(base)) — engine
+              // newobj.g builds it from the runtime TI of the box base
+              lowerTypeInfo(SCRATCH, b.base)
+              asm.newobjGeneric(SCRATCH, b.toCbc)
+            } else asm.newobj(b.toCbc)
             saveGCMapHere()
+            // NOTE: the Box* is parked in a temp slot and loaded into sretLoc
+            // right before the call — the end-special TI lowering (load.ti)
+            // force-writes IR1 (AdjustReg) and would clobber an early sret.
+            val tmpIdx = slotOfAny(SretCellKey(e), stringSig)
+            asm.storeUntyped(IR1, StoreAccessKind.ST_REF, StackSlot.Untyped(tmpIdx))
+            sretLate = Some(() => {
+              asm.loadUntyped(sretLoc, LoadAccessKind.LD_REF, StackSlot.Untyped(tmpIdx))
+            })
             None
-          case SignatureType.Address if !retIsRecord =>
-            // Type-variable sret: production stores the boxed value into a
-            // freshly allocated Object; caller value = the Box* we passed.
+          case SignatureType.Address if !retIsRecord && sys.env.contains("DIRECT_CBC_GENERIC_SRET") =>
+            // Type-variable sret: production allocates an 8-byte stack cell
+            // (StackAlloc.Local(Object), zeroed) and passes its address; the
+            // callee stores a Box* into it. Caller value = that Box* (for
+            // traceable/variable-size results) or unbox it (prim/record).
+            // Direct path: the callee's RetByVal param is the address of an
+            // 8-byte cell whose CONTENT is the Box* — the callee writes the
+            // element value INTO the Box's payload (Box+8) via
+            // ReadGeneric(*sret, ...) (decoded from the AOT Array.[]). Caller:
+            // allocate the Box, store its address into a traced stack cell,
+            // pass &cell (lea — ldstackrec loads the cell VALUE, not address).
             val boxBase = retSig match { case SignatureType.Box(b) => b; case other => other }
-            if (boxBase.containsTypeVariables)
-              return fail(s"generic typevar sret ret=$retSig") // engine needs a static TI
-            asm.newobj(SignatureType.Box(boxBase).toCbc)
-            asm.mov(sretLoc, IR1, reference = true)
-            saveGCMapHere()
+            asm.newobj(boxBase.toCbc)
+            saveGCMapHere() // alloc statepoint: IR1 = the Box*
+            val cellIdx = slotOfAny(SretCellKey(e), stringSig)
+            asm.storeUntyped(IR1, StoreAccessKind.ST_REF, StackSlot.Untyped(cellIdx))
+            genericSretCells(e) = cellIdx
+            // the cell address is loaded into sretLoc right before the call
+            // (load.ti force-writes IR1 and would clobber an early lea)
+            sretLate = Some(() => {
+              asm.loadUntyped(sretLoc, LoadAccessKind.SPECIAL, StackSlot.Untyped(cellIdx))
+            })
             None
           case _ if retIsRecord =>
             val ts = newTypedSlot(retSig)
             if (retSig.hasRefFields) asm.zerorefs(ts)
-            asm.ldstackrec(sretLoc, ts) // address of the buffer
+            // address of the buffer, loaded right before the call (see above)
+            sretLate = Some(() => asm.ldstackrec(sretLoc, ts))
             Some(ts)
           case _ =>
             asm.mov(sretLoc, IRZ, reference = true)
@@ -2228,7 +2389,6 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         }
       } else None
       recvVal.zip(recvLoc).foreach { (r, loc) => loadToReg(r, loc) }
-      mutLocs.foreach { loc => recvVal.foreach(r => loadToReg(r, loc)) }
       var tailRefSlots = Seq.empty[StackSlot.Untyped]
       // tail args first: their loads go through the SCRATCH/FSCRATCH0
       // registers, which would clobber already-loaded register args
@@ -2267,9 +2427,10 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
                 // (CHIRParser boxTypeVar unifies the sig) — box concrete args
                 calleeMt.parameterType(calleeStart + argIdx) match {
                   case SignatureType.Box(b) if !sig.isInstanceOf[SignatureType.Box] =>
-                    if (b.containsTypeVariables) return fail(s"generic boxed arg $b")
+                    val b2 = sub(b)
+                    if (b2.containsTypeVariables) return fail(s"generic boxed arg $b2")
                     loadToReg(a, SCRATCH)
-                    asm.box(ir, SCRATCH, SignatureType.Box(b).toCbc)
+                    asm.box(SCRATCH, ir, SignatureType.Box(b2).toCbc)
                     saveGCMapHere()
                   case _ => loadToReg(a, ir)
                 }
@@ -2333,6 +2494,52 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       }
       val closureInvoke = ref.refType.sigType.isCangjieClosure &&
         (ref.method.getName == "$InstVirtualFunc" || ref.method.getName == "$GenericVirtualFunc")
+      // Mut-function receiver: emit the (derived, base) pair.
+      //  - local arm: derived = the struct's address (ldstackrec from the
+      //    record's typed home slot / REC pointer), base = the Local base
+      //    marker (movbp local=true => base value 0 => StructLocationKind.LOCAL).
+      mutPair.foreach { mp =>
+        val rv = recvVal.getOrElse(return fail("mut callee without receiver value"))
+        val rvSig = sigOf(rv).getOrElse(return fail("mut callee receiver sig"))
+        val isOwnMutParam = rv match {
+          // TODO: forwarding arm — when the caller is itself a mut function and
+          // the receiver is the caller's own mut-record param, the incoming
+          // (SMutObject=base, SMutRecord=derived) registers must be forwarded
+          // unchanged (production resolveProxiesInArgs). CHIR.Parameter has no
+          // param index here, so mut-caller mut-receivers bail for now.
+          case _: CHIR.Parameter => method.isCangjieMut
+          case _ => false
+        }
+        if (isOwnMutParam) {
+          return fail("mut-record receiver inside mut caller (forwarding arm)")
+        } else {
+          // derived: the struct's own address. Record values live in untyped
+          // slots as REC pointers; the defining call's typed result slot holds
+          // the bytes — re-establish via ldstackrec when known, else the slot
+          // content IS the address (LD_64 move keeps the pointer value).
+          rvSig match {
+            case s if s.isRecord || s.isInstanceOf[SignatureType.CangjieArray] =>
+              loadRecOr(mp.rec, s, slotOfAny(keyOf(rv), s), rv match {
+                case lv: CHIR.LocalVar => Some(lv.associatedExpr)
+                case _ => None
+              })
+            case other =>
+              return fail(s"mut receiver sig not a record: $other")
+          }
+          // base: local struct => Local base marker (0). Mark it REF at the
+          // call state so the GC sees the base register (value 0 = LOCAL —
+          // GetStructLocationKind returns LOCAL for base==0, and the pair
+          // adjustment skips non-HEAP pairs).
+          mp.obj.foreach { o =>
+            asm.movbp(o, local = true)
+            analyzerMarkRef(o)
+          }
+        }
+        // attach the pair to the call's liveness entry (GC adjusts HEAP
+        // pairs; stack expansion adjusts LOCAL pairs)
+        mp.obj.foreach(o => asm.setPendingMutPairs(o, mp.rec))
+      }
+      sretLate.foreach(f => f())
       if (closureInvoke) {
         // closure dispatch: the engine routes via the functional TI in IR_ACC
         if (ref.method.getName == "$GenericVirtualFunc")
@@ -2343,6 +2550,33 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
       else if (isVirtual) asm.callVirt(resultReg, ref)
       else asm.callDirect(resultReg, ref)
       saveGCMapHere(tailRefSlots)
+      genericSretCells.get(e).foreach { ts =>
+        // type-variable sret: the callee stored a Box* into the cell; the
+        // CHIR-level result = the Box* (traceable/variable-size results) or
+        // its unboxed content (prim/record) — mirrors callMethod's Address arm
+        resultOf(e) match {
+          case Some(res) =>
+            val resSig = sigOf(res).getOrElse(return fail("generic sret: unknown result sig"))
+            asm.loadUntyped(SCRATCH2, LoadAccessKind.SPECIAL, StackSlot.Untyped(ts)) // LEA of the cell
+            if (resSig.isTraceableReference || resSig.isVariableSizeType) {
+              asm.loadRawMemory(SCRATCH, SCRATCH2, LoadAccessKind.from(CbcTypeKind.REF), 0)
+              storeResult(e, SCRATCH, resSig)
+            } else if (resSig.isRecord && !resSig.isVariableSizeType) {
+              asm.loadRawMemory(SCRATCH, SCRATCH2, LoadAccessKind.from(CbcTypeKind.REF), 0)
+              asm.unbox(SCRATCH, SCRATCH, resSig.toCbc) // UnboxRec
+              storeResult(e, SCRATCH, resSig)
+            } else if (resSig == SignatureType.Float64 || resSig == SignatureType.Float32) {
+              asm.loadRawMemory(FSCRATCH0, SCRATCH2, LoadAccessKind.from(CbcTypeKind.REF), 0)
+              asm.unbox(FSCRATCH0, SCRATCH, resSig.toCbc)
+              storeFloatFromReg(res, FSCRATCH0, resSig)
+            } else {
+              asm.loadRawMemory(SCRATCH, SCRATCH2, LoadAccessKind.from(CbcTypeKind.REF), 0)
+              asm.unbox(SCRATCH, SCRATCH, resSig.toCbc)
+              storeResult(e, SCRATCH, resSig)
+            }
+          case None => ()
+        }
+      }
       sretSlot.foreach { ts =>
         // the record value is the address of its buffer (CBC record convention)
         recResultSlots(e) = ts // later loads of this result re-track the REC
@@ -2363,6 +2597,11 @@ class DirectCBCCompiler(fallback: VZCModule.CompilerInterface) extends VZCModule
         case _ =>
       }
     }
+
+    /** Typed slots serving as the 8-byte sret cell for type-variable
+      * (Address) RetByVal callees — the callee stores a Box* into it; the
+      * result is read back after the call. */
+    private val genericSretCells = scala.collection.mutable.HashMap.empty[CHIR.Expression, Int]
 
     /** Whether a runtime-TI value can be materialized for this sig
       * (mirrors the arms of CHIRParser.loadTypeInfo). */
