@@ -440,7 +440,9 @@ async def run_async(what, log=None, env=None, shell=False, cwd=None, stderr_log=
     async def logger(log_file, stream):
         while not stream.at_eof():
             data = await stream.readline()
-            decoded = data.decode() if isinstance(data, bytes) else data
+            # Tests may emit non-UTF-8 bytes (miscompiled output); decode
+            # leniently so one bad byte doesn't kill the whole suite run.
+            decoded = data.decode(errors="replace") if isinstance(data, bytes) else data
             if log_file is not None:
                 log_file.write(decoded)
 
