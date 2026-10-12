@@ -32,15 +32,6 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   private implicit val typeProvider: TypeProvider = env.getTypeProvider
 
   private val symTypeByTable = mutable.HashMap.empty[CHIR.Type | CHIR.CustomTypeDef, SymType]
-  // A static bridge and its raw implementation have no receiver to distinguish
-  // their otherwise identical CBC method identities. Keep both methods in the
-  // CBC symbol table; non-static bridges retain the established representation.
-  private lazy val bridgedRawStaticMethods: Set[CHIR.Func] = pkg.typeDefs.iterator
-    .flatMap(_.methods)
-    .flatMap(_.annotations.collectFirst { case a: CHIR.WrappedRawMethod => a.rawMethod })
-    .filter(_.attributes.contains(CHIR.Attribute.Static))
-    .toSet
-
   def symType(v: CHIR.Type | CHIR.CustomTypeDef): Option[SymType] = symTypeByTable.get(v) orElse {
     val res = (v: @unchecked) match {
       case v: CHIR.CustomTypeDef => findClass(symName(v))
@@ -85,20 +76,13 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
       val isInitializer = v.attributes.contains(CHIR.Attribute.Initializer)
       val isPackageGlobal = v.declaringDef.isEmpty
-      val isBridgedRawStaticMethod = wrappedMethod.isEmpty && (v match {
-        case f: CHIR.Func => bridgedRawStaticMethods.contains(f)
-        case _ => false
-      })
-      if (isBridgedRawStaticMethod) {
-        assert(srcName.nonEmpty, identifier)
-      }
-      val suffix = (if (isGenericInstantiated(v)) {
+      val suffix = if (isGenericInstantiated(v)) {
         // TODO another way without id usage?
         assert(id > 0)
         s"$$instantiated$$${pkg.name}$$$id"
       } else {
         ""
-      }) + (if (isBridgedRawStaticMethod) "$raw" else "")
+      }
       getOverrideSrcFuncType(v) match {
         case Some(funcType) =>
           val f = _v.asInstanceOf[CHIR.Func]
@@ -111,7 +95,7 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
               srcName + suffix
           }
         case None =>
-          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || (isWrappedMethod && !isBridgedRawStaticMethod) || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
+          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || isWrappedMethod || (isPackageGlobal && isPrivate)) identifier.tail else srcName + suffix
       }
     }
 
@@ -128,7 +112,6 @@ class CHIRResolver(implicit val pkg: CHIR.Package, private val env: Environment)
   }
 
   def linkageName(v: CHIR.Func | CHIR.GlobalVar | CHIR.InstanceVar): String = v match {
-    case v: CHIR.Func if bridgedRawStaticMethods.contains(v) => s"${v.identifier.tail}$$raw"
     case v: CHIR.Func => v.identifier.tail
     case v: CHIR.GlobalVar => v.identifier.tail
     case v: CHIR.InstanceVar => null
