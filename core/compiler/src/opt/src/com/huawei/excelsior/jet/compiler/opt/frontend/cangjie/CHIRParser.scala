@@ -2075,7 +2075,7 @@ trait CHIRParser
         }
         state(e) = res
 
-      case e: (CHIR.UnboxToValue | CHIR.UnboxToRef | CHIR.CastToConcrete) =>
+      case e: (CHIR.UnboxToValue | CHIR.UnboxToRef | CHIR.CastToConcrete | CHIR.CastToGeneric) =>
         val base = state(e.value)
         val targetType = resolver.typeSig(e.targetTpe)
         val value = if (targetType.isZST) {

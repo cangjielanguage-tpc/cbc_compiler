@@ -694,16 +694,6 @@ compiler/Sema/PatternMatching/MatchExpression/match016.cj
 compiler/Sema/record/record_this2.cj
 compiler/Sema/record/record_this3.cj
 
-# bug 105 (support CHIR.CastToGeneric in CHIRParser)
-compiler/CodegenCJNative/ExtensionDef/extensiondef_07.cj
-compiler/CodegenCJNative/record/record_5.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00100.cj
-compiler/Sema/IsOrAsExpr/import_generic_as_01/test.cj
-compiler/Sema/class/interface_default_implemented_func_generic_valid_1.cj
-compiler/Sema/class/interface_default_implemented_func_generic_valid_3.cj
-API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
-API/std/unittest/mock/compiler/misc/allowedInheritance.cj
-
 # bug 106 (mut interface method access of generic field)
 compiler/CodegenCJNative/generic/generic_struct2.cj
 compiler/CodegenCJNative/generic/generic_struct3.cj
