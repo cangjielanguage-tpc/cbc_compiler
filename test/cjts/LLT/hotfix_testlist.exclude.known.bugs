@@ -956,3 +956,6 @@ compiler/Sema/class/static_init/static_init_05.cj
 compiler/Sema/enum/enum27.cj
 compiler/Sema/match/bugfix/match_001.cj
 compiler/Sema/record/static_init/generic_struct_static_init_01/main.cj
+
+# bug 148 (LLT/compiler/ConstEval/Overflow: error: expected at least one source code file when compiling source code)
+compiler/ConstEval/Overflow
