@@ -269,7 +269,7 @@ compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
 compiler/CodegenCommon/atexit/atexit_09_Exception.cj
 compiler/CodegenCommon/atexit/atexit_12_MultipleExceptions.cj
 
-# bug: #40 (Static interface call in not actually direct in case it is implemented in subinterface)
+# bug 40 (Static interface call in not actually direct in case it is implemented in subinterface)
 compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_40.cj
 compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_41.cj
 compiler/CHIR/Class/testClass07.cj
@@ -302,7 +302,7 @@ compiler/Sema/Extend/interface_default_implement/static_default_impl_02.cj
 compiler/Sema/interface/interface_default_impl/static_defaule_impl_class.cj
 compiler/Sema/interface/interface_default_impl/static_func_call_unimpl_prop.cj
 
-# bug: #46 (CBC-compiler generated call.interf.g to "non-boxed" method which is absent in method table)
+# bug 46 (CBC-compiler generated call.interf.g to "non-boxed" method which is absent in method table)
 compiler/CHIR/CHIR2HLIR/record/mut/record_mut_ok_6.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix4/use_interface_def_imple_094.cj
 compiler/CHIR/UG/VTable/same_signature_wrapper/apply01.cj
@@ -315,7 +315,7 @@ compiler/CodegenCJNative/record/override_struct_generic_param_with_concrete_type
 compiler/CodegenCJNative/record/override_struct_generic_return_with_concrete_type.cj
 compiler/Sema/generics/interface_nongeneric_implements_generic.cj
 
-# bug: #48 (Do not pass generic terms to CreateTypeInfo)
+# bug 48 (Do not pass generic terms to CreateTypeInfo)
 compiler/CodegenCJNative/record/record_4.cj
 compiler/CHIR/CHIR2HLIR/matchPattern/enum_exhaustive_04.cj
 compiler/CodegenCJNative/enum/enum_get_tag.cj
