@@ -26,6 +26,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, ForkedAssembler}
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Segment, Width}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
+import com.huawei.excelsior.jet.compiler.chir.{CHIRPatchGeneratorFactory, ThrowPatch}
 import xscala.io.*
 
 import scala.PartialFunction.condOpt
@@ -72,6 +73,9 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
           throw e
       }
     }
+
+    HelpersGenerator().generate()
+
     if (errors.nonEmpty) {
       dumpErrors()
       false
@@ -711,6 +715,46 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
   private class LabelsMap(segment: Segment) extends Labels {
     private val map = mutable.LinkedHashMap.empty[String, Label]
     def get(str: String): Label = map.getOrElseUpdate(str, segment.newLabel)
+  }
+
+  /**
+   * This is needed to synthesize types and methods that are used as part of "cbc_intrinsics" type.
+   *
+   * You should not call them from asm.
+   */
+  private class HelpersGenerator() {
+    def generate(): Unit = {
+      val throwHelpers = ThrowPatch.throwPatches
+
+      val tb = builder.newTypeBuilder()
+      tb.setName("$P$" + CHIRPatchGeneratorFactory.intrinsicsPackageName)
+      for (helper <- throwHelpers) {
+        val mb = tb.newMethodBuilder()
+        mb.setName(helper.name)
+        HelperGenerator(helper.name).generate(mb)
+      }
+    }
+
+    private class HelperGenerator(helperName: String) {
+      private val segment = new Segment()
+      private val analyzer = new LivenessAnalyzer
+      private val gen = {
+        val gen = new CodeGenerator()
+        gen.analyzer = analyzer
+        gen.setUp(segment)
+        gen
+      }
+
+      def generate(methodBuilder: CbcFileFormat.Method.Builder): Unit = {
+        methodBuilder.setName(helperName)
+        val unit = CbcFileFormat.BuiltinSignature.Unit
+        methodBuilder.setSignature(Functional(Seq(), unit))
+        gen.nop()
+        val codeBuilder = methodBuilder.getCodeBuilder()
+        codeBuilder.setSegment(segment)
+        codeBuilder.setLiveness(gen.collectLiveness)
+      }
+    }
   }
 
   private class CodeParser(builder: MethodCode.Builder) extends Parser {
