@@ -199,6 +199,10 @@ API/std/binary/binary_test.cj
 API/std/unittest/diff/floats/nan.cj
 API/std/unittest/prop_test/coverage/random_source.cj
 API/std/core/StringBuilder/test_append.cj
+API/std/math/test_domain_boundary.cj
+API/std/math/test_fmod_infinity.cj
+API/std/math/test_math_funcs01.cj
+API/std/unittest/diff/floats/zero_and_inf.cj
 
 # bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
@@ -916,6 +920,14 @@ compiler/Parser/ar/parser_support_wildcard/positive/lambda_param/2_trailing_lamb
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
 compiler/Sema/join_meet/join_perf.cj
 compiler/Sema/operator_overload/timeout_06.cj
+API/std/unittest/mock/framework/exhaustive_ordered_verify_test.cj
+API/std/unittest/mock/framework/exhaustive_unordered_verify_test.cj
+API/std/unittest/mock/framework/interface_test.cj
+API/std/unittest/mock/framework/lifetime_test.cj
+API/std/unittest/mock/framework/partial_unordered_verify_test.cj
+API/std/unittest/mock/framework/stub_misconfiguration_test.cj
+API/std/unittest/mock/framework/suppressed_runtime_failure_test.cj
+API/std/unittest/mock/framework/verification_failed_reason_test.cj
 
 # bug 124: not implemented: cast from Option<Array<Int64>>.None to Option<Int64>
 compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
@@ -1011,6 +1023,10 @@ API/std/net/ip_prefix_test.cj
 API/std/runtime/thread_with_gc.cj
 API/std/unittest/examples/advance1.cj
 compiler/Mangle/MangledName/new_mangle_fuzz_02.cj
+API/std/convert/test_ConvertBool.cj
+API/std/convert/test_ConvertFloat32.cj
+API/std/unittest/api/reporters/csv_case.cj
+API/std/unittest/api/serialization/test_datamodel_seq.cj
 
 # bug 151 (cannot compile calling method from CRTP template variable)
 API/std/unittest/powerAssert/nodeTypes/matchExpr.cj
@@ -1096,3 +1112,13 @@ API/std/unittest/mock/compiler/createSpy/spyOnSuperType.cj
 API/std/unittest/mock/compiler/createSpy/spyWithStatic.cj
 API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
 API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
+
+# bug 154 (CreateTypeInfo NOTHING)
+API/std/core/exclusiveScope/exception.cj
+API/std/core/test_future.cj
+API/std/sync/exception_in_spawn.cj
+API/std/unittest/exception_rendering2.cj
+compiler/Mangle/ExportID/nothing_type.cj
+compiler/Mangle/ExportID/nothing_type2.cj
+compiler/Mangle/ExportID/nothing_type3.cj
+compiler/Parser/others/extend_nothing.cj
