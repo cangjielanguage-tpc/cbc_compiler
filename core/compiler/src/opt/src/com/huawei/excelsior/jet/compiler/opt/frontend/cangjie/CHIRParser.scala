@@ -2095,7 +2095,16 @@ trait CHIRParser
               }
           }
         } else if (targetType.isTraceableReference) {
-          base
+          if (base.tpe.isTraceableRefType) {
+            base
+          } else {
+            base match {
+              case base: GetFieldSeqRef =>
+                assert(base.resType.isVariableSizeType, s"non-VST GetFieldSeqRef result type: ${base.resType} in $base")
+                LoadFieldSeq(base.baseRef, base.base, base.fields: _*)
+              case base => shouldNotReachHere(s"unexpected cast base: $base")
+            }
+          }
         } else {
           if (base.tpe.isTraceableRefType) {
             Unbox(targetType)(loadTypeInfo(targetType), base)
