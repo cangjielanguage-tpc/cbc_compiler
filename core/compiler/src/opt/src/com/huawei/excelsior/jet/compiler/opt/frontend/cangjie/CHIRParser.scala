@@ -1144,7 +1144,7 @@ trait CHIRParser
         val (gsig, _, _, _) = resolver.functionSig(methodArgVal.tpe, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
-          if (g.isTypeVariable && !i.isTypeVariable && !i.isInstanceOf[SignatureType.Box]) SignatureType.Box(i) else i
+          if (g.isTypeVariable && !i.isTypeVariable && (!i.isReference || i.isInstanceOf[SignatureType.OptionLikeEnum])) SignatureType.Box(i) else i
         }
 
         val isig = MethodSignature(retType, isigParams.drop(if (isStatic) 0 else 1))
