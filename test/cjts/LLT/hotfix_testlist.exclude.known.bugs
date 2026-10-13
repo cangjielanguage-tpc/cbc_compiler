@@ -203,6 +203,8 @@ API/std/math/test_domain_boundary.cj
 API/std/math/test_fmod_infinity.cj
 API/std/math/test_math_funcs01.cj
 API/std/unittest/diff/floats/zero_and_inf.cj
+API/std/math/test_hyperbolic_nan.cj
+API/std/math/test_math_funcs.cj
 
 # bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
