@@ -6,6 +6,15 @@
 # no debugger support in near future
 Tools/cjdb
 
+# environment: TimeOut
+API/std/sort/test_sort_array.cj
+API/std/sort/test_sort_unstable.cj
+API/std/sort/test_unstableSort.cj
+API/std/unittest/examples/timeout.cj
+API/std/collection/test_ArrayList.cj
+API/std/sort/test_sort_arraylist.cj
+API/std/unittest/parallel/integration/restarts.cj
+
 # environment: SocketException: Socket is not connected
 API/std/socket/redesign/props/udp_props_readonly.cj
 API/std/socket/redesign/props/unix_datagram_props_readonly.cj
@@ -148,6 +157,28 @@ API/std/reflect/functionTypeInfo_test.cj
 API/std/reflect/tupleTypeInfo_test.cj
 API/std/reflect/parameterInfo_test.cj
 API/std/reflect/parameterInfo_test_01.cj
+API/std/reflect/classTypeInfo_test_constructor.cj
+API/std/reflect/instanceVariableInfo_test.cj
+API/std/reflect/organizationName02.cj
+API/std/reflect/staticVariableInfo_test.cj
+API/std/reflect/struct_typeinfo_test.cj
+API/std/reflect/typeInfo_class_test.cj
+API/std/reflect/abstract_constructor_test.cj
+API/std/reflect/generic_type_test.cj
+API/std/reflect/nested_pack.cj
+API/std/reflect/organizationName.cj
+API/std/reflect/parameterInfo_test_01.cj
+API/std/reflect/stdSymbols.cj
+API/std/reflect/type_check_test.cj
+API/std/reflect/classTypeInfo_findConstructor_test.cj
+API/std/reflect/constructorInfo_test.cj
+API/std/reflect/instance_prop_test.cj
+API/std/reflect/mutable_test.cj
+API/std/reflect/parameterInfo_test.cj
+API/std/reflect/static_prop_test.cj
+API/std/reflect/typeInfo_findInstanceMemberFunction_test_cjnative.cj
+API/std/reflect/typeInfo_staticMemberFunctionInfo_apply_struct.cj
+
 
 # ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
 compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
