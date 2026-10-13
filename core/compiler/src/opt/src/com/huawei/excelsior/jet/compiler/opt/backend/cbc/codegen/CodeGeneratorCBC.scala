@@ -966,7 +966,16 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       def virtualStaticCall(): Unit = {
         val permanent = targetRef.getPermanent
-        shouldNotReachHere("unsupported")
+        if (targetRef.refType.sigType.containsTypeVariables) {
+          val outerTI = call.invokeArgs(targetRef.methodType.getOuterTypeInfoArgIdx)
+          val loc: (IR | StackSlot.Untyped) = outerTI match {
+            case IReg(reg) => reg
+            case UntypedSlot(slot, _) => slot
+          }
+          asm.callInterfGeneric(loc, asm.adapter.method(permanent), callArgLocations)
+        } else {
+          asm.callInterf(permanent, callArgLocations)
+        }
       }
 
       def directCCall(method: Method): Unit = {
