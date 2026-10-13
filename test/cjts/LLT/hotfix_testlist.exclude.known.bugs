@@ -1129,9 +1129,6 @@ compiler/Mangle/ExportID/nothing_type2.cj
 compiler/Mangle/ExportID/nothing_type3.cj
 compiler/Parser/others/extend_nothing.cj
 
-# bug 83 (NumericCast to UInt8 actually casts to I32)
-compiler/CodegenCommon/typecast/FPToSI/fp642Int8_1.cj
-
 # bug 155 ([resolution] [FATAL] not found function: _CGP3pkgiiHv)
 compiler/Macro/import/import05/call.cj
 compiler/Modules/Package/alias/import_alias_14/default.cj
