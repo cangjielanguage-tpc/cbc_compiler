@@ -681,27 +681,6 @@ API/std/unittest/prop_test/full/shrink_mix_order.cj
 API/std/unittest/prop_test/full/strategy_macro.cj
 compiler/Mangle/MangledName/mangle15_boxed_base_decl.cj
 
-# bug 113 (assertion failed: !Engine::Term(term).IsGeneric())
-compiler/CodegenCJNative/interface/record_extend_interface.cj
-compiler/CodegenCJNative/record/implement_interfaces/record_interface_static.cj
-compiler/Sema/box/box_generic_class_03/main.cj
-API/std/sort/test_arraySort.cj
-API/std/sort/test_sort_list.cj
-API/std/sort/test_sort_list_exception_safety.cj
-API/std/sort/test_sort_stable.cj
-API/std/sort/test_stableSort.cj
-API/std/unittest/prop_test/generator.cj
-API/std/unittest/prop_test/shrink/shrink.cj
-API/std/unittest/report_test_xml/report_xml_class.cj
-API/std/unittest/report_test_xml/report_xml_empty.cj
-API/std/unittest/report_test_xml/report_xml_parameterized_class.cj
-API/std/unittest/report_test_xml/report_xml_per_package.cj
-API/std/unittest/report_test_xml/report_xml_per_package_api.cj
-API/std/unittest/report_test_xml/report_xml_toplevel.cj
-compiler/CJCov/generic_record.cj
-compiler/CJCov/generic_record_extend_interface_generic_constraint.cj
-compiler/Modules/Package/extend/extend_multiple_exportID/main.cj
-
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass02.cj
