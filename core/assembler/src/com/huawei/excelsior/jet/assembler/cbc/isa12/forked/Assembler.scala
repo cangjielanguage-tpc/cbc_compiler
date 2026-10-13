@@ -1117,11 +1117,11 @@ trait ForkedAssembler {
       .bits(_.w4(dst).w4(baseRef))
       .bits(_.w4(derived).w4(ti))
       .sym16(fr)
-    analyzer.useRef(baseRef)
+    analyzer.useAny(baseRef)
     analyzer.usePrim(derived)
     analyzer.usePrim(ti)
     dst match {
-      case r: IR => analyzer.ref(r)
+      case r: IR => analyzer.prim(r)
       case _ =>
     }
   }
@@ -1150,7 +1150,7 @@ trait ForkedAssembler {
       .bits(_.w4(dst).w4(dst))
       .bits(_.w4(base).w4(ti))
       .sym16(fr)
-    analyzer.useRef(base)
+    analyzer.useAny(base)
     analyzer.usePrim(ti)
     analyzer.prim(dst)
   }
@@ -1208,13 +1208,13 @@ trait ForkedAssembler {
       .bits(_.w4(src).w4(base))
       .bits(_.w4(derived).w4(ti))
       .sym16(fr)
-    analyzer.useRef(base)
-    analyzer.usePrim(derived)
-    analyzer.usePrim(ti)
     src match {
-      case r: IR => analyzer.useRef(r)
+      case r: IR => analyzer.useAny(r)
       case _ =>
     }
+    analyzer.useAny(base)
+    analyzer.usePrim(derived)
+    analyzer.usePrim(ti)
   }
 
   def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = instr {
