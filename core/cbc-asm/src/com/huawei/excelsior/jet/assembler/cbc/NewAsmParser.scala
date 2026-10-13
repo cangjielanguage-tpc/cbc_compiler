@@ -1046,6 +1046,22 @@ private object InstructionParser {
   instr("lsri.64")  { (a, s) => a.lsri(Width.W64, s.ireg, s.ireg, s.int) }
   instr("asri.64")  { (a, s) => a.asri(Width.W64, s.ireg, s.ireg, s.int) }
 
+  // 8-bit checked arithmetic
+  instr("cadd.8")  { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("csub.8")  { (a, s) => a.csub(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("cmul.8")  { (a, s) => a.cmul(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("cuadd.8") { (a, s) => a.cuadd(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("cusub.8") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("cumul.8") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W8) }
+
+  // 16-bit checked arithmetic
+  instr("cadd.16")  { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("csub.16")  { (a, s) => a.csub(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("cmul.16")  { (a, s) => a.cmul(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("cuadd.16") { (a, s) => a.cuadd(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("cusub.16") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("cumul.16") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W16) }
+
   // 32-bit checked arithmetic
   instr("cadd.32")  { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("csub.32")  { (a, s) => a.csub(s.ireg, s.ireg, s.ireg, Width.W32) }
@@ -1142,6 +1158,22 @@ private object InstructionParser {
   instr("suaddi.64") { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("susubi.64") { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("sumuli.64") { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W64) }
+
+  // 8-bit checked immediate arithmetic
+  instr("caddi.8")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("csubi.8")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("cmuli.8")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("cuaddi.8") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("cusubi.8") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("cumuli.8") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W8) }
+
+  // 16-bit checked immediate arithmetic
+  instr("caddi.16")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("csubi.16")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("cmuli.16")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("cuaddi.16") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("cusubi.16") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("cumuli.16") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W16) }
 
   // 32-bit checked immediate arithmetic
   instr("caddi.32")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W32) }
