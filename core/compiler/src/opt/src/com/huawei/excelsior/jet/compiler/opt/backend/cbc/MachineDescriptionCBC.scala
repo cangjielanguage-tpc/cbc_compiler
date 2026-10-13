@@ -175,14 +175,16 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   /////////////////////////////////////////////////////////////////////////////
 
   override protected def volatileRegistersOnAnyExit(node: Node, file: RegFile): ResourceSet = (node match {
-    case lfsg: LoadFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(lfsg.fields) => ir1Set
-    case sfsg: StoreFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(sfsg.fields) => ir1Set
-    case lfsg: LoadStaticFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(lfsg.fields) => ir1Set
-    case sfsg: StoreStaticFieldSeq if file == IREG && !FieldSeqOperation.isConstOffset(sfsg.fields) => ir1Set
-
     case cp: CopyStructureCBC if file == IREG => {
       if      (cp.hasComplexDst && cp.hasComplexSrc) stdTmp1StdTmp2Set
       else if (cp.hasComplexDst || cp.hasComplexSrc) ir1Set else emptySet
+    }
+
+    case op: (LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq) => file match {
+      case IREG =>
+        val (prefix, _) = op.asInstanceOf[FieldSeqOperation].splitFields
+        if prefix.nonEmpty then ir1Set else emptySet
+      case FREG => emptySet
     }
 
     case isr: InitStringRecord if !Isa12Mode && isr.isStatic && file == IREG => ir1Set
@@ -240,9 +242,6 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   protected def freeOfTemporals(node: Node) = node match {
     case _ if noCodeShouldBeGenerated(node) => true
 
-    case op: (LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq) =>
-      !FieldSeqOperation.hasGeneric(op.fields)
-
     case _: (BlockEnd | CheckedOp | SaturatingOp | CheckedUnary | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Transfer | FieldChainRead
       | Add | Sub | IDivRemOp | Mul | Pow | Cmp | CondVal | FDiv | MathIntrinsic | LogicalBinaryOp | GetField | PutField
       | BitcodeDeferred.FieldOp | Shift | GetStatic | PutStatic | ValueConvert | ReinterpretCast | LoadTailParam
@@ -257,6 +256,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
       | AssignGeneric | InstanceOfGeneric | NewGeneric
       | AtomicOps.AtomicNode | DerivedPtr.Local | DerivedPtr.Global | ZeroValueGeneric
+      | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq
       | CangjieReferenceNode) => true
 
     case _: (TypeTest | CallTarget | MutFuncArgNode) => true // always grouped with another node
