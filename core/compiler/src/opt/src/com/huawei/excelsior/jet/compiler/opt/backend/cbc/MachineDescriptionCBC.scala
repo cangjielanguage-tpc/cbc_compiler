@@ -246,10 +246,10 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case _: (BlockEnd | CheckedOp | SaturatingOp | CheckedUnary | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Transfer | FieldChainRead
       | Add | Sub | IDivRemOp | Mul | Pow | Cmp | CondVal | FDiv | MathIntrinsic | LogicalBinaryOp | GetField | PutField
       | BitcodeDeferred.FieldOp | Shift | GetStatic | PutStatic | ValueConvert | ReinterpretCast | LoadTailParam
-      | New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | DivisorCheck | Evacuate | BitFieldExtract
+      | New | BitcodeDeferred.New | NewArray | NewArrayGeneric | BitcodeDeferred.NewArray | DivisorCheck | Evacuate | BitFieldExtract
       | Clinit | PackageInit | PackageInitCheck | GCPoint | AbstractNullCheck | SingletonObject
       | DepriveOperation | EnrichOperation | EnrichCBC | ExtractEnrichment | FieldChainWrite | Neg | MutFunc.Combine
-      | CopyStructure | CopyStructureCBC | Throw | InterfaceCastCBC | CatchCBC | EndLocalUnmovable | DebugBreakpoint
+      | CopyStructure | CopyStructureGeneric | CopyStructureCBC | Throw | InterfaceCastCBC | CatchCBC | EndLocalUnmovable | DebugBreakpoint
       | LoadMemory | StoreMemory | InitStringRecord | ThisTypeInfoCBC | ThisTypeInfoByCBC
       | GetFieldSeqRef | GetStaticFieldSeqRef
       | LoadTypeInfo | LoadTypeInfoGeneric | GenericTypeArg | Box | Unbox | UnboxRec | UnboxLea
@@ -307,7 +307,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case _: SaveCallRefTypeInfo =>
       tailRegSet // fixed register for call ref type info passing
 
-    case _: (New | BitcodeDeferred.New | NewArray | BitcodeDeferred.NewArray | Evacuate | UniversalGeneric.CopyResultVST | SpawnClosure | NewGeneric) => ir1Set
+    case _: (New | BitcodeDeferred.New | NewArray | NewArrayGeneric | BitcodeDeferred.NewArray | Evacuate | UniversalGeneric.CopyResultVST | SpawnClosure | NewGeneric) => ir1Set
 
     case _ => super.resultResourcesSetImpl(node)
   }

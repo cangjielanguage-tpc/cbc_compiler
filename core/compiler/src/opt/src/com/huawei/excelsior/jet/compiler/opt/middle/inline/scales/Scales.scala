@@ -223,7 +223,7 @@ trait Scales { self: Universe =>
 
       case _: StackDescriptor => execEnvWeight + getPutWeight
 
-      case _: (CopyStructure | InitStringRecord) => 0 // TODO: rewise
+      case _: (CopyStructure | CopyStructureGeneric | InitStringRecord) => 0 // TODO: rewise
 
       case _: InstanceDescriptorBy => getPutWeight
       case _: ThisTypeInfoBy => getPutWeight * 2

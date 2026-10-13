@@ -481,6 +481,14 @@ trait ForkedAssembler {
     saveState()
   }
 
+  def boxGeneric(src: StackSlot.Typed, dst: IR, ti: IR): Unit = instr {
+    stream // - allocate box at `dst`
+      .opc8(Opcode.BoxTGeneric)
+      .bits(_.w4(analyzer.usePrim(ti)).w4(analyzer.ref(dst)))
+      .ts16(src)
+    saveState()
+  }
+
   def unbox(dst: StackSlot.Typed, src: IR): Unit = instr {
     stream
       .opc8(Opcode.UnboxT)
@@ -796,6 +804,14 @@ trait ForkedAssembler {
     saveState()
   }
 
+  def newarrGeneric(ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.NewArrGeneric)
+      .bits(_.w4(analyzer.ref(IR.IR1)).w4(analyzer.usePrim(IR.IR2)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+    saveState()
+  }
+
   def loadArray(dst: Rg, ldk: LoadAccessKind, arr: IR, idx: IR): Unit = instr {
     dst match {
       case dst: IR => if (ldk == LD_REF) analyzer.ref(dst) else analyzer.prim(dst)
@@ -1087,7 +1103,6 @@ trait ForkedAssembler {
       .sym16(sig)
   }
 
-// Unused. TODO: support copying in generic context
   def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = instr {
     stream
       .opc8(Opcode.CopyGeneric)
@@ -1104,12 +1119,19 @@ trait ForkedAssembler {
       .sym16(sig)
   }
 
-// Unused. TODO: support element access for generic arrays
   def index(dst: IR, src: IR, idx: IR, ti: IR): Unit = instr {
     stream
       .opc8(Opcode.IndexGeneric)
       .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
       .bits(_.w4(idx).w4(analyzer.usePrim(ti)))
+  }
+
+  def index(dst: IR, src: IR, idx: Long, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.ConstIndexGeneric)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+      .sleb(idx)
   }
 
   def zeroval(dst: Rg, ti: IR) = instr {
@@ -1278,6 +1300,7 @@ object Assembler {
     case BinaryImm64
     case Cast
     case NewArr
+    case NewArrGeneric
     case GcPoint
     case PrepareRecord
     case Unused
@@ -1305,6 +1328,7 @@ object Assembler {
     case TypeArg
     case Box
     case BoxT
+    case BoxTGeneric
     case Unbox
     case UnboxT
     case BoxRec
@@ -1356,6 +1380,7 @@ object Assembler {
     case CopyGeneric
     case Index
     case IndexGeneric
+    case ConstIndexGeneric
     case ZeroVal
     case FMathUn32
     case FMathUn64

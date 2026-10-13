@@ -339,8 +339,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genFieldSeqOperation(n: FieldSeqOperation): Unit = {
-      addXSite(n)
-
       val adapter = asm.adapter
 
       val fieldRefs = n.refs
@@ -353,7 +351,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         ti
       }
 
-      def indexReference(idx: Int, refType: SignatureType, fieldType: SignatureType): CangjieIndexReference = {
+      def indexReference(idx: Long, refType: SignatureType, fieldType: SignatureType): CangjieIndexReference = {
         val t = refType match {
           case t: SignatureType.OptionLikeEnum =>
             require(!t.isNullableOption)
@@ -413,6 +411,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               val IReg(idx) = fr.idx
               val IReg(ti) = fr.refTypeInfo
               asm.index(scratch, base, idx, ti)
+            case fr: ConstIndexGeneric if fr.refType.isCangjieArray =>
+              val IReg(ti) = fr.refTypeInfo
+              asm.index(scratch, base, fr.idx, ti)
             case fr: CangjieReferenceNodeGeneric =>
               val IReg(ti) = fr.refTypeInfo
               asm.leaGeneric(scratch, base, ti, constrFieldRef(Seq(fr)))
@@ -488,6 +489,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               asm.st(reg, baseRef, IR1, resultTI, NoneFieldReference())
             } else {
               asm.ld(reg, baseRef, IR1, resultTI, NoneFieldReference())
+              addXSite(n)
+              saveGCState(n)
             }
           } else {
             if (store) {
@@ -496,10 +499,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               asm.ld(reg, baseRef, IR1, field)
             }
           }
-          addXSite(n)
-          saveGCState(n)
         }
-        if (store) addXSite(n)
       }
 
       n match {
@@ -614,7 +614,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
-    // TODO replace ArrayGet with FieldSeq operations
+    // TODO remove ArrayGet node
     private def genArrayGet(arrGet: ArrayGet): Unit = {
       addXSite(arrGet)
       val adapter = asm.adapter
@@ -636,6 +636,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
+    // TODO remove ArrayPut node
     private def genArrayPut(arrPut: ArrayPut): Unit = (arrPut.inValue0, arrPut.array, arrPut.idx) match {
       case (Reg(value), IReg(arr), IReg(idx)) =>
         addXSite(arrPut)
@@ -658,6 +659,15 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
     private def genNewArr(newArr: NewArray): Unit =
       genNewArrImpl(newArr, newArr.allocType, newArr.lengths, newArr.uninitialized)
+
+    private def genNewArrGeneric(newArr: NewArrayGeneric): Unit = {
+      assert(iReg(newArr.length) == IR2)
+      assert(iReg(newArr) == IR1)
+      val IReg(ti) = newArr.allocTypeInfo
+      asm.newarrGeneric(ti)
+      addXSite(newArr)
+      saveGCState(newArr)
+    }
 
     private def genNewArrImpl(newArr: Node, allocType: SignatureType, lengths: Seq[Node], zeroValue: Boolean): Unit = {
       assert(lengths.size == 1)
@@ -741,8 +751,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genCopyStructure(c: CopyStructure): Unit = {
-      addXSite(c)
-
       val adapter = asm.adapter
 
       (c.dstBaseRef, c.dst, c.srcBaseRef, c.src) match
@@ -822,6 +830,17 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               assert(t.isTraceableReference || t.isPrimitive)
               asm.loadUntyped(dst, LoadAccessKind.from(cbcTypeKind(load.tpe)), slot.untypedSlot)
           }
+      }
+    }
+
+    private def genCopyStructureGeneric(c: CopyStructureGeneric): Unit = {
+      (c.dstBaseRef, c.dst, c.srcBaseRef, c.src, c.typeInfo) match {
+        case (IReg(dstBase), IReg(dst), IReg(srcBase), IReg(src), IReg(ti)) =>
+          asm.copy(dstBase, dst, srcBase, src, ti)
+          if (valueOf(c.dstBaseRef).producer.isInstanceOf[DerivedPtr.Local]) {
+            mark(dst, LocalType.CLEARED)
+          }
+        case _ => shouldNotReachHere(c)
       }
     }
 
@@ -1106,7 +1125,14 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     private def genBox(n: Box): Unit = {
       val IReg(dst) = n
       n.value match {
-        case sa: HasFrameSlot => asm.box(sa.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot, dst)
+        case sa: HasFrameSlot =>
+          val slot = sa.slot.asInstanceOf[TypedFrameSlotCBC].typedSlot
+          if (n.base.containsTypeVariables) {
+            val IReg(ti) = n.baseTypeInfo
+            asm.boxGeneric(slot, dst, ti)
+          } else {
+            asm.box(slot, dst)
+          }
         case Reg(src)         => asm.box(src, dst, n.base.toCbc)
         case _: Void          => asm.box(IR.IRZ, dst, n.base.toCbc)
       }
@@ -1299,6 +1325,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: ArrayFill                  => genArrayFill(x)
         case x: ArrayIndexCheck            => genArrayIndexCheck(x)
         case x: NewArray                   => genNewArr(x)
+        case x: NewArrayGeneric            => genNewArrGeneric(x)
         case x: NewArrayFill               => genNewArrFill(x)
         case x: PackageInitCheck           => genPackageInitCheck(x)
         case x: InstanceOf                 => genInstanceOf(x)
@@ -1310,6 +1337,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: LoadMemory                 => genLoadMemory(x)
         case x: StoreMemory                => genStoreMemory(x)
         case x: CopyStructure              => genCopyStructure(x)
+        case x: CopyStructureGeneric       => genCopyStructureGeneric(x)
         case x: InitObj                    => genInitObj(x)
         case x: EndLocalUnmovable          => genEndLocalUnmovable(x)
         case x: CatchCBC                   => genCatch(x)

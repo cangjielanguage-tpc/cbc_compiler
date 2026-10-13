@@ -24,6 +24,38 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
 
   override protected def MaxArrayFillSizeForSplitting = 10
 
+  override private[lowering] def lowerAJArrayFill(arrayFill: AJArrayFill): Unit = {
+    val array = arrayFill.array
+    val arrayType = arrayFill.arrayType
+    val elementType = arrayType.getArrayElemType
+
+    // Start new block to guarantee valid creation of loop index in header with exactly one forward edge.
+    // Backward edge will be added later, when Proxy is replaced by Phi function.
+    val header = continue(Goto())
+    val index = Proxy(LongType)(header)
+
+    // TODO: JET-17408
+    val whileCheck = If(Cmp(index.tpe, Condition.ULT)(index, CangjieArrayLength(array)))
+
+    continue(whileCheck.trueExit)
+
+    val field = IndexFieldReference(arrayType, elementType)(index)
+    if (elementType.isRecord) {
+      val address = GetFieldSeqRef(array, array, field)
+      CopyStructure(elementType)(array, address, arrayFill.valueBaseRef, arrayFill.value)
+    } else {
+      StoreFieldSeq(array, array, arrayFill.value, field)
+    }
+
+    // Add backward edge and replace Proxy with proper Phi function.
+    val backEdge = Goto()
+    header.addArg(backEdge)
+    assert(header.args.size == 2)
+    index.replaceBy(Phi(index.tpe)(header, LConst(0), Add(index, LConst(1))))
+
+    continue(whileCheck.falseExit)
+  }
+
   import LoweringKind.*
   override protected def shouldBeLoweredCases(node: Node) = node match {
     case x: PureCheck if x.trusted => super.shouldBeLoweredCases(x)
@@ -42,7 +74,7 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
     case pf: PutJavaFieldOperation if pf.field.isAJFlat => SPINAL
 
     case _: NewArrayCopy => super.shouldBeLoweredCases(node)
-    case _: NewArrayMimic | _: AJArrayFill => COMPLEX
+    case _: NewArrayMimic | _: AJArrayFill | _: CangjieArrayFillGeneric => COMPLEX
     case _: AbstractNullCheck => super.shouldBeLoweredCases(node)
 
     case _: ErrorRTSCall | _: PreparationCheck => super.shouldBeLoweredCases(node)
