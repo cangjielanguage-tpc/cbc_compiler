@@ -920,6 +920,7 @@ compiler/Mangle/new_mangle/fix_same_mangled_name_in_chir_3.cj
 compiler/Parser/ar/parser_support_wildcard/positive/lambda_param/2_trailing_lambda_expr/item_after_quest_1.cj
 compiler/Parser/ar/parser_support_wildcard/positive/lambda_param/2_trailing_lambda_expr/item_after_quest_2.cj
 compiler/Parser/ar/parser_support_wildcard/positive/lambda_param/2_trailing_lambda_expr/item_after_quest_4.cj
+API/std/process/unix/test_currentProcess_info.cj
 
 # ignore due to timeouts and environmental problems
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj

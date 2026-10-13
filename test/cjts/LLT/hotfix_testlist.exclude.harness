@@ -347,3 +347,4 @@ compiler/Driver/options/obfuscation/test_layout/test4.info
 
 # incremental compilation: not supported by hotfix toolchain
 compiler/IncrementalCompilation
+compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_2.cj
