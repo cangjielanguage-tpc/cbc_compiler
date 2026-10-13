@@ -75,6 +75,8 @@ compiler/Sema/binary/f64expo.cj
 compiler/Sema/function/defaultParameter_pkg_02/test.cj
 compiler/Sema/type_infer/lambda_param_01.cj
 compiler/Sema/const_evaluation/ok_class_ctor.cj
+API/std/core/test_mathextension.cj
+compiler/Mangle/MangledName/new_mangle_fuzz_01.cj
 
 # bug 142 (not implemented: CastToGeneric)
 compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_3.cj
