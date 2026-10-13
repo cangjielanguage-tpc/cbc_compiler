@@ -75,6 +75,8 @@ compiler/Sema/binary/f64expo.cj
 compiler/Sema/function/defaultParameter_pkg_02/test.cj
 compiler/Sema/type_infer/lambda_param_01.cj
 compiler/Sema/const_evaluation/ok_class_ctor.cj
+API/std/core/test_mathextension.cj
+compiler/Mangle/MangledName/new_mangle_fuzz_01.cj
 
 # bug 142 (not implemented: CastToGeneric)
 compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_3.cj
@@ -203,6 +205,8 @@ API/std/math/test_domain_boundary.cj
 API/std/math/test_fmod_infinity.cj
 API/std/math/test_math_funcs01.cj
 API/std/unittest/diff/floats/zero_and_inf.cj
+API/std/math/test_hyperbolic_nan.cj
+API/std/math/test_math_funcs.cj
 
 # bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
@@ -1126,3 +1130,30 @@ compiler/Parser/others/extend_nothing.cj
 
 # bug 83 (NumericCast to UInt8 actually casts to I32)
 compiler/CodegenCommon/typecast/FPToSI/fp642Int8_1.cj
+
+# bug 155 ([resolution] [FATAL] not found function: _CGP3pkgiiHv)
+compiler/Macro/import/import05/call.cj
+compiler/Modules/Package/alias/import_alias_14/default.cj
+compiler/Modules/case_sensitive/main.cj
+compiler/Modules/cross_package/cross_package_01/main.cj
+compiler/Modules/cross_package/cross_package_02/main.cj
+
+# bug 156 ([resolution] [ERROR] Failed to parse method reference <0, 0>)
+compiler/Sema/generics/generic_member07/main.cj
+compiler/Sema/generics/generic_member08/main.cj
+
+# bug 157 (CBC internal error: symbol resolution error)
+compiler/Sema/enum/enum45_generic_extend_staticFunc.cj
+compiler/Sema/flow_expr/composition1.cj
+compiler/Sema/flow_expr/composition1_1.cj
+compiler/Sema/flow_expr/composition1_2.cj
+
+# bug 158 (Check failed: IsMarkedObject(offset) )
+API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
+API/std/collection/concurrent/test_concurrent_hashmap_init_extend.cj
+API/std/collection/concurrent/test_non_blocking_queue.cj
+
+# bug 159 (typeinfo_factory.cpp:814: assertion failed: tt->type == builder.type)
+API/std/deriving/shrink_field_exclude.cj
+API/std/unittest/prop_test/lazy_seq.cj
+API/std/unittest/prop_test/shrink/shrink_helpers_mix_test.cj

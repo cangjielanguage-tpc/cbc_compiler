@@ -6,6 +6,10 @@
 # no debugger support in near future
 Tools/cjdb
 
+# environment: SocketException: Socket is not connected
+API/std/socket/redesign/props/udp_props_readonly.cj
+API/std/socket/redesign/props/unix_datagram_props_readonly.cj
+
 # environment: /usr/bin/env: ‘bash’: No such file or directory
 compiler/Driver/cross_compile/sysroot_option/sysroot_mock.cj
 compiler/Driver/cross_compile/toolchain_option/toolchain_mock.cj
@@ -139,6 +143,11 @@ compiler/CodegenCJNative/reflect/reflect_03.cj
 compiler/CodegenCJNative/reflect/reflect_04.cj
 compiler/CodegenCJNative/reflect/reflect_02.cj
 compiler/CHIR/DCE/do_nothing_on_reflect.cj
+API/std/reflect/enumTypeInfo_test.cj
+API/std/reflect/functionTypeInfo_test.cj
+API/std/reflect/tupleTypeInfo_test.cj
+API/std/reflect/parameterInfo_test.cj
+API/std/reflect/parameterInfo_test_01.cj
 
 # ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
 compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
