@@ -139,6 +139,9 @@ compiler/CodegenCJNative/reflect/reflect_03.cj
 compiler/CodegenCJNative/reflect/reflect_04.cj
 compiler/CodegenCJNative/reflect/reflect_02.cj
 compiler/CHIR/DCE/do_nothing_on_reflect.cj
+API/std/reflect/enumTypeInfo_test.cj
+API/std/reflect/functionTypeInfo_test.cj
+API/std/reflect/tupleTypeInfo_test.cj
 
 # ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
 compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
