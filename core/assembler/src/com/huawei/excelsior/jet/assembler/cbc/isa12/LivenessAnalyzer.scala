@@ -72,7 +72,9 @@ class LivenessAnalyzer(strict: Boolean = true) extends FlowAnalyzer {
 
   private def define[T <: Resource](arg: T, mark: LivenessMark): Unit = {
     assert(arg != IR.IRZ)
-    currentState.put(arg, mark).ensuring(!strict || _.isEmpty || lastUse(arg), s"Resource liveness define failed for $arg with $mark")
+    currentState.put(arg, mark).ensuring(
+      prev => !strict || prev.isEmpty || prev.contains(LivenessMark.PRIM) || lastUse(arg),
+      s"Resource liveness define failed for $arg with $mark")
   }
 
   override def op[T](action: => T): T = {
