@@ -1266,6 +1266,8 @@ trait CHIRParser
         }
 
         // Select the bound when the comparison holds, using an all-ones mask.
+        // Branchless clamp via condition masks:
+        //   c = (v > bound); mask = -c (all ones if over); v' = (v & ~mask) | (bound & mask)
         def clampSide(v: Node, tpe: ValueType, bound: Long, cond: Condition): Node = {
           val boundC = IntegralConst(tpe)(bound)
           val c = CondVal(Cmp(tpe, cond)(v, boundC))
@@ -1315,8 +1317,6 @@ trait CHIRParser
                 val hi  = if (to.signed) (1L << (to.bits - 1)) - 1 else (if (to.bits == 64) -1L else (1L << to.bits) - 1)
                 val (loCond, hiCond) = if (from.signed) (Condition.LT, Condition.GT) else (Condition.ULT, Condition.UGT)
 
-                // Branchless clamp via condition masks:
-                //   c = (v > bound); mask = -c (all ones if over); v' = (v & ~mask) | (bound & mask)
                 var v = value
                 if (upperNeeded) {
                   v = clampSide(v, fromTpe, hi, hiCond)
@@ -1360,14 +1360,16 @@ trait CHIRParser
             }
 
             toAsm match {
-              case U8 | U16 =>
+              case I8 | U8 | I16 | U16 =>
                 // Floating-point casts saturate even with OverflowWrapping.
                 // Use the existing signed conversion (NaN -> 0), then clamp
                 // before narrowing so constant folding agrees with runtime.
-                val i32 = ValueConvert(fpFromAsm, I32)(fpValue)
-                val nonNegative = clampSide(i32, IntType, 0, Condition.LT)
-                val clamped = clampSide(nonNegative, IntType, (1L << to.bits) - 1, Condition.GT)
-                BFX(toTpe, 0, to.bits, signExtension = false, clamped)
+                val lo  = if (to.signed) -(1L << (to.bits - 1)) else 0L
+                val hi  = if (to.signed) (1L << (to.bits - 1)) - 1 else (1L << to.bits) - 1
+                var v = ValueConvert(fpFromAsm, I32)(fpValue)
+                v = clampSide(v, IntType, lo, Condition.LT)
+                v = clampSide(v, IntType, hi, Condition.GT)
+                BFX(toTpe, 0, to.bits, signExtension = to.signed, v)
               case _ => ValueConvert(fpFromAsm, toAsm)(fpValue)
             }
 
