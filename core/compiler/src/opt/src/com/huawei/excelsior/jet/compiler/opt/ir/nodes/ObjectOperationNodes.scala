@@ -1753,6 +1753,28 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
     def apply(arrayType: SignatureType, enrichedElemType: SignatureType): Proto = Prototype.intern(Proto(arrayType, enrichedElemType))
   }
 
+  class CangjieArrayFillGeneric private(proto: CangjieArrayFillGeneric.Proto)
+    extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {
+    def arrayType: SignatureType = proto.arrayType
+    def array = arg(2)
+    def value = arg(3)
+    def arrayTypeInfo = arg(4)
+    def elementTypeInfo = arg(5)
+  }
+
+  object CangjieArrayFillGeneric {
+    case class Proto private[CangjieArrayFillGeneric](arrayType: SignatureType)
+      extends FixedArgs[CangjieArrayFillGeneric](ControlType, MemoryType, TRefType, TRefType, AddrType, AddrType)(ControlType)
+        with ControlMemoryTagged[CangjieArrayFillGeneric] {
+      assert(arrayType.isArray && arrayType.getArrayElemType.isVariableSizeType, arrayType)
+      def newInstance() = new CangjieArrayFillGeneric(this)
+    }
+
+    def proto(arrayType: SignatureType) = Prototype.intern(Proto(arrayType))
+    def apply(arrayType: SignatureType)(array: Node, value: Node, arrayTypeInfo: Node, elementTypeInfo: Node) =
+      proto(arrayType)(array, value, arrayTypeInfo, elementTypeInfo)
+  }
+
 
   /////////////////////////////////////////
   // Strings

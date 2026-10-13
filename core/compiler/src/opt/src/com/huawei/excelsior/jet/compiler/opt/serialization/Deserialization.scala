@@ -495,6 +495,9 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case NewArray.Proto =>
           NewArray(read.sigType())
 
+        case NewArrayGeneric.GenericProto =>
+          NewArrayGeneric(read.sigType())
+
         case NewArrayMimic.Proto =>
           NewArrayMimic(read.sigType(), read.bool())
 
@@ -657,6 +660,9 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case AJArrayFill.Proto =>
           AJArrayFill(read.sigType(), read.sigType())
 
+        case CangjieArrayFillGeneric.Proto =>
+          CangjieArrayFillGeneric.proto(read.sigType())
+
         case ReinterpretCast.Proto =>
           ReinterpretCast(read.tpe(), read.tpe())
 
@@ -764,6 +770,9 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
 
         case CopyStructure.Proto =>
           CopyStructure.proto(read.sigType())
+
+        case CopyStructureGeneric.Proto =>
+          CopyStructureGeneric.proto(read.sigType())
 
         case ConvertDomain.Proto =>
           ConvertDomain(read.domain())
