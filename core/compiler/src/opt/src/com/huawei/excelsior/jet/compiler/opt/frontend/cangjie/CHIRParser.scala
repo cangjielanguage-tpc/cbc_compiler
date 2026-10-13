@@ -1125,22 +1125,6 @@ trait CHIRParser
         }
         val thisTypeInfo = thisTypeArgVal.map(state.apply)
 
-        val thisType = resolver.typeSig(e.thisType) match {
-          case SignatureType.ThisTypeInfo =>
-            val c = rootMethod.getDeclaringClass
-            if (c.isCangjieExtend) {
-              c.getCangjieExtendInfo
-            } else {
-              // FIXME: erasure
-              fromSymType(c)
-            }
-          case _: SignatureType.TypeVariable =>
-            val v = if (isStatic) thisTypeArgVal.get else sourceArgVals.head
-            val ValueSig(sig) = v
-            sig
-          case t => t
-        }
-
         val retType = resolver.typeSig(e.resultTpe)
         val isigParams = sourceArgVals map {
           case ValueSig(sig) => sig
@@ -1160,7 +1144,7 @@ trait CHIRParser
         val (gsig, _, _, _) = resolver.functionSig(methodArgVal.tpe, hasReceiver = !isStatic)
 
         def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
-          if (g.isTypeVariable && !i.isTypeVariable && !i.isInstanceOf[SignatureType.Box]) SignatureType.Box(i) else i
+          if (g.isTypeVariable && !i.isTypeVariable && (!i.isReference || i.isInstanceOf[SignatureType.OptionLikeEnum])) SignatureType.Box(i) else i
         }
 
         val isig = MethodSignature(retType, isigParams.drop(if (isStatic) 0 else 1))
@@ -1168,20 +1152,49 @@ trait CHIRParser
 
         val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
 
-        val vtable = asClassType(thisType).getCHIRVTable
-        assert(vtable != null, thisType)
+        val (thisType, vtableTypes) = CHIR.RefType.skip(e.thisType) match {
+          case CHIR.BuiltinType.This =>
+            val c = rootMethod.getDeclaringClass
+            val sig = if (c.isCangjieExtend) {
+              c.getCangjieExtendInfo
+            } else {
+              // FIXME: erasure
+              fromSymType(c)
+            }
+            (sig, Seq(sig))
 
-        def findSlot(extDef: CHIRVTable.ExtDef): Option[(CHIRVTable.ExtDef, Int)] = {
-          val vnum = extDef.funcTable.indexWhere(m => m.name == name && m.originalSig.instantiate(genericParams(thisType), Seq.empty) == sig)
-          Option.when(vnum >= 0)((extDef, vnum))
+          case t: CHIR.GenericType =>
+            val bounds = t.upperBounds.map(resolver.typeSig)
+            val v = if (isStatic) thisTypeArgVal.get else sourceArgVals.head
+            val ValueSig(sig) = v
+            (sig, bounds)
+
+          case t =>
+            val sig = resolver.typeSig(t)
+            (sig, Seq(sig))
         }
 
-        val (extDef, vnum) = vtable.extDefs.collectFirst(findSlot.unlift).getOrElse {
-          shouldNotReachHere(s"could not find VTable slot for $name${sig.toJETSignature} in $vtable")
-        }
-        val entry = extDef.funcTable(vnum)
+        def findVTableSlots(receiverType: SignatureType): Iterator[(CHIRVTable.Entry, SignatureType, Int)] = {
+          val vtable = asClassType(receiverType).getCHIRVTable
+          assert(vtable != null, receiverType)
 
-        val refType = extDef.extType.instantiate(genericParams(thisType), Seq.empty)
+          // TODO: traverse extensions for "receiverType" as well
+
+          val cparams = genericParams(receiverType)
+          vtable.extDefs.iterator.flatMap { extDef =>
+            val extType = extDef.extType.instantiate(cparams, Seq.empty)
+            val extcparams = genericParams(extType)
+            val vnum = extDef.funcTable.indexWhere { method =>
+              method.name == name && method.originalSig.instantiate(extcparams, Seq.empty) == sig
+            }
+            Option.when(vnum >= 0)(extDef.funcTable(vnum), extType, vnum)
+          }
+        }
+
+        val slots = vtableTypes.iterator.flatMap(findVTableSlots).toSeq
+        val (entry, refType, vnum) = slots.headOption.getOrElse {
+          shouldNotReachHere(s"could not find VTable slot for $name${sig.toJETSignature} in $vtableTypes")
+        }
 
         // TODO: unify logic with calcMethodRef?
         val refClass = asClassType(refType)
@@ -2053,7 +2066,7 @@ trait CHIRParser
         }
         state(e) = res
 
-      case e: (CHIR.UnboxToValue | CHIR.UnboxToRef | CHIR.CastToConcrete) =>
+      case e: (CHIR.UnboxToValue | CHIR.UnboxToRef | CHIR.CastToConcrete | CHIR.CastToGeneric) =>
         val base = state(e.value)
         val targetType = resolver.typeSig(e.targetTpe)
         val value = if (targetType.isZST) {
@@ -2063,7 +2076,7 @@ trait CHIRParser
             case baseType: SignatureType.OptionLikeEnum if baseType.someType.isTypeVariable =>
               base
             case _ =>
-              if (base.tpe.isTraceableRefType) {
+              if (base.tpe.isTraceableRefType && !targetType.isVariableSizeType) {
                 e match {
                   case _: CHIR.UnboxToRef => UnboxLea(targetType)(base)
                   case _ => UnboxRec(targetType)(loadTypeInfo(targetType), base)
@@ -2073,7 +2086,16 @@ trait CHIRParser
               }
           }
         } else if (targetType.isTraceableReference) {
-          base
+          if (base.tpe.isTraceableRefType) {
+            base
+          } else {
+            base match {
+              case base: GetFieldSeqRef =>
+                assert(base.resType.isVariableSizeType, s"non-VST GetFieldSeqRef result type: ${base.resType} in $base")
+                LoadFieldSeq(base.baseRef, base.base, base.fields: _*)
+              case base => shouldNotReachHere(s"unexpected cast base: $base")
+            }
+          }
         } else {
           if (base.tpe.isTraceableRefType) {
             Unbox(targetType)(loadTypeInfo(targetType), base)
