@@ -594,6 +594,8 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
 
     private def or(a: Int, b: Int) = a | b
 
+    private var untypedCount: Int = 0
+
     override def parse(stream: TokenStream) = stream.consume() match {
       case Kw(KeywordKind.Flags) =>
         while (!stream.current.isEnd) {
@@ -616,6 +618,7 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
             errors += stream.newError(s"Expected integer literal, but found $t")
             0
         }
+        untypedCount = count
         builder.getCodeBuilder().setUntypedStackSlotsCount(count)
         Continue
       case Kw(KeywordKind.TypedSlots) =>
@@ -645,7 +648,7 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
         builder.getCodeBuilder().setUsedNonVolFRegsMask(mask)
         Continue
       case Kw(KeywordKind.Code) =>
-        Push(CodeParser(builder.getCodeBuilder()))
+        Push(CodeParser(builder.getCodeBuilder(), untypedCount))
       case Kw(KeywordKind.MethodTypeName) =>
         val name = stream.parseStr()
         builder.setTypeName(name)
@@ -792,7 +795,7 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
     }
   }
 
-  private class CodeParser(builder: MethodCode.Builder) extends Parser {
+  private class CodeParser(builder: MethodCode.Builder, untypedCount: Int) extends Parser {
     private val segment = new Segment()
     private val analyzer = new LivenessAnalyzer
     private val gen = {
@@ -801,6 +804,9 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       gen.setUp(segment)
       gen
     }
+
+    // pre-register every untyped slot declared by @untyped_count method start
+    analyzer.op((0 until untypedCount).foreach(i => analyzer.prim(Untyped(i))))
 
     private val labels = LabelsMap(segment)
 
