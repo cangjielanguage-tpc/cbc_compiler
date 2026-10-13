@@ -6,6 +6,10 @@
 # no debugger support in near future
 Tools/cjdb
 
+# environment: SocketException: Socket is not connected
+API/std/socket/redesign/props/udp_props_readonly.cj
+API/std/socket/redesign/props/unix_datagram_props_readonly.cj
+
 # environment: /usr/bin/env: ‘bash’: No such file or directory
 compiler/Driver/cross_compile/sysroot_option/sysroot_mock.cj
 compiler/Driver/cross_compile/toolchain_option/toolchain_mock.cj
