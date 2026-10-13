@@ -296,6 +296,89 @@ trait ForkedAssembler {
       .sym16(f)
   }
 
+  private def atomicWidthSig(w: Width): BuiltinSignature = w match {
+    case W8  => BuiltinSignature.U8
+    case W16 => BuiltinSignature.U16
+    case W32 => BuiltinSignature.U32
+    case W64 => BuiltinSignature.U64
+  }
+
+  private def atomicLoadSig(ldk: LoadAccessKind): BuiltinSignature = ldk match {
+    case LoadAccessKind.LD_U8  => BuiltinSignature.U8
+    case LoadAccessKind.LD_S8  => BuiltinSignature.I8
+    case LoadAccessKind.LD_U16 => BuiltinSignature.U16
+    case LoadAccessKind.LD_S16 => BuiltinSignature.I16
+    case LoadAccessKind.LD_32  => BuiltinSignature.U32
+    case LoadAccessKind.LD_64  => BuiltinSignature.U64
+    case _                     => shouldNotReachHere(s"Unsupported atomic load access kind: $ldk")
+  }
+
+  private def atomicStoreSig(stk: StoreAccessKind): BuiltinSignature = stk match {
+    case StoreAccessKind.ST_8  => BuiltinSignature.U8
+    case StoreAccessKind.ST_16 => BuiltinSignature.U16
+    case StoreAccessKind.ST_32 => BuiltinSignature.U32
+    case StoreAccessKind.ST_64 => BuiltinSignature.U64
+    case _                     => shouldNotReachHere(s"Unsupported atomic store access kind: $stk")
+  }
+
+  def atomicSwapRaw(dst: IR, base: IR, src: IR, w: AsmWidth): Unit = instr {
+    analyzer.prim(dst)
+    analyzer.usePrim(base)
+    analyzer.usePrim(src)
+    stream
+      .opc8(Opcode.AtomicSwap)
+      .bits(_.w4(dst).w4(base))
+      .bits(_.w4(src).w4(0))
+      .sym16(NoneFieldReference(atomicWidthSig(Width(w))))
+  }
+
+  private def atomicFetchOpRaw(o: Opcode, dst: IR, base: IR, src: IR, w: AsmWidth): Unit = instr {
+    analyzer.prim(dst)
+    analyzer.usePrim(base)
+    analyzer.usePrim(src)
+    stream
+      .opc8(o)
+      .bits(_.w4(dst).w4(base))
+      .bits(_.w4(src).w4(0))
+      .sym16(NoneFieldReference(atomicWidthSig(Width(w))))
+  }
+
+  def atomicFetchAddRaw(dst: IR, base: IR, src: IR, w: AsmWidth): Unit = atomicFetchOpRaw(Opcode.AtomicFetchAdd, dst, base, src, w)
+  def atomicFetchSubRaw(dst: IR, base: IR, src: IR, w: AsmWidth): Unit = atomicFetchOpRaw(Opcode.AtomicFetchSub, dst, base, src, w)
+  def atomicFetchAndRaw(dst: IR, base: IR, src: IR, w: AsmWidth): Unit = atomicFetchOpRaw(Opcode.AtomicFetchAnd, dst, base, src, w)
+  def atomicFetchOrRaw (dst: IR, base: IR, src: IR, w: AsmWidth): Unit = atomicFetchOpRaw(Opcode.AtomicFetchOr,  dst, base, src, w)
+  def atomicFetchXorRaw(dst: IR, base: IR, src: IR, w: AsmWidth): Unit = atomicFetchOpRaw(Opcode.AtomicFetchXor, dst, base, src, w)
+
+  def casRaw(dst: IR, base: IR, expected: IR, newVal: IR, w: AsmWidth): Unit = instr {
+    analyzer.prim(dst)
+    analyzer.usePrim(base)
+    analyzer.usePrim(expected)
+    analyzer.usePrim(newVal)
+    stream
+      .opc8(Opcode.CAS)
+      .bits(_.w4(dst).w4(base))
+      .bits(_.w4(expected).w4(newVal))
+      .sym16(NoneFieldReference(atomicWidthSig(Width(w))))
+  }
+
+  def atomicLoadRaw(dst: IR, base: IR, ldk: LoadAccessKind): Unit = instr {
+    analyzer.prim(dst)
+    analyzer.usePrim(base)
+    stream
+      .opc8(Opcode.AtomicLoad)
+      .bits(_.w4(dst).w4(base))
+      .sym16(NoneFieldReference(atomicLoadSig(ldk)))
+  }
+
+  def atomicStoreRaw(src: IR, base: IR, stk: StoreAccessKind): Unit = instr {
+    analyzer.usePrim(src)
+    analyzer.usePrim(base)
+    stream
+      .opc8(Opcode.AtomicStore)
+      .bits(_.w4(src).w4(base))
+      .sym16(NoneFieldReference(atomicStoreSig(stk)))
+  }
+
   private def floatOperation(w: Width, op: FloatOperations, r1: FR | IR, r2: FR | IR, r3: FR | IR) = {
     stream
       .opc8(if w == W32 then Opcode.Float32 else Opcode.Float64)

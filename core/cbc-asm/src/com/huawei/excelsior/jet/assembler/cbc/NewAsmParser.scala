@@ -413,6 +413,15 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       }
     }
 
+    def parseRawMemOperand(): (Register.IR, Long) = {
+      expect(LBracket)
+      val base = parseIReg()
+      expect(Comma)
+      val offset = parseInt()
+      expect(RBracket)
+      (base, offset)
+    }
+
     def parseLoadAccessKind(): LoadAccessKind = {
       val tok = current
       val ident = parseIdent()
@@ -683,6 +692,19 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
     def ldk: LoadAccessKind = comma(stream.parseLoadAccessKind())
     def stk: StoreAccessKind = comma(stream.parseStoreAccessKind())
 
+    /** Raw-memory operand `[base, offset]` for the atomic/cas mnemonics; the
+      * engine's raw-memory RT form reachable through the assembler carries a
+      * zero offset, so any other value is reported as an error. Consumes the
+      * comma following the operand, if present. */
+    def rawMem: (Register.IR, Long) = {
+      val (base, offset) = stream.parseRawMemOperand()
+      if (offset != 0) {
+        errors += stream.newError("raw-memory atomic offset must be 0")
+      }
+      stream.expectMiddle(Comma)
+      (base, offset)
+    }
+
     def fields: Seq[FieldReference] = {
       val frs = mutable.ArrayBuffer.empty[FieldReference]
       while (!stream.current.isEnd) {
@@ -907,6 +929,7 @@ private trait ArgStream {
   def tk: BuiltinSignature
   def ldk: LoadAccessKind
   def stk: StoreAccessKind
+  def rawMem: (Register.IR, Long)
   def params: Seq[Assembler.CallParameter]
 }
 
@@ -1246,6 +1269,61 @@ private object InstructionParser {
 
   // memory access - raw
   instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, number = s.int) }
+
+  // raw-memory atomics / cas (B1): dst/src, [base, offset], ...; offset must be 0
+  private def memValBase(s: ArgStream): (Register.IR, Register.IR) = {
+    val v = s.ireg
+    val (base, _) = s.rawMem
+    (v, base)
+  }
+
+  // atomic.swap.<w> dst, [base, offset], src
+  instr("atomic.swap.8")  { (a, s) => val (d, b) = memValBase(s); a.atomicSwapRaw(d, b, s.ireg, Width.W8) }
+  instr("atomic.swap.16") { (a, s) => val (d, b) = memValBase(s); a.atomicSwapRaw(d, b, s.ireg, Width.W16) }
+  instr("atomic.swap.32") { (a, s) => val (d, b) = memValBase(s); a.atomicSwapRaw(d, b, s.ireg, Width.W32) }
+  instr("atomic.swap.64") { (a, s) => val (d, b) = memValBase(s); a.atomicSwapRaw(d, b, s.ireg, Width.W64) }
+
+  // atomic.fetch.<op>.<w> dst, [base, offset], src
+  instr("atomic.fetch.add.8")  { (a, s) => val (d, b) = memValBase(s); a.atomicFetchAddRaw(d, b, s.ireg, Width.W8) }
+  instr("atomic.fetch.add.16") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchAddRaw(d, b, s.ireg, Width.W16) }
+  instr("atomic.fetch.add.32") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchAddRaw(d, b, s.ireg, Width.W32) }
+  instr("atomic.fetch.add.64") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchAddRaw(d, b, s.ireg, Width.W64) }
+  instr("atomic.fetch.sub.8")  { (a, s) => val (d, b) = memValBase(s); a.atomicFetchSubRaw(d, b, s.ireg, Width.W8) }
+  instr("atomic.fetch.sub.16") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchSubRaw(d, b, s.ireg, Width.W16) }
+  instr("atomic.fetch.sub.32") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchSubRaw(d, b, s.ireg, Width.W32) }
+  instr("atomic.fetch.sub.64") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchSubRaw(d, b, s.ireg, Width.W64) }
+  instr("atomic.fetch.and.8")  { (a, s) => val (d, b) = memValBase(s); a.atomicFetchAndRaw(d, b, s.ireg, Width.W8) }
+  instr("atomic.fetch.and.16") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchAndRaw(d, b, s.ireg, Width.W16) }
+  instr("atomic.fetch.and.32") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchAndRaw(d, b, s.ireg, Width.W32) }
+  instr("atomic.fetch.and.64") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchAndRaw(d, b, s.ireg, Width.W64) }
+  instr("atomic.fetch.or.8")   { (a, s) => val (d, b) = memValBase(s); a.atomicFetchOrRaw(d, b, s.ireg, Width.W8) }
+  instr("atomic.fetch.or.16")  { (a, s) => val (d, b) = memValBase(s); a.atomicFetchOrRaw(d, b, s.ireg, Width.W16) }
+  instr("atomic.fetch.or.32")  { (a, s) => val (d, b) = memValBase(s); a.atomicFetchOrRaw(d, b, s.ireg, Width.W32) }
+  instr("atomic.fetch.or.64")  { (a, s) => val (d, b) = memValBase(s); a.atomicFetchOrRaw(d, b, s.ireg, Width.W64) }
+  instr("atomic.fetch.xor.8")  { (a, s) => val (d, b) = memValBase(s); a.atomicFetchXorRaw(d, b, s.ireg, Width.W8) }
+  instr("atomic.fetch.xor.16") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchXorRaw(d, b, s.ireg, Width.W16) }
+  instr("atomic.fetch.xor.32") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchXorRaw(d, b, s.ireg, Width.W32) }
+  instr("atomic.fetch.xor.64") { (a, s) => val (d, b) = memValBase(s); a.atomicFetchXorRaw(d, b, s.ireg, Width.W64) }
+
+  // cas.<w> dst, [base, offset], expected, new
+  instr("cas.8")  { (a, s) => val (d, b) = memValBase(s); val e = s.ireg; a.casRaw(d, b, e, s.ireg, Width.W8) }
+  instr("cas.16") { (a, s) => val (d, b) = memValBase(s); val e = s.ireg; a.casRaw(d, b, e, s.ireg, Width.W16) }
+  instr("cas.32") { (a, s) => val (d, b) = memValBase(s); val e = s.ireg; a.casRaw(d, b, e, s.ireg, Width.W32) }
+  instr("cas.64") { (a, s) => val (d, b) = memValBase(s); val e = s.ireg; a.casRaw(d, b, e, s.ireg, Width.W64) }
+
+  // atomic.ld.<ldk> dst, [base, offset]
+  instr("atomic.ld.u8")  { (a, s) => val (d, b) = memValBase(s); a.atomicLoadRaw(d, b, LD_U8) }
+  instr("atomic.ld.s8")  { (a, s) => val (d, b) = memValBase(s); a.atomicLoadRaw(d, b, LD_S8) }
+  instr("atomic.ld.u16") { (a, s) => val (d, b) = memValBase(s); a.atomicLoadRaw(d, b, LD_U16) }
+  instr("atomic.ld.s16") { (a, s) => val (d, b) = memValBase(s); a.atomicLoadRaw(d, b, LD_S16) }
+  instr("atomic.ld.32")  { (a, s) => val (d, b) = memValBase(s); a.atomicLoadRaw(d, b, LD_32) }
+  instr("atomic.ld.64")  { (a, s) => val (d, b) = memValBase(s); a.atomicLoadRaw(d, b, LD_64) }
+
+  // atomic.st.<stk> src, [base, offset]
+  instr("atomic.st.8")  { (a, s) => val (v, b) = memValBase(s); a.atomicStoreRaw(v, b, ST_8) }
+  instr("atomic.st.16") { (a, s) => val (v, b) = memValBase(s); a.atomicStoreRaw(v, b, ST_16) }
+  instr("atomic.st.32") { (a, s) => val (v, b) = memValBase(s); a.atomicStoreRaw(v, b, ST_32) }
+  instr("atomic.st.64") { (a, s) => val (v, b) = memValBase(s); a.atomicStoreRaw(v, b, ST_64) }
 
   // calls
   instr("call.direct")    { (a, s) => a.callDirect(s.method, s.params) }
