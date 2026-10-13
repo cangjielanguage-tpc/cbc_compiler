@@ -1062,6 +1062,20 @@ private object InstructionParser {
   instr("cusub.16") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("cumul.16") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W16) }
 
+  // checked shifts (reg-reg)
+  instr("clsh.8")  { (a, s) => a.clsh(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("crsh.8")  { (a, s) => a.crsh(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("cash.8")  { (a, s) => a.cash(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("clsh.16") { (a, s) => a.clsh(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("crsh.16") { (a, s) => a.crsh(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("cash.16") { (a, s) => a.cash(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("clsh.32") { (a, s) => a.clsh(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("crsh.32") { (a, s) => a.crsh(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("cash.32") { (a, s) => a.cash(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("clsh.64") { (a, s) => a.clsh(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("crsh.64") { (a, s) => a.crsh(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("cash.64") { (a, s) => a.cash(s.ireg, s.ireg, s.ireg, Width.W64) }
+
   // 32-bit checked arithmetic
   instr("cadd.32")  { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("csub.32")  { (a, s) => a.csub(s.ireg, s.ireg, s.ireg, Width.W32) }
@@ -1174,6 +1188,20 @@ private object InstructionParser {
   instr("cuaddi.16") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("cusubi.16") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("cumuli.16") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W16) }
+
+  // checked shifts (immediate)
+  instr("clshi.8")  { (a, s) => a.clshi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("crshi.8")  { (a, s) => a.crshi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("cashi.8")  { (a, s) => a.cashi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("clshi.16") { (a, s) => a.clshi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("crshi.16") { (a, s) => a.crshi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("cashi.16") { (a, s) => a.cashi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("clshi.32") { (a, s) => a.clshi(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("crshi.32") { (a, s) => a.crshi(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("cashi.32") { (a, s) => a.cashi(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("clshi.64") { (a, s) => a.clshi(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("crshi.64") { (a, s) => a.crshi(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("cashi.64") { (a, s) => a.cashi(s.ireg, s.ireg, s.int, Width.W64) }
 
   // 32-bit checked immediate arithmetic
   instr("caddi.32")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W32) }
