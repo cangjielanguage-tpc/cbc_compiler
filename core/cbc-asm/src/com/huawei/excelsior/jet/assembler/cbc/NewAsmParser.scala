@@ -705,6 +705,18 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       (base, offset)
     }
 
+    /** U16 literal-pool index for the static-address mnemonics (`ld.addr` /
+      * `st.addr`); the RT form's operand indexes the method's literal pool,
+      * which the isa12 encoding cannot carry, so the value is only
+      * range-checked here. */
+    def litIdx: Long = {
+      val v = int
+      if (v < 0 || v > 0xffff) {
+        errors += stream.newError(s"literal pool index out of U16 range: $v")
+      }
+      v
+    }
+
     def fields: Seq[FieldReference] = {
       val frs = mutable.ArrayBuffer.empty[FieldReference]
       while (!stream.current.isEnd) {
@@ -930,6 +942,7 @@ private trait ArgStream {
   def ldk: LoadAccessKind
   def stk: StoreAccessKind
   def rawMem: (Register.IR, Long)
+  def litIdx: Long
   def params: Seq[Assembler.CallParameter]
 }
 
@@ -1324,6 +1337,23 @@ private object InstructionParser {
   instr("atomic.st.16") { (a, s) => val (v, b) = memValBase(s); a.atomicStoreRaw(v, b, ST_16) }
   instr("atomic.st.32") { (a, s) => val (v, b) = memValBase(s); a.atomicStoreRaw(v, b, ST_32) }
   instr("atomic.st.64") { (a, s) => val (v, b) = memValBase(s); a.atomicStoreRaw(v, b, ST_64) }
+
+  // static address materialization (B2): ld.addr.<ldk> dst, <lit-idx> and
+  // st.addr.<stk> src, <lit-idx>; the U16 operand indexes the literal pool and
+  // is only range-checked (see ArgStream.litIdx)
+  instr("ld.addr.u8")  { (a, s) => val d = s.ireg; s.litIdx; a.loadAddrRaw(d, LD_U8) }
+  instr("ld.addr.s8")  { (a, s) => val d = s.ireg; s.litIdx; a.loadAddrRaw(d, LD_S8) }
+  instr("ld.addr.u16") { (a, s) => val d = s.ireg; s.litIdx; a.loadAddrRaw(d, LD_U16) }
+  instr("ld.addr.s16") { (a, s) => val d = s.ireg; s.litIdx; a.loadAddrRaw(d, LD_S16) }
+  instr("ld.addr.32")  { (a, s) => val d = s.ireg; s.litIdx; a.loadAddrRaw(d, LD_32) }
+  instr("ld.addr.64")  { (a, s) => val d = s.ireg; s.litIdx; a.loadAddrRaw(d, LD_64) }
+  instr("ld.addr.ref") { (a, s) => val d = s.ireg; s.litIdx; a.loadAddrRaw(d, LD_REF) }
+
+  instr("st.addr.8")   { (a, s) => val v = s.ireg; s.litIdx; a.storeAddrRaw(v, ST_8) }
+  instr("st.addr.16")  { (a, s) => val v = s.ireg; s.litIdx; a.storeAddrRaw(v, ST_16) }
+  instr("st.addr.32")  { (a, s) => val v = s.ireg; s.litIdx; a.storeAddrRaw(v, ST_32) }
+  instr("st.addr.64")  { (a, s) => val v = s.ireg; s.litIdx; a.storeAddrRaw(v, ST_64) }
+  instr("st.addr.ref") { (a, s) => val v = s.ireg; s.litIdx; a.storeAddrRaw(v, ST_REF) }
 
   // calls
   instr("call.direct")    { (a, s) => a.callDirect(s.method, s.params) }

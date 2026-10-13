@@ -379,6 +379,42 @@ trait ForkedAssembler {
       .sym16(NoneFieldReference(atomicStoreSig(stk)))
   }
 
+  private def addrLoadSig(ldk: LoadAccessKind): BuiltinSignature = ldk match {
+    case LoadAccessKind.LD_U8  => BuiltinSignature.U8
+    case LoadAccessKind.LD_S8  => BuiltinSignature.I8
+    case LoadAccessKind.LD_U16 => BuiltinSignature.U16
+    case LoadAccessKind.LD_S16 => BuiltinSignature.I16
+    case LoadAccessKind.LD_32  => BuiltinSignature.U32
+    case LoadAccessKind.LD_64  => BuiltinSignature.U64
+    case LoadAccessKind.LD_REF => BuiltinSignature.Nil
+    case _                     => shouldNotReachHere(s"Unsupported static address load access kind: $ldk")
+  }
+
+  private def addrStoreSig(stk: StoreAccessKind): BuiltinSignature = stk match {
+    case StoreAccessKind.ST_8   => BuiltinSignature.U8
+    case StoreAccessKind.ST_16  => BuiltinSignature.U16
+    case StoreAccessKind.ST_32  => BuiltinSignature.U32
+    case StoreAccessKind.ST_64  => BuiltinSignature.U64
+    case StoreAccessKind.ST_REF => BuiltinSignature.Nil
+    case _                      => shouldNotReachHere(s"Unsupported static address store access kind: $stk")
+  }
+
+  def loadAddrRaw(dst: IR, ldk: LoadAccessKind): Unit = instr {
+    analyzer.prim(dst)
+    stream
+      .opc8(Opcode.Ld_Static)
+      .bits(_.w4(dst).w4(dst))
+      .sym16(NoneFieldReference(addrLoadSig(ldk)))
+  }
+
+  def storeAddrRaw(src: IR, stk: StoreAccessKind): Unit = instr {
+    analyzer.usePrim(src)
+    stream
+      .opc8(Opcode.St_Static)
+      .bits(_.w4(src).w4(src))
+      .sym16(NoneFieldReference(addrStoreSig(stk)))
+  }
+
   private def floatOperation(w: Width, op: FloatOperations, r1: FR | IR, r2: FR | IR, r3: FR | IR) = {
     stream
       .opc8(if w == W32 then Opcode.Float32 else Opcode.Float64)
