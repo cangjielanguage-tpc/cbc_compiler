@@ -390,7 +390,8 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
     }
 
     def parseFloat(): Double = parse("float", 0.0) {
-      case t: FloatLit => t.value
+      case t: FloatLit   => t.value
+      case t: IntegerLit => t.value.toDouble
     }
 
     def parseCC(): BranchOp = parse("branch op", BranchOp.EQ) {
