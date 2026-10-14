@@ -773,4 +773,14 @@ class IdentitiesSuite extends CompilerSuite with Identities with GlobalNodesBuil
     }
   }
 
+  // TODO: move to another suite
+  test("DerivedPtr.Proxy phi web resolve identity") {
+    makeCFG((0 -> wd(1 -> (2 || 3) -> 4) -> 5) |>| (3 -> 5))
+
+    val x = Fake(AddrType)
+    val y = Fake(AddrType)
+    val phi = Phi.cyclic(AddrType)(1, phi => Seq(x, Phi(AddrType)(4, phi, y)))
+    DerivedPtr.Proxy.resolve(phi) shouldBe a[Phi]
+  }
+
 }

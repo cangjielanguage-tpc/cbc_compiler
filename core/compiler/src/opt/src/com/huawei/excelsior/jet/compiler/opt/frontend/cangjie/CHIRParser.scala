@@ -188,10 +188,7 @@ trait CHIRParser
       dbgPrinter.debugGraphs("Graph after BCP")
     }
 
-    resolveProxiesInArgs()
-
-    assert(all[SMutRecArg].isEmpty, "there should be no alive SMutRecArg nodes after parsing")
-    assert(all[SMutObjectArg].isEmpty, "there should be no alive SMutObjectArg nodes after parsing")
+    resolveDerivedPtrProxies()
 
     if (eliminateUnreachableCode()) {
       dbgPrinter.debugNodes("All graph after UCE")
@@ -2342,8 +2339,8 @@ trait CHIRParser
 
           Seq(abiRetVal)
         case Receiver => receiver.map(adjustArg(_, receiverType.get, target.methodType.parameterType(target.methodType.getReceiverArgIdx))) ensuring (_.nonEmpty)
-        case SMutRecord => Seq(SMutRecArg(mutReceiver.get))
-        case SMutObject => Seq(SMutObjectArg(SMutRecArg(mutReceiver.get)))
+        case SMutRecord => Seq(mutReceiver.get)
+        case SMutObject => Seq(DerivedPtr.Proxy(mutReceiver.get))
         case OuterTypeInfo =>
           val t = outerTypeInfo.get
           if (t.isCangjieClosure) {
@@ -2695,40 +2692,18 @@ trait CHIRParser
     }
   }
 
-  @tailrec
-  private def maybeDerivedPtrBase(rcv: Node): Node = rcv match {
-    case rcv if rcv.tpe.isTraceableRefType => rcv
-    case rcv: Param if rootMethod.hasMutRecordParameter && rcv.num == rootMethod.getMutRecordArgIdx =>
-      rootMethodParam(rootMethod.getMutObjectArgIdx)
-    case rcv: ArrayGet if rcv.arrayType.isRecordArray => rcv.array
-    case rcv: FieldSeqOperation => rcv.baseRef
-    case rcv: UnboxLea => rcv.value
-    case rcv: Phi =>
-      val args = Phi.transitiveValueArgs(rcv).filterNot(_.isInstanceOf[NoValue])
-      singleton(args) match {
-        case Some(arg) => maybeDerivedPtrBase(arg)
-        case None => notImplemented(s"non-trivial phi function: $rcv, leaf args: $args")
-      }
-    case rcv => DerivedPtr.Local()
-  }
+  private def maybeDerivedPtrBase(rcv: Node): Node = DerivedPtr.Proxy.resolve(rcv)
 
-  private def resolveProxiesInArgs(): Unit = {
-    for (n <- all[SMutObjectArg]) {
-      val actual = n.recArg.receiver match {
-        case rcv: InstanceFieldSeqOperation => rcv.baseRef
-        case rcv: FieldSeqOperation => DerivedPtr.Global()
-        case rcv: StackAlloc => DerivedPtr.Local()
-        case rcv: Param =>
-          assert(rcv.num == rootMethod.getMutRecordArgIdx)
-          rootMethodParam(rootMethod.getMutObjectArgIdx)
-        case rcv: UnboxLea => rcv.value
-        case rcv: UnboxRec => rcv.value
-      }
-      n.replaceBy(actual)
+  private def resolveDerivedPtrProxies(): Unit = {
+    // Small simplify-like loop to eliminate all proxies
+    for (n <- all[DerivedPtr.Proxy].toList) {
+      val r = DerivedPtr.Proxy.resolve(n.rec)
+      n.replaceBy(r)
     }
-    for (n <- all[SMutRecArg]) {
-      n.replaceBy(n.receiver)
-    }
+
+    assert(all[DerivedPtr.Proxy].isEmpty,
+      s"there should be no alive DerivedPtr.Proxy nodes after parsing:" +
+        s"${all[DerivedPtr.Proxy].map(_.rec).map(ReinterpretCast.skip).toSeq}")
   }
 
   private def createBox(base: SignatureType, value: Node): Node = {
