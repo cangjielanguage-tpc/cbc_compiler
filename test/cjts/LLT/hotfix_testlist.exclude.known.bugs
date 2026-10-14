@@ -552,9 +552,6 @@ compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
 # bug 132 (Incorrect signature of return type)
 compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
 
-# bug 134 (Incorrect TypeInfo creation of Boxes)
-compiler/CodegenCommon/enum/enum_fix_02.cj
-
 # bug 104 (properly support generic struct copy)
 compiler/CodegenCJNative/generic/generic_function1.cj
 compiler/CodegenCJNative/interface/GenericRecordExtendInterfaceGenericConstraint.cj
@@ -863,11 +860,6 @@ API/std/unittest/macro_test_no_remove_mod.cj
 API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
 API/std/collection/concurrent/test_concurrent_hashmap_init_extend.cj
 API/std/collection/concurrent/test_non_blocking_queue.cj
-
-# bug 159 (typeinfo_factory.cpp:814: assertion failed: tt->type == builder.type)
-API/std/deriving/shrink_field_exclude.cj
-API/std/unittest/prop_test/lazy_seq.cj
-API/std/unittest/prop_test/shrink/shrink_helpers_mix_test.cj
 
 # bug 160 (not implemented: non-trivial phi function)
 compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
