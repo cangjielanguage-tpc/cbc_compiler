@@ -552,9 +552,6 @@ compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
 # bug 132 (Incorrect signature of return type)
 compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
 
-# bug 134 (Incorrect TypeInfo creation of Boxes)
-compiler/CodegenCommon/enum/enum_fix_02.cj
-
 # bug 104 (properly support generic struct copy)
 compiler/CodegenCJNative/generic/generic_function1.cj
 compiler/CodegenCJNative/interface/GenericRecordExtendInterfaceGenericConstraint.cj
