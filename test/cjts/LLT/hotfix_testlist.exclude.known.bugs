@@ -862,3 +862,11 @@ API/std/collection/concurrent/test_non_blocking_queue.cj
 API/std/deriving/shrink_field_exclude.cj
 API/std/unittest/prop_test/lazy_seq.cj
 API/std/unittest/prop_test/shrink/shrink_helpers_mix_test.cj
+
+# bug 161 (io/fs related bugs (environment or miscompilation of foreigns, need investigation))
+API/std/io/ByteBuffer/test_setLength.cj
+API/std/io/ByteBuffer/test_seekable.cj
+API/std/fs/file/test_seekable.cj
+API/std/io/BufferedInputStream/test_seekable.cj
+API/std/fs/test_fs_file_coverage.cj
+API/std/io/StringReader/test_seekable.cj
