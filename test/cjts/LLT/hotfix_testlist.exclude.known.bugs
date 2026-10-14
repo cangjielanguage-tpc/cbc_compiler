@@ -825,6 +825,7 @@ API/std/unittest/mock/compiler/createSpy/spyOnSuperType.cj
 API/std/unittest/mock/compiler/createSpy/spyWithStatic.cj
 API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
 API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
+API/std/deriving/shrink_test.cj
 
 # bug 154 (CreateTypeInfo NOTHING)
 API/std/core/exclusiveScope/exception.cj
@@ -842,16 +843,21 @@ compiler/Modules/Package/alias/import_alias_14/default.cj
 compiler/Modules/case_sensitive/main.cj
 compiler/Modules/cross_package/cross_package_01/main.cj
 compiler/Modules/cross_package/cross_package_02/main.cj
+compiler/Modules/Package/reexportMacroPkg/case05/main.cj
 
 # bug 156 ([resolution] [ERROR] Failed to parse method reference <0, 0>)
 compiler/Sema/generics/generic_member07/main.cj
 compiler/Sema/generics/generic_member08/main.cj
+compiler/CodegenCJNative/enum/03_EXHAUSTIVE_UNASSOCIATED/main_00.cj
 
 # bug 157 (CBC internal error: symbol resolution error)
 compiler/Sema/enum/enum45_generic_extend_staticFunc.cj
 compiler/Sema/flow_expr/composition1.cj
 compiler/Sema/flow_expr/composition1_1.cj
 compiler/Sema/flow_expr/composition1_2.cj
+API/std/collection/test_TreeMap.cj
+API/std/math/numeric/decimal/test_typecast.cj
+API/std/unittest/macro_test_no_remove_mod.cj
 
 # bug 158 (Check failed: IsMarkedObject(offset) )
 API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
@@ -862,6 +868,9 @@ API/std/collection/concurrent/test_non_blocking_queue.cj
 API/std/deriving/shrink_field_exclude.cj
 API/std/unittest/prop_test/lazy_seq.cj
 API/std/unittest/prop_test/shrink/shrink_helpers_mix_test.cj
+
+# bug 160 (not implemented: non-trivial phi function)
+compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
 
 # bug 161 (io/fs related bugs (environment or miscompilation of foreigns, need investigation))
 API/std/io/ByteBuffer/test_setLength.cj

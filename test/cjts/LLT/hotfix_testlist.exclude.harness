@@ -161,7 +161,6 @@ compiler/CHIR/DCE/do_nothing_on_reflect.cj
 API/std/reflect/enumTypeInfo_test.cj
 API/std/reflect/functionTypeInfo_test.cj
 API/std/reflect/tupleTypeInfo_test.cj
-API/std/reflect/parameterInfo_test.cj
 API/std/reflect/parameterInfo_test_01.cj
 API/std/reflect/classTypeInfo_test_constructor.cj
 API/std/reflect/instanceVariableInfo_test.cj
@@ -173,7 +172,6 @@ API/std/reflect/abstract_constructor_test.cj
 API/std/reflect/generic_type_test.cj
 API/std/reflect/nested_pack.cj
 API/std/reflect/organizationName.cj
-API/std/reflect/parameterInfo_test_01.cj
 API/std/reflect/stdSymbols.cj
 API/std/reflect/type_check_test.cj
 API/std/reflect/classTypeInfo_findConstructor_test.cj
