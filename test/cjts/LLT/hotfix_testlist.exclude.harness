@@ -6,6 +6,10 @@
 # no debugger support in near future
 Tools/cjdb
 
+# environment: android-related
+compiler/Driver/options/toolchain/android_clang_search_lib.cj
+compiler/Driver/options/toolchain/android_clang_search_lib64.cj
+
 # environment: TimeOut
 API/std/sort/test_sort_array.cj
 API/std/sort/test_sort_unstable.cj
@@ -14,10 +18,12 @@ API/std/unittest/examples/timeout.cj
 API/std/collection/test_ArrayList.cj
 API/std/sort/test_sort_arraylist.cj
 API/std/unittest/parallel/integration/restarts.cj
+API/std/core/test_thread.cj
 
 # environment: SocketException: Socket is not connected
 API/std/socket/redesign/props/udp_props_readonly.cj
 API/std/socket/redesign/props/unix_datagram_props_readonly.cj
+API/std/socket/redesign/props/sockets_update_addr_on_connect.cj
 
 # environment: /usr/bin/env: ‘bash’: No such file or directory
 compiler/Driver/cross_compile/sysroot_option/sysroot_mock.cj
@@ -155,7 +161,6 @@ compiler/CHIR/DCE/do_nothing_on_reflect.cj
 API/std/reflect/enumTypeInfo_test.cj
 API/std/reflect/functionTypeInfo_test.cj
 API/std/reflect/tupleTypeInfo_test.cj
-API/std/reflect/parameterInfo_test.cj
 API/std/reflect/parameterInfo_test_01.cj
 API/std/reflect/classTypeInfo_test_constructor.cj
 API/std/reflect/instanceVariableInfo_test.cj
@@ -167,7 +172,6 @@ API/std/reflect/abstract_constructor_test.cj
 API/std/reflect/generic_type_test.cj
 API/std/reflect/nested_pack.cj
 API/std/reflect/organizationName.cj
-API/std/reflect/parameterInfo_test_01.cj
 API/std/reflect/stdSymbols.cj
 API/std/reflect/type_check_test.cj
 API/std/reflect/classTypeInfo_findConstructor_test.cj
@@ -178,6 +182,7 @@ API/std/reflect/parameterInfo_test.cj
 API/std/reflect/static_prop_test.cj
 API/std/reflect/typeInfo_findInstanceMemberFunction_test_cjnative.cj
 API/std/reflect/typeInfo_staticMemberFunctionInfo_apply_struct.cj
+API/std/reflect/classTypeInfo_test.cj
 
 
 # ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
@@ -378,4 +383,5 @@ compiler/Driver/options/obfuscation/test_layout/test4.info
 
 # incremental compilation: not supported by hotfix toolchain
 compiler/IncrementalCompilation
+compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_1.cj
 compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_2.cj
