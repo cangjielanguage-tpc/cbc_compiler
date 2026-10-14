@@ -14,6 +14,7 @@ import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.Env.isStandalone
 import com.huawei.excelsior.jet.compiler.TypeProvider
 import com.huawei.excelsior.jet.compiler.symlevel.CallConv.MANAGED
+import com.huawei.excelsior.jet.compiler.symlevel.CallKind.CJ_CFUNC
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.*
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.AltLocationInfo.NoAltLocation
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParamSet.Position.{Custom, End, Start}
@@ -442,6 +443,8 @@ case class MethodType (signature: MethodSignature, callConv: CallConv,
   def isAJLongSafe = callKind == CallKind.AJ_LONG_SAFE
 
   def isCJForeign = callKind == CallKind.CJ_FOREIGN
+  
+  def isCFunc = callKind == CJ_CFUNC
 
   def isReceiverParameter(i: Int) = hasReceiverParameter && getReceiverArgIdx == i
 
