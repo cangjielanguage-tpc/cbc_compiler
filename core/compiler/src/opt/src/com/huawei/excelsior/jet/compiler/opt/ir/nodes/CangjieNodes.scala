@@ -17,6 +17,8 @@ import PartialFunction.condOpt
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.STATIC
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CPointer, CangjieArray, Void}
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, MethodReference, MethodSignature, MethodType, SignatureType}
+import com.huawei.excelsior.jet.util.Closure
+import com.huawei.excelsior.jet.util.ScalaCollections.mapWith
 
 import java.lang.Double.doubleToRawLongBits
 import java.lang.Float.floatToRawIntBits
@@ -291,35 +293,49 @@ trait CangjieNodes { self: Universe =>
       private lazy val instance = new Global
       def apply() = instance()
     }
-  }
 
-  class SMutObjectArg private(proto: SMutObjectArg.Proto) extends FloatingNodeWithFixedArgs(proto) {
-    def recArg: SMutRecArg = arg(0).asInstanceOf[SMutRecArg]
-  }
-
-  object SMutObjectArg {
-    class Proto private[SMutObjectArg] extends FixedArgs[SMutObjectArg](AddrType)(TRefType) {
-      def newInstance() = new SMutObjectArg(this)
+    class Proxy private(proto: Proxy.Proto) extends FloatingNodeWithFixedArgs(proto) {
+      def rec = arg(0)
     }
 
-    def proto() = Prototype.intern(Proto())
+    object Proxy {
+      class Proto private[Proxy] extends FixedArgs[Proxy](AddrType)(TRefType) {
+        def newInstance() = new Proxy(this)
+      }
 
-    def apply(recArg: Node): Node = proto()(recArg)
-  }
+      def proto() = Prototype.intern(Proto())
 
-  class SMutRecArg private(proto: SMutRecArg.Proto) extends FloatingNodeWithFixedArgs(proto) {
-    def receiver: Node = arg(0)
-  }
+      def apply(rec: Node): Node = proto()(rec)
 
-  object SMutRecArg {
-    class Proto private[SMutRecArg](receiverType: Type) extends FixedArgs[SMutRecArg](receiverType)(AddrType) {
-      assert(receiverType.isRecordAddrType || receiverType == AddrType, receiverType)
-      def newInstance() = new SMutRecArg(this)
+      def unapply(n: Proxy) = Some(n.rec)
+
+      def resolve(rec: Node): Node = ReinterpretCast.skip(rec) match {
+        case x if x.tpe.isTraceableRefType => rec
+        case x: Param if rootMethod.hasMutRecordParameter && x.num == rootMethod.getMutRecordArgIdx =>
+          rootMethodParam(rootMethod.getMutObjectArgIdx)
+        case x: ArrayGet if x.arrayType.isRecordArray => x.array
+        case x: FieldSeqOperation => x.baseRef
+        case x: UnboxLea => x.value
+        case x: UnboxRec => x.value
+        case x: Phi =>
+          // Support for arbitrary complex phi webs
+          val web = mapWith[Node, Node](Closure[Node](x) {
+            case p: Phi => p.args.map(ReinterpretCast.skip)
+            case _ => Iterator.empty
+          }) {
+            case p: Phi => self.Proxy(TRefType)(p.block)
+            case p => resolve(p)
+          }
+          for ((phi: Phi, proxy: self.Proxy) <- web) {
+            val phiArgs = phi.argsSeq.map(a => web(ReinterpretCast.skip(a)).deref)
+            proxy.replaceBy(Phi(TRefType)(phi.block +: phiArgs: _*))
+          }
+          web(x).deref
+        case x: NoValue => x
+        case x: self.Proxy => DerivedPtr.Proxy(x)
+        case x => DerivedPtr.Local()
+      }
     }
-
-    def proto(receiverType: Type) = Prototype.intern(Proto(receiverType))
-
-    def apply(receiver: Node): Node = proto(receiver.tpe)(receiver)
   }
 
   class ZeroValueGeneric private(proto: ZeroValueGeneric.Proto) extends FloatingNodeWithFixedArgs(proto) {
