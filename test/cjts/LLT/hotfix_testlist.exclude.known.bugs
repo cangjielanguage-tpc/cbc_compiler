@@ -849,9 +849,6 @@ compiler/CodegenCJNative/enum/03_EXHAUSTIVE_UNASSOCIATED/main_00.cj
 
 # bug 157 (CBC internal error: symbol resolution error)
 compiler/Sema/enum/enum45_generic_extend_staticFunc.cj
-compiler/Sema/flow_expr/composition1.cj
-compiler/Sema/flow_expr/composition1_1.cj
-compiler/Sema/flow_expr/composition1_2.cj
 API/std/collection/test_TreeMap.cj
 API/std/math/numeric/decimal/test_typecast.cj
 API/std/unittest/macro_test_no_remove_mod.cj
