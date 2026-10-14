@@ -811,16 +811,6 @@ API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
 API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
 API/std/deriving/shrink_test.cj
 
-# bug 154 (CreateTypeInfo NOTHING)
-API/std/core/exclusiveScope/exception.cj
-API/std/core/test_future.cj
-API/std/sync/exception_in_spawn.cj
-API/std/unittest/exception_rendering2.cj
-compiler/Mangle/ExportID/nothing_type.cj
-compiler/Mangle/ExportID/nothing_type2.cj
-compiler/Mangle/ExportID/nothing_type3.cj
-compiler/Parser/others/extend_nothing.cj
-
 # bug 155 ([resolution] [FATAL] not found function: _CGP3pkgiiHv)
 compiler/Macro/import/import05/call.cj
 compiler/Modules/Package/alias/import_alias_14/default.cj
