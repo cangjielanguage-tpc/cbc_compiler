@@ -1124,9 +1124,10 @@ trait CHIRParser
           val retType = resolver.typeSig(e.resultTpe)
           val paramTypes = argVals.map { case ValueSig(sig) => sig }
           if (retType.isRecord || paramTypes.exists(_.isRecord)) {
-            notImplemented("CFunc call with record ABI")
+            notImplemented("TODO: pass by value")
           }
-          val mt = MethodType(MethodSignature(retType, paramTypes), CallConv.CCALL, CallKind.CJ_FOREIGN, MethodType.SpecialParamSet(), false)
+          val mt = MethodType(MethodSignature(retType, paramTypes), CallConv.CCALL, CallKind.CJ_FOREIGN, MethodType.SpecialParamSet(),
+            isCFunc = true, isVarArgs =  false)
           val args = argVals.map(state.apply)
           val call = Call(new MethodReference(mt, MAK.STATIC))(state(calleeVal) +: args: _*)
           state(e) = call

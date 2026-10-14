@@ -2825,7 +2825,7 @@ trait CangjieLLVMIRParser
 
       val ms = MethodSignature(ty2sig(fnTy.retTy), fnTy.paramTys.map(ty2sig).toSeq)
       val (abiSig, specialParams) = makeABISignature(ms, ABI.Description(isCFunc = true))
-      val mt = MethodType(abiSig, CCALL, CallKind.CJ_FOREIGN, specialParams, fnTy.vararg)
+      val mt = MethodType(abiSig, CCALL, CallKind.CJ_FOREIGN, specialParams, false, fnTy.vararg)
       val mr = new MethodReference(mt, MAK.STATIC)
 
       val abiRetType = mt.returnType

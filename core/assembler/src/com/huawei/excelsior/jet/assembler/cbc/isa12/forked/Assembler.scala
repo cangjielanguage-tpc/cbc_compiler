@@ -1148,11 +1148,12 @@ trait ForkedAssembler {
       .sym16(mr)
   }
 
-  def callIndirect(target: IR, params: Seq[Assembler.CallParameter]): Unit = instr {
+  def callIndirect(target: IR, mr: MethodReference, params: Seq[Assembler.CallParameter]): Unit = instr {
     val t = analyzer.usePrim(target)
     stream
       .opc8(Opcode.CallCFunc)
       .bits(_.w4(t).w4(t))
+      .sym16(mr)
       .callArgs(params)
     saveState()
   }

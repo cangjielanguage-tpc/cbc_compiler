@@ -960,7 +960,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       
       def indirectCall(): Unit = {
         val IReg(targetReg) = call.target
-        asm.callIndirect(targetReg, callArgLocations)
+        val mr = asm.adapter.method(targetRef)
+        asm.callIndirect(targetReg, mr, callArgLocations)
       }
 
       def directCall(): Unit = {

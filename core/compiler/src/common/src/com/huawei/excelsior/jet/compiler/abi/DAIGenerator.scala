@@ -77,7 +77,7 @@ object DAIGenerator {
     val returnType = if (isWrite) voidType else fieldType
 
     val sig = MethodSignature(returnType, paramTypes)
-    MethodType(sig, CallConv.MANAGED, CallKind.NORMAL, SpecialParamSet(), false, MethodType.UNINITIALIZED_FIRST_VAR_ARG)
+    MethodType(sig, CallConv.MANAGED, CallKind.NORMAL, SpecialParamSet(), false, false, MethodType.UNINITIALIZED_FIRST_VAR_ARG)
   }
 
   private def encodeFlag(flag: Boolean, shift: Int) = {

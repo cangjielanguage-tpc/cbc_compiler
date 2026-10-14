@@ -272,7 +272,7 @@ class MethodImpl private[light](val o2m: pcOModule.Method) extends Method with S
     MethodType(
       o2m.getABISignature,
       callConv, ck, o2m.getSpecialParamSet,
-      isVarArgs, MethodType.UNINITIALIZED_FIRST_VAR_ARG,
+      false, isVarArgs, MethodType.UNINITIALIZED_FIRST_VAR_ARG,
       headInLimit, headOutLimit, preservedParameters, MethodType.AltLocationInfo(hasAltLocationResult, altLocationParameters)
     )
   }
