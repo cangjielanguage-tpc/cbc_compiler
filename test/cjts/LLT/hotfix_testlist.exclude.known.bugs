@@ -861,9 +861,6 @@ API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
 API/std/collection/concurrent/test_concurrent_hashmap_init_extend.cj
 API/std/collection/concurrent/test_non_blocking_queue.cj
 
-# bug 160 (not implemented: non-trivial phi function)
-compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
-
 # bug 161 (io/fs related bugs (environment or miscompilation of foreigns, need investigation))
 API/std/io/ByteBuffer/test_setLength.cj
 API/std/io/ByteBuffer/test_seekable.cj
