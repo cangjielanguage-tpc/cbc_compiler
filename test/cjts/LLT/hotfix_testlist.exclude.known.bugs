@@ -24,50 +24,15 @@ compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_01.cj
 compiler/CodegenCommon/typecast/nan2integer.cj
 
 # bug 140 (not implemented: throwing binary expression)
-compiler/CHIR/CallExpr/sideeffect04.cj
-compiler/CHIR/CallExpr/sideeffect05.cj
-compiler/CHIR/CHIR2HLIR/binaryExpr/chir2hlir_binary07.cj
-compiler/CHIR/CHIR2HLIR/binaryExpr/chir2hlir_binary08.cj
-compiler/CHIR/CHIR2HLIR/binaryExpr/chir2hlir_binary09.cj
-compiler/CHIR/CHIR2HLIR/binaryExpr/chir2hlir_binary10.cj
-compiler/CHIR/CHIR2HLIR/binaryExpr/chir2hlir_binary11.cj
 compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
 compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
-compiler/CHIR/CHIR2HLIR/compoundAssignExp/chir2hlir_compoundAssignExp07.cj
-compiler/CHIR/CHIR2HLIR/compoundAssignExp/chir2hlir_compoundAssignExp08.cj
-compiler/CHIR/CHIR2HLIR/compoundAssignExp/chir2hlir_compoundAssignExp09.cj
-compiler/CHIR/CHIR2HLIR/compoundAssignExp/chir2hlir_compoundAssignExp10.cj
-compiler/CHIR/CHIR2HLIR/compoundAssignExp/chir2hlir_compoundAssignExp11.cj
-compiler/CHIR/CHIR2HLIR/print/print03.cj
-compiler/CHIR/DCE/testUnusedOp04.cj
-compiler/CHIR/LetBind/testLetBind04.cj
-compiler/CHIR/LetBind/testLetBind05.cj
 compiler/CHIROpt/ValueRangeAnalysis/Ifn.cj
 compiler/CHIROpt/ValueRangeAnalysis/RelopEquality.cj
 compiler/CHIROpt/ValueRangeAnalysis/Transitive.cj
-compiler/CodegenCHIR/tryCatch/shift_op.cj
-compiler/CodegenCJNative/any/any_is_func.cj
-compiler/CodegenCommon/binary_op/leftshift_2.cj
-compiler/CodegenCommon/binary_op/rightshift_2.cj
 compiler/CodegenCommon/overflow/overshift1.cj
 compiler/CodegenCommon/overflow/overshift2.cj
-compiler/CodegenCommon/typecast/match_pattern.cj
 compiler/FFI/CFFI/case12-cpointer-complex/CPointerCase3.cj
-compiler/Sema/binary/binary_error_report_08.cj
-compiler/Sema/class/static_or_global_var/static_or_global_var2.cj
-compiler/Sema/CompoundAssign/Bit/bit01.cj
-compiler/Sema/CompoundAssign/Bit/bit02.cj
-compiler/Sema/const_evaluation/ok_int64_op.cj
 compiler/Sema/Extend/generic/primitive_00/ok.cj
-compiler/Sema/generics/instantiation_rearrange/rearrange11.cj
-compiler/Sema/if-let-expr/bugfix1.cj
-compiler/Sema/lambda/lambda_capture/capture_let_as_param.cj
-compiler/Sema/operator/bitwise_operator/bitwise_priority.cj
-compiler/Sema/operator/bitwise_operator/shift/normal_shift.cj
-compiler/Sema/PatternMatching/MatchExpression/match030.cj
-compiler/Sema/tuple/tupleAccess4.cj
-compiler/Sema/type_infer/shift_unmatch_int.cj
-compiler/Sema/while-let-expr/while_let7.cj
 
 # bug 141 (not implemented: floating point binary expression: Exp)
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix6/test.cj
@@ -80,9 +45,6 @@ compiler/Mangle/MangledName/new_mangle_fuzz_01.cj
 
 # bug 143 (not implemented: assembler *)
 compiler/CodegenCommon/tuple/global_tuple_tuple.cj
-compiler/Sema/binary/binary_infer.cj
-compiler/Sema/tuple/tupleAccess2.cj
-compiler/CodegenCJNative/record/override_primitive_generic_return_with_concrete_type.cj
 
 # bug 135 (not implemented: FLOAT16)
 compiler/CodegenCJNative/LegacyTests/typesFp16.cj
@@ -265,13 +227,8 @@ compiler/Sema/PatternMatching/MatchExpression/match027.cj
 compiler/Sema/PatternMatching/MatchExpression/match028.cj
 
 # bug 147 (not supported yet: typeinfo_factory.cpp:960)
-compiler/CHIR/CHIR2HLIR/exception/try51.cj
-compiler/CHIR/CHIR2HLIR/exception/try_throw/exception_try_40066.cj
-compiler/CHIROpt/RedundantLoadElimination/lambda2.cj
 compiler/CodegenCJNative/demangle/decl/exception_throw2.cj
 compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
-compiler/CodegenCommon/atexit/atexit_09_Exception.cj
-compiler/CodegenCommon/atexit/atexit_12_MultipleExceptions.cj
 
 # bug 67 (C-struct getRetByValArgIdx crash)
 compiler/FFI/CFFI/record/small_0.cj
@@ -284,15 +241,11 @@ compiler/FFI/CFFI/record/small_6.cj
 compiler/FFI/CFFI/record/small_19.cj
 compiler/FFI/CFFI/record/small_20.cj
 compiler/Sema/call/call21.cj
-compiler/Sema/typealias/typealias18.cj
 
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
 
 # bug 70 (Unexpected TypeVariable.symType)
-compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_6.cj
-compiler/Sema/forin/forin14.cj
-compiler/Sema/typealias/overload_and_alias1/main.cj
 compiler/CodegenCommon/enum/enum_07.cj
 API/std/deriving/shrink_t_test.cj
 
@@ -312,7 +265,6 @@ compiler/Driver/test_separate_compilation/export_for_test_foreign/main.cj
 
 # bug 79 (Cast Float32 -> Int32 does not throw on overflow)
 compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
-compiler/CHIR/CHIR2HLIR/typeCast/float2intExceed.cj
 compiler/CHIR/CHIR2HLIR/exception/try86.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/int16/inttoint16.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/int16/uinttoint16.cj
@@ -336,18 +288,13 @@ compiler/CodegenCJNative/LegacyTests/enum_nest.cj
 
 # bug 9 (Support runtime intrsinsics/calls in CBC)
 ## CPOINTER_INIT0
-compiler/CodegenCHIR/spawn_02.cj
 compiler/CodegenCJNative/demangle/type/cpointer_type1.cj
 compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
 compiler/CodegenCJNative/record/override_cpointer_generic_return_with_concrete_type.cj
 compiler/CodegenCHIR/cptr_cstr/init_01.cj
 compiler/CodegenCommon/cffi/foreign/c_ffi_00739/c_ffi.cj
-compiler/Sema/concurrency/import_pkg/main.cj
 compiler/Sema/array/array_builin_ctype.cj
-compiler/Sema/concurrency/spawn9.cj
-compiler/Sema/ffi/import_cpointer_generic/b.cj
 compiler/Sema/Extend/default_implement/default_implement_01.cj
-compiler/Sema/varray/varray_cffi/varray_cstruct05.cj
 compiler/Sema/varray/varray_cffi/varray_cstruct03.cj
 compiler/Sema/varray/varray_cffi/varray_cstruct04.cj
 ## CPOINTER_INIT1
@@ -512,29 +459,15 @@ API/std/unittest/mock/framework/verification_failed_report_test.cj
 API/std/unittest/mock/framework/verify_misconfiguration_test.cj
 
 # bug 90 (genericTypeInfoParam called in method with no genericFuncParams)
-compiler/CHIR/CHIR2HLIR/extend/extend_instantiate_01.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_extend04.cj
-compiler/CHIR/UG/VTable/generic/static/interface_enum01.cj
-compiler/Sema/class/static_init/static_init_01.cj
-compiler/Sema/class/static_init/static_init_01_O2.cj
-compiler/Sema/enum/enum17_generic_enum_memberFunc.cj
-compiler/Sema/enum/enum18_generic_staticFunc.cj
-compiler/Sema/enum/enum19_generic_staticFunc_newTypeParam.cj
-compiler/Sema/enum/enum23_test/enum23_test.cj
 compiler/Sema/enum/enum33_test/main.cj
 compiler/Sema/enum/enum44.cj
 compiler/Sema/enum/enum_circular_syn_01.cj
 compiler/Sema/Extend/default_implement/default_implement_01/main.cj
-compiler/Sema/Extend/default_implement/default_implement_16.cj
-compiler/Sema/Extend/default_implement/multi_default_impl_07.cj
-compiler/Sema/Extend/extend_instantiate3.cj
 compiler/Sema/Extend/extend_interface_static1.cj
 compiler/Sema/Extend/extend_interface_static2.cj
-compiler/Sema/function/overrode_by_diff_inst02.cj
 compiler/Sema/generics/generic_member05/main.cj
 compiler/Sema/generics/generic_member06/main.cj
 compiler/Sema/generics/generic_static_field_prop/generic_static_prop06.cj
-compiler/Sema/record/static_init/static_init_01.cj
 compiler/Sema/type_infer/infer_member_access_with_enum_ctor_succ.cj
 
 # bug 92 (Support extends of AOT types)
@@ -554,22 +487,11 @@ compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.
 
 # bug 104 (properly support generic struct copy)
 compiler/CodegenCJNative/generic/generic_function1.cj
-compiler/CodegenCJNative/interface/GenericRecordExtendInterfaceGenericConstraint.cj
-compiler/CodegenCJNative/trycatch/zerovalue.cj
-compiler/Sema/Extend/interface_default_implement/other_pkg_in_generic/main.cj
 compiler/Sema/PatternMatching/MatchExpression/match016.cj
-compiler/Sema/record/record_this2.cj
-compiler/Sema/record/record_this3.cj
-
-# bug 107 (Array of Varrays fails to compile)
-compiler/CodegenCJNative/array/array_zero_value.cj
-compiler/CodegenCJNative/constant/constant_03.cj
-compiler/CodegenCJNative/varray/varray_array1.cj
 
 # bug 112 (crash when calling function from extended interface)
 compiler/Sema/Extend/autobox_try_catch1.cj
 compiler/Sema/Extend/autobox_try_catch2.cj
-compiler/Sema/Extend/interface_default_implement/call_virtual_enum.cj
 compiler/Sema/Extend/interface_default_implement/call_virtual_primitive.cj
 compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
 compiler/CHIR/Generic/testGeneric09.cj
@@ -629,7 +551,6 @@ compiler/Parser/ar/parse_support_keyword_context/decl/interface.cj
 # ignore due to timeouts and environmental problems
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
 compiler/Sema/join_meet/join_perf.cj
-compiler/Sema/operator_overload/timeout_06.cj
 API/std/unittest/mock/framework/exhaustive_ordered_verify_test.cj
 API/std/unittest/mock/framework/exhaustive_unordered_verify_test.cj
 API/std/unittest/mock/framework/interface_test.cj
@@ -652,10 +573,6 @@ compiler/Sema/call/call_error_report_04.cj
 # bug 128: zero-sized struct assignment failed to compile
 compiler/CodegenCHIR/barrier/globalBarier5.cj
 
-# bug 136 (support CHIR.Debug)
-compiler/Sema/generics/instantiation_rearrange/rearrange02.cj
-compiler/Sema/generics/instantiation_rearrange/rearrange03.cj
-
 # bug 137 ((Int32) -> Unit lambda does not return Unit)
 API/std/socket/redesign/methods/socket_keep_alive_config.cj
 API/std/socket/redesign/props/tcp_props_keep_alive.cj
@@ -664,7 +581,6 @@ compiler/Sema/lambda/lambda05.cj
 compiler/Sema/lambda/lambda06.cj
 API/std/socket/redesign/vars/socket_keep_alive_vars.cj
 compiler/CHIR/CHIR2HLIR/class_and_interface/class_and_interface_01.cj
-Runtime/CJNative/Record/record_generic_02.cj
 compiler/CHIR/CHIR2HLIR/globalVariable/globalvariable05.cj
 compiler/CHIR/CHIR2HLIR/package/finalizer/main.cj
 compiler/CJCov/global_capture.cj
@@ -674,7 +590,6 @@ compiler/CodegenCJNative/lambda/global_capture.cj
 compiler/Macro/replace/interface_decl.cj
 compiler/Sema/InitializationCheck/static_variable_use_before_init_02/file1.cj
 compiler/Sema/InitializationCheck/static_variable_use_before_init_06/file1.cj
-compiler/Sema/class/interface_default_implemented_func_valid_6.cj
 compiler/Sema/class/static_init/generic_class_static_init_01/main.cj
 compiler/Sema/class/static_init/generic_class_static_init_02/main.cj
 compiler/Sema/class/static_init/static_init_05.cj
@@ -730,9 +645,7 @@ API/std/convert/test_L2_charToNumber.cj
 API/std/deriving/arbitrary_t_test.cj
 API/std/fs/test_directory_linux.cj
 API/std/net/ip_prefix_test.cj
-API/std/runtime/thread_with_gc.cj
 API/std/unittest/examples/advance1.cj
-compiler/Mangle/MangledName/new_mangle_fuzz_02.cj
 API/std/convert/test_ConvertBool.cj
 API/std/convert/test_ConvertFloat32.cj
 API/std/unittest/api/reporters/csv_case.cj
@@ -833,7 +746,6 @@ API/std/unittest/macro_test_no_remove_mod.cj
 # bug 158 (Check failed: IsMarkedObject(offset) )
 API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
 API/std/collection/concurrent/test_concurrent_hashmap_init_extend.cj
-API/std/collection/concurrent/test_non_blocking_queue.cj
 
 # bug 160 (not implemented: non-trivial phi function)
 compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
