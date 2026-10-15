@@ -773,7 +773,8 @@ trait ForkedAssembler {
     sccCommon(op, dst, l, r, width)
   }
 
-  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = sccCommon(op, dst, src1, src2, width)
+  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit =
+    sccCommon(CondConversions.toFloat(op), dst, src1, src2, width)
 
   def scc(op: BranchOp, dst: IR, lhs: IR, _imm: Long, width: AsmWidth): Unit = instr {
     analyzer.trans(dst, lhs)
