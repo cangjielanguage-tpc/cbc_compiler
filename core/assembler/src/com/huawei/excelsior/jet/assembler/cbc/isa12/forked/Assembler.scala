@@ -1444,6 +1444,9 @@ object Assembler {
   enum FloatMathOperaions extends Ordinal {
     case SIN
     case COS
+    case LOG
+    case CEIL
+    case FLOOR
   }
 
   @nowarn("msg=match may not be exhaustive")

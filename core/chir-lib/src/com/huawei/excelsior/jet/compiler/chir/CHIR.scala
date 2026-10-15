@@ -446,6 +446,9 @@ object CHIR {
       case Pow
       case Sin
       case Cos
+      case Log
+      case Ceil
+      case Floor
     }
   }
 

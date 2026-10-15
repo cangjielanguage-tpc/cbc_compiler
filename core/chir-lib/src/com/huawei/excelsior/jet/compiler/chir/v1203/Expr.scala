@@ -135,6 +135,9 @@ class IntrinsicImpl(in: IntrinsicBase)(implicit provider: CHIRItemProvider) exte
     case IntrinsicKind.POW => Intrinsic.Kind.Pow
     case IntrinsicKind.SIN => Intrinsic.Kind.Sin
     case IntrinsicKind.COS => Intrinsic.Kind.Cos
+    case IntrinsicKind.LOG => Intrinsic.Kind.Log
+    case IntrinsicKind.CEIL => Intrinsic.Kind.Ceil
+    case IntrinsicKind.FLOOR => Intrinsic.Kind.Floor
   }
   def args: Seq[CHIR.Value] = operands
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
