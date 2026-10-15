@@ -17,6 +17,7 @@ import PartialFunction.condOpt
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.STATIC
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CPointer, CangjieArray, Void}
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, MethodReference, MethodSignature, MethodType, SignatureType}
+import com.huawei.excelsior.jet.util.Closure
 import com.huawei.excelsior.jet.util.ScalaCollections.mapWith
 
 import java.lang.Double.doubleToRawLongBits
@@ -306,6 +307,8 @@ trait CangjieNodes { self: Universe =>
 
       def apply(rec: Node): Node = proto()(rec)
 
+      def unapply(n: Proxy) = Some(n.rec)
+
       def resolve(rec: Node): Node = ReinterpretCast.skip(rec) match {
         case x if x.tpe.isTraceableRefType => rec
         case x: Param if rootMethod.hasMutRecordParameter && x.num == rootMethod.getMutRecordArgIdx =>
@@ -316,17 +319,18 @@ trait CangjieNodes { self: Universe =>
         case x: UnboxRec => x.value
         case x: Phi =>
           // Support for arbitrary complex phi webs
-          val args = mapWith[Node, Node](Phi.transitiveValueArgs(x))(resolve)
-          val phies = mapWith[Phi, self.Proxy](Phi.transitivePhiArgs(x) | Set(x))(p => self.Proxy(TRefType)(p.block))
-          for ((phi, proxy) <- phies) {
-            val repl = proxy.deref
-            val phiArgs = phi.argsSeq map {
-              case a: Phi => phies(a).deref
-              case a => args(a)
-            }
+          val web = mapWith[Node, Node](Closure[Node](x) {
+            case p: Phi => p.args.map(ReinterpretCast.skip)
+            case _ => Iterator.empty
+          }) {
+            case p: Phi => self.Proxy(TRefType)(p.block)
+            case p => resolve(p)
+          }
+          for ((phi: Phi, proxy: self.Proxy) <- web) {
+            val phiArgs = phi.argsSeq.map(a => web(ReinterpretCast.skip(a)).deref)
             proxy.replaceBy(Phi(TRefType)(phi.block +: phiArgs: _*))
           }
-          phies(x).deref
+          web(x).deref
         case x: NoValue => x
         case x: self.Proxy => DerivedPtr.Proxy(x)
         case x => DerivedPtr.Local()
