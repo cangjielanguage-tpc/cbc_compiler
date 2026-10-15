@@ -993,8 +993,9 @@ trait SimpleNodes { self: Universe with Nodes =>
     def apply(from: Type, to: Type) = Prototype.intern(Proto(from, to))
     def unapply(cast: ReinterpretCast) = Some(cast.from, cast.to, cast.arg)
 
+    @tailrec
     def skip(x: Node): Node = x match {
-      case x: ReinterpretCast => x.arg
+      case x: ReinterpretCast => skip(x.arg)
       case x => x
     }
   }
