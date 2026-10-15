@@ -957,7 +957,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           shouldNotReachHere(s"Incorrect method type: ${mr.methodType}")
         }
       }
-      
+
       def indirectCall(): Unit = {
         val IReg(targetReg) = call.target
         val mr = asm.adapter.method(targetRef)
