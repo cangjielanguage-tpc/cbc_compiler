@@ -12,6 +12,12 @@ public struct Copyable<T> {
     }
 }
 
+public func copyLocal<T>(source: Copyable<T>): Copyable<T> {
+    var target = Copyable<T>(-1)
+    target = source
+    target
+}
+
 public open class CopyableHolder<T> {
     private var first: Copyable<T>
     private var second: Copyable<T>

@@ -245,10 +245,6 @@ compiler/Sema/call/call21.cj
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
 
-# bug 70 (Unexpected TypeVariable.symType)
-compiler/CodegenCommon/enum/enum_07.cj
-API/std/deriving/shrink_t_test.cj
-
 # bug 78 (not found function: native_entry)
 compiler/CodegenCJNative/LegacyTests/native.cj
 compiler/FFI/CFFI/record/small_15.cj
@@ -505,10 +501,6 @@ compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
 # bug 132 (Incorrect signature of return type)
 compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
 
-# bug 104 (properly support generic struct copy)
-compiler/CodegenCJNative/generic/generic_function1.cj
-compiler/Sema/PatternMatching/MatchExpression/match016.cj
-
 # bug 112 (crash when calling function from extended interface)
 compiler/Sema/Extend/autobox_try_catch1.cj
 compiler/Sema/Extend/autobox_try_catch2.cj
@@ -731,6 +723,7 @@ API/std/unittest/mock/compiler/createSpy/spyOnSuperType.cj
 API/std/unittest/mock/compiler/createSpy/spyWithStatic.cj
 API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
 API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
+API/std/deriving/shrink_t_test.cj
 API/std/deriving/shrink_test.cj
 
 # bug 155 ([resolution] [FATAL] not found function: _CGP3pkgiiHv)
