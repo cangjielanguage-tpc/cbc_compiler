@@ -2402,7 +2402,7 @@ trait CHIRParser
             val obj = LoadMemory(memType.toAsm, memType, atomic = false)(abiRetVal)
             if (retType.isZST) {
               Void()
-            } else if (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && (retType.isTraceableReference || retType.isVariableSizeType)) {
+            } else if (retType.isVariableSizeType || (!retType.isInstanceOf[SignatureType.OptionLikeEnum] && retType.isTraceableReference)) {
               obj
             } else if (retType.isRecord) {
               UnboxRec(retType)(loadTypeInfo(retType), obj)
@@ -2680,7 +2680,7 @@ trait CHIRParser
   }
 
   private def createConstIndexNode(idx: Long, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
-    if (refType.isVariableLayoutType) {
+    if (refType.containsTypeVariables) {
       ConstIndexGeneric(idx, refType, fieldType)(loadTypeInfo(refType))
     } else {
       ConstIndexFieldReference(idx, refType, fieldType)
@@ -2688,7 +2688,7 @@ trait CHIRParser
   }
 
   private def createIndexNode(idx: Node, refType: SignatureType, fieldType: SignatureType): CangjieReferenceNode = {
-    if (refType.isVariableLayoutType) {
+    if (refType.containsTypeVariables) {
       IndexFieldReferenceGeneric(refType, fieldType)(idx, loadTypeInfo(refType))
     } else {
       IndexFieldReference(refType, fieldType)(idx)

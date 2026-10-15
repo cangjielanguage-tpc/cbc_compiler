@@ -426,10 +426,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           None
       }
 
-      def genAddress(dst: IR, fields: Seq[CangjieReferenceNode]): Unit = baseLocation match {
+      def genAddress(dst: IR, fields: Seq[CangjieReferenceNode]): IR = baseLocation match {
         case Some(base: IR) => fields match {
-          case Seq(f: (FieldReferenceNode | FieldReferenceNodeGeneric)) if f.maybeField.isEmpty => // none field ref does not need lea
-          case _ => genLeaChain(dst, base, fields)
+          case Seq(f: (FieldReferenceNode | FieldReferenceNodeGeneric)) if f.maybeField.isEmpty => base
+          case _ =>
+            genLeaChain(dst, base, fields)
+            dst
         }
         case Some(_: StackSlot.Typed) => notImplemented("lea for typed slots")
         case None =>
@@ -438,6 +440,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           val IReg(baseRef) = n.baseRef
           asm.leaStatic(dst, baseRef, constrFieldRef(plain))
           genLeaChain(dst, dst, rest)
+          dst
       }
 
       def genAccess(store: Boolean, value: Node): Unit = {
@@ -477,21 +480,21 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               }
           }
         } else {
-          genAddress(IR1, prefix)
+          val derived = genAddress(IR1, prefix)
           val IReg(baseRef) = n.baseRef
           if (n.resType.isVariableSizeType) {
             if (store) {
-              asm.st(reg, baseRef, IR1, resultTI, NoneFieldReference())
+              asm.st(reg, baseRef, derived, resultTI, NoneFieldReference())
             } else {
-              asm.ld(reg, baseRef, IR1, resultTI, NoneFieldReference())
+              asm.ld(reg, baseRef, derived, resultTI, NoneFieldReference())
               addXSite(n)
               saveGCState(n)
             }
           } else {
             if (store) {
-              asm.st(reg, baseRef, IR1, field)
+              asm.st(reg, baseRef, derived, field)
             } else {
-              asm.ld(reg, baseRef, IR1, field)
+              asm.ld(reg, baseRef, derived, field)
             }
           }
         }
@@ -500,7 +503,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       n match {
         case _: GetFieldSeqRef | _: GetStaticFieldSeqRef =>
           val IReg(dst) = n
-          genAddress(dst, fieldRefs)
+          val address = genAddress(dst, fieldRefs)
+          if (dst != address) asm.mov(dst, address, reference = false)
         case _: LoadFieldSeq | _: LoadStaticFieldSeq =>
           genAccess(store = false, n)
         case op: StoreFieldSeq =>
@@ -607,44 +611,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       arrLen match {
         case _: CangjieArrayLength => asm.lenarr(len, arr)
       }
-    }
-
-    // TODO remove ArrayGet node
-    private def genArrayGet(arrGet: ArrayGet): Unit = {
-      addXSite(arrGet)
-      val adapter = asm.adapter
-
-      val arrayType = arrGet.arrayType
-      val elemType = arrayType.getArrayElemType
-      val asmType = elemType.toAsm
-      val dst = if asmType.isFloatingPoint && asmType != AsmType.F16 then fReg(arrGet) else iReg(arrGet)
-      (arrGet.array, arrGet.idx) match {
-        case (IReg(arr), IReg(idx)) =>
-          if (elemType.isRecord) {
-            // gc unsafe
-            asm.index(dst.asInstanceOf[IR], arr, idx, adapter.sigType(CodeSigSymbol(arrayType)))
-          } else if (elemType.isTraceableReference) {
-            asm.ldarrObj(dst, arr, idx)
-          } else {
-            asm.ldarr(asmType, dst, arr, idx)
-          }
-      }
-    }
-
-    // TODO remove ArrayPut node
-    private def genArrayPut(arrPut: ArrayPut): Unit = (arrPut.inValue0, arrPut.array, arrPut.idx) match {
-      case (Reg(value), IReg(arr), IReg(idx)) =>
-        addXSite(arrPut)
-
-        val arrayType = arrPut.arrayType
-        val elemType = arrayType.getArrayElemType
-
-        assert(!elemType.isRecord)
-        if (elemType.isTraceableReference) {
-          asm.starrObj(arr, idx, value)
-        } else {
-          asm.starr(elemType.toAsm, arr, idx, value)
-        }
     }
 
     private def genArrayFill(arrayFill: ArrayFill): Unit = {
@@ -1137,8 +1103,11 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           } else {
             asm.box(slot, dst)
           }
-        case Reg(src)         => asm.box(src, dst, n.base.toCbc)
-        case _: Void          => asm.box(IR.IRZ, dst, n.base.toCbc)
+        case IReg(src) if (n.base.containsTypeVariables) =>
+          val IReg(ti) = n.baseTypeInfo
+          asm.boxGeneric(src, dst, ti)
+        case Reg(src) => asm.box(src, dst, n.base.toCbc)
+        case _: Void  => asm.box(IR.IRZ, dst, n.base.toCbc)
       }
       addXSite(n)
       saveGCState(n)
@@ -1324,8 +1293,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: BitFieldExtract            => genBFX(x)
         case x: Neg                        => genNeg(x)
         case x: ArrayLength                => genArrLen(x)
-        case x: ArrayGet                   => genArrayGet(x)
-        case x: ArrayPut                   => genArrayPut(x)
+        case x: ArrayGet                   => shouldNotReachHere(s"ArrayGet must be represented as FieldSeqOperation: $x")
+        case x: ArrayPut                   => shouldNotReachHere(s"ArrayPut must be represented as FieldSeqOperation: $x")
         case x: ArrayFill                  => genArrayFill(x)
         case x: ArrayIndexCheck            => genArrayIndexCheck(x)
         case x: NewArray                   => genNewArr(x)
