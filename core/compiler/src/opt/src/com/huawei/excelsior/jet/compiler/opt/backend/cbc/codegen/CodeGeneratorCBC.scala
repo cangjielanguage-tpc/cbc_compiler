@@ -426,21 +426,28 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           None
       }
 
-      def genAddress(dst: IR, fields: Seq[CangjieReferenceNode]): IR = baseLocation match {
-        case Some(base: IR) => fields match {
-          case Seq(f: (FieldReferenceNode | FieldReferenceNodeGeneric)) if f.maybeField.isEmpty => base // none field ref does not need lea
-          case _ =>
-            genLeaChain(dst, base, fields)
-            dst
+      def noneFieldAddress: IR = baseLocation match {
+        case Some(base: IR) => base
+        case Some(_: StackSlot.Typed) => notImplemented("none field reference for typed slots")
+        case None => shouldNotReachHere("none field reference without a base")
+      }
+
+      def genAddress(dst: IR, fields: Seq[CangjieReferenceNode]): Unit = {
+        assert(!fields.exists {
+          case f: (FieldReferenceNode | FieldReferenceNodeGeneric) => f.maybeField.isEmpty
+          case _ => false
+        }, "none field reference must be handled before address generation")
+
+        baseLocation match {
+          case Some(base: IR) => genLeaChain(dst, base, fields)
+          case Some(_: StackSlot.Typed) => notImplemented("lea for typed slots")
+          case None =>
+            val (plain, rest) = fields.span(_.isPlain)
+            require(plain.nonEmpty, "A static chain must start with a fixed-layout static field")
+            val IReg(baseRef) = n.baseRef
+            asm.leaStatic(dst, baseRef, constrFieldRef(plain))
+            genLeaChain(dst, dst, rest)
         }
-        case Some(_: StackSlot.Typed) => notImplemented("lea for typed slots")
-        case None =>
-          val (plain, rest) = fields.span(_.isPlain)
-          require(plain.nonEmpty, "A static chain must start with a fixed-layout static field")
-          val IReg(baseRef) = n.baseRef
-          asm.leaStatic(dst, baseRef, constrFieldRef(plain))
-          genLeaChain(dst, dst, rest)
-          dst
       }
 
       def genAccess(store: Boolean, value: Node): Unit = {
@@ -480,7 +487,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               }
           }
         } else {
-          val address = genAddress(IR1, prefix)
+          val address = prefix match {
+            case Seq(f: (FieldReferenceNode | FieldReferenceNodeGeneric)) if f.maybeField.isEmpty => noneFieldAddress
+            case _ =>
+              genAddress(IR1, prefix)
+              IR1
+          }
           val IReg(baseRef) = n.baseRef
           if (n.resType.isVariableSizeType) {
             if (store) {
@@ -503,8 +515,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       n match {
         case _: GetFieldSeqRef | _: GetStaticFieldSeqRef =>
           val IReg(dst) = n
-          val address = genAddress(dst, fieldRefs)
-          if (dst != address) asm.mov(dst, address, reference = false)
+          genAddress(dst, fieldRefs)
         case _: LoadFieldSeq | _: LoadStaticFieldSeq =>
           genAccess(store = false, n)
         case op: StoreFieldSeq =>
