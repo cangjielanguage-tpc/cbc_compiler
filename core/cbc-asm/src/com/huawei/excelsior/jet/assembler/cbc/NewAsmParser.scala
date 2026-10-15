@@ -924,345 +924,345 @@ private object InstructionParser {
   }
 
   // movs
-  instr("movi.32")  { (a, s) => a.movi32(s.ireg, s.int.toInt) }
-  instr("movi.64")  { (a, s) => a.movi64(s.ireg, s.int) }
-  instr("fmovi.32") { (a, s) => a.fmovi(s.freg, s.float, Width.W32) }
-  instr("fmovi.64") { (a, s) => a.fmovi(s.freg, s.float, Width.W64) }
-  instr("mov.32")    { (a, s) => a.mov(s.ireg, s.ireg, W32) }
-  instr("fmov.32")   { (a, s) => a.fmov(s.freg, s.freg, W32) }
-  instr("movi2f.32") { (a, s) => a.movi2f(s.freg, s.ireg, W32) }
-  instr("movf2i.32") { (a, s) => a.movf2i(s.ireg, s.freg, W32) }
-  instr("mov.64")    { (a, s) => a.mov(s.ireg, s.ireg, W64) }
-  instr("fmov.64")   { (a, s) => a.fmov(s.freg, s.freg, W64) }
-  instr("movi2f.64") { (a, s) => a.movi2f(s.freg, s.ireg, W64) }
-  instr("movf2i.64") { (a, s) => a.movf2i(s.ireg, s.freg, W64) }
-  instr("mov.ref")   { (a, s) => a.movRef(s.ireg, s.ireg) }
+  instr("movi.32")  { (a, s) => a.movi32(r = s.ireg, imm = s.int.toInt) }
+  instr("movi.64")  { (a, s) => a.movi64(r = s.ireg, imm = s.int) }
+  instr("fmovi.32") { (a, s) => a.fmovi(r = s.freg, fimm = s.float, w = Width.W32) }
+  instr("fmovi.64") { (a, s) => a.fmovi(r = s.freg, fimm = s.float, w = Width.W64) }
+  instr("mov.32")    { (a, s) => a.mov(dst = s.ireg, src = s.ireg, width = W32) }
+  instr("fmov.32")   { (a, s) => a.fmov(d = s.freg, s = s.freg, w = W32) }
+  instr("movi2f.32") { (a, s) => a.movi2f(d = s.freg, s = s.ireg, w = W32) }
+  instr("movf2i.32") { (a, s) => a.movf2i(d = s.ireg, s = s.freg, w = W32) }
+  instr("mov.64")    { (a, s) => a.mov(dst = s.ireg, src = s.ireg, width = W64) }
+  instr("fmov.64")   { (a, s) => a.fmov(d = s.freg, s = s.freg, w = W64) }
+  instr("movi2f.64") { (a, s) => a.movi2f(d = s.freg, s = s.ireg, w = W64) }
+  instr("movf2i.64") { (a, s) => a.movf2i(d = s.ireg, s = s.freg, w = W64) }
+  instr("mov.ref")   { (a, s) => a.movRef(dst = s.ireg, src = s.ireg) }
 
   // conversions
-  instr("i2i")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.ireg, s.ireg) }
-  instr("i2i.u")   { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.ireg, s.ireg) }
-  instr("i2f")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.ireg, s.freg) }
-  instr("f2i")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.freg, s.ireg) }
-  instr("f2f")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.freg, s.freg) }
+  instr("i2i")     { (a, s) => a.convertFromTo(fromType = s.asmType, toType = s.asmType, from = s.ireg, to = s.ireg) }
+  instr("i2i.u")   { (a, s) => a.convertFromTo(fromType = s.asmType, toType = s.asmType, from = s.ireg, to = s.ireg) }
+  instr("i2f")     { (a, s) => a.convertFromTo(fromType = s.asmType, toType = s.asmType, from = s.ireg, to = s.freg) }
+  instr("f2i")     { (a, s) => a.convertFromTo(fromType = s.asmType, toType = s.asmType, from = s.freg, to = s.ireg) }
+  instr("f2f")     { (a, s) => a.convertFromTo(fromType = s.asmType, toType = s.asmType, from = s.freg, to = s.freg) }
 
   // 32-bit integer arithmetic
-  instr("add.32")  { (a, s) => a.add(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("sub.32")  { (a, s) => a.sub(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("mul.32")  { (a, s) => a.mul(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("and.32")  { (a, s) => a.and(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("or.32")   { (a, s) => a.or(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("xor.32")  { (a, s) => a.xor(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("div.32")  { (a, s) => a.div(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("rem.32")  { (a, s) => a.rem(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("udiv.32") { (a, s) => a.udiv(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("urem.32") { (a, s) => a.urem(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("lsl.32")  { (a, s) => a.lsl(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("lsr.32")  { (a, s) => a.lsr(Width.W32, s.ireg, s.ireg, s.ireg) }
-  instr("asr.32")  { (a, s) => a.asr(Width.W32, s.ireg, s.ireg, s.ireg) }
+  instr("add.32")  { (a, s) => a.add(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("sub.32")  { (a, s) => a.sub(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("mul.32")  { (a, s) => a.mul(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("and.32")  { (a, s) => a.and(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("or.32")   { (a, s) => a.or(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("xor.32")  { (a, s) => a.xor(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("div.32")  { (a, s) => a.div(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("rem.32")  { (a, s) => a.rem(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("udiv.32") { (a, s) => a.udiv(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("urem.32") { (a, s) => a.urem(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("lsl.32")  { (a, s) => a.lsl(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("lsr.32")  { (a, s) => a.lsr(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("asr.32")  { (a, s) => a.asr(w = Width.W32, d = s.ireg, l = s.ireg, r = s.ireg) }
 
   // 64-bit integer arithmetic
-  instr("add.64")  { (a, s) => a.add(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("sub.64")  { (a, s) => a.sub(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("mul.64")  { (a, s) => a.mul(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("and.64")  { (a, s) => a.and(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("or.64")   { (a, s) => a.or(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("xor.64")  { (a, s) => a.xor(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("div.64")  { (a, s) => a.div(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("rem.64")  { (a, s) => a.rem(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("udiv.64") { (a, s) => a.udiv(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("urem.64") { (a, s) => a.urem(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("lsl.64")  { (a, s) => a.lsl(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("lsr.64")  { (a, s) => a.lsr(Width.W64, s.ireg, s.ireg, s.ireg) }
-  instr("asr.64")  { (a, s) => a.asr(Width.W64, s.ireg, s.ireg, s.ireg) }
+  instr("add.64")  { (a, s) => a.add(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("sub.64")  { (a, s) => a.sub(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("mul.64")  { (a, s) => a.mul(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("and.64")  { (a, s) => a.and(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("or.64")   { (a, s) => a.or(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("xor.64")  { (a, s) => a.xor(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("div.64")  { (a, s) => a.div(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("rem.64")  { (a, s) => a.rem(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("udiv.64") { (a, s) => a.udiv(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("urem.64") { (a, s) => a.urem(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("lsl.64")  { (a, s) => a.lsl(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("lsr.64")  { (a, s) => a.lsr(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
+  instr("asr.64")  { (a, s) => a.asr(w = Width.W64, d = s.ireg, l = s.ireg, r = s.ireg) }
 
   // neg
-  instr("neg.32") { (a, s) => a.neg(s.ireg, s.ireg, Width.W32) }
-  instr("neg.64") { (a, s) => a.neg(s.ireg, s.ireg, Width.W64) }
+  instr("neg.32") { (a, s) => a.neg(ird = s.ireg, irs = s.ireg, w = Width.W32) }
+  instr("neg.64") { (a, s) => a.neg(ird = s.ireg, irs = s.ireg, w = Width.W64) }
 
   // 32-bit integer immediate arithmetic
-  instr("addi.32")  { (a, s) => a.addi(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("subi.32")  { (a, s) => a.subi(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("muli.32")  { (a, s) => a.muli(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("andi.32")  { (a, s) => a.andi(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("ori.32")   { (a, s) => a.ori(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("xori.32")  { (a, s) => a.xori(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("divi.32")  { (a, s) => a.divi(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("remi.32")  { (a, s) => a.remi(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("udivi.32") { (a, s) => a.udivi(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("uremi.32") { (a, s) => a.uremi(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("lsli.32")  { (a, s) => a.lsli(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("lsri.32")  { (a, s) => a.lsri(Width.W32, s.ireg, s.ireg, s.int) }
-  instr("asri.32")  { (a, s) => a.asri(Width.W32, s.ireg, s.ireg, s.int) }
+  instr("addi.32")  { (a, s) => a.addi(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("subi.32")  { (a, s) => a.subi(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("muli.32")  { (a, s) => a.muli(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("andi.32")  { (a, s) => a.andi(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("ori.32")   { (a, s) => a.ori(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("xori.32")  { (a, s) => a.xori(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("divi.32")  { (a, s) => a.divi(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("remi.32")  { (a, s) => a.remi(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("udivi.32") { (a, s) => a.udivi(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("uremi.32") { (a, s) => a.uremi(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("lsli.32")  { (a, s) => a.lsli(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("lsri.32")  { (a, s) => a.lsri(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("asri.32")  { (a, s) => a.asri(w = Width.W32, d = s.ireg, l = s.ireg, imm = s.int) }
 
   // 64-bit integer immediate arithmetic
-  instr("addi.64")  { (a, s) => a.addi(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("subi.64")  { (a, s) => a.subi(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("muli.64")  { (a, s) => a.muli(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("andi.64")  { (a, s) => a.andi(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("ori.64")   { (a, s) => a.ori(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("xori.64")  { (a, s) => a.xori(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("divi.64")  { (a, s) => a.divi(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("remi.64")  { (a, s) => a.remi(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("udivi.64") { (a, s) => a.udivi(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("uremi.64") { (a, s) => a.uremi(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("lsli.64")  { (a, s) => a.lsli(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("lsri.64")  { (a, s) => a.lsri(Width.W64, s.ireg, s.ireg, s.int) }
-  instr("asri.64")  { (a, s) => a.asri(Width.W64, s.ireg, s.ireg, s.int) }
+  instr("addi.64")  { (a, s) => a.addi(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("subi.64")  { (a, s) => a.subi(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("muli.64")  { (a, s) => a.muli(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("andi.64")  { (a, s) => a.andi(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("ori.64")   { (a, s) => a.ori(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("xori.64")  { (a, s) => a.xori(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("divi.64")  { (a, s) => a.divi(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("remi.64")  { (a, s) => a.remi(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("udivi.64") { (a, s) => a.udivi(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("uremi.64") { (a, s) => a.uremi(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("lsli.64")  { (a, s) => a.lsli(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("lsri.64")  { (a, s) => a.lsri(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
+  instr("asri.64")  { (a, s) => a.asri(w = Width.W64, d = s.ireg, l = s.ireg, imm = s.int) }
 
   // 8/16-bit checked arithmetic
-  instr("cadd.8")   { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("csub.8")   { (a, s) => a.csub(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("cmul.8")   { (a, s) => a.cmul(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("cdiv.8")   { (a, s) => a.cdiv(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("cuadd.8")  { (a, s) => a.cuadd(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("cusub.8")  { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("cumul.8")  { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("cpow.8")   { (a, s) => a.cpow(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("cadd.16")  { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("csub.16")  { (a, s) => a.csub(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("cmul.16")  { (a, s) => a.cmul(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("cdiv.16")  { (a, s) => a.cdiv(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("cuadd.16") { (a, s) => a.cuadd(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("cusub.16") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("cumul.16") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("cpow.16")  { (a, s) => a.cpow(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("cadd.8")   { (a, s) => a.cadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("csub.8")   { (a, s) => a.csub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("cmul.8")   { (a, s) => a.cmul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("cdiv.8")   { (a, s) => a.cdiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("cuadd.8")  { (a, s) => a.cuadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("cusub.8")  { (a, s) => a.cusub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("cumul.8")  { (a, s) => a.cumul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("cpow.8")   { (a, s) => a.cpow(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("cadd.16")  { (a, s) => a.cadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("csub.16")  { (a, s) => a.csub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("cmul.16")  { (a, s) => a.cmul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("cdiv.16")  { (a, s) => a.cdiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("cuadd.16") { (a, s) => a.cuadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("cusub.16") { (a, s) => a.cusub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("cumul.16") { (a, s) => a.cumul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("cpow.16")  { (a, s) => a.cpow(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
 
   // 32-bit checked arithmetic
-  instr("cadd.32")  { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("csub.32")  { (a, s) => a.csub(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("cmul.32")  { (a, s) => a.cmul(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("cdiv.32")  { (a, s) => a.cdiv(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("cuadd.32") { (a, s) => a.cuadd(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("cusub.32") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("cumul.32") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("cadd.32")  { (a, s) => a.cadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("csub.32")  { (a, s) => a.csub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("cmul.32")  { (a, s) => a.cmul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("cdiv.32")  { (a, s) => a.cdiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("cuadd.32") { (a, s) => a.cuadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("cusub.32") { (a, s) => a.cusub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("cumul.32") { (a, s) => a.cumul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
 
   // 64-bit checked arithmetic
-  instr("cadd.64")  { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("csub.64")  { (a, s) => a.csub(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("cmul.64")  { (a, s) => a.cmul(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("cdiv.64")  { (a, s) => a.cdiv(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("cuadd.64") { (a, s) => a.cuadd(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("cusub.64") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("cumul.64") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("cpow.64")  { (a, s) => a.cpow(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("cadd.64")  { (a, s) => a.cadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("csub.64")  { (a, s) => a.csub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("cmul.64")  { (a, s) => a.cmul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("cdiv.64")  { (a, s) => a.cdiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("cuadd.64") { (a, s) => a.cuadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("cusub.64") { (a, s) => a.cusub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("cumul.64") { (a, s) => a.cumul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("cpow.64")  { (a, s) => a.cpow(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
 
   // 32-bit saturating arithmetic
-  instr("sadd.32")  { (a, s) => a.sadd(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("ssub.32")  { (a, s) => a.ssub(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("smul.32")  { (a, s) => a.smul(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sdiv.32")  { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("smod.32")  { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("spow.32")  { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("slsl.32")  { (a, s) => a.slsl(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sasr.32")  { (a, s) => a.sasr(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sneg.32")  { (a, s) => a.sneg(s.ireg, s.ireg, Width.W32) }
+  instr("sadd.32")  { (a, s) => a.sadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("ssub.32")  { (a, s) => a.ssub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("smul.32")  { (a, s) => a.smul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("sdiv.32")  { (a, s) => a.sdiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("smod.32")  { (a, s) => a.smod(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("spow.32")  { (a, s) => a.spow(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("slsl.32")  { (a, s) => a.slsl(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("sasr.32")  { (a, s) => a.sasr(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("sneg.32")  { (a, s) => a.sneg(dst = s.ireg, src = s.ireg, w = Width.W32) }
 
   // 64-bit saturating arithmetic
-  instr("sadd.64")  { (a, s) => a.sadd(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("ssub.64")  { (a, s) => a.ssub(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("smul.64")  { (a, s) => a.smul(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sdiv.64")  { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("smod.64")  { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("spow.64")  { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("slsl.64")  { (a, s) => a.slsl(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sasr.64")  { (a, s) => a.sasr(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sneg.64")  { (a, s) => a.sneg(s.ireg, s.ireg, Width.W64) }
+  instr("sadd.64")  { (a, s) => a.sadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("ssub.64")  { (a, s) => a.ssub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("smul.64")  { (a, s) => a.smul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("sdiv.64")  { (a, s) => a.sdiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("smod.64")  { (a, s) => a.smod(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("spow.64")  { (a, s) => a.spow(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("slsl.64")  { (a, s) => a.slsl(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("sasr.64")  { (a, s) => a.sasr(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("sneg.64")  { (a, s) => a.sneg(dst = s.ireg, src = s.ireg, w = Width.W64) }
 
   // 8/16-bit saturating arithmetic
-  instr("sadd.8")   { (a, s) => a.sadd(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("ssub.8")   { (a, s) => a.ssub(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("smul.8")   { (a, s) => a.smul(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sdiv.8")   { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("smod.8")   { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("spow.8")   { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("slsl.8")   { (a, s) => a.slsl(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sasr.8")   { (a, s) => a.sasr(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sneg.8")   { (a, s) => a.sneg(s.ireg, s.ireg, Width.W8) }
-  instr("sadd.16")  { (a, s) => a.sadd(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("ssub.16")  { (a, s) => a.ssub(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("smul.16")  { (a, s) => a.smul(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sdiv.16")  { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("smod.16")  { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("spow.16")  { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("slsl.16")  { (a, s) => a.slsl(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sasr.16")  { (a, s) => a.sasr(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sneg.16")  { (a, s) => a.sneg(s.ireg, s.ireg, Width.W16) }
+  instr("sadd.8")   { (a, s) => a.sadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("ssub.8")   { (a, s) => a.ssub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("smul.8")   { (a, s) => a.smul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("sdiv.8")   { (a, s) => a.sdiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("smod.8")   { (a, s) => a.smod(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("spow.8")   { (a, s) => a.spow(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("slsl.8")   { (a, s) => a.slsl(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("sasr.8")   { (a, s) => a.sasr(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("sneg.8")   { (a, s) => a.sneg(dst = s.ireg, src = s.ireg, w = Width.W8) }
+  instr("sadd.16")  { (a, s) => a.sadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("ssub.16")  { (a, s) => a.ssub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("smul.16")  { (a, s) => a.smul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("sdiv.16")  { (a, s) => a.sdiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("smod.16")  { (a, s) => a.smod(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("spow.16")  { (a, s) => a.spow(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("slsl.16")  { (a, s) => a.slsl(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("sasr.16")  { (a, s) => a.sasr(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("sneg.16")  { (a, s) => a.sneg(dst = s.ireg, src = s.ireg, w = Width.W16) }
 
   // unsigned saturating arithmetic (register form)
-  instr("suadd.8")  { (a, s) => a.suadd(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("susub.8")  { (a, s) => a.susub(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sumul.8")  { (a, s) => a.sumul(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sudiv.8")  { (a, s) => a.sudiv(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sumod.8")  { (a, s) => a.sumod(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sulsl.8")  { (a, s) => a.sulsl(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sulsr.8")  { (a, s) => a.sulsr(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("suneg.8")  { (a, s) => a.suneg(s.ireg, s.ireg, Width.W8) }
-  instr("suadd.16") { (a, s) => a.suadd(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("susub.16") { (a, s) => a.susub(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sumul.16") { (a, s) => a.sumul(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sudiv.16") { (a, s) => a.sudiv(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sumod.16") { (a, s) => a.sumod(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sulsl.16") { (a, s) => a.sulsl(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sulsr.16") { (a, s) => a.sulsr(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("suneg.16") { (a, s) => a.suneg(s.ireg, s.ireg, Width.W16) }
-  instr("suadd.32") { (a, s) => a.suadd(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("susub.32") { (a, s) => a.susub(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sumul.32") { (a, s) => a.sumul(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sudiv.32") { (a, s) => a.sudiv(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sumod.32") { (a, s) => a.sumod(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("suneg.32") { (a, s) => a.suneg(s.ireg, s.ireg, Width.W32) }
-  instr("suadd.64") { (a, s) => a.suadd(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("susub.64") { (a, s) => a.susub(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sumul.64") { (a, s) => a.sumul(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sudiv.64") { (a, s) => a.sudiv(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sumod.64") { (a, s) => a.sumod(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sulsl.32") { (a, s) => a.sulsl(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sulsr.32") { (a, s) => a.sulsr(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sulsl.64") { (a, s) => a.sulsl(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sulsr.64") { (a, s) => a.sulsr(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("suneg.64") { (a, s) => a.suneg(s.ireg, s.ireg, Width.W64) }
+  instr("suadd.8")  { (a, s) => a.suadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("susub.8")  { (a, s) => a.susub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("sumul.8")  { (a, s) => a.sumul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("sudiv.8")  { (a, s) => a.sudiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("sumod.8")  { (a, s) => a.sumod(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("sulsl.8")  { (a, s) => a.sulsl(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("sulsr.8")  { (a, s) => a.sulsr(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W8) }
+  instr("suneg.8")  { (a, s) => a.suneg(dst = s.ireg, src = s.ireg, w = Width.W8) }
+  instr("suadd.16") { (a, s) => a.suadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("susub.16") { (a, s) => a.susub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("sumul.16") { (a, s) => a.sumul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("sudiv.16") { (a, s) => a.sudiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("sumod.16") { (a, s) => a.sumod(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("sulsl.16") { (a, s) => a.sulsl(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("sulsr.16") { (a, s) => a.sulsr(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W16) }
+  instr("suneg.16") { (a, s) => a.suneg(dst = s.ireg, src = s.ireg, w = Width.W16) }
+  instr("suadd.32") { (a, s) => a.suadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("susub.32") { (a, s) => a.susub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("sumul.32") { (a, s) => a.sumul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("sudiv.32") { (a, s) => a.sudiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("sumod.32") { (a, s) => a.sumod(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("suneg.32") { (a, s) => a.suneg(dst = s.ireg, src = s.ireg, w = Width.W32) }
+  instr("suadd.64") { (a, s) => a.suadd(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("susub.64") { (a, s) => a.susub(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("sumul.64") { (a, s) => a.sumul(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("sudiv.64") { (a, s) => a.sudiv(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("sumod.64") { (a, s) => a.sumod(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("sulsl.32") { (a, s) => a.sulsl(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("sulsr.32") { (a, s) => a.sulsr(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W32) }
+  instr("sulsl.64") { (a, s) => a.sulsl(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("sulsr.64") { (a, s) => a.sulsr(d = s.ireg, l = s.ireg, r = s.ireg, w = Width.W64) }
+  instr("suneg.64") { (a, s) => a.suneg(dst = s.ireg, src = s.ireg, w = Width.W64) }
 
   // saturating immediate arithmetic
-  instr("saddi.8")   { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("ssubi.8")    { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("smuli.8")    { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("slsli.8")    { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("sasri.8")    { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("suaddi.8")   { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("susubi.8")   { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("sumuli.8")   { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("saddi.16")  { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("ssubi.16")  { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("smuli.16")  { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("slsli.16")  { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("sasri.16")  { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("suaddi.16") { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("susubi.16") { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("sumuli.16") { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("saddi.32")  { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("ssubi.32")  { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("smuli.32")  { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("slsli.32")  { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("sasri.32")  { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("saddi.64")  { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("ssubi.64")  { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("smuli.64")  { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("slsli.64")  { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("sasri.64")  { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("suaddi.32") { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("susubi.32") { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("sumuli.32") { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("suaddi.64") { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("susubi.64") { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("sumuli.64") { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("saddi.8")   { (a, s) => a.saddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("ssubi.8")    { (a, s) => a.ssubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("smuli.8")    { (a, s) => a.smuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("slsli.8")    { (a, s) => a.slsli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("sasri.8")    { (a, s) => a.sasri(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("suaddi.8")   { (a, s) => a.suaddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("susubi.8")   { (a, s) => a.susubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("sumuli.8")   { (a, s) => a.sumuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("saddi.16")  { (a, s) => a.saddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("ssubi.16")  { (a, s) => a.ssubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("smuli.16")  { (a, s) => a.smuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("slsli.16")  { (a, s) => a.slsli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("sasri.16")  { (a, s) => a.sasri(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("suaddi.16") { (a, s) => a.suaddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("susubi.16") { (a, s) => a.susubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("sumuli.16") { (a, s) => a.sumuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("saddi.32")  { (a, s) => a.saddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("ssubi.32")  { (a, s) => a.ssubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("smuli.32")  { (a, s) => a.smuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("slsli.32")  { (a, s) => a.slsli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("sasri.32")  { (a, s) => a.sasri(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("saddi.64")  { (a, s) => a.saddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("ssubi.64")  { (a, s) => a.ssubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("smuli.64")  { (a, s) => a.smuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("slsli.64")  { (a, s) => a.slsli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("sasri.64")  { (a, s) => a.sasri(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("suaddi.32") { (a, s) => a.suaddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("susubi.32") { (a, s) => a.susubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("sumuli.32") { (a, s) => a.sumuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("suaddi.64") { (a, s) => a.suaddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("susubi.64") { (a, s) => a.susubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("sumuli.64") { (a, s) => a.sumuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
 
   // 8/16-bit checked immediate arithmetic
-  instr("caddi.8")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("csubi.8")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("cmuli.8")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("cuaddi.8") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("cusubi.8") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("cumuli.8") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("cpowi.8")  { (a, s) => a.cpowi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("caddi.16")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("csubi.16")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("cmuli.16")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("cuaddi.16") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("cusubi.16") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("cumuli.16") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("cpowi.16")  { (a, s) => a.cpowi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("caddi.8")  { (a, s) => a.caddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("csubi.8")  { (a, s) => a.csubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("cmuli.8")  { (a, s) => a.cmuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("cuaddi.8") { (a, s) => a.cuaddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("cusubi.8") { (a, s) => a.cusubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("cumuli.8") { (a, s) => a.cumuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("cpowi.8")  { (a, s) => a.cpowi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W8) }
+  instr("caddi.16")  { (a, s) => a.caddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("csubi.16")  { (a, s) => a.csubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("cmuli.16")  { (a, s) => a.cmuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("cuaddi.16") { (a, s) => a.cuaddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("cusubi.16") { (a, s) => a.cusubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("cumuli.16") { (a, s) => a.cumuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
+  instr("cpowi.16")  { (a, s) => a.cpowi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W16) }
 
   // 32-bit checked immediate arithmetic
-  instr("caddi.32")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("csubi.32")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("cmuli.32")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("cuaddi.32") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("cusubi.32") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("cumuli.32") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("caddi.32")  { (a, s) => a.caddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("csubi.32")  { (a, s) => a.csubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("cmuli.32")  { (a, s) => a.cmuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("cuaddi.32") { (a, s) => a.cuaddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("cusubi.32") { (a, s) => a.cusubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
+  instr("cumuli.32") { (a, s) => a.cumuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W32) }
 
   // 64-bit checked immediate arithmetic
-  instr("caddi.64")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("csubi.64")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("cmuli.64")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("cuaddi.64") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("cusubi.64") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("cumuli.64") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("cpowi.64")  { (a, s) => a.cpowi(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("caddi.64")  { (a, s) => a.caddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("csubi.64")  { (a, s) => a.csubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("cmuli.64")  { (a, s) => a.cmuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("cuaddi.64") { (a, s) => a.cuaddi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("cusubi.64") { (a, s) => a.cusubi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("cumuli.64") { (a, s) => a.cumuli(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
+  instr("cpowi.64")  { (a, s) => a.cpowi(d = s.ireg, l = s.ireg, imm = s.int, w = Width.W64) }
 
   // 32-bit float arithmetic
-  instr("fadd.32") { (a, s) => a.fadd(Width.W32, s.freg, s.freg, s.freg) }
-  instr("fsub.32") { (a, s) => a.fsub(Width.W32, s.freg, s.freg, s.freg) }
-  instr("fmul.32") { (a, s) => a.fmul(Width.W32, s.freg, s.freg, s.freg) }
-  instr("fdiv.32") { (a, s) => a.fdiv(Width.W32, s.freg, s.freg, s.freg) }
+  instr("fadd.32") { (a, s) => a.fadd(w = Width.W32, d = s.freg, l = s.freg, r = s.freg) }
+  instr("fsub.32") { (a, s) => a.fsub(w = Width.W32, d = s.freg, l = s.freg, r = s.freg) }
+  instr("fmul.32") { (a, s) => a.fmul(w = Width.W32, d = s.freg, l = s.freg, r = s.freg) }
+  instr("fdiv.32") { (a, s) => a.fdiv(w = Width.W32, d = s.freg, l = s.freg, r = s.freg) }
 
   // 64-bit float arithmetic
-  instr("fadd.64") { (a, s) => a.fadd(Width.W64, s.freg, s.freg, s.freg) }
-  instr("fsub.64") { (a, s) => a.fsub(Width.W64, s.freg, s.freg, s.freg) }
-  instr("fmul.64") { (a, s) => a.fmul(Width.W64, s.freg, s.freg, s.freg) }
-  instr("fdiv.64") { (a, s) => a.fdiv(Width.W64, s.freg, s.freg, s.freg) }
+  instr("fadd.64") { (a, s) => a.fadd(w = Width.W64, d = s.freg, l = s.freg, r = s.freg) }
+  instr("fsub.64") { (a, s) => a.fsub(w = Width.W64, d = s.freg, l = s.freg, r = s.freg) }
+  instr("fmul.64") { (a, s) => a.fmul(w = Width.W64, d = s.freg, l = s.freg, r = s.freg) }
+  instr("fdiv.64") { (a, s) => a.fdiv(w = Width.W64, d = s.freg, l = s.freg, r = s.freg) }
 
   // float unary
-  instr("fneg.32")  { (a, s) => a.fneg(s.freg, s.freg, Width.W32) }
-  instr("fabs.32")  { (a, s) => a.fabs(s.freg, s.freg, Width.W32) }
-  instr("fsqrt.32") { (a, s) => a.fsqrt(s.freg, s.freg, Width.W32) }
-  instr("fneg.64")  { (a, s) => a.fneg(s.freg, s.freg, Width.W64) }
-  instr("fabs.64")  { (a, s) => a.fabs(s.freg, s.freg, Width.W64) }
-  instr("fsqrt.64") { (a, s) => a.fsqrt(s.freg, s.freg, Width.W64) }
+  instr("fneg.32")  { (a, s) => a.fneg(d = s.freg, s = s.freg, w = Width.W32) }
+  instr("fabs.32")  { (a, s) => a.fabs(d = s.freg, s = s.freg, w = Width.W32) }
+  instr("fsqrt.32") { (a, s) => a.fsqrt(d = s.freg, s = s.freg, w = Width.W32) }
+  instr("fneg.64")  { (a, s) => a.fneg(d = s.freg, s = s.freg, w = Width.W64) }
+  instr("fabs.64")  { (a, s) => a.fabs(d = s.freg, s = s.freg, w = Width.W64) }
+  instr("fsqrt.64") { (a, s) => a.fsqrt(d = s.freg, s = s.freg, w = Width.W64) }
 
   // ret
-  instr("ret.32")  { (a, s) => a.ret(s.ireg, Width.W32) }
-  instr("ret.64")  { (a, s) => a.ret(s.ireg, Width.W64) }
-  instr("ret.ref") { (a, s) => a.retRef(s.ireg) }
-  instr("fret.32") { (a, s) => a.fret(s.freg, Width.W32) }
-  instr("fret.64") { (a, s) => a.fret(s.freg, Width.W64) }
+  instr("ret.32")  { (a, s) => a.ret(v = s.ireg, w = Width.W32) }
+  instr("ret.64")  { (a, s) => a.ret(v = s.ireg, w = Width.W64) }
+  instr("ret.ref") { (a, s) => a.retRef(v = s.ireg) }
+  instr("fret.32") { (a, s) => a.fret(v = s.freg, w = Width.W32) }
+  instr("fret.64") { (a, s) => a.fret(v = s.freg, w = Width.W64) }
 
   // branches
-  instr("bcc.64")  { (a, s) => a.doBcc(s.cc, s.ireg, s.ireg, Width.W64, s.label, wide = false) }
-  instr("fbcc.64") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W64, s.label, wide = false) }
-  instr("bcci.64") { (a, s) => a.doBccImm(s.cc, s.ireg, s.int, Width.W64, s.label, wide = false) }
-  instr("bcc.32")  { (a, s) => a.doBcc(s.cc, s.ireg, s.ireg, Width.W32, s.label, wide = false) }
-  instr("fbcc.32") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W32, s.label, wide = false) }
-  instr("bcci.32") { (a, s) => a.doBccImm(s.cc, s.ireg, s.int, Width.W32, s.label, wide = false) }
+  instr("bcc.64")  { (a, s) => a.doBcc(op = s.cc, lhs = s.ireg, rhs = s.ireg, width = Width.W64, target = s.label, wide = false) }
+  instr("fbcc.64") { (a, s) => a.doBcc(op = s.cc, lhs = s.freg, rhs = s.freg, width = Width.W64, target = s.label, wide = false) }
+  instr("bcci.64") { (a, s) => a.doBccImm(op = s.cc, lhs = s.ireg, imm = s.int, width = Width.W64, target = s.label, wide = false) }
+  instr("bcc.32")  { (a, s) => a.doBcc(op = s.cc, lhs = s.ireg, rhs = s.ireg, width = Width.W32, target = s.label, wide = false) }
+  instr("fbcc.32") { (a, s) => a.doBcc(op = s.cc, lhs = s.freg, rhs = s.freg, width = Width.W32, target = s.label, wide = false) }
+  instr("bcci.32") { (a, s) => a.doBccImm(op = s.cc, lhs = s.ireg, imm = s.int, width = Width.W32, target = s.label, wide = false) }
 
   // wide branches
-  instr("w.bcc.64")  { (a, s) => a.doBcc(s.cc, s.ireg, s.ireg, Width.W64, s.label, wide = true) }
-  instr("w.fbcc.64") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W64, s.label, wide = true) }
-  instr("w.bcci.64") { (a, s) => a.doBccImm(s.cc, s.ireg, s.int, Width.W64, s.label, wide = true) }
-  instr("w.bcc.32")  { (a, s) => a.doBcc(s.cc, s.ireg, s.ireg, Width.W32, s.label, wide = true) }
-  instr("w.fbcc.32") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W32, s.label, wide = true) }
-  instr("w.bcci.32") { (a, s) => a.doBccImm(s.cc, s.ireg, s.int, Width.W32, s.label, wide = true) }
+  instr("w.bcc.64")  { (a, s) => a.doBcc(op = s.cc, lhs = s.ireg, rhs = s.ireg, width = Width.W64, target = s.label, wide = true) }
+  instr("w.fbcc.64") { (a, s) => a.doBcc(op = s.cc, lhs = s.freg, rhs = s.freg, width = Width.W64, target = s.label, wide = true) }
+  instr("w.bcci.64") { (a, s) => a.doBccImm(op = s.cc, lhs = s.ireg, imm = s.int, width = Width.W64, target = s.label, wide = true) }
+  instr("w.bcc.32")  { (a, s) => a.doBcc(op = s.cc, lhs = s.ireg, rhs = s.ireg, width = Width.W32, target = s.label, wide = true) }
+  instr("w.fbcc.32") { (a, s) => a.doBcc(op = s.cc, lhs = s.freg, rhs = s.freg, width = Width.W32, target = s.label, wide = true) }
+  instr("w.bcci.32") { (a, s) => a.doBccImm(op = s.cc, lhs = s.ireg, imm = s.int, width = Width.W32, target = s.label, wide = true) }
 
   // set conditional
-  instr("scc.64")    { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("fscc.64")   { (a, s) => a.scc(s.cc, s.ireg, s.freg, s.freg, Width.W64) }
-  instr("scci.64")   { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.int,  Width.W64) }
-  instr("scc.32")    { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("fscc.32")   { (a, s) => a.scc(s.cc, s.ireg, s.freg, s.freg, Width.W32) }
-  instr("scci.32")   { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.int,  Width.W32) }
+  instr("scc.64")    { (a, s) => a.scc(op = s.cc, dst = s.ireg, l = s.ireg, r = s.ireg, width = Width.W64) }
+  instr("fscc.64")   { (a, s) => a.scc(op = s.cc, dst = s.ireg, src1 = s.freg, src2 = s.freg, width = Width.W64) }
+  instr("scci.64")   { (a, s) => a.scc(op = s.cc, dst = s.ireg, lhs = s.ireg, _imm = s.int,  width = Width.W64) }
+  instr("scc.32")    { (a, s) => a.scc(op = s.cc, dst = s.ireg, l = s.ireg, r = s.ireg, width = Width.W32) }
+  instr("fscc.32")   { (a, s) => a.scc(op = s.cc, dst = s.ireg, src1 = s.freg, src2 = s.freg, width = Width.W32) }
+  instr("scci.32")   { (a, s) => a.scc(op = s.cc, dst = s.ireg, lhs = s.ireg, _imm = s.int,  width = Width.W32) }
 
   // jmp
-  instr("jmp")   { (a, s) => a.doJmp(s.label, wide = false) }
-  instr("w.jmp") { (a, s) => a.doJmp(s.label, wide = true) }
+  instr("jmp")   { (a, s) => a.doJmp(target = s.label, wide = false) }
+  instr("w.jmp") { (a, s) => a.doJmp(target = s.label, wide = true) }
 
   // misc
-  instr("new.closure")  { (a, s) => a.newClosure(IR.IR1, s.tpe) }
-  instr("newobj")       { (a, s) => a.newobj(s.tpe) }
-  instr("throw")        { (a, s) => a.throwEx(s.ireg) }
-  instr("catch")        { (a, s) => a.catchEx(s.ireg) }
-  instr("div.check")    { (a, s) => a.divisorCheck(s.ireg) }
-  instr("arr.len")      { (a, s) => a.lenarr(s.ireg, s.ireg) }
-  instr("arr.ic")       { (a, s) => a.arrIC(s.ireg, s.ireg) }
+  instr("new.closure")  { (a, s) => a.newClosure(rd = IR.IR1, t = s.tpe) }
+  instr("newobj")       { (a, s) => a.newobj(t = s.tpe) }
+  instr("throw")        { (a, s) => a.throwEx(dst = s.ireg) }
+  instr("catch")        { (a, s) => a.catchEx(dst = s.ireg) }
+  instr("div.check")    { (a, s) => a.divisorCheck(r = s.ireg) }
+  instr("arr.len")      { (a, s) => a.lenarr(dst = s.ireg, ra = s.ireg) }
+  instr("arr.ic")       { (a, s) => a.arrIC(ri = s.ireg, rl = s.ireg) }
   instr("gcpoint")      { (a, s) => a.gcpoint() }
-  instr("iof")          { (a, s) => a.isInstanceOf(s.ireg, s.ireg, s.tpe) }
-  instr("prepare.rec")  { (a, s) => a.prepareRecord(s.ts) }
-  instr("zero.refs")    { (a, s) => a.prepareRecord(s.ts) }
-  instr("ld.stack.rec") { (a, s) => a.ldstackrec(s.ireg, s.ts) }
+  instr("iof")          { (a, s) => a.isInstanceOf(dst = s.ireg, obj = s.ireg, sig_id = s.tpe) }
+  instr("prepare.rec")  { (a, s) => a.prepareRecord(ts = s.ts) }
+  instr("zero.refs")    { (a, s) => a.prepareRecord(ts = s.ts) }
+  instr("ld.stack.rec") { (a, s) => a.ldstackrec(dst = s.ireg, ts = s.ts) }
   instr("nop")          { (a, s) => a.nop() }
-  instr("const.string") { (a, s) => a.initConstString(s.ts, StringLiteral(s.str)) }
-  instr("tag.g")        { (a, s) => a.tagGeneric(s.ireg, s.ireg, s.ireg, s.tpe) }
-  instr("payload.g")    { (a, s) => a.payloadGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
-  instr("new.none.g")   { (a, s) => a.newNoneGeneric(s.ireg, s.ireg, s.ireg, s.tpe) }
-  instr("new.some.g")   { (a, s) => a.newSomeGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("const.string") { (a, s) => a.initConstString(ts = s.ts, stringId = StringLiteral(s.str)) }
+  instr("tag.g")        { (a, s) => a.tagGeneric(dst = s.ireg, src = s.ireg, underlyingTi = s.ireg, optionType = s.tpe) }
+  instr("payload.g")    { (a, s) => a.payloadGeneric(dst = s.ireg, src = s.ireg, underlyingTi = s.ireg, optionTi = s.ireg, optionType = s.tpe) }
+  instr("new.none.g")   { (a, s) => a.newNoneGeneric(dst = s.ireg, underlyingTi = s.ireg, optionTi = s.ireg, optionType = s.tpe) }
+  instr("new.some.g")   { (a, s) => a.newSomeGeneric(dst = s.ireg, src = s.ireg, underlyingTi = s.ireg, optionTi = s.ireg, optionType = s.tpe) }
 
   private def fieldPath(s: ArgStream): FieldReference = s.fields match {
     case Seq(fr) => fr
@@ -1270,80 +1270,80 @@ private object InstructionParser {
     case _ => throw ArgParseError
   }
 
-  instr("ld.field") { (a, s) => a.ld(s.ireg, s.ireg, fieldPath(s)) }
-  instr("ld.static") { (a, s) => a.ld(s.ireg, fieldPath(s)) }
-  instr("ld.typed") { (a, s) => a.ld(s.ireg, s.ts, fieldPath(s)) }
-  instr("ld.field.f") { (a, s) => a.ld(s.freg, s.ireg, fieldPath(s)) }
-  instr("ld.static.f") { (a, s) => a.ld(s.freg, fieldPath(s)) }
-  instr("ld.typed.f") { (a, s) => a.ld(s.freg, s.ts, fieldPath(s)) }
-  instr("ld.g") { (a, s) => a.ld(s.ireg, s.ireg, s.ireg, s.ireg, NoneFieldReference()); a.saveState() }
-  instr("st.field") { (a, s) => a.st(s.ireg, s.ireg, fieldPath(s)) }
-  instr("st.static") { (a, s) => a.st(s.ireg, fieldPath(s)) }
-  instr("st.typed") { (a, s) => a.st(s.ireg, s.ts, fieldPath(s)) }
-  instr("st.field.f") { (a, s) => a.st(s.freg, s.ireg, fieldPath(s)) }
-  instr("st.static.f") { (a, s) => a.st(s.freg, fieldPath(s)) }
-  instr("st.typed.f") { (a, s) => a.st(s.freg, s.ts, fieldPath(s)) }
-  instr("st.g") { (a, s) => a.st(s.ireg, s.ireg, s.ireg, s.ireg, NoneFieldReference()) }
-  instr("lea") { (a, s) => a.lea(s.ireg, s.ireg, fieldPath(s)) }
-  instr("lea.g") { (a, s) => a.leaGeneric(s.ireg, s.ireg, s.ireg, s.field) }
-  instr("copy") { (a, s) => a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("ld.field") { (a, s) => a.ld(dst = s.ireg, base = s.ireg, fr = fieldPath(s)) }
+  instr("ld.static") { (a, s) => a.ld(dst = s.ireg, fr = fieldPath(s)) }
+  instr("ld.typed") { (a, s) => a.ld(dst = s.ireg, ts = s.ts, fr = fieldPath(s)) }
+  instr("ld.field.f") { (a, s) => a.ld(dst = s.freg, base = s.ireg, fr = fieldPath(s)) }
+  instr("ld.static.f") { (a, s) => a.ld(dst = s.freg, fr = fieldPath(s)) }
+  instr("ld.typed.f") { (a, s) => a.ld(dst = s.freg, ts = s.ts, fr = fieldPath(s)) }
+  instr("ld.g") { (a, s) => a.ld(dst = s.ireg, baseRef = s.ireg, derived = s.ireg, ti = s.ireg, fr = NoneFieldReference()); a.saveState() }
+  instr("st.field") { (a, s) => a.st(src = s.ireg, base = s.ireg, fr = fieldPath(s)) }
+  instr("st.static") { (a, s) => a.st(src = s.ireg, fr = fieldPath(s)) }
+  instr("st.typed") { (a, s) => a.st(src = s.ireg, ts = s.ts, fr = fieldPath(s)) }
+  instr("st.field.f") { (a, s) => a.st(src = s.freg, base = s.ireg, fr = fieldPath(s)) }
+  instr("st.static.f") { (a, s) => a.st(src = s.freg, fr = fieldPath(s)) }
+  instr("st.typed.f") { (a, s) => a.st(src = s.freg, ts = s.ts, fr = fieldPath(s)) }
+  instr("st.g") { (a, s) => a.st(src = s.ireg, base = s.ireg, derived = s.ireg, ti = s.ireg, fr = NoneFieldReference()) }
+  instr("lea") { (a, s) => a.lea(dst = s.ireg, base = s.ireg, fr = fieldPath(s)) }
+  instr("lea.g") { (a, s) => a.leaGeneric(dst = s.ireg, base = s.ireg, ti = s.ireg, fr = s.field) }
+  instr("copy") { (a, s) => a.copy(dstBase = s.ireg, dst = s.ireg, srcBase = s.ireg, src = s.ireg, sig = s.tpe) }
 
   // memory access - uslot
-  instr("ld.uslot.s8")  { (a, s) => a.loadUntyped(s.ireg, LD_S8, s.us) }
-  instr("ld.uslot.s16") { (a, s) => a.loadUntyped(s.ireg, LD_S16, s.us) }
-  instr("ld.uslot.u8")  { (a, s) => a.loadUntyped(s.ireg, LD_U8, s.us) }
-  instr("ld.uslot.u16") { (a, s) => a.loadUntyped(s.ireg, LD_U16, s.us) }
-  instr("ld.uslot.32")  { (a, s) => a.loadUntyped(s.ireg, LD_32, s.us) }
-  instr("ld.uslot.u32") { (a, s) => a.loadUntyped(s.ireg, LD_U32, s.us) }
-  instr("ld.uslot.64")  { (a, s) => a.loadUntyped(s.ireg, LD_64, s.us) }
-  instr("ld.uslot.ref") { (a, s) => a.loadUntyped(s.ireg, LD_REF, s.us) }
-  instr("ld.uslot.f32") { (a, s) => a.loadUntyped(s.freg, LD_F32, s.us) }
-  instr("ld.uslot.f64") { (a, s) => a.loadUntyped(s.freg, LD_F64, s.us) }
+  instr("ld.uslot.s8")  { (a, s) => a.loadUntyped(dst = s.ireg, ldk = LD_S8, src = s.us) }
+  instr("ld.uslot.s16") { (a, s) => a.loadUntyped(dst = s.ireg, ldk = LD_S16, src = s.us) }
+  instr("ld.uslot.u8")  { (a, s) => a.loadUntyped(dst = s.ireg, ldk = LD_U8, src = s.us) }
+  instr("ld.uslot.u16") { (a, s) => a.loadUntyped(dst = s.ireg, ldk = LD_U16, src = s.us) }
+  instr("ld.uslot.32")  { (a, s) => a.loadUntyped(dst = s.ireg, ldk = LD_32, src = s.us) }
+  instr("ld.uslot.u32") { (a, s) => a.loadUntyped(dst = s.ireg, ldk = LD_U32, src = s.us) }
+  instr("ld.uslot.64")  { (a, s) => a.loadUntyped(dst = s.ireg, ldk = LD_64, src = s.us) }
+  instr("ld.uslot.ref") { (a, s) => a.loadUntyped(dst = s.ireg, ldk = LD_REF, src = s.us) }
+  instr("ld.uslot.f32") { (a, s) => a.loadUntyped(dst = s.freg, ldk = LD_F32, src = s.us) }
+  instr("ld.uslot.f64") { (a, s) => a.loadUntyped(dst = s.freg, ldk = LD_F64, src = s.us) }
 
-  instr("st.uslot.8")   { (a, s) => a.storeUntyped(s.freg, ST_8, s.us) }
-  instr("st.uslot.16")  { (a, s) => a.storeUntyped(s.ireg, ST_16, s.us) }
-  instr("st.uslot.32")  { (a, s) => a.storeUntyped(s.ireg, ST_32, s.us) }
-  instr("st.uslot.64")  { (a, s) => a.storeUntyped(s.ireg, ST_64, s.us) }
-  instr("st.uslot.ref") { (a, s) => a.storeUntyped(s.ireg, ST_REF, s.us) }
-  instr("st.uslot.f32") { (a, s) => a.storeUntyped(s.freg, ST_F32, s.us) }
-  instr("st.uslot.f64") { (a, s) => a.storeUntyped(s.freg, ST_F64, s.us) }
-  instr("st.uslot.imm") { (a, s) => a.storeUntypedImm(s.int, s.us) }
+  instr("st.uslot.8")   { (a, s) => a.storeUntyped(src = s.freg, stk = ST_8, dst = s.us) }
+  instr("st.uslot.16")  { (a, s) => a.storeUntyped(src = s.ireg, stk = ST_16, dst = s.us) }
+  instr("st.uslot.32")  { (a, s) => a.storeUntyped(src = s.ireg, stk = ST_32, dst = s.us) }
+  instr("st.uslot.64")  { (a, s) => a.storeUntyped(src = s.ireg, stk = ST_64, dst = s.us) }
+  instr("st.uslot.ref") { (a, s) => a.storeUntyped(src = s.ireg, stk = ST_REF, dst = s.us) }
+  instr("st.uslot.f32") { (a, s) => a.storeUntyped(src = s.freg, stk = ST_F32, dst = s.us) }
+  instr("st.uslot.f64") { (a, s) => a.storeUntyped(src = s.freg, stk = ST_F64, dst = s.us) }
+  instr("st.uslot.imm") { (a, s) => a.storeUntypedImm(dst = s.us, imm = s.int) }
 
   // memory access - raw
   instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, number = s.int) }
 
   // calls
-  instr("call.direct")    { (a, s) => a.callDirect(s.method, s.params) }
-  instr("call.virt")      { (a, s) => a.callVirt(s.method, s.params) }
-  instr("call.interf")    { (a, s) => a.callInterf(s.method, s.params) }
-  instr("call.closure")   { (a, s) => a.callClosure(s.tpe, s.params) }
-  instr("call.closure.g") { (a, s) => a.callClosureGeneric(s.tpe, s.params) }
+  instr("call.direct")    { (a, s) => a.callDirect(ref = s.method, params = s.params) }
+  instr("call.virt")      { (a, s) => a.callVirt(ref = s.method, params = s.params) }
+  instr("call.interf")    { (a, s) => a.callInterf(ref = s.method, params = s.params) }
+  instr("call.closure")   { (a, s) => a.callClosure(tpe = s.tpe, params = s.params) }
+  instr("call.closure.g") { (a, s) => a.callClosureGeneric(tpe = s.tpe, params = s.params) }
 
   // bfx
-  instr("bfxs.32.32")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W32, Width.W32, true,  s.int.toInt, s.int.toInt) }
-  instr("bfxs.32.64")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W32, Width.W64, true,  s.int.toInt, s.int.toInt) }
-  instr("bfxs.64.32")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W64, Width.W32, true,  s.int.toInt, s.int.toInt) }
-  instr("bfxs.64.64")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W64, Width.W64, true,  s.int.toInt, s.int.toInt) }
-  instr("bfxz.32.32")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W32, Width.W32, false, s.int.toInt, s.int.toInt) }
-  instr("bfxz.32.64")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W32, Width.W64, false, s.int.toInt, s.int.toInt) }
-  instr("bfxz.64.32")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W64, Width.W32, false, s.int.toInt, s.int.toInt) }
-  instr("bfxz.64.64")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W64, Width.W64, false, s.int.toInt, s.int.toInt) }
+  instr("bfxs.32.32")  { (a, s) => a.bfx(dst = s.ireg, src = s.ireg, resW = Width.W32, argW = Width.W32, sx = true,  offset = s.int.toInt, size = s.int.toInt) }
+  instr("bfxs.32.64")  { (a, s) => a.bfx(dst = s.ireg, src = s.ireg, resW = Width.W32, argW = Width.W64, sx = true,  offset = s.int.toInt, size = s.int.toInt) }
+  instr("bfxs.64.32")  { (a, s) => a.bfx(dst = s.ireg, src = s.ireg, resW = Width.W64, argW = Width.W32, sx = true,  offset = s.int.toInt, size = s.int.toInt) }
+  instr("bfxs.64.64")  { (a, s) => a.bfx(dst = s.ireg, src = s.ireg, resW = Width.W64, argW = Width.W64, sx = true,  offset = s.int.toInt, size = s.int.toInt) }
+  instr("bfxz.32.32")  { (a, s) => a.bfx(dst = s.ireg, src = s.ireg, resW = Width.W32, argW = Width.W32, sx = false, offset = s.int.toInt, size = s.int.toInt) }
+  instr("bfxz.32.64")  { (a, s) => a.bfx(dst = s.ireg, src = s.ireg, resW = Width.W32, argW = Width.W64, sx = false, offset = s.int.toInt, size = s.int.toInt) }
+  instr("bfxz.64.32")  { (a, s) => a.bfx(dst = s.ireg, src = s.ireg, resW = Width.W64, argW = Width.W32, sx = false, offset = s.int.toInt, size = s.int.toInt) }
+  instr("bfxz.64.64")  { (a, s) => a.bfx(dst = s.ireg, src = s.ireg, resW = Width.W64, argW = Width.W64, sx = false, offset = s.int.toInt, size = s.int.toInt) }
 
   // thread spawn
-  instr("spawn")        { (a, s) => a.spawn(s.ireg, s.tpe) }
-  instr("spawn.future") { (a, s) => a.spawnFuture(s.ireg, s.tpe) }
+  instr("spawn")        { (a, s) => a.spawn(closure = s.ireg, closureType = s.tpe) }
+  instr("spawn.future") { (a, s) => a.spawnFuture(future = s.ireg, retType = s.tpe) }
 
   // generics
-  instr("load.type.info")   { (a, s) => a.loadTypeInfoSig(s.ireg, s.tpe) }
-  instr("load.type.info.g") { (a, s) => a.loadTypeInfoGeneric(s.ireg, s.tpe) }
-  instr("box")              { (a, s) => a.box(s.ireg, s.ireg, s.tpe) }
-  instr("box.ts")           { (a, s) => a.box(s.ts, s.ireg) }
-  instr("unbox")            { (a, s) => a.unbox(s.ireg, s.ireg, s.tpe) }
-  instr("unbox.ts")         { (a, s) => a.unbox(s.ts, s.ireg) }
+  instr("load.type.info")   { (a, s) => a.loadTypeInfoSig(dst = s.ireg, sig_id = s.tpe) }
+  instr("load.type.info.g") { (a, s) => a.loadTypeInfoGeneric(dst = s.ireg, sig_id = s.tpe) }
+  instr("box")              { (a, s) => a.box(src = s.ireg, dst = s.ireg, tpe = s.tpe) }
+  instr("box.ts")           { (a, s) => a.box(src = s.ts, dst = s.ireg) }
+  instr("unbox")            { (a, s) => a.unbox(dst = s.ireg, src = s.ireg, tpe = s.tpe) }
+  instr("unbox.ts")         { (a, s) => a.unbox(dst = s.ts, src = s.ireg) }
   instr("type.arg")         { (a, s) => a.typeArg(dst = s.ireg, idx = s.int.toInt, ti = s.ireg) }
   instr("offset")           { (a, s) => a.offset(dst = s.ireg, fr = s.field, ti = s.ireg) }
-  instr("add.offset")       { (a, s) => a.addOffset(s.ireg, s.field, s.ireg) } // TODO: name params
+  instr("add.offset")       { (a, s) => a.addOffset(dst = s.ireg, fr = s.field, ti = s.ireg) }
 
-  instr("load.type.info.obj") { (a, s) => a.loadTypeInfoObj(s.ireg, s.ireg) }
+  instr("load.type.info.obj") { (a, s) => a.loadTypeInfoObj(dst = s.ireg, obj = s.ireg) }
 
 }
