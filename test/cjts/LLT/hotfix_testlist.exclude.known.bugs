@@ -635,19 +635,8 @@ compiler/Sema/generics/pkgs0018_multi_packages_rhombus_import/pkgs0018004a.cj
 
 # bug 150 (SIGABRT in the GC write barrier)
 API/std/collection/concurrent/test_concurrent_hashmap.cj
-API/std/convert/test_ConvertChar.cj
-API/std/convert/test_ConvertInt16.cj
-API/std/convert/test_ConvertInt8.cj
-API/std/convert/test_ConvertUInt16.cj
-API/std/convert/test_ConvertUInt32.cj
-API/std/convert/test_ConvertUint8.cj
-API/std/convert/test_L2_charToNumber.cj
 API/std/deriving/arbitrary_t_test.cj
-API/std/fs/test_directory_linux.cj
-API/std/net/ip_prefix_test.cj
 API/std/unittest/examples/advance1.cj
-API/std/convert/test_ConvertBool.cj
-API/std/convert/test_ConvertFloat32.cj
 API/std/unittest/api/reporters/csv_case.cj
 API/std/unittest/api/serialization/test_datamodel_seq.cj
 
