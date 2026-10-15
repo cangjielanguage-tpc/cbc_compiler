@@ -428,7 +428,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
       def genAddress(dst: IR, fields: Seq[CangjieReferenceNode]): IR = baseLocation match {
         case Some(base: IR) => fields match {
-          case Seq(f: (FieldReferenceNode | FieldReferenceNodeGeneric)) if f.maybeField.isEmpty => base
+          case Seq(f: (FieldReferenceNode | FieldReferenceNodeGeneric)) if f.maybeField.isEmpty => base // none field ref does not need lea
           case _ =>
             genLeaChain(dst, base, fields)
             dst
@@ -480,21 +480,21 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
               }
           }
         } else {
-          val derived = genAddress(IR1, prefix)
+          val address = genAddress(IR1, prefix)
           val IReg(baseRef) = n.baseRef
           if (n.resType.isVariableSizeType) {
             if (store) {
-              asm.st(reg, baseRef, derived, resultTI, NoneFieldReference())
+              asm.st(reg, baseRef, address, resultTI, NoneFieldReference())
             } else {
-              asm.ld(reg, baseRef, derived, resultTI, NoneFieldReference())
+              asm.ld(reg, baseRef, address, resultTI, NoneFieldReference())
               addXSite(n)
               saveGCState(n)
             }
           } else {
             if (store) {
-              asm.st(reg, baseRef, derived, field)
+              asm.st(reg, baseRef, address, field)
             } else {
-              asm.ld(reg, baseRef, derived, field)
+              asm.ld(reg, baseRef, address, field)
             }
           }
         }
