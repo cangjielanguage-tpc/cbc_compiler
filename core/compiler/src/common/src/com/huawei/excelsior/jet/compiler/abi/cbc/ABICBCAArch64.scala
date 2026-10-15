@@ -14,6 +14,7 @@ import com.huawei.excelsior.jet.assembler.Location.AnyReg
 import com.huawei.excelsior.jet.assembler.cbc.Register.{FR, IR}
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.abi.ABI.{ParamsQueue, RetType}
+import com.huawei.excelsior.jet.compiler.symlevel.CallConv.CCALL
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType
 import xscala.util.MathUtils
 
@@ -26,7 +27,7 @@ class ABICBCAArch64 private[cbc](_methodType: MethodType) extends ABI[IR, FR](_m
   }
 
   override protected def initLocations(iRegsQueue: ParamsQueue[IR], fRegsQueue: ParamsQueue[FR], _limit: Int) = {
-    assert(cc.isJET && !isVarArgs && !hasAltLocationParametersOrResult)
+    assert((cc.isJET || cc.sourceCC == CCALL) && !isVarArgs && !hasAltLocationParametersOrResult)
 
     val locations = new Array[Location](parameterCount)
     var currTailSize = 0

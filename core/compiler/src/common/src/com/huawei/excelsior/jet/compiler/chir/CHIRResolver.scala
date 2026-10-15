@@ -194,6 +194,8 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
           case EnumKind.ClassBased =>
             ClassBasedEnum(symName(t), t.genericTypeParams.map(typeSig))
         }
+      case t: CHIR.FuncType if t.isC =>
+        CPointer(MethodSignature(t.paramTypes.map(typeSig): _*)(typeSig(t.returnType)))
       case t: CHIR.FuncType =>
         notImplemented("FuncType")
       case t: CHIR.GenericType =>
@@ -325,6 +327,7 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
       case CHIR.Attribute.Mut => mods += CJ_MUT
       case CHIR.Attribute.Redef => mods += CJ_REDEF
       case CHIR.Attribute.Override => mods += CJ_OVERRIDE
+      case CHIR.Attribute.Foreign => mods += CJ_FOREIGN
       case CHIR.Attribute.Static => mods -= FINAL; mods += STATIC
       case _ => // do nothing
     }

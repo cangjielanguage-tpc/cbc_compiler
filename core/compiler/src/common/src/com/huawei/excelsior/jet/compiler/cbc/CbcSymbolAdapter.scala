@@ -18,6 +18,7 @@ import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.env
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.*
 import com.huawei.excelsior.jet.compiler.symlevel.*
+import com.huawei.excelsior.jet.compiler.symlevel.CallKind.CJ_CFUNC
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.Closure
 
@@ -43,6 +44,28 @@ trait CbcSymbolAdapter extends SymbolAdapter {
       refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
   }
 
+  private def methodRefFlags(mt: MethodType): MethodRefFlags = {
+    val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
+    if (mt.hasRetByValParameter) flags += MethodRefFlag.SRET
+    if (mt.hasOuterTypeInfoParameter) flags += MethodRefFlag.HAS_OUTER_TI
+    if (mt.hasThisTypeInfoParameter) flags += MethodRefFlag.HAS_THIS_TI
+    if (mt.hasMutRecordParameter) flags += MethodRefFlag.MUT
+    if (mt.hasReceiverParameter) {
+      import SignatureType.*
+      val receiver = mt.parameterType(mt.getReceiverArgIdx)
+      flags.addOne(receiver match {
+        case Unit => MethodRefFlag.REC_RECEIVER
+        case Nothing => MethodRefFlag.PRIM_RECEIVER
+        case _: FloatingPoint => MethodRefFlag.FPRIM_RECEIVER
+        case x if x.isPrimitive => MethodRefFlag.PRIM_RECEIVER
+        case x if x.isRecord => MethodRefFlag.REC_RECEIVER
+        case x if x.isReference => MethodRefFlag.REF_RECEIVER
+        case _ => shouldNotReachHere(s"Unexpected receiver type $receiver in method $method")
+      })
+    }
+    MethodRefFlags(flags)
+  }
+
   def adaptIntrinsic(methodReference: MethodReference, intrinsicSymbol: String): CbcFileFormat.MethodReference = {
     val aotData = DirectCallAotData(intrinsicSymbol)
     val sig = methodReference.methodType.signature.toCbc
@@ -55,9 +78,14 @@ trait CbcSymbolAdapter extends SymbolAdapter {
   def adapt(symbol: Symbol): CbcFileFormat.BytecodeReference = symbol match {
     case symbol: CodeSigSymbol => symbol.sig.toCbc
     case symbol: MethodReference =>
+      val mt = symbol.methodType
+      if (mt.callKind == CJ_CFUNC) {
+        val sig = mt.signature.toCbc
+        return CbcFileFormat.MethodReference("<cfunc>", CbcFileFormat.BuiltinSignature.Void, sig, methodRefFlags(mt))
+      }
       val declaringClass = symbol.method.getDeclaringClass
       val (refType, cparams) = if (declaringClass.isCangjiePackage) {
-        val t = if (symbol.method.getCHIRDef.nonEmpty) {
+        val t = if (symbol.method.getCHIRDef.nonEmpty || symbol.method.isCangjieForeign) {
           // Force reference to alt definition (see CbcFileEncoderAdapter.TypeWrapper)
           CbcFileFormat.TypeSignature.ref(CbcFileEncoderAdapter.cbcPackageName(declaringClass.getName))
         } else {
@@ -72,7 +100,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         (t.toCbc, genericParams(t))
       }
       val aotData = symbol.accessKind match {
-        case STATIC | SPECIAL | MUT => Option.when(symbol.method.getCHIRDef.isEmpty)(DirectCallAotData(symbol.method.getExportedName.toString))
+        case STATIC | SPECIAL | MUT => Option.when(symbol.method.getCHIRDef.isEmpty && !symbol.method.isCangjieForeign)(DirectCallAotData(symbol.method.getExportedName.toString))
         case VIRTUAL | STATIC_VIRTUAL => Option.when(refType.isInstanceOf[CbcFileFormat.AotTypeSignature])(InterfaceCallAotData(symbol.explicitVNum.get)) // TODO: improve if needed
         case _ => notImplemented(symbol.accessKind)
       }
@@ -82,30 +110,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
           imr.instantiatedTypeParameters.map(_.toCbc)
         case _ => Seq.empty
       }
-
-      val mt = symbol.methodType
-      val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
-      if (mt.hasRetByValParameter)      flags += MethodRefFlag.SRET
-      if (mt.hasOuterTypeInfoParameter) flags += MethodRefFlag.HAS_OUTER_TI
-      
-      if (mt.hasThisTypeInfoParameter)  flags += MethodRefFlag.HAS_THIS_TI
-      if (mt.hasMutRecordParameter)     flags += MethodRefFlag.MUT
-
-      if (mt.hasReceiverParameter) {
-        import SignatureType.*
-        val receiver = mt.parameterType(mt.getReceiverArgIdx)
-        flags.addOne(receiver match {
-          case Unit               => MethodRefFlag.REC_RECEIVER
-          case Nothing            => MethodRefFlag.PRIM_RECEIVER
-          case _: FloatingPoint   => MethodRefFlag.FPRIM_RECEIVER
-          case x if x.isPrimitive => MethodRefFlag.PRIM_RECEIVER
-          case x if x.isRecord    => MethodRefFlag.REC_RECEIVER
-          case x if x.isReference => MethodRefFlag.REF_RECEIVER
-          case _                  => shouldNotReachHere(s"Unexpected receiver type $receiver in method $method")
-        })
-      }
-
-      CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, MethodRefFlags(flags), aotData, typeVars = typeVars)
+      CbcFileFormat.MethodReference(symbol.method.getName, refType, signature, methodRefFlags(mt), aotData, typeVars = typeVars)
     case symbol: CangjieFieldReference => // Field reference
       symbol.field match {
         case None => CbcFileFormat.NoneFieldReference(symbol.fieldType.toCbc)

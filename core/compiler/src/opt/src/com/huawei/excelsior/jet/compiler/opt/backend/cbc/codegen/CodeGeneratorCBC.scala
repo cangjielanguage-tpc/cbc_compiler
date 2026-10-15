@@ -930,6 +930,12 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         }
       }
 
+      def indirectCall(): Unit = {
+        val IReg(targetReg) = call.target
+        val mr = asm.adapter.method(targetRef)
+        asm.callIndirect(targetReg, mr, callArgLocations)
+      }
+
       def directCall(): Unit = {
         val permanent = targetRef.getPermanent
         asm.callDirect(permanent, callArgLocations)
@@ -987,9 +993,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           case DirectCall(method) if !targetRef.hasMethod => directCCall(method)
           case AnyVirtualCall() => virtualCall()
           case CJIntrinsic(intrinsicType) => intrinsicCall(intrinsicType)
-          case _ =>
-            val IReg(targetReg) = call.target
-            asm.callIndirect(targetReg, call.methodType)
+          case _ if call.methodType.isCFunc => indirectCall()
         }
       }
     }
@@ -1029,7 +1033,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           asm.movi64(dst, c)
 
         case (IReg(dst), AddrConst(_, m: Method, 0)) if m.isCangjieForeign =>
-          asm.lea_cforeign(dst, new MethodReference(m, MethodReferenceAccessKind.STATIC).getPermanent)
+          val mr = asm.adapter.method(new MethodReference(m, MethodReferenceAccessKind.STATIC).getPermanent)
+          asm.lea_cforeign(dst, mr)
 
         case (FReg(dst), FConst(c)) =>
           asm.fmovi(dst, c, W32)
