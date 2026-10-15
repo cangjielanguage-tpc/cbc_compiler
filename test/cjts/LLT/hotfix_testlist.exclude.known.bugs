@@ -457,6 +457,26 @@ API/std/unittest/mock/framework/stub_properties_test.cj
 API/std/unittest/mock/framework/synthetic_fields_mode_test.cj
 API/std/unittest/mock/framework/verification_failed_report_test.cj
 API/std/unittest/mock/framework/verify_misconfiguration_test.cj
+API/std/unittest/mock/compiler/createMock/disabledMockingButNoTypeInstances.cj
+API/std/unittest/mock/compiler/createMock/genericWrapperDifferentTypeParams.cj
+API/std/unittest/mock/compiler/createMock/genericWrapperWithFrozen.cj
+API/std/unittest/mock/compiler/createMock/mutableStruct.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package_separate.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_same_package_separate.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/return.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/staticWithForeign.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/topLvlWithForeign.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/varray.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/generics.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/generics/other_package.cj
+API/std/unittest/mock/compiler/misc/DTS2025052839508.cj
+API/std/unittest/mock/compiler/misc/default_methods_structs.cj
+API/std/unittest/mock/compiler/misc/genericParamReExport.cj
+API/std/unittest/mock/examples/export_custom_matchers.cj
+API/std/unittest/mock/examples/repo_1.cj
+API/std/unittest/mock/framework/bench.cj
+API/std/unittest/mock/framework/mock_spy_frozen_wrappers.cj
+API/std/unittest/mock/integration/wrong_type_args.cj
 
 # bug 90 (genericTypeInfoParam called in method with no genericFuncParams)
 compiler/Sema/enum/enum33_test/main.cj
