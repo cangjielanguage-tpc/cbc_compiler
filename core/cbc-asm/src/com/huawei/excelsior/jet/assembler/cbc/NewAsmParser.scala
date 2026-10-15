@@ -1241,7 +1241,7 @@ private object InstructionParser {
   instr("st.uslot.ref") { (a, s) => a.storeUntyped(s.ireg, ST_REF, s.us) }
   instr("st.uslot.f32") { (a, s) => a.storeUntyped(s.freg, ST_F32, s.us) }
   instr("st.uslot.f64") { (a, s) => a.storeUntyped(s.freg, ST_F64, s.us) }
-  instr("st.uslot.imm") { (a, s) => a.storeUntypedImm(s.int, s.us) }
+  instr("st.uslot.imm") { (a, s) => val dst = s.us; a.storeUntypedImm(s.int, dst) }
 
   // memory access - raw
   instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, number = s.int) }

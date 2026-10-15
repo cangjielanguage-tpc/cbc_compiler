@@ -910,7 +910,7 @@ trait ForkedAssembler {
 
   def storeUntyped(src: Rg, tk: CbcTypeKind, dst: StackSlot.Untyped): Unit = storeUntyped(src, StoreAccessKind.from(tk), dst)
 
-  def storeUntypedImm(src: Long, dst: StackSlot.Untyped): Unit = {
+  def storeUntypedImm(src: Long, dst: StackSlot.Untyped): Unit = instr {
     stream
       .opc8(Opcode.StoreUntypedImm)
       .write16(analyzer.prim(dst).slot)
