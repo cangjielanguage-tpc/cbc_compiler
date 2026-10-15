@@ -283,10 +283,10 @@ class AsmTokenizer(input: String, private var pos: Int = 0) {
       try {
         val value = java.lang.Double.parseDouble(String(data, start, pos - start))
         val nvalue = if (negative) -value else value
-        Token.FloatLit(start + adjustment, pos, nvalue)
+        return Token.FloatLit(start + adjustment, pos, nvalue)
       } catch {
         case _: NumberFormatException =>
-          Token.Error(start + adjustment, pos, "incorrect floating point number")
+          return Token.Error(start + adjustment, pos, "incorrect floating point number")
       }
     }
     val value = BigInteger(String(data, start, pos - start), 10).longValue()
