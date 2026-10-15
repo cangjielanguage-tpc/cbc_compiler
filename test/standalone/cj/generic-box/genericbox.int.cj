@@ -14,6 +14,17 @@ public struct Pair<T> {
     }
 }
 
+public func copyLocal<T>(initial: Pair<T>, source: Pair<T>): Pair<T> {
+    var target = initial
+    target = source
+    target
+}
+
+public func copyArrayElement<T>(values: Array<Pair<T>>, sourceIndex: Int64, targetIndex: Int64): Pair<T> {
+    values[targetIndex] = values[sourceIndex]
+    values[targetIndex]
+}
+
 public open class PairHolder<T> {
     private var first: Pair<T>
     private var second: Pair<T>

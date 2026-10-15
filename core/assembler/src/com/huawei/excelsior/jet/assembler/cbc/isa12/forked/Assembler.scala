@@ -489,6 +489,14 @@ trait ForkedAssembler {
     saveState()
   }
 
+  def boxGeneric(src: IR, dst: IR, ti: IR): Unit = instr {
+    stream  // - allocate box at `dst`
+      .opc8(Opcode.BoxGeneric)
+      .bits(_.w4(analyzer.useAny(src)).w4(analyzer.ref(dst)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+    saveState()
+  }
+
   def unbox(dst: StackSlot.Typed, src: IR): Unit = instr {
     stream
       .opc8(Opcode.UnboxT)
@@ -1328,6 +1336,7 @@ object Assembler {
     case StoreArray
     case TypeArg
     case Box
+    case BoxGeneric
     case BoxT
     case BoxTGeneric
     case Unbox
