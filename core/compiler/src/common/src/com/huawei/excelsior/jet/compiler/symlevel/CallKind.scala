@@ -9,4 +9,4 @@
 package com.huawei.excelsior.jet.compiler.symlevel
 
 enum CallKind:
-  case NORMAL, AJ_LONG_SAFE, CJ_FOREIGN
+  case NORMAL, AJ_LONG_SAFE, CJ_FOREIGN, CJ_CFUNC

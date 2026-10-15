@@ -1957,6 +1957,7 @@ trait ObjectOperationNodes { self: Universe with Nodes =>
         checkGCSafeState = env.enabled(GCSafetyChecks))
 
       case CJ_FOREIGN => emptyGCActions
+      case CJ_CFUNC => emptyGCActions
 
       case NORMAL => emptyGCActions
     }

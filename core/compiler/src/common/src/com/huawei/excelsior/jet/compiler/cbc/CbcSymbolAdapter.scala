@@ -18,6 +18,7 @@ import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.env
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.*
 import com.huawei.excelsior.jet.compiler.symlevel.*
+import com.huawei.excelsior.jet.compiler.symlevel.CallKind.CJ_CFUNC
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.util.Closure
 
@@ -78,7 +79,7 @@ trait CbcSymbolAdapter extends SymbolAdapter {
     case symbol: CodeSigSymbol => symbol.sig.toCbc
     case symbol: MethodReference =>
       val mt = symbol.methodType
-      if (mt.isCFunc) {
+      if (mt.callKind == CJ_CFUNC) {
         val sig = mt.signature.toCbc
         return CbcFileFormat.MethodReference("<cfunc>", CbcFileFormat.BuiltinSignature.Void, sig, methodRefFlags(mt))
       }

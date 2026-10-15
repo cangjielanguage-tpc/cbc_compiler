@@ -263,7 +263,6 @@ trait IOBase {
       callConv(mt.callConv)
       callKind(mt.callKind)
       specialParameters(mt.specialParameters)
-      bool(mt.isCFunc)
       bool(mt.isVarArgs)
       assert(!mt.isVarArgs || mt.areVarArgsInitialized)
       number(mt.firstVarArg)
@@ -489,7 +488,6 @@ trait IOBase {
       val cc = callConv()
       val ck = callKind()
       val specialParams = specialParameters()
-      val isCFunc = bool()
       val isVarArgs = bool()
       val firstVarArg = number()
       val inLimit = number()
@@ -501,7 +499,7 @@ trait IOBase {
         MethodType.AltLocationInfo(methodIsAltLocation, altLocationParameterMask)
       }
 
-      MethodType(sig, cc, ck, specialParams, isCFunc, isVarArgs, firstVarArg, inLimit, outLimit, preservedParameterMask, altLocationInfo)
+      MethodType(sig, cc, ck, specialParams, isVarArgs, firstVarArg, inLimit, outLimit, preservedParameterMask, altLocationInfo)
     }
 
     def methodRef(): MethodReference = {

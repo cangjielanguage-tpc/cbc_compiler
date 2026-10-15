@@ -74,7 +74,7 @@ object MethodType {
   /** Creates an instance of a method type from given method signature without resolve procedure. */
   def jbcErased(sig: XString, tp: TypeProvider, hasReceiver: Boolean): MethodType = {
     val msig = tp.eraseMethodSignature(sig)
-    apply(msig, CallConv.MANAGED, CallKind.NORMAL, SpecialParamSet(), isCFunc = false, isVarArgs = false)
+    apply(msig, CallConv.MANAGED, CallKind.NORMAL, SpecialParamSet(), isVarArgs = false)
       .insertReceiverType(fromSymType(tp.getObjectType), hasReceiver)
   }
 
@@ -94,7 +94,7 @@ object MethodType {
     */
   def forJava(sig: XString, tp: TypeProvider, refType: ClassType, callConv: CallConv, callKind: CallKind, isVarArgs: Boolean): MethodType = {
     val msig = tp.resolveMethodSignature(sig, refType)
-    apply(msig, callConv, callKind, SpecialParamSet(), false, isVarArgs)
+    apply(msig, callConv, callKind, SpecialParamSet(), isVarArgs)
   }
 
   /** Creates an instance of a method type from given method signature. */
@@ -104,19 +104,19 @@ object MethodType {
 
   /** Creates an instance of a method type from given method signature and special params. */
   def apply(sig: MethodSignature, specialParams: SpecialParamSet): MethodType = {
-    apply(sig, CallConv.MANAGED, CallKind.NORMAL, specialParams, isCFunc = false, isVarArgs = false)
+    apply(sig, CallConv.MANAGED, CallKind.NORMAL, specialParams, isVarArgs = false)
   }
 
   /** Creates an instance of a method type from given method signature. */
-  def apply(sig: MethodSignature, callConv: CallConv, callKind: CallKind, specialParams: SpecialParamSet, isCFunc: Boolean, isVarArgs: Boolean): MethodType = {
-    apply(sig, callConv, callKind, specialParams, isCFunc, isVarArgs, UNINITIALIZED_FIRST_VAR_ARG)
+  def apply(sig: MethodSignature, callConv: CallConv, callKind: CallKind, specialParams: SpecialParamSet, isVarArgs: Boolean): MethodType = {
+    apply(sig, callConv, callKind, specialParams, isVarArgs, UNINITIALIZED_FIRST_VAR_ARG)
   }
 
   /** Creates an instance of a method type, given all its properties. */
   def apply(sig: MethodSignature, callConv: CallConv, callKind: CallKind, specialParams: SpecialParamSet,
-            isCFunc: Boolean, isVarArgs: Boolean, firstVarArg: Int, headInLimit: Int = Int.MaxValue, headOutLimit: Int = 1,
+            isVarArgs: Boolean, firstVarArg: Int, headInLimit: Int = Int.MaxValue, headOutLimit: Int = 1,
             preservedParameterMask: Int = 0, altLocationInfo: AltLocationInfo = NoAltLocation): MethodType =
-    new MethodType(sig, callConv, callKind, specialParams, isCFunc, isVarArgs, firstVarArg,
+    new MethodType(sig, callConv, callKind, specialParams, isVarArgs, firstVarArg,
       headInLimit, headOutLimit, preservedParameterMask, altLocationInfo)
 
   def asVerifiableMethodType(impl: MethodType): VerifiableMethodType = new VerifiableMethodType {
@@ -227,7 +227,7 @@ object MethodType {
 }
 
 case class MethodType (signature: MethodSignature, callConv: CallConv,
-                       callKind: CallKind, specialParameters: SpecialParamSet, isCFunc: Boolean, isVarArgs: Boolean, firstVarArg: Int,
+                       callKind: CallKind, specialParameters: SpecialParamSet, isVarArgs: Boolean, firstVarArg: Int,
                        headInLimit: Int, headOutLimit: Int,
                        preservedParameterMask: Int, altLocationInfo: AltLocationInfo) extends Symbol {
 
