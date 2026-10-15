@@ -11,5 +11,6 @@ cbc_file="${executable}.cbc"
 if [ -f "$cbc_file" ]; then
     "$SCRIPT_DIR/../tools/bin/launcher" "$cbc_file" "${@}"
 else
-    "$executable" "${@}"
+    echo "UNEXPECTED: no cbc for launcher"
+    exit 111
 fi
