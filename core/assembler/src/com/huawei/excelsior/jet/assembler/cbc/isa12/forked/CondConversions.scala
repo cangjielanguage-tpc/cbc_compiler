@@ -28,6 +28,22 @@ object CondConversions {
   }
 
   /**
+    * Promotes an integral BranchOp to its floating-point counterpart, so that
+    * float comparisons (fscc over FR operands) are encoded with the
+    * floating-point condition codes the engine expects.
+    */
+  def toFloat(op: BranchOp): BranchOp = op match {
+    case BranchOp.EQ => BranchOp.FEQ
+    case BranchOp.NE => BranchOp.FNE
+    case BranchOp.LT => BranchOp.FLT
+    case BranchOp.GE => BranchOp.FGE
+    case BranchOp.GT => BranchOp.FGT
+    case BranchOp.LE => BranchOp.FLE
+    case op if op.isFloatingPoint => op
+    case op => shouldNotReachHere(s"$op cannot be applied to float operands")
+  }
+
+  /**
     * Encodes [[BranchOp]] for bcci/scci as ISA12 constant [[CC]].
     * To do that, immediate could be adjusted.
     */

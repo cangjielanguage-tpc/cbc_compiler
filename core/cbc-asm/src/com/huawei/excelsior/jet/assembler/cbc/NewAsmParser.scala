@@ -1167,12 +1167,12 @@ private object InstructionParser {
   instr("w.bcci.32") { (a, s) => a.doBccImm(s.cc, s.ireg, s.int, Width.W32, s.label, wide = true) }
 
   // set conditional
-  instr("scc.64")  { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.ireg, Width.W64) }
-  // instr("fscc.64") { (a, s) => a.scc(s.cc, s.ireg, s.freg, s.freg, Width.W64) }
-  instr("scci.64") { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.int,  Width.W64) }
-  instr("scc.32")  { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.ireg, Width.W32) }
-  // instr("fscc.32") { (a, s) => a.scc(s.cc, s.ireg, s.freg, s.freg, Width.W32) }
-  instr("scci.32") { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.int,  Width.W32) }
+  instr("scc.64")    { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("fscc.64")   { (a, s) => a.scc(s.cc, s.ireg, s.freg, s.freg, Width.W64) }
+  instr("scci.64")   { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.int,  Width.W64) }
+  instr("scc.32")    { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("fscc.32")   { (a, s) => a.scc(s.cc, s.ireg, s.freg, s.freg, Width.W32) }
+  instr("scci.32")   { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.int,  Width.W32) }
 
   // jmp
   instr("jmp")   { (a, s) => a.doJmp(s.label, wide = false) }
