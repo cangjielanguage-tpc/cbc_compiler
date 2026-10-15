@@ -139,6 +139,8 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
 
       case x: BitFieldExtract => apply(x)
 
+      case x: IndexFieldReference => apply(x)
+
       case x =>
         var info = "unknown node for ConstFold: " + x
         for (arg <- x.valueArgs) {
@@ -194,6 +196,13 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
         case BFX(offset, size, sx, IntegralConst(v)) =>
           val bitField = if (size > 0) bits(v, offset, offset + size - 1) else 0
           IntegralConst(bfx.tpe)(if (sx) signExtend(bitField, size) else bitField)
+      }
+    }
+
+    @annotation.strictfp
+    private def apply(n: IndexFieldReference): Node = {
+      n.idx match {
+        case (IntegralConst(idx)) => ConstIndexFieldReference(idx, n.refType, n.fieldType)
       }
     }
 

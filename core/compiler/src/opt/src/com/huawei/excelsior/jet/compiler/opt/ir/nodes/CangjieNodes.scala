@@ -936,7 +936,7 @@ trait CangjieNodes { self: Universe =>
   }
 
   class ConstIndexFieldReference private(proto: ConstIndexFieldReference.Proto)
-    extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode {
+    extends FloatingNodeWithFixedArgs(proto) with CangjieReferenceNode with CompileTimeValue {
     def idx: Long = proto.idx
 
     def refType = proto.refType
