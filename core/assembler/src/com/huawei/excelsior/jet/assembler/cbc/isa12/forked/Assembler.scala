@@ -766,9 +766,9 @@ trait ForkedAssembler {
       .bits(_.w4(lhs).w4(rhs))
   }
 
-  def scc(op: BranchOp, dst: IR, l: IR, r: IR, width: AsmWidth): Unit = {
-    analyzer.prim(dst);
-    analyzer.usePrim(l);
+  def scc(op: BranchOp, dst: IR, l: IR, r: IR, width: AsmWidth): Unit = instr {
+    analyzer.prim(dst)
+    analyzer.usePrim(l)
     analyzer.usePrim(r)
     sccCommon(op, dst, l, r, width)
   }
