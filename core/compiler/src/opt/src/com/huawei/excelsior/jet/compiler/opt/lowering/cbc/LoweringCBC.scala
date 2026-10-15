@@ -101,7 +101,8 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
       case D_SQRT | F_SQRT => None
       case D_ABS | F_ABS => None
       case D_POW | F_POW => None
-      case D_SIN | D_COS => None
+      case D_SIN | D_COS | D_LOG => None
+      case D_CEIL | D_FLOOR => None
       case _ => super.procForMathIntrinsic(node)
     }
   }
