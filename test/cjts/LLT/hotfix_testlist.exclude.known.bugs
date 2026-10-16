@@ -843,6 +843,7 @@ API/std/unittest/mock/compiler/separate/basic/main_test.cj
 API/std/unittest/mock/compiler/separate/errors/main_test_no_error.cj
 API/std/unittest/mock/framework/topLevelFunctions.cj
 API/std/unittest/mock/framework/top_level_decl_stubs_parsing.cj
+compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
 
 # bug 165 (java.lang.NullPointerException: Cannot invoke "com.huawei.excelsior.jet.compiler.types.ReferenceTypes$ReferenceType.isFinal()" because "root" is null)
 API/std/unittest/mock/compiler/ensurePreparedToMock/onlyTestMode.cj
@@ -857,3 +858,28 @@ compiler/Sema/lambda/test_fold.cj
 compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
 compiler/Mangle/MangledName/mangle14_c_struct_overload.cj
 compiler/Sema/function/raw_init_main.cj
+
+# bug 170 (crash in MapleRuntime::IdleBarrier::ReadStruct)
+API/std/collection/test_Operation.cj
+API/std/collection/test_collection_endops_coverage.cj
+API/std/collection/test_collection_transformops_coverage.cj
+
+# bug 171 (Called unresolved AOT method)
+API/std/socket/redesign/custom_options/tcp_extend_new_option_with_c_pointer.cj
+API/std/socket/redesign/custom_options/tcp_server_custom_options.cj
+API/std/socket/redesign/custom_options/udp_custom_options.cj
+API/std/socket/redesign/custom_options/unix_custom_options.cj
+API/std/socket/redesign/custom_options/unix_datagram_custom_options.cj
+API/std/socket/redesign/custom_options/unix_server_custom_options.cj
+API/std/time/datetime/test_local_time.cj
+Runtime/CJNative/DFX/hidumper_cjheap_and_GC.cj
+compiler/CHIR/CHIR2HLIR/time/native3.cj
+compiler/Mangle/MangledName/mangle16_foreign_func.cj
+
+# bug 172 (some overflow exception missing add suffix)
+compiler/CodegenCommon/overflow/case_6.cj
+compiler/CodegenCommon/overflow/case_7.cj
+
+# bug 173 (mut interface function does not change struct fields)
+compiler/CodegenCJNative/generic/generic_struct2.cj
+compiler/CodegenCJNative/generic/generic_struct4.cj
