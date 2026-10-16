@@ -17,7 +17,7 @@ readonly COMPILE_COMMANDS="${ENGINE_DIR}/compile_commands.json"
 readonly MEASUREMENT_SCRIPT="${SCRIPT_DIR}/run_measurements.sh"
 readonly ANALYZER="${SCRIPT_DIR}/analyze_results.py"
 readonly TEST_SOURCE="${TEST_SOURCE:-${SCRIPT_DIR}/main.cj}"
-readonly -a IMPLEMENTATIONS=(double_buffer atomic blocking)
+readonly -a IMPLEMENTATIONS=(profiler double_buffer atomic)
 
 if [[ ! -f "${CANGJIE_SDK_DIR}/envsetup.sh" ]]; then
     echo "Cangjie envsetup.sh not found: ${CANGJIE_SDK_DIR}/envsetup.sh" >&2
@@ -120,11 +120,11 @@ done
 
 echo "=== Results ==="
 "${ANALYZER}" \
+    "${RESULTS_DIR}/profiler_false.txt" \
+    "${RESULTS_DIR}/profiler_true.txt" \
     "${RESULTS_DIR}/double_buffer_false.txt" \
     "${RESULTS_DIR}/double_buffer_true.txt" \
     "${RESULTS_DIR}/atomic_false.txt" \
-    "${RESULTS_DIR}/atomic_true.txt" \
-    "${RESULTS_DIR}/blocking_false.txt" \
-    "${RESULTS_DIR}/blocking_true.txt"
+    "${RESULTS_DIR}/atomic_true.txt"
 
 echo "Raw results: ${RESULTS_DIR}" >&2
