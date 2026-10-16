@@ -31,6 +31,13 @@ import scala.collection.mutable
 class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   private implicit val typeProvider: TypeProvider = env.getTypeProvider
 
+  /** CHIR values parsed from source have an "@" sigil on their identifier; values
+    * synthesized by the compiler (main wrappers, throw patches, cj_entry) do not.
+    * Name derivation must drop a leading "@" if present, but never touch the first
+    * real character (doing so produced "ser.main"/"ain"/"hrowSymbolResolutionError").
+    */
+  private def stripSigil(s: String): String = if (s.startsWith("@")) s.substring(1) else s
+
   private val symTypeByTable = mutable.HashMap.empty[CHIR.Type | CHIR.CustomTypeDef, SymType]
   def symType(v: CHIR.Type | CHIR.CustomTypeDef): Option[SymType] = symTypeByTable.get(v) orElse {
     val res = (v: @unchecked) match {
@@ -50,16 +57,32 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.GlobalVar | CHIR.FuncSig): String = {
     def typeDefName(v: CHIR.CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
-      if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
+      if (srcName.isEmpty || isGenericInstantiated(v)) {
+        // Lambda implementation classes ($Cl/$Cw/$Cf) carry no package in their
+        // mangled identifier and no source name, so identically-named but
+        // structurally different lambdas from different packages would otherwise
+        // collapse into a single class. Qualify them by package, mirroring the
+        // package-qualified `.ti` symbol used by the native backend. Closure super
+        // classes ($Ci/$Cg) are intentionally left unqualified: their name already
+        // encodes the full functional type and they are shared across packages.
+        v.tpe match {
+          case t if isLambda(t) => s"${v.packageName}:${stripSigil(v.identifier)}"
+          case _ => stripSigil(v.identifier)
+        }
+      } else s"${v.packageName}:$srcName"
     }
 
     def memberName(v: CHIR.Func | CHIR.GlobalVar): String = {
-      val (isWrappedMethod, wrappedMethod) = v match {
-        case v: CHIR.Func => (getMethodWrappers(v).nonEmpty, getWrappedMethod(v))
-        case v: CHIR.GlobalVar => (false, None)
+      val wrappedMethod = v match {
+        case v: CHIR.Func => getWrappedMethod(v)
+        case _: CHIR.GlobalVar => None
       }
       val (id, identifier, srcName) = v match {
         // rename main-related functions to let interpreter start from "main" entry point
+        // NOTE: unlike parsed CHIR values (whose identifier carries an "@" sigil),
+        // the synthetic names below ("user.main", "main") have no sigil. All name
+        // derivation must therefore strip *only* a leading "@" (see stripSigil),
+        // never an unconditional first character.
         case v: CHIR.Func if v.identifier == "@user.main" => (v.id, "user.main.invoke", "user.main.invoke")
         case v: CHIR.Func if v.kind == CHIR.Func.Kind.MainEntry => (v.id, "user.main", "user.main")
         case v: CHIR.Func if v.identifier == CHIRPatchGeneratorFactory.cjEntryName => (v.id, "main", "main")
@@ -67,6 +90,17 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
         case v: CHIR.Func => (v.id, v.identifier, wrappedMethod.map(_.srcCodeIdentifier).getOrElse(v.srcCodeIdentifier))
         case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
       }
+      // Package-global lambda bodies are cloned per instantiating package but
+      // keep the *defining* package (std.collection) in `packageName`. Their
+      // identifier alone therefore collides across packages (same lone lambda
+      // slot reused for different element types). Qualify them by the enclosing
+      // closure class's package, exactly like `typeDefName` does for lambda
+      // classes. See typeDefName for why $Ci/$Cg supers stay unqualified.
+      val lambdaBodyPkg = v match {
+        case f: CHIR.Func => enclosingClosureClass(f).map(_.packageName)
+        case _: CHIR.GlobalVar => None
+      }
+      val qualifiedIdentifier = lambdaBodyPkg.map(p => s"$p:${stripSigil(identifier)}").getOrElse(stripSigil(identifier))
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
       val isOperator = v.attributes.contains(CHIR.Attribute.Operator)
       val isInitializer = v.attributes.contains(CHIR.Attribute.Initializer)
@@ -97,7 +131,7 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
           }
           if (srcName.isEmpty || srcName == "$lambda" || isInitializer || !vtableInstance ||
             (isPackageGlobal && isPrivate)) {
-            identifier.tail
+            qualifiedIdentifier
           } else {
             srcName + suffix
           }
@@ -117,8 +151,9 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   }
 
   def linkageName(v: CHIR.Func | CHIR.GlobalVar | CHIR.InstanceVar): String = v match {
-    case v: CHIR.Func => v.identifier.tail
-    case v: CHIR.GlobalVar => v.identifier.tail
+    case v: CHIR.Func =>
+      enclosingClosureClass(v).map(c => s"${c.packageName}:${stripSigil(v.identifier)}").getOrElse(stripSigil(v.identifier))
+    case v: CHIR.GlobalVar => stripSigil(v.identifier)
     case v: CHIR.InstanceVar => null
   }
 
@@ -263,10 +298,32 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
     wrappedMethodsCache.getOrElse(f, Seq.empty)
   }
 
+  /** True if `f` is stored as the concrete (or abstract-declaration) instance
+    * of some vtable entry anywhere in the current package. This is the set of
+    * methods that MUST keep their "pretty" source name, because virtual call
+    * sites match a vtable slot by name.
+    */
   def isVTableInstance(f: CHIR.Func): Boolean = vtableInstances.contains(f)
 
   private lazy val vtableInstances: Set[CHIR.Func] =
     pkg.typeDefs.flatMap(_.vtables).flatMap(_.vMethods).map(_.instance).toSet
+
+  /** For a package-global lambda body (the function backing an auto-env closure,
+    * whose first `$env` parameter is the closure instance), returns the closure
+    * class. cjc clones such bodies per instantiating package while keeping the
+    * *defining* package in `packageName`, so the enclosing class's package is the
+    * only thing that distinguishes otherwise-identical clones. Returns None for
+    * ordinary functions.
+    */
+  private def enclosingClosureClass(f: CHIR.Func): Option[CHIR.CustomTypeDef] =
+    if (f.declaringDef.nonEmpty) None
+    else f.tpe.paramTypes.headOption.flatMap {
+      case r: CHIR.RefType => r.baseType match {
+        case c: CHIR.CustomType if isLambda(c) => Some(c.typeDef)
+        case _ => None
+      }
+      case _ => None
+    }
 
   def getWrappedMethod(f: CHIR.Func): Option[CHIR.Func] = {
     val ms = f.annotations.collect { case m: CHIR.WrappedRawMethod => m.rawMethod }
@@ -377,8 +434,9 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
     t.annotations exists isAutoEnv
   }
 
-  private def isLambda(t: CHIR.Type): Boolean = {
-    typeSig(t).isCangjieLambda
+  private def isLambda(t: CHIR.Type): Boolean = t match {
+    case t: CHIR.CustomType => SignatureType.isCangjieLambdaName(stripSigil(t.typeDef.identifier))
+    case _ => false
   }
 
   private def isAutoEnv(x: CHIR.Annotation): Boolean = cond(x) {

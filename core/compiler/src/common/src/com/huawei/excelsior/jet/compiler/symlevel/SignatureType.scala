@@ -273,20 +273,20 @@ sealed abstract class SignatureType extends Signature {
   }
 
   final def isCangjieClosure: Boolean = this match {
-    case x: CangjieReference => x.name.startsWith("$C")
-    case x: InstantiatedReference => x.name.startsWith("$C")
+    case x: CangjieReference => SignatureType.isCangjieClosureName(x.name)
+    case x: InstantiatedReference => SignatureType.isCangjieClosureName(x.name)
     case _ => false
   }
 
   final def isCangjieLambda: Boolean = this match {
-    case x: CangjieReference => x.name.startsWith("$Cl") || x.name.startsWith("$Cw") || x.name.startsWith("$Cf")
-    case x: InstantiatedReference => x.name.startsWith("$Cl") || x.name.startsWith("$Cw") || x.name.startsWith("$Cf")
+    case x: CangjieReference => SignatureType.isCangjieLambdaName(x.name)
+    case x: InstantiatedReference => SignatureType.isCangjieLambdaName(x.name)
     case _ => false
   }
 
   final def isCangjieLambdaSuper: Boolean = this match {
-    case x: CangjieReference => x.name.startsWith("$Ci")
-    case x: InstantiatedReference => x.name.startsWith("$Cg")
+    case x: CangjieReference => SignatureType.isCangjieLambdaSuperName(x.name)
+    case x: InstantiatedReference => SignatureType.isCangjieLambdaSuperName(x.name)
     case _ => false
   }
 
@@ -420,6 +420,34 @@ object SignatureType {
       case sig: Proper  => sig
     }
   }
+
+  // Prefixes of compiler-generated closure classes. These are used to classify a
+  // mangled name without materializing a full [[SignatureType]].
+  private final val CangjieClosurePrefix = "$C"
+  // Lambda implementation classes ($Cl/$Cw/$Cf). Their name alone does not encode
+  // the package/type, so distinct instantiations can collide and must be
+  // disambiguated by package qualification.
+  private final val CangjieLambdaPrefixes = Seq("$Cl", "$Cw", "$Cf")
+  // Closure super classes ($Ci/$Cg). Their name already encodes the full functional
+  // type, so structurally identical classes are safely shared across packages.
+  private final val CangjieLambdaSuperPrefixes = Seq("$Ci", "$Cg")
+
+  /** Strips an optional leading `packageName:` qualifier, so prefix checks keep
+    * working for closure classes that were qualified by package. */
+  private def unqualifiedName(name: String): String = {
+    val i = name.lastIndexOf(':')
+    if (i >= 0) name.substring(i + 1) else name
+  }
+
+  private def hasAnyPrefix(name: String, prefixes: Seq[String]): Boolean =
+    prefixes.exists(p => name.startsWith(p) || unqualifiedName(name).startsWith(p))
+
+  def isCangjieClosureName(name: String): Boolean =
+    name.startsWith(CangjieClosurePrefix) || unqualifiedName(name).startsWith(CangjieClosurePrefix)
+
+  def isCangjieLambdaName(name: String): Boolean = hasAnyPrefix(name, CangjieLambdaPrefixes)
+
+  def isCangjieLambdaSuperName(name: String): Boolean = hasAnyPrefix(name, CangjieLambdaSuperPrefixes)
 
   object Primitive {
     private val primitives = Array[Primitive](
