@@ -79,7 +79,7 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
         ""
       }
       getOverrideSrcFuncType(v) match {
-        case Some(funcType) if !isOperator =>
+        case Some(funcType) =>
           val f = v.asInstanceOf[CHIR.Func]
           val d = wrappedMethod.getOrElse(v).declaringDef.get
           val vtableFuncs = d.vtables.flatMap(_.vMethods)
@@ -91,8 +91,12 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
           }
         case _ =>
           // TODO: there must be another simpler way to cover all of the edge cases
-          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || isWrappedMethod ||
-            (wrappedMethod.nonEmpty && !isOperator) || (isPackageGlobal && isPrivate)) {
+          val vtableInstance = v match {
+            case f: CHIR.Func => isVTableInstance(f)
+            case _: CHIR.GlobalVar => false
+          }
+          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || !vtableInstance ||
+            (isPackageGlobal && isPrivate)) {
             identifier.tail
           } else {
             srcName + suffix
@@ -258,6 +262,11 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   def getMethodWrappers(f: CHIR.Func): Seq[CHIR.Func] = {
     wrappedMethodsCache.getOrElse(f, Seq.empty)
   }
+
+  def isVTableInstance(f: CHIR.Func): Boolean = vtableInstances.contains(f)
+
+  private lazy val vtableInstances: Set[CHIR.Func] =
+    pkg.typeDefs.flatMap(_.vtables).flatMap(_.vMethods).map(_.instance).toSet
 
   def getWrappedMethod(f: CHIR.Func): Option[CHIR.Func] = {
     val ms = f.annotations.collect { case m: CHIR.WrappedRawMethod => m.rawMethod }
