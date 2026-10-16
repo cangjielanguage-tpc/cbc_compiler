@@ -535,6 +535,8 @@ API/std/unittest/new_test_dsl/strategy.cj
 API/std/unittest/prop_test/arbitrary_range/arbitrary_range_inrange.cj
 API/std/unittest/prop_test/full/shrink_mix_order.cj
 API/std/unittest/prop_test/full/strategy_macro.cj
+API/std/unittest/prop_test/arbitrary_range/arbitrary_range_integer_imaginable_signed.cj
+API/std/unittest/prop_test/arbitrary_range/arbitrary_range_integer_imaginable_unsigned.cj
 compiler/Mangle/MangledName/mangle15_boxed_base_decl.cj
 
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
@@ -559,6 +561,46 @@ compiler/CHIR/AST2CHIR/bugfix/bugfix3/main.cj
 compiler/CJCov/generic_class_static_var.cj
 compiler/Macro/basic_expansion/interface_static.cj
 compiler/Parser/ar/parse_support_keyword_context/decl/interface.cj
+compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_40.cj
+compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_41.cj
+compiler/CHIR/CHIR2HLIR/typeAlias/typealias_use_20.cj
+compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
+compiler/CHIR/InvokeStatic/invokeStaticRtti.cj
+compiler/CHIR/UG/VTable/generic/static/interface_class03.cj
+compiler/CHIR/UG/VTable/generic/static/interface_extend01.cj
+compiler/CHIR/annotation/package02/Anno_Incre.cj
+compiler/CHIROptTest/DevirtStatics/genericInterface.cj
+compiler/CodegenCJNative/LegacyTests/class_static.cj
+compiler/CodegenCJNative/generic/generic_class_static_var.cj
+compiler/CodegenCJNative/generic/generic_interface_static.cj
+compiler/Sema/Extend/default_implement/default_implement_00/main.cj
+compiler/Sema/Extend/default_implement/default_implement_05.cj
+compiler/Sema/Extend/default_implement/default_implement_06.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_01.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_02.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_03.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_04.cj
+compiler/Sema/call/call13.cj
+compiler/Sema/class/class_inheritance_5.cj
+compiler/Sema/class/class_redef_1.cj
+compiler/Sema/class/class_static_member_func_inheritance_1.cj
+compiler/Sema/class/class_static_member_func_inheritance_2.cj
+compiler/Sema/class/interface_access_control/toplevel_interface_access_control1/main.cj
+compiler/Sema/class/interface_member_variable_check_04.cj
+compiler/Sema/class/interface_no_override_modifier_2.cj
+compiler/Sema/class/interface_static_member_func_inheritance_1.cj
+compiler/Sema/function/interface_def_val.cj
+compiler/Sema/generics/interface_nongeneric_implements_generic.cj
+compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic01.cj
+compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic02.cj
+compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic06.cj
+compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic07.cj
+compiler/Sema/interface/interface_default_impl/prop_call_unimpl_static_func.cj
+compiler/Sema/interface/interface_default_impl/static_defaule_impl_class.cj
+compiler/Sema/interface/interface_default_impl/static_func_call_unimpl_prop.cj
+compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_005.cj
+compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
+compiler/Sema/typealias/typealias_partial_infer_03.cj
 
 # ignore due to timeouts and environmental problems
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
@@ -644,6 +686,12 @@ compiler/Sema/box/import_inline_box_01/main.cj
 compiler/Sema/enum/enum34_test/main.cj
 compiler/Sema/generics/instantiation_rearrange_02/test.cj
 compiler/Sema/generics/pkgs0018_multi_packages_rhombus_import/pkgs0018004a.cj
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix4/use_interface_def_imple_094.cj
+compiler/CHIR/StaticAbstractMark/import3/main.cj
+compiler/CHIR/StaticAbstractMark/import5/main.cj
+compiler/Sema/generics/generic_member10/main.cj
+compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
+compiler/Sema/typealias/import_alias/typeaslias.cj
 
 # bug 150 (SIGABRT in the GC write barrier)
 API/std/collection/concurrent/test_concurrent_hashmap.cj
@@ -651,6 +699,7 @@ API/std/deriving/arbitrary_t_test.cj
 API/std/unittest/examples/advance1.cj
 API/std/unittest/api/reporters/csv_case.cj
 API/std/unittest/api/serialization/test_datamodel_seq.cj
+compiler/Mangle/MangledName/new_mangle_fuzz_02.cj
 
 # bug 152 (MatchError: com.huawei.excelsior.jet.compiler.chir.v13002.GenericTypeImpl)
 API/std/unittest/custom_assertions/custom_assert_return.cj
@@ -744,10 +793,24 @@ compiler/Sema/enum/enum45_generic_extend_staticFunc.cj
 API/std/collection/test_TreeMap.cj
 API/std/math/numeric/decimal/test_typecast.cj
 API/std/unittest/macro_test_no_remove_mod.cj
+compiler/CodegenCJNative/class/class_extend_interface/class_extend_interface.cj
+compiler/CodegenCJNative/class/class_extend_interface/vtable_2.cj
+compiler/Sema/Extend/extend_interface1.cj
+compiler/Sema/Extend/extend_supertype1.cj
+compiler/Sema/Extend/extend_supertype2.cj
+compiler/Sema/Extend/extend_supertype3.cj
+compiler/Sema/Extend/extend_supertype4.cj
+compiler/Sema/Extend/extend_supertype5.cj
+compiler/Sema/Extend/extend_supertype6.cj
+compiler/Sema/Extend/interface_default_implement/other_pkg_prop_virtual/main.cj
+compiler/Sema/Extend/interface_default_implement/prop_call_virtual.cj
+compiler/Sema/box/call_boxed_super_01.cj
+compiler/Sema/box/call_boxed_super_02.cj
 
 # bug 158 (Check failed: IsMarkedObject(offset) )
 API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
 API/std/collection/concurrent/test_concurrent_hashmap_init_extend.cj
+API/std/collection/concurrent/test_non_blocking_queue.cj
 
 # bug 161 (io/fs related bugs (environment or miscompilation of foreigns, need investigation))
 API/std/io/ByteBuffer/test_setLength.cj
@@ -756,3 +819,41 @@ API/std/fs/file/test_seekable.cj
 API/std/io/BufferedInputStream/test_seekable.cj
 API/std/fs/test_fs_file_coverage.cj
 API/std/io/StringReader/test_seekable.cj
+
+# bug 163 (assertion failed Types$ValueType$.fromSig(Types.scala:333))
+API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
+compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_3.cj
+compiler/Sema/exception/exception_throw_02.cj
+
+# bug 164 (scala.MatchError: (class std.core:Object,null) (of class scala.Tuple2))
+API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods_interface.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/multiple_foreigns.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/separate_with_mock_support.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/overloading.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/properties.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/staticFields.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/staticMethods.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/staticRefExpr.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/topLevelVariables.cj
+API/std/unittest/mock/compiler/misc/static_member_ref.cj
+API/std/unittest/mock/compiler/misc/stress_mocks_test.cj
+API/std/unittest/mock/compiler/misc/top_level_var_member_access.cj
+API/std/unittest/mock/compiler/separate/basic/main_assign_test.cj
+API/std/unittest/mock/compiler/separate/basic/main_test.cj
+API/std/unittest/mock/compiler/separate/errors/main_test_no_error.cj
+API/std/unittest/mock/framework/topLevelFunctions.cj
+API/std/unittest/mock/framework/top_level_decl_stubs_parsing.cj
+
+# bug 165 (java.lang.NullPointerException: Cannot invoke "com.huawei.excelsior.jet.compiler.types.ReferenceTypes$ReferenceType.isFinal()" because "root" is null)
+API/std/unittest/mock/compiler/ensurePreparedToMock/onlyTestMode.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/properWritingHandlerDecls.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/topLevelFunctions.cj
+
+# bug 166 (assertion failed: ObjectOperationNodes$New.<init>(ObjectOperationNodes.scala:562))
+compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_07.cj
+compiler/Sema/lambda/test_fold.cj
+
+# bug 167 (unexpected StackOverflowError while executing `main` (function with backticks in name))
+compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
+compiler/Mangle/MangledName/mangle14_c_struct_overload.cj
+compiler/Sema/function/raw_init_main.cj
