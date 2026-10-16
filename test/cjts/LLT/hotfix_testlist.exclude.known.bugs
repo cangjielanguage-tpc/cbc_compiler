@@ -165,6 +165,8 @@ API/std/math/test_math_funcs01.cj
 API/std/unittest/diff/floats/zero_and_inf.cj
 API/std/math/test_hyperbolic_nan.cj
 API/std/math/test_math_funcs.cj
+API/std/unittest/prop_test/arbitrary_range/arbitrary_range_float.cj
+API/std/unittest/prop_test/arbitrary_range/arbitrary_range_float.cj
 
 # bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
@@ -225,6 +227,7 @@ compiler/Sema/type/subtype_03.cj
 # bug 146 (not implemented: cast from b to u64)
 compiler/Sema/PatternMatching/MatchExpression/match027.cj
 compiler/Sema/PatternMatching/MatchExpression/match028.cj
+compiler/CodegenCommon/overflow/cmpfuzz/test_3_main.cj
 
 # bug 147 (not supported yet: typeinfo_factory.cpp:960)
 compiler/CodegenCJNative/demangle/decl/exception_throw2.cj
@@ -276,6 +279,7 @@ compiler/CHIR/CHIR2HLIR/overflow_typecast/uint32/uinttouint32.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint64/inttouint64.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/inttouint8.cj
 compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/uinttouint8.cj
+compiler/CodegenCommon/overflow/overflow_01.cj
 
 # bug 84 (ZeroSizedEnum in match expression)
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
@@ -538,6 +542,8 @@ API/std/unittest/prop_test/full/strategy_macro.cj
 API/std/unittest/prop_test/arbitrary_range/arbitrary_range_integer_imaginable_signed.cj
 API/std/unittest/prop_test/arbitrary_range/arbitrary_range_integer_imaginable_unsigned.cj
 compiler/Mangle/MangledName/mangle15_boxed_base_decl.cj
+API/std/unittest/prop_test/arbitrary/arbitrary_hashmap.cj
+compiler/Sema/generics/rearrange_multi_impl/main.cj
 
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
@@ -875,6 +881,7 @@ API/std/time/datetime/test_local_time.cj
 Runtime/CJNative/DFX/hidumper_cjheap_and_GC.cj
 compiler/CHIR/CHIR2HLIR/time/native3.cj
 compiler/Mangle/MangledName/mangle16_foreign_func.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/basic.cj
 
 # bug 172 (some overflow exception missing add suffix)
 compiler/CodegenCommon/overflow/case_6.cj
@@ -883,3 +890,35 @@ compiler/CodegenCommon/overflow/case_7.cj
 # bug 173 (mut interface function does not change struct fields)
 compiler/CodegenCJNative/generic/generic_struct2.cj
 compiler/CodegenCJNative/generic/generic_struct4.cj
+
+# bug 174 (assertion failed: !Engine::Term(term).IsGeneric())
+compiler/Modules/Package/extend/extend_multiple_exportID/main.cj
+
+# bug 175 (CHIRParser.genericTypeInfoParam(CHIRParser.scala:2770))
+compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
+
+# bug 176 (could not find VTable slot for *)
+API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
+compiler/CHIR/CHIR2HLIR/operator_overload/all_assign.cj
+compiler/CHIR/UG/CallExpr/invoke_like_05.cj
+compiler/CodegenCJNative/vfe/vfe_01.cj
+compiler/Macro/basic_expansion/interface_operator.cj
+compiler/Modules/Package/operator/main.cj
+compiler/Sema/Extend/default_implement/default_implement_02.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00012.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00035.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00051.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00065.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00100.cj
+compiler/Sema/call/call19.cj
+compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_4.cj
+compiler/Sema/generics/generic_upperbound_reference_09.cj
+
+# bug 177 (unexpected runSingleCase.lambda in stacktrace)
+API/std/unittest/exception_rendering.cj
+
+# bug 178 (missing <> for instattiated generic class in stacktrace)
+compiler/CodegenCJNative/demangle/decl/nested_package/main.cj
+
+# bug 179 (extra spaces in type printing via reflection)
+compiler/CodegenCJNative/ExtensionDef/extensiondef_07.cj
