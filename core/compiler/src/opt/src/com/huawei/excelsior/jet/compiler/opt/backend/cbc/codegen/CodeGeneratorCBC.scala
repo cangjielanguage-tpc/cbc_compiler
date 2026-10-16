@@ -725,21 +725,29 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     private def genCopyStructure(c: CopyStructure): Unit = {
       val adapter = asm.adapter
 
-      def produce(node: Node) = valueOf(node).producer
+      def isLocalBase(node: Node) = valueOf(node).producer.isInstanceOf[DerivedPtr.Local]
 
       val IReg(dst) = c.dst
       val IReg(src) = c.src
       val sig = adapter.sigType(CodeSigSymbol(c.structureType))
+      val dstLocal = isLocalBase(c.dstBaseRef)
+      val srcLocal = isLocalBase(c.srcBaseRef)
 
-      (produce(c.dstBaseRef), produce(c.srcBaseRef)) match {
-        case (_ : DerivedPtr.Local, _ : DerivedPtr.Local) => asm.copyLocal(dst, src, sig)
-        case (IReg(dstBase), _ : DerivedPtr.Local) => asm.copyFromLocal(dstBase, dst, src, sig)
-        case (_ : DerivedPtr.Local, IReg(srcBase)) => asm.copyToLocal(dst, srcBase, src, sig)
-        case (IReg(dstBase), IReg(srcBase)) => asm.copy(dstBase, dst, srcBase, src, sig)
-        case _ => shouldNotReachHere(c)
+      (dstLocal, srcLocal) match {
+        case (true, true) => asm.copyLocal(dst, src, sig)
+        case (false, true) =>
+          val IReg(dstBase) = c.dstBaseRef
+          asm.copyFromLocal(dstBase, dst, src, sig)
+        case (true, false) =>
+          val IReg(srcBase) = c.srcBaseRef
+          asm.copyToLocal(dst, srcBase, src, sig)
+        case (false, false) =>
+          val IReg(dstBase) = c.dstBaseRef
+          val IReg(srcBase) = c.srcBaseRef
+          asm.copy(dstBase, dst, srcBase, src, sig)
       }
 
-      if (produce(c.dstBaseRef).isInstanceOf[DerivedPtr.Local]) {
+      if (dstLocal) {
         mark(dst, LocalType.CLEARED)
       }
     }
@@ -816,21 +824,29 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genCopyStructureGeneric(c: CopyStructureGeneric): Unit = {
-      def produce(node: Node) = valueOf(node).producer
+      def isLocalBase(node: Node) = valueOf(node).producer.isInstanceOf[DerivedPtr.Local]
 
       val IReg(dst) = c.dst
       val IReg(src) = c.src
       val IReg(ti) = c.typeInfo
+      val dstLocal = isLocalBase(c.dstBaseRef)
+      val srcLocal = isLocalBase(c.srcBaseRef)
 
-      (produce(c.dstBaseRef), produce(c.srcBaseRef)) match {
-        case (_ : DerivedPtr.Local, _ : DerivedPtr.Local) => asm.copyLocal(dst, src, ti)
-        case (IReg(dstBase), _ : DerivedPtr.Local) => asm.copyFromLocal(dstBase, dst, src, ti)
-        case (_ : DerivedPtr.Local, IReg(srcBase)) => asm.copyToLocal(dst, srcBase, src, ti)
-        case (IReg(dstBase), IReg(srcBase)) => asm.copy(dstBase, dst, srcBase, src, ti)
-        case _ => shouldNotReachHere(c)
+      (dstLocal, srcLocal) match {
+        case (true, true) => asm.copyLocal(dst, src, ti)
+        case (false, true) =>
+          val IReg(dstBase) = c.dstBaseRef
+          asm.copyFromLocal(dstBase, dst, src, ti)
+        case (true, false) =>
+          val IReg(srcBase) = c.srcBaseRef
+          asm.copyToLocal(dst, srcBase, src, ti)
+        case (false, false) =>
+          val IReg(dstBase) = c.dstBaseRef
+          val IReg(srcBase) = c.srcBaseRef
+          asm.copy(dstBase, dst, srcBase, src, ti)
       }
 
-      if (produce(c.dstBaseRef).isInstanceOf[DerivedPtr.Local]) {
+      if (dstLocal) {
         mark(dst, LocalType.CLEARED)
       }
     }
