@@ -19,6 +19,11 @@ API/std/collection/test_ArrayList.cj
 API/std/sort/test_sort_arraylist.cj
 API/std/unittest/parallel/integration/restarts.cj
 API/std/core/test_thread.cj
+API/std/sort/test_sort_list.cj
+compiler/Sema/operator_overload/timeout_06.cj
+API/std/sort/test_stableSort.cj
+API/std/sort/test_arraySort.cj
+API/std/sort/test_sort_stable.cj
 
 # environment: SocketException: Socket is not connected
 API/std/socket/redesign/props/udp_props_readonly.cj
