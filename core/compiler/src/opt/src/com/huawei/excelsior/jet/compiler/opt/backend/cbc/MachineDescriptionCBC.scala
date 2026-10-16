@@ -91,6 +91,8 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
 
       case Edge(_: HasFrameSlot, _: Box) => true
 
+      case Edge(_: DerivedPtr.Local, _: (CopyStructure | CopyStructureGeneric)) => true
+
       case Edge(_: DerivedPtr.BaseHandle, _: GetStaticFieldSeqRef) => false
       case Edge(_: DerivedPtr.BaseHandle, op: FieldSeqOperation) => FieldSeqOperation.isConstOffset(op.fields)
 

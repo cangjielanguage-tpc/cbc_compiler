@@ -1112,12 +1112,52 @@ trait ForkedAssembler {
       .sym16(sig)
   }
 
+  def copyLocal(dst: IR, src: IR, sig: Signature): Unit = instr {
+    stream
+      .opc8(Opcode.CopyLocal)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .sym16(sig)
+  }
+    def copyFromLocal(dstBase: IR, dst: IR, src: IR, sig: Signature): Unit = instr {
+    stream
+      .opc8(Opcode.CopyFromLocal)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(0).w4(analyzer.useRec(src)))
+      .sym16(sig)
+  }
+    def copyToLocal(dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = instr {
+    stream
+      .opc8(Opcode.CopyToLocal)
+      .bits(_.w4(0).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .sym16(sig)
+  }
+
   def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = instr {
     stream
       .opc8(Opcode.CopyGeneric)
       .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
       .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
       .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
+   def copyLocal(dst: IR, src: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyLocalGeneric)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+    def copyFromLocal(dstBase: IR, dst: IR, src: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyFromLocalGeneric)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRec(src)).w4(analyzer.usePrim(ti)))
+  }
+    def copyToLocal(dst: IR, srcBase: IR, src: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyToLocalGeneric)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRef(srcBase)))
+      .bits(_.w4(analyzer.useRec(src)).w4(analyzer.usePrim(ti)))
   }
 
   def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = instr {
@@ -1423,6 +1463,12 @@ object Assembler {
     case CallClosureGeneric
     case LeaCForeign
     case CallCFunc
+    case CopyLocal
+    case CopyToLocal
+    case CopyFromLocal
+    case CopyLocalGeneric
+    case CopyToLocalGeneric
+    case CopyFromLocalGeneric
   }
 
   enum RegSymGroup extends Ordinal {
