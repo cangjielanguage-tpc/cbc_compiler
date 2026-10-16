@@ -8,6 +8,10 @@ shift
 
 cbc_file="${executable}.cbc"
 
+if [ -f ./.foreignlibspath ]; then
+    source ./.foreignlibspath
+fi
+
 if [ -f "$cbc_file" ]; then
     "$SCRIPT_DIR/../tools/bin/launcher" "$cbc_file" "${@}"
 else
