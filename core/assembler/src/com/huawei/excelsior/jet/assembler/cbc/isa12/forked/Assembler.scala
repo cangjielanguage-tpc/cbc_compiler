@@ -1133,6 +1133,27 @@ trait ForkedAssembler {
       .sym16(sig)
   }
 
+  def copyTypeSlot(dst: StackSlot.Typed, src: StackSlot.Typed): Unit = instr {
+    stream
+      .opc8(Opcode.CopyTypeSlot)
+      .ts16(dst)
+      .ts16(src)
+  }
+
+  def copyFromTypeSlot(dstBase: IR, dst: IR, src: StackSlot.Typed): Unit = instr {
+    stream
+      .opc8(Opcode.CopyFromTypeSlot)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .ts16(src)
+  }
+
+  def copyToTypeSlot(dst: StackSlot.Typed, srcBase: IR, src: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyToTypeSlot)
+      .ts16(dst)
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+  }
+
   def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = instr {
     stream
       .opc8(Opcode.CopyGeneric)
@@ -1158,6 +1179,30 @@ trait ForkedAssembler {
       .opc8(Opcode.CopyToLocalGeneric)
       .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRef(srcBase)))
       .bits(_.w4(analyzer.useRec(src)).w4(analyzer.usePrim(ti)))
+  }
+
+  def copyTypeSlot(dst: StackSlot.Typed, src: StackSlot.Typed, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyTypeSlotGeneric)
+      .ts16(dst)
+      .ts16(src)
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
+  def copyFromTypeSlot(dstBase: IR, dst: IR, src: StackSlot.Typed, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyFromTypeSlotGeneric)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .ts16(src)
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
+  def copyToTypeSlot(dst: StackSlot.Typed, srcBase: IR, src: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyToTypeSlotGeneric)
+      .ts16(dst)
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
   }
 
   def index(dst: IR, src: IR, idx: IR, sig: Signature): Unit = instr {
@@ -1469,6 +1514,12 @@ object Assembler {
     case CopyLocalGeneric
     case CopyToLocalGeneric
     case CopyFromLocalGeneric
+    case CopyTypeSlot
+    case CopyToTypeSlot
+    case CopyFromTypeSlot
+    case CopyTypeSlotGeneric
+    case CopyToTypeSlotGeneric
+    case CopyFromTypeSlotGeneric
   }
 
   enum RegSymGroup extends Ordinal {

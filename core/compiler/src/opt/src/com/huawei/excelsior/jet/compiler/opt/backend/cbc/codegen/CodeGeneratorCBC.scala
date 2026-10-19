@@ -722,33 +722,62 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
-    private def genCopyStructure(c: CopyStructure): Unit = {
-      val adapter = asm.adapter
+    private def isLocalCopyBase(baseRef: Node): Boolean =
+      valueOf(baseRef).producer.isInstanceOf[DerivedPtr.Local]
 
-      def isLocalBase(node: Node) = valueOf(node).producer.isInstanceOf[DerivedPtr.Local]
+    private def copyBaseReg(baseRef: Node): IR = if (isLocalCopyBase(baseRef)) {
+      IR.IRZ
+    } else {
+      val IReg(reg) = baseRef
+      reg
+    }
 
-      val IReg(dst) = c.dst
-      val IReg(src) = c.src
-      val sig = adapter.sigType(CodeSigSymbol(c.structureType))
-      val dstLocal = isLocalBase(c.dstBaseRef)
-      val srcLocal = isLocalBase(c.srcBaseRef)
-
-      (dstLocal, srcLocal) match {
-        case (true, true) => asm.copyLocal(dst, src, sig)
-        case (false, true) =>
-          val IReg(dstBase) = c.dstBaseRef
-          asm.copyFromLocal(dstBase, dst, src, sig)
-        case (true, false) =>
-          val IReg(srcBase) = c.srcBaseRef
-          asm.copyToLocal(dst, srcBase, src, sig)
-        case (false, false) =>
-          val IReg(dstBase) = c.dstBaseRef
-          val IReg(srcBase) = c.srcBaseRef
-          asm.copy(dstBase, dst, srcBase, src, sig)
+    private def typedSlot(node: Node): Option[StackSlot.Typed] = valueOf(node).producer match {
+      case sa: HasFrameSlot => sa.slot match {
+        case slot: TypedFrameSlotCBC => Some(slot.typedSlot)
+        case _ => None
       }
+      case _ => None
+    }
 
-      if (dstLocal) {
-        mark(dst, LocalType.CLEARED)
+    private def genCopyStructure(c: CopyStructure): Unit = {
+      val sig = asm.adapter.sigType(CodeSigSymbol(c.structureType))
+      val dstLocal = isLocalCopyBase(c.dstBaseRef)
+      val srcLocal = isLocalCopyBase(c.srcBaseRef)
+
+      (typedSlot(c.dst), typedSlot(c.src)) match {
+        case (Some(dst), Some(src)) => asm.copyTypeSlot(dst, src)
+        case (Some(dst), None) =>
+          val srcBase = copyBaseReg(c.srcBaseRef)
+          val IReg(src) = c.src
+          asm.copyToTypeSlot(dst, srcBase, src)
+        case (None, Some(src)) =>
+          val dstBase = copyBaseReg(c.dstBaseRef)
+          val IReg(dst) = c.dst
+          asm.copyFromTypeSlot(dstBase, dst, src)
+          if (dstLocal) {
+            mark(dst, LocalType.CLEARED)
+          }
+        case (None, None) =>
+          val IReg(dst) = c.dst
+          val IReg(src) = c.src
+          (dstLocal, srcLocal) match {
+            case (true, true) => asm.copyLocal(dst, src, sig)
+            case (false, true) =>
+              val IReg(dstBase) = c.dstBaseRef
+              asm.copyFromLocal(dstBase, dst, src, sig)
+            case (true, false) =>
+              val IReg(srcBase) = c.srcBaseRef
+              asm.copyToLocal(dst, srcBase, src, sig)
+            case (false, false) =>
+              val IReg(dstBase) = c.dstBaseRef
+              val IReg(srcBase) = c.srcBaseRef
+              asm.copy(dstBase, dst, srcBase, src, sig)
+          }
+
+          if (dstLocal) {
+            mark(dst, LocalType.CLEARED)
+          }
       }
     }
 
@@ -824,30 +853,43 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     }
 
     private def genCopyStructureGeneric(c: CopyStructureGeneric): Unit = {
-      def isLocalBase(node: Node) = valueOf(node).producer.isInstanceOf[DerivedPtr.Local]
-
-      val IReg(dst) = c.dst
-      val IReg(src) = c.src
       val IReg(ti) = c.typeInfo
-      val dstLocal = isLocalBase(c.dstBaseRef)
-      val srcLocal = isLocalBase(c.srcBaseRef)
+      val dstLocal = isLocalCopyBase(c.dstBaseRef)
+      val srcLocal = isLocalCopyBase(c.srcBaseRef)
 
-      (dstLocal, srcLocal) match {
-        case (true, true) => asm.copyLocal(dst, src, ti)
-        case (false, true) =>
-          val IReg(dstBase) = c.dstBaseRef
-          asm.copyFromLocal(dstBase, dst, src, ti)
-        case (true, false) =>
-          val IReg(srcBase) = c.srcBaseRef
-          asm.copyToLocal(dst, srcBase, src, ti)
-        case (false, false) =>
-          val IReg(dstBase) = c.dstBaseRef
-          val IReg(srcBase) = c.srcBaseRef
-          asm.copy(dstBase, dst, srcBase, src, ti)
-      }
+      (typedSlot(c.dst), typedSlot(c.src)) match {
+        case (Some(dst), Some(src)) => asm.copyTypeSlot(dst, src, ti)
+        case (Some(dst), None) =>
+          val srcBase = copyBaseReg(c.srcBaseRef)
+          val IReg(src) = c.src
+          asm.copyToTypeSlot(dst, srcBase, src, ti)
+        case (None, Some(src)) =>
+          val dstBase = copyBaseReg(c.dstBaseRef)
+          val IReg(dst) = c.dst
+          asm.copyFromTypeSlot(dstBase, dst, src, ti)
+          if (dstLocal) {
+            mark(dst, LocalType.CLEARED)
+          }
+        case (None, None) =>
+          val IReg(dst) = c.dst
+          val IReg(src) = c.src
+          (dstLocal, srcLocal) match {
+            case (true, true) => asm.copyLocal(dst, src, ti)
+            case (false, true) =>
+              val IReg(dstBase) = c.dstBaseRef
+              asm.copyFromLocal(dstBase, dst, src, ti)
+            case (true, false) =>
+              val IReg(srcBase) = c.srcBaseRef
+              asm.copyToLocal(dst, srcBase, src, ti)
+            case (false, false) =>
+              val IReg(dstBase) = c.dstBaseRef
+              val IReg(srcBase) = c.srcBaseRef
+              asm.copy(dstBase, dst, srcBase, src, ti)
+          }
 
-      if (dstLocal) {
-        mark(dst, LocalType.CLEARED)
+          if (dstLocal) {
+            mark(dst, LocalType.CLEARED)
+          }
       }
     }
 
