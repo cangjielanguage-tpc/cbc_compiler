@@ -1059,7 +1059,7 @@ trait CHIRParser
         // TODO: add instantiated type parameters to base MethodReference
         val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
         val target = if (lparams.nonEmpty) {
-          _target.toInstantiatedMethodReference(lparams, declType)
+          _target.toInstantiatedMethodReference(lparams, _target.refType.sigType)
         } else {
           _target
         }
