@@ -166,7 +166,6 @@ API/std/unittest/diff/floats/zero_and_inf.cj
 API/std/math/test_hyperbolic_nan.cj
 API/std/math/test_math_funcs.cj
 API/std/unittest/prop_test/arbitrary_range/arbitrary_range_float.cj
-API/std/unittest/prop_test/arbitrary_range/arbitrary_range_float.cj
 
 # bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
