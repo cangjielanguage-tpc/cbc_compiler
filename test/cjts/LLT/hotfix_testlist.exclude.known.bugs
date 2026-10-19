@@ -869,6 +869,12 @@ API/std/collection/test_Operation.cj
 API/std/collection/test_collection_endops_coverage.cj
 API/std/collection/test_collection_transformops_coverage.cj
 
+# bug 171 (Called unresolved AOT method)
+API/std/time/datetime/test_local_time.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/basic.cj
+Runtime/CJNative/DFX/hidumper_cjheap_and_GC.cj
+compiler/CHIR/CHIR2HLIR/time/native3.cj
+
 # bug 172 (some overflow exception missing add suffix)
 compiler/CodegenCommon/overflow/case_6.cj
 compiler/CodegenCommon/overflow/case_7.cj
