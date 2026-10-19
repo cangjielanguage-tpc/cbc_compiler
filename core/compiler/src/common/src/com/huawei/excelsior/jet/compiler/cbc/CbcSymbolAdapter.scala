@@ -46,7 +46,6 @@ trait CbcSymbolAdapter extends SymbolAdapter {
 
   private def methodRefFlags(mt: MethodType): MethodRefFlags = {
     val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
-    if (mt.isVarArgs) flags += MethodRefFlag.VARARG
     if (mt.hasRetByValParameter) flags += MethodRefFlag.SRET
     if (mt.hasOuterTypeInfoParameter) flags += MethodRefFlag.HAS_OUTER_TI
     if (mt.hasThisTypeInfoParameter) flags += MethodRefFlag.HAS_THIS_TI
