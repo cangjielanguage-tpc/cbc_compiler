@@ -105,7 +105,12 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         case _ => notImplemented(symbol.accessKind)
       }
       val signature = if (symbol.methodType.areVarArgsInitialized) {
-        symbol.methodType.signature.instantiate(cparams, Seq.empty).toCbc
+        val vaLabel = CbcFileFormat.BuiltinSignature.VarArgLabel
+        val sig0    = symbol.methodType.signature.instantiate(cparams, Seq.empty)
+        val params  = sig0.parameterTypes.take(mt.firstVarArg).map(_.toCbc) 
+          ++ Seq(vaLabel) 
+          ++ sig0.parameterTypes.drop(mt.firstVarArg).map(_.toCbc)
+        CbcFileFormat.Functional(params, sig0.returnType.toCbc)
       } else {
         symbol.method.getSignature.instantiate(cparams, Seq.empty).toCbc
       }
