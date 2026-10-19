@@ -279,6 +279,7 @@ compiler/DeMangle/Filename/fileHashcodeTest2.cj
 compiler/DeMangle/Operator/ge.cj
 compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl2.cj
 compiler/DeMangle/Operator/lt.cj
+API/std/core/exclusiveScope/exception.cj
 
 # ignore due to frontend error
 compiler/CHIROpt/VarInitCheck/InitOrder/circular1.cj
