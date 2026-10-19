@@ -194,7 +194,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
             builder.setEnumKind(TypeEnumKind.Union)
             builder.setUnionFields(ctors.map(ps => CbcFileFormat.Tuple(Seq(CbcFileFormat.BuiltinSignature.U32) ++ ps.map(_.toCbc))))
           case (CangjieEnumInfo.Kind.ClassBased, _) => // consider as class
-          case _ => shouldNotReachHere(eInfo)  
+          case _ => shouldNotReachHere(eInfo)
         }
       }
 
