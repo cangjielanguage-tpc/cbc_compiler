@@ -1117,10 +1117,7 @@ trait CHIRParser
             val namedCount = target.methodType.parameterCount
             val mt = target.methodType
             target = target.withMethodType(mt.copy(
-              signature = mt.signature.copy(
-                parameterTypes = mt.signature.parameterTypes.toSeq ++ paramTypes.drop(namedCount),
-                firstVarArg = Some(namedCount)
-              ),
+              signature = mt.signature.copy(parameterTypes = mt.signature.parameterTypes.toSeq ++ paramTypes.drop(namedCount)),
               callConv = CallConv.CCALL,
               isVarArgs = true,
               firstVarArg = namedCount))

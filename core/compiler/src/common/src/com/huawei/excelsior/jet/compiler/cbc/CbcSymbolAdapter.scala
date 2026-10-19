@@ -105,7 +105,10 @@ trait CbcSymbolAdapter extends SymbolAdapter {
         case _ => notImplemented(symbol.accessKind)
       }
       val signature = if (symbol.methodType.areVarArgsInitialized) {
-        symbol.methodType.signature.instantiate(cparams, Seq.empty).toCbc
+        val vaLabel = CbcFileFormat.BuiltinSignature.VarArgLabel
+        val sig0    = symbol.methodType.signature.instantiate(cparams, Seq.empty).toCbc.asInstanceOf[CbcFileFormat.Functional]
+        val params  = sig0.args.take(mt.firstVarArg) ++ Seq(vaLabel) ++ sig0.args.drop(mt.firstVarArg)
+        CbcFileFormat.Functional(params, sig0.result)
       } else {
         symbol.method.getSignature.instantiate(cparams, Seq.empty).toCbc
       }
@@ -182,14 +185,7 @@ object CbcSignatureAdapter {
 
     case SignatureType.ThisTypeInfo => CbcFileFormat.BuiltinSignature.IAddr
 
-    case mt: MethodSignature => {
-      val params0 = mt.parameterTypes.map(_.toCbc)
-      val params  = mt.firstVarArg match {
-        case None => params0
-        case Some(i) => params0.take(i) ++ Seq(CbcFileFormat.BuiltinSignature.VarArgLabel) ++ params0.drop(i)
-      }
-      CbcFileFormat.Functional(params, mt.returnType.toCbc)
-    }
+    case mt: MethodSignature => CbcFileFormat.Functional(mt.parameterTypes.map(_.toCbc), mt.returnType.toCbc)
 
     case sig: SignatureType.Record =>
       assert(!asClassType(sig).isUniversalGeneric, s"erased signature type: ${sig.toJETSignature}")
