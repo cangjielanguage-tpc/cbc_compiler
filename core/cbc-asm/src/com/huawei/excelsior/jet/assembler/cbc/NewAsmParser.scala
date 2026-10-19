@@ -1027,6 +1027,14 @@ private object InstructionParser {
   instr("cumul.16") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("cpow.16")  { (a, s) => a.cpow(s.ireg, s.ireg, s.ireg, Width.W16) }
 
+  // 8/16-bit checked shifts
+  instr("clsl.8")   { (a, s) => a.clsl(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("clsr.8")   { (a, s) => a.clsr(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("casr.8")   { (a, s) => a.casr(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("clsl.16")  { (a, s) => a.clsl(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("clsr.16")  { (a, s) => a.clsr(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("casr.16")  { (a, s) => a.casr(s.ireg, s.ireg, s.ireg, Width.W16) }
+
   // 32-bit checked arithmetic
   instr("cadd.32")  { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("csub.32")  { (a, s) => a.csub(s.ireg, s.ireg, s.ireg, Width.W32) }
@@ -1035,6 +1043,9 @@ private object InstructionParser {
   instr("cuadd.32") { (a, s) => a.cuadd(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("cusub.32") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("cumul.32") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("clsl.32")  { (a, s) => a.clsl(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("clsr.32")  { (a, s) => a.clsr(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("casr.32")  { (a, s) => a.casr(s.ireg, s.ireg, s.ireg, Width.W32) }
 
   // 64-bit checked arithmetic
   instr("cadd.64")  { (a, s) => a.cadd(s.ireg, s.ireg, s.ireg, Width.W64) }
@@ -1045,6 +1056,9 @@ private object InstructionParser {
   instr("cusub.64") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("cumul.64") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("cpow.64")  { (a, s) => a.cpow(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("clsl.64")  { (a, s) => a.clsl(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("clsr.64")  { (a, s) => a.clsr(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("casr.64")  { (a, s) => a.casr(s.ireg, s.ireg, s.ireg, Width.W64) }
 
   // 32-bit saturating arithmetic
   instr("sadd.32")  { (a, s) => a.sadd(s.ireg, s.ireg, s.ireg, Width.W32) }
@@ -1164,6 +1178,9 @@ private object InstructionParser {
   instr("cusubi.8") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("cumuli.8") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W8) }
   instr("cpowi.8")  { (a, s) => a.cpowi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("clsli.8")  { (a, s) => a.clsli(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("clsri.8")  { (a, s) => a.clsri(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("casri.8")  { (a, s) => a.casri(s.ireg, s.ireg, s.int, Width.W8) }
   instr("caddi.16")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("csubi.16")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("cmuli.16")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W16) }
@@ -1171,6 +1188,9 @@ private object InstructionParser {
   instr("cusubi.16") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("cumuli.16") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W16) }
   instr("cpowi.16")  { (a, s) => a.cpowi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("clsli.16")  { (a, s) => a.clsli(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("clsri.16")  { (a, s) => a.clsri(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("casri.16")  { (a, s) => a.casri(s.ireg, s.ireg, s.int, Width.W16) }
 
   // 32-bit checked immediate arithmetic
   instr("caddi.32")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W32) }
@@ -1179,6 +1199,9 @@ private object InstructionParser {
   instr("cuaddi.32") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("cusubi.32") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("cumuli.32") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("clsli.32")  { (a, s) => a.clsli(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("clsri.32")  { (a, s) => a.clsri(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("casri.32")  { (a, s) => a.casri(s.ireg, s.ireg, s.int, Width.W32) }
 
   // 64-bit checked immediate arithmetic
   instr("caddi.64")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W64) }
@@ -1188,6 +1211,9 @@ private object InstructionParser {
   instr("cusubi.64") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("cumuli.64") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W64) }
   instr("cpowi.64")  { (a, s) => a.cpowi(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("clsli.64")  { (a, s) => a.clsli(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("clsri.64")  { (a, s) => a.clsri(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("casri.64")  { (a, s) => a.casri(s.ireg, s.ireg, s.int, Width.W64) }
 
   // 32-bit float arithmetic
   instr("fadd.32") { (a, s) => a.fadd(Width.W32, s.freg, s.freg, s.freg) }
