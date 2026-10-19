@@ -43,9 +43,6 @@ compiler/Sema/const_evaluation/ok_class_ctor.cj
 API/std/core/test_mathextension.cj
 compiler/Mangle/MangledName/new_mangle_fuzz_01.cj
 
-# bug 143 (not implemented: assembler *)
-compiler/CodegenCommon/tuple/global_tuple_tuple.cj
-
 # bug 135 (not implemented: FLOAT16)
 compiler/CodegenCJNative/LegacyTests/typesFp16.cj
 compiler/CHIR/CHIR2HLIR/array/array_09.cj
