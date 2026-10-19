@@ -278,7 +278,9 @@ class FakeType private (val klass: Class[?], name: String, private val kind: Typ
     this
   }
 
-  override def isCHIRDef = shouldNotCallThis()
+  private var chirDef: Option[Boolean] = None
+  override def isCHIRDef = chirDef.getOrElse(shouldNotCallThis())
+  def setCHIRDef(value: Boolean): Unit = chirDef = Some(value)
 
   private var deferred = false
   override def isDeferred = deferred
