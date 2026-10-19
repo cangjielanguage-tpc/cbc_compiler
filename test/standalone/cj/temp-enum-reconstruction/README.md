@@ -41,18 +41,6 @@ python3 runner.py test --cangjie-home "$CANGJIE_HOME" --jc-options=-CHIRVersion=
 The runner builds both default and O2 inputs and launches each independently.
 Replace `13002` with `1203` only when using a matching native compiler/runtime.
 
-Compiler representation coverage is independent of SDK execution:
-
-```sh
-sbt 'compilerCommon/testOnly *CbcEnumEncodingSuite *ABISignatureSuite'
-```
-
-Nine encoding tests exercise interpreted/imported and generic/non-generic
-class enums, value enums, primitive/zero-sized enums and both option orders
-with primitive/reference payloads. They invoke the production enum definition
-encoder and signature adapter. The extracted encoder preserves the existing
-wire format and representation decisions.
-
 ## Recorded validation: 2026-10-19
 
 Source bases:
@@ -85,7 +73,7 @@ compiler, runtime, chir-diff and plugin sources were not changed.
 | Fixed engine, x86_64 Debug/Release, CHIR 13002, default/O2 | All four programs pass: 16 executions, under Docker emulation. |
 | CHIR 1203 to CBC, aarch64/x86_64 targets, default/O2 | All four programs compile: 16 compilations. |
 | CHIR 1203 execution on Linux | **Pending:** matching Linux SDK/runtime unavailable. Compilation used macOS Cangjie 1.0.0 from CJMP SDK 0.6.1.100-hotfix; it does not establish Linux execution. |
-| Compiler encoding + ABI signature suites | 68 passed (9 encoding, 59 ABI). |
+| ABI signature suite | 59 passed. |
 | Engine precommit, both Linux architectures, Debug/Release | 881 discovered per configuration, no failures, three pre-existing skips; all six new tests execute. |
 | Existing enum, AOT enum, option-cast and GC regressions | All 13 programs pass in default/O2 on each architecture with Release engines: 52 executions. |
 
@@ -135,9 +123,7 @@ disasm standalone/cj/temp-enum-reconstruction/default/generic.cbc
 
 Both modes have public `enum_support:NativeEnum` / `NativeGeneric` class
 definitions with a UInt32 tag field and empty union-enum field lists. Their
-signatures are references (`ref=1, rec=0`), including generic arguments. The
-unit encoding tests additionally check `NotEnum` and the absence of ENUM and
-RECORD flags.
+signatures are references (`ref=1, rec=0`), including generic arguments.
 
 The opaque program contains no `HiddenEnum` or `HiddenGeneric` names anywhere
 in its disassembly. Both kinds therefore enter CBC only through native generic

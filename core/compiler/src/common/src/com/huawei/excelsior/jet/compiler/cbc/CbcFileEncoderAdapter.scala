@@ -11,12 +11,13 @@ package com.huawei.excelsior.jet.compiler.cbc
 import com.huawei.excelsior.common.CodeHelpers
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.Segment
-import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, FieldFlag, MethodFlag, TypeFlag}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.{BuiltinSignature, FieldFlag, MethodFlag, TypeEnumKind, TypeFlag}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.{Assembler, LivenessInfoCollector}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
 import com.huawei.excelsior.jet.assembler.cbc.{CbcFileEncoder, CbcFileFormat, ExceptionTable, SourceCodeInfo}
 import com.huawei.excelsior.jet.compiler.TypeProvider
 import com.huawei.excelsior.jet.compiler.abi.XTableGenerator
+import com.huawei.excelsior.jet.compiler.cangjie.CangjieEnumInfo
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.GenerationTarget.CBC
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.{GenerationTarget, env}
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
@@ -28,6 +29,7 @@ import com.huawei.excelsior.jet.compiler.options.{BoolOption, StrOption}
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{NonNullableWrapper, NullableWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.*
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
+import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 import com.huawei.excelsior.jet.util.{Closure, Worklist}
 import xscala.io.{DataOutput, Path}
 
@@ -155,7 +157,46 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
         builder.setGenericConstraints(Seq.fill(t.getGenericInfo.constraints.size)(BuiltinSignature.Nil))
       }
 
-      if (t.isCangjieEnum) CbcEnumEncoding.write(t.getCangjieEnumInfo, builder)
+      if (t.isCangjieEnum) {
+        // TODO: store kind in symlevel type
+        def isNullableOption(base: SignatureType): Boolean = base match {
+          case _: SignatureType.OptionLikeEnum => false
+          case _ => base.isReference
+        }
+        val eInfo = t.getCangjieEnumInfo
+        val ctors = eInfo.constructors.map(_.params)
+        (eInfo.kind, ctors) match {
+          case (CangjieEnumInfo.Kind.OptionLike, Seq(Seq(base), Seq())) =>
+            builder.setEnumKind(TypeEnumKind.Option0)
+            val enumType = if (isNullableOption(base)) {
+              // Erase to avoid infinite recursion.
+              ReferenceType.cangjieStdCoreObject.sigType.toCbc
+            } else {
+              base.toCbc
+            }
+            builder.setSuperOrEnumType(enumType)
+          case (CangjieEnumInfo.Kind.OptionLike, Seq(Seq(), Seq(base))) =>
+            builder.setEnumKind(TypeEnumKind.Option1)
+            val enumType = if (isNullableOption(base)) {
+              // Erase to avoid infinite recursion.
+              ReferenceType.cangjieStdCoreObject.sigType.toCbc
+            } else {
+              base.toCbc
+            }
+            builder.setSuperOrEnumType(enumType)
+          case (CangjieEnumInfo.Kind.ZeroSized, _) =>
+            builder.setEnumKind(TypeEnumKind.Primitive)
+            builder.setSuperOrEnumType(CbcFileFormat.BuiltinSignature.Unit)
+          case (CangjieEnumInfo.Kind.PrimitiveBased, _) =>
+            builder.setEnumKind(TypeEnumKind.Primitive)
+            builder.setSuperOrEnumType(CbcFileFormat.BuiltinSignature.I32)
+          case (CangjieEnumInfo.Kind.UnionBased, _) =>
+            builder.setEnumKind(TypeEnumKind.Union)
+            builder.setUnionFields(ctors.map(ps => CbcFileFormat.Tuple(Seq(CbcFileFormat.BuiltinSignature.U32) ++ ps.map(_.toCbc))))
+          case (CangjieEnumInfo.Kind.ClassBased, _) => // consider as class
+          case _ => shouldNotReachHere(eInfo)
+        }
+      }
 
       buildFlags(builder)
 
@@ -177,10 +218,9 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       }
 
       val modifiers = t.getCJModifiers
-      if (!t.isCangjieEnum || !CbcEnumEncoding.isValueEnum(t.getCangjieEnumInfo)) {
-        if (t.isInterface) builder.addFlag(TypeFlag.INTERFACE)
-        else if (t.isRecord) builder.addFlag(TypeFlag.RECORD)
-      }
+      if (t.isCangjieEnum && t.getCangjieEnumInfo.kind != CangjieEnumInfo.Kind.ClassBased) builder.addFlag(TypeFlag.ENUM)
+      else if (t.isInterface) builder.addFlag(TypeFlag.INTERFACE)
+      else if (t.isRecord) builder.addFlag(TypeFlag.RECORD)
       if (t.isCangjieType && !modifiers.contains(Modifier.CJ_SEALED)) builder.addFlag(TypeFlag.SEALED)
 
       if (modifiers.contains(Modifier.PUBLIC)) {
