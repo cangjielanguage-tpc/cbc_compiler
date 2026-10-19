@@ -8,7 +8,7 @@
 
 package com.huawei.excelsior.jet.compiler.symlevel
 
-case class MethodSignature(returnType: SignatureType, parameterTypes: Seq[SignatureType]) extends Signature {
+case class MethodSignature(returnType: SignatureType, parameterTypes: Seq[SignatureType], firstVarArg: Option[Int] = None) extends Signature {
   def toJETSignature: String = s"(${parameterTypes.map(_.toJETSignature).mkString("_")})${returnType.toJETSignature}"
 
   def instantiate(cparams: Seq[SignatureType], lparams: Seq[SignatureType]): MethodSignature = {
@@ -30,7 +30,9 @@ case class MethodSignature(returnType: SignatureType, parameterTypes: Seq[Signat
 
 object MethodSignature {
   def apply(parameterTypes: SignatureType*)(returnType: SignatureType) = new MethodSignature(returnType, parameterTypes)
-  
+
+  def unapply(ms: MethodSignature) = Some(ms.returnType, ms.parameterTypes)
+
   def equalInstantiatedLegacy(instantiatedTypeParameters: Seq[SignatureType])(x: MethodSignature, y: MethodSignature): Boolean = {
     SignatureType.equalInstantiatedLegacy(instantiatedTypeParameters)(x.returnType, y.returnType) &&
       (x.parameterTypes zip y.parameterTypes forall SignatureType.equalInstantiatedLegacy(instantiatedTypeParameters))

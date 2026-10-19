@@ -182,7 +182,14 @@ object CbcSignatureAdapter {
 
     case SignatureType.ThisTypeInfo => CbcFileFormat.BuiltinSignature.IAddr
 
-    case mt: MethodSignature => CbcFileFormat.Functional(mt.parameterTypes.map(_.toCbc), mt.returnType.toCbc)
+    case mt: MethodSignature => {
+      val params0 = mt.parameterTypes.map(_.toCbc)
+      val params  = mt.firstVarArg match {
+        case None => params0
+        case Some(i) => params0.take(i) ++ Seq(CbcFileFormat.BuiltinSignature.VarArgLabel) ++ params0.drop(i)
+      }
+      CbcFileFormat.Functional(params, mt.returnType.toCbc)
+    }
 
     case sig: SignatureType.Record =>
       assert(!asClassType(sig).isUniversalGeneric, s"erased signature type: ${sig.toJETSignature}")
