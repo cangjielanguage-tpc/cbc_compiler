@@ -231,6 +231,7 @@ object CbcFileFormat {
     case FPRIM_RECEIVER extends MethodRefFlag(0x38, 0x8 * 6)
 
     case AOT          extends MethodRefFlag(0x40, 0x40)
+    case VARARG       extends MethodRefFlag(0x80, 0x80)
   }
 
   enum FieldFlag(val mask: Int) extends Flag {
