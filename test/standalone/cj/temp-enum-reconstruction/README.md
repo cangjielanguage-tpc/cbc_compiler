@@ -74,7 +74,7 @@ compiler, runtime, chir-diff and plugin sources were not changed.
 | CHIR 1203 to CBC, aarch64/x86_64 targets, default/O2 | All four programs compile: 16 compilations. |
 | CHIR 1203 execution on Linux | **Pending:** matching Linux SDK/runtime unavailable. Compilation used macOS Cangjie 1.0.0 from CJMP SDK 0.6.1.100-hotfix; it does not establish Linux execution. |
 | ABI signature suite | 59 passed. |
-| Engine precommit, both Linux architectures, Debug/Release | 881 discovered per configuration, no failures, three pre-existing skips; all six new tests execute. |
+| Engine precommit, both Linux architectures, Debug/Release | Passed in the recorded validation, with three pre-existing skips. |
 | Existing enum, AOT enum, option-cast and GC regressions | All 13 programs pass in default/O2 on each architecture with Release engines: 52 executions. |
 
 The existing regressions were selected with a filter file containing:
@@ -108,10 +108,22 @@ async def main():
 asyncio.run(main())
 ```
 
-Engine precommit commands and its existing skips are documented in the
-engine's `test/typeinfo_reconstruction.md`. The initial stale assembler and
-wrong-target CBC compiler artifact were replaced before the recorded passing
-runs. No compatibility exception or exclusion was added for those setup errors.
+Engine precommit used Clang/lld 19.1.7, CMake 3.25.1 and local GoogleTest
+1.12.1 in Debian bookworm containers. The existing skips were `CbcTest.Empty`,
+`CbcTest.SimpleArithFloat` and `OptionsInitFromString.ValueWithSpace`.
+From the engine directory inside each Linux container:
+
+```sh
+export LOCAL_GOOGLETESTS_PATH=/usr/src/googletest
+python3 -c 'import argparse, build, platform; build.precommit(argparse.Namespace(target_os="linux", target_arch=platform.machine(), jobs=4), "/workspace/cbc-engine-initial-stage", "/tmp/f08-final-precommit")'
+```
+
+The build directory was placed on the container filesystem to avoid a
+transient working-directory error when recreating directories on the source
+bind mount. On a native checkout, use `python3 build.py precommit -j 4`.
+The initial stale assembler and wrong-target CBC compiler artifact were
+replaced before the recorded passing runs. No compatibility exception or
+exclusion was added for those setup errors.
 
 ## Metadata and cold-lookup evidence
 
