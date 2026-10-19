@@ -471,7 +471,7 @@ trait CHIRParser
 
         super.foreachPair(that)(action)
       }
-      
+
       def valueOfFunc(f: CHIR.Func): Node = {
         val declClass = f.declaringDef.flatMap(resolver.symType).map(asClassType).getOrElse(resolver.findClass(f.packageName).get)
         val isStatic = declClass.isCangjiePackage || f.attributes.contains(CHIR.Attribute.Static)
@@ -1806,7 +1806,7 @@ trait CHIRParser
         def intConst(v: Long, l: CHIR.Literal): Node = {
           l.tpe match {
             case CHIR.BuiltinType.Int8 | CHIR.BuiltinType.Int16 | CHIR.BuiltinType.Int32 |
-                 CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 | 
+                 CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 |
                  CHIR.BuiltinType.Boolean |
                  CHIR.BuiltinType.Rune => IConst(v.toInt)
             case CHIR.BuiltinType.Int64 | CHIR.BuiltinType.IntNative |
@@ -2265,6 +2265,17 @@ trait CHIRParser
       }
       assert(method != null, s"cannot find method '$name' with signature '${sig.toJETSignature}' in class '${declType.getName}'")
 
+      def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
+        val cparams = genericParams(refType)
+        val lparams = Seq.empty
+
+        val refClass = asClassType(refType)
+        Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
+          refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
+      }
+
+      val refinedRefType = (Iterator(refType) ++ refineSuperTypes(refType)).find(t => asClassType(t) == declType).get
+
       val mak =
         if (method.isCangjieMut) {
           MAK.MUT
@@ -2273,7 +2284,7 @@ trait CHIRParser
         } else {
           MAK.SPECIAL
         }
-      new MethodReference(method, mak, CompiledType(refType))
+      new MethodReference(method, mak, CompiledType(refinedRefType))
     }
 
     private def calcABIArgs(target: MethodReference, args: Seq[Node])(paramNode: SpecialParameter => Iterable[Node]): Seq[Node] = {
