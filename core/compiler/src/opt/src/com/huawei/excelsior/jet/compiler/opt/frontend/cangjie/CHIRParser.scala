@@ -1090,18 +1090,29 @@ trait CHIRParser
             case _ => SignatureType.fromSymType(declClass)
           }
 
+          def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
+            val cparams = genericParams(refType)
+            val lparams = Seq.empty
+
+            val refClass = asClassType(refType)
+            Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
+              refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
+          }
+
+          val refType = (Iterator(declType) ++ refineSuperTypes(declType)).find(t => asClassType(t) == declClass).get
+
           val name = resolver.symName(func)
-          val _target = calcMethodRef(declClass, declType, name, func)
+          val _target = calcMethodRef(declClass, refType, name, func)
 
           // TODO: add instantiated type parameters to base MethodReference
           val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
           var target = if (lparams.nonEmpty) {
-            _target.toInstantiatedMethodReference(lparams, declType)
+            _target.toInstantiatedMethodReference(lparams, refType)
           } else {
             _target
           }
           val argVals = e.args
-          val outerType = if (asClassType(declType).isCangjieExtend) thisType else Some(declType)
+          val outerType = if (asClassType(refType).isCangjieExtend) thisType else Some(refType)
 
           val args = argVals match {
             case Seq(gv: CHIR.GlobalVar, rest: _*) =>

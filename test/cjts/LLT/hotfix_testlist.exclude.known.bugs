@@ -528,68 +528,10 @@ compiler/Sema/generics/instantiation/instantiation007.cj
 compiler/Sema/generics/instantiation_rearrange_01/test.cj
 compiler/Sema/generics/generic_static_field_prop/generic_static_nested_func.cj
 
-# bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
-compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
-compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass02.cj
-
 # bug 120 (cbc_engine: Conflict found for reference)
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
 compiler/Sema/class/class_no_override_modifier_6.cj
 compiler/Sema/Extend/default_implement/default_implement_04.cj
-
-# bug 122 (fail to resolve method)
-compiler/CHIR/UG/VTable/generic/static/class_class02.cj
-compiler/Sema/Extend/extend_imp_type.cj
-compiler/CHIR/CHIR2HLIR/class/class_property/chir_class_property1.cj
-compiler/Sema/class/class_access_control23.cj
-compiler/Sema/class/class_property/property22.cj
-compiler/Sema/class/class_property/property25.cj
-Runtime/CJNative/Class/Define/class_function_04.cj
-Runtime/CJNative/Interface/interface_static_01.cj
-compiler/CHIR/AST2CHIR/bugfix/bugfix3/main.cj
-compiler/CJCov/generic_class_static_var.cj
-compiler/Macro/basic_expansion/interface_static.cj
-compiler/Parser/ar/parse_support_keyword_context/decl/interface.cj
-compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_40.cj
-compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_41.cj
-compiler/CHIR/CHIR2HLIR/typeAlias/typealias_use_20.cj
-compiler/CHIR/InvokeStatic/callstatic_ininstance.cj
-compiler/CHIR/InvokeStatic/invokeStaticRtti.cj
-compiler/CHIR/UG/VTable/generic/static/interface_class03.cj
-compiler/CHIR/UG/VTable/generic/static/interface_extend01.cj
-compiler/CHIR/annotation/package02/Anno_Incre.cj
-compiler/CHIROptTest/DevirtStatics/genericInterface.cj
-compiler/CodegenCJNative/LegacyTests/class_static.cj
-compiler/CodegenCJNative/generic/generic_class_static_var.cj
-compiler/CodegenCJNative/generic/generic_interface_static.cj
-compiler/Sema/Extend/default_implement/default_implement_00/main.cj
-compiler/Sema/Extend/default_implement/default_implement_05.cj
-compiler/Sema/Extend/default_implement/default_implement_06.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_01.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_02.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_03.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_04.cj
-compiler/Sema/call/call13.cj
-compiler/Sema/class/class_inheritance_5.cj
-compiler/Sema/class/class_redef_1.cj
-compiler/Sema/class/class_static_member_func_inheritance_1.cj
-compiler/Sema/class/class_static_member_func_inheritance_2.cj
-compiler/Sema/class/interface_access_control/toplevel_interface_access_control1/main.cj
-compiler/Sema/class/interface_member_variable_check_04.cj
-compiler/Sema/class/interface_no_override_modifier_2.cj
-compiler/Sema/class/interface_static_member_func_inheritance_1.cj
-compiler/Sema/function/interface_def_val.cj
-compiler/Sema/generics/interface_nongeneric_implements_generic.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic01.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic02.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic06.cj
-compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic07.cj
-compiler/Sema/interface/interface_default_impl/prop_call_unimpl_static_func.cj
-compiler/Sema/interface/interface_default_impl/static_defaule_impl_class.cj
-compiler/Sema/interface/interface_default_impl/static_func_call_unimpl_prop.cj
-compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_005.cj
-compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
-compiler/Sema/typealias/typealias_partial_infer_03.cj
 
 # ignore due to timeouts and environmental problems
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
