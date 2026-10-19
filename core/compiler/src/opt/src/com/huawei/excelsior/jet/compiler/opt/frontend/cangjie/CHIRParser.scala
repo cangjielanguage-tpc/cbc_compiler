@@ -2192,6 +2192,17 @@ trait CHIRParser
       val method = rawMethod.getOrElse(publicMethod)
       assert(method != null, s"cannot find method '$name' with signature '${sig.toJETSignature}' in class '${declType.getName}'")
 
+      def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
+        val cparams = genericParams(refType)
+        val lparams = Seq.empty
+
+        val refClass = asClassType(refType)
+        Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
+          refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
+      }
+
+      val refinedRefType = (Iterator(refType) ++ refineSuperTypes(refType)).find(t => asClassType(t) == declType).get
+
       val mak =
         if (method.isCangjieMut) {
           MAK.MUT
@@ -2200,7 +2211,7 @@ trait CHIRParser
         } else {
           MAK.SPECIAL
         }
-      val target = new MethodReference(method, mak, CompiledType(refType))
+      val target = new MethodReference(method, mak, CompiledType(refinedRefType))
       assert(vararg == target.method.isVarArgs)
       if (vararg) {
         notImplemented("vararg")
