@@ -57,6 +57,8 @@ object CbcFileFormat {
     case F16 extends BuiltinSignature(0x11)
     case F32 extends BuiltinSignature(0x12)
     case F64 extends BuiltinSignature(0x13)
+    // Synthetic signatures
+    case VarArgLabel extends BuiltinSignature(0x14)
 
     def isReference = false
     def needsFstWrapper: Boolean = false
@@ -120,7 +122,7 @@ object CbcFileFormat {
   case class ClassTypeVariable(id: Int) extends TypeVariable
 
   object BuiltinSignature {
-    def count: Int = BuiltinSignature.F64.id + 1
+    def count: Int = BuiltinSignature.VarArgLabel.id + 1
     def unapply(sig: BuiltinSignature): Option[Int] = Some(sig.id)
   }
 

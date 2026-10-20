@@ -27,7 +27,7 @@ class ABICBCAArch64 private[cbc](_methodType: MethodType) extends ABI[IR, FR](_m
   }
 
   override protected def initLocations(iRegsQueue: ParamsQueue[IR], fRegsQueue: ParamsQueue[FR], _limit: Int) = {
-    assert((cc.isJET || cc.sourceCC == CCALL) && !isVarArgs && !hasAltLocationParametersOrResult)
+    assert((cc.isJET || cc.sourceCC == CCALL) && !hasAltLocationParametersOrResult)
 
     val locations = new Array[Location](parameterCount)
     var currTailSize = 0
