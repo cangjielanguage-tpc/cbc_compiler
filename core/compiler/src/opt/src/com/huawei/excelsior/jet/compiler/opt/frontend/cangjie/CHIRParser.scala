@@ -1725,6 +1725,9 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.CPointerInit1 =>
             state(e) = state(e.args.head)
 
+          case CHIR.Intrinsic.Kind.CStringInit =>
+            state(e) = state(e.args.head)
+
           case CHIR.Intrinsic.Kind.ArrayAcquireRawData =>
             val args = e.args
             val array = state(args.head)

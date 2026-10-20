@@ -441,6 +441,7 @@ object CHIR {
       case CPointerWrite
       case CPointerInit0
       case CPointerInit1
+      case CStringInit
       case ObjectZeroValue
       case Sqrt
       case Pow
