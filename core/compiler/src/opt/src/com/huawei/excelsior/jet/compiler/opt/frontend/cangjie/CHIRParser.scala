@@ -1781,7 +1781,7 @@ trait CHIRParser
                 // TODO pointer to a method?
                 shouldNotReachHere(cpointerType)
             }
-            
+
 
           case CHIR.Intrinsic.Kind.CPointerInit0 =>
             state(e) = LConst(0)
