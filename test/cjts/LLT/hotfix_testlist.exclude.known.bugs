@@ -267,20 +267,6 @@ compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_03.cj
 compiler/CodegenCJNative/LegacyTests/enum_nest.cj
 
 # bug 9 (Support runtime intrsinsics/calls in CBC)
-## CPOINTER_INIT0
-compiler/CodegenCJNative/demangle/type/cpointer_type1.cj
-compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
-compiler/CodegenCJNative/record/override_cpointer_generic_return_with_concrete_type.cj
-compiler/CodegenCHIR/cptr_cstr/init_01.cj
-compiler/CodegenCommon/cffi/foreign/c_ffi_00739/c_ffi.cj
-compiler/Sema/array/array_builin_ctype.cj
-compiler/Sema/Extend/default_implement/default_implement_01.cj
-compiler/Sema/varray/varray_cffi/varray_cstruct03.cj
-compiler/Sema/varray/varray_cffi/varray_cstruct04.cj
-## CPOINTER_INIT1
-compiler/FFI/CFFI/type_cast/type_cast_5.cj
-compiler/FFI/CFFI/type_cast/type_cast_8.cj
-compiler/FFI/CFFI/type_cast/type_cast_10.cj
 # blackBox
 compiler/CHIR/AST2CHIR/forin/benchmark_arraylist.cj
 compiler/CodegenCJNative/record/record_6.cj
