@@ -607,9 +607,6 @@ compiler/Sema/class/class_inheritance_9.cj
 # bug 184 (StackOverflowError in CangjieNodes$StoreFieldSeq.blockRef)
 API/std/collection/test_Concurrent.cj
 
-# bug 186 (compiler failure for @PowerAssert annotated source)
-API/std/unittest/powerAssert/nodeTypes/matchExpr.cj
-
 # bug 187 (exception at creation of empty HashMap<int32, CString>)
 compiler/CodegenCommon/lambda/lambda_cstring.cj
 
