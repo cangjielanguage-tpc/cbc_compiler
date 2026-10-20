@@ -749,26 +749,6 @@ API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
 compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_3.cj
 compiler/Sema/exception/exception_throw_02.cj
 
-# bug 164 (scala.MatchError: (class std.core:Object,null) (of class scala.Tuple2))
-API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods_interface.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/multiple_foreigns.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/separate_with_mock_support.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/overloading.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/properties.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/staticFields.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/staticMethods.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/staticRefExpr.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/topLevelVariables.cj
-API/std/unittest/mock/compiler/misc/static_member_ref.cj
-API/std/unittest/mock/compiler/misc/stress_mocks_test.cj
-API/std/unittest/mock/compiler/misc/top_level_var_member_access.cj
-API/std/unittest/mock/compiler/separate/basic/main_assign_test.cj
-API/std/unittest/mock/compiler/separate/basic/main_test.cj
-API/std/unittest/mock/compiler/separate/errors/main_test_no_error.cj
-API/std/unittest/mock/framework/topLevelFunctions.cj
-API/std/unittest/mock/framework/top_level_decl_stubs_parsing.cj
-compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
-
 # bug 165 (java.lang.NullPointerException: Cannot invoke "com.huawei.excelsior.jet.compiler.types.ReferenceTypes$ReferenceType.isFinal()" because "root" is null)
 API/std/unittest/mock/compiler/ensurePreparedToMock/onlyTestMode.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/properWritingHandlerDecls.cj
