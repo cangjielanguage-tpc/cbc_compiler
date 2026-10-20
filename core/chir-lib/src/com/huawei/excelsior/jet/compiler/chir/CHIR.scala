@@ -409,6 +409,7 @@ object CHIR {
   trait Intrinsic extends Expression with HasResultVar {
     def kind: Intrinsic.Kind
     def args: Seq[Value]
+    def instantiatedTypeArgs: Seq[Type]
   }
 
   object Intrinsic {
@@ -442,6 +443,7 @@ object CHIR {
       case CPointerInit0
       case CPointerInit1
       case CStringInit
+      case InoutParam
       case ObjectZeroValue
       case Sqrt
       case Pow
@@ -450,6 +452,8 @@ object CHIR {
       case Log
       case Ceil
       case Floor
+      case GetTypeForTypeParameter
+      case BlackBox
     }
   }
 

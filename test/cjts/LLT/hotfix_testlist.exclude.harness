@@ -58,6 +58,9 @@ compiler/CJMP
 # uses --dump-chir and expects 0_AST_CHIR.chirtxt in current folder
 compiler/CHIR/AST2CHIR/SetGenericInfo
 
+# uses --sanitizer-coverage-* options for compilation which are not supported in CBC
+API/std/unittest/prop_test/coverage_guided
+
 # ignore tests that rely on particular level of optimization ("The func node in the line:12 and the column:1 was optimized by The opt: Redundant Return Removal")
 compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet01.cj
 compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet02.cj

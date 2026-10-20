@@ -1788,6 +1788,12 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.CStringInit =>
             state(e) = state(e.args.head)
 
+          case CHIR.Intrinsic.Kind.InoutParam =>
+            state(e) = state(e.args.head)
+
+          case CHIR.Intrinsic.Kind.BlackBox =>
+            state(e) = state(e.args.head)
+
           case CHIR.Intrinsic.Kind.ArrayAcquireRawData =>
             val args = e.args
             val array = state(args.head)
@@ -1815,6 +1821,15 @@ trait CHIRParser
               ZeroValueNode(ValueType.fromSig(sig))
             }
             state(e) = res
+
+          case CHIR.Intrinsic.Kind.GetTypeForTypeParameter =>
+            // Dereferences first field typeName from TypeInfo of given type parameter
+            val sig = resolver.typeSig(e.resultTpe)
+            assert(sig == SignatureType.BString, sig)
+            val Seq(tv) = e.instantiatedTypeArgs
+            val tvSig = resolver.typeSig(tv)
+            val ti = loadTypeInfo(tvSig)
+            state(e) = LoadMemory(sig.toAsm, sig, atomic = false)(ti)
         }
 
       case e: CHIR.Spawn =>
