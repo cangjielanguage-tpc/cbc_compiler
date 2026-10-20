@@ -449,14 +449,6 @@ API/std/unittest/api/reporters/csv_case.cj
 API/std/unittest/api/serialization/test_datamodel_seq.cj
 compiler/Mangle/MangledName/new_mangle_fuzz_02.cj
 
-# bug 152 (MatchError: com.huawei.excelsior.jet.compiler.chir.v13002.GenericTypeImpl)
-API/std/unittest/custom_assertions/custom_assert_return.cj
-API/std/unittest/custom_assertions/explicit_type_assertion.cj
-API/std/unittest/custom_assertions/nested_assert_inside_assert.cj
-API/std/unittest/custom_assertions/nested_assert_inside_expect.cj
-API/std/unittest/custom_assertions/nested_expect_inside_assert.cj
-API/std/unittest/custom_assertions/nested_expect_inside_expect.cj
-
 # bug 153 (scala.MatchError: of class scala.Tuple2 in ReferenceTypes$ReferenceType$.commonSuper)
 API/std/reflect/typeInfo_instanceMemberFunction_generic.cj
 API/std/unittest/mock/compiler/createMock/abstractClass.cj

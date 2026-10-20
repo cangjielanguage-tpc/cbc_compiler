@@ -1865,7 +1865,7 @@ trait CHIRParser
         def intConst(v: Long, l: CHIR.Literal): Node = {
           l.tpe match {
             case CHIR.BuiltinType.Int8 | CHIR.BuiltinType.Int16 | CHIR.BuiltinType.Int32 |
-                 CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 | 
+                 CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 |
                  CHIR.BuiltinType.Boolean |
                  CHIR.BuiltinType.Rune => IConst(v.toInt)
             case CHIR.BuiltinType.Int64 | CHIR.BuiltinType.IntNative |
@@ -1876,6 +1876,11 @@ trait CHIRParser
             case CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => IntegralConst(AddrType)(v)
             case _: CHIR.CustomType | _: CHIR.VArrayType | _: CHIR.TupleType |
                  _: CHIR.CPointerType => IntegralConst(AddrType)(v)
+            case t: CHIR.GenericType =>
+              // std.unittest assertion macros might produce this garbage
+              assert(v == 0, t.identifier)
+              val sig = resolver.typeSig(t)
+              ZeroValueGeneric(loadTypeInfo(sig))
           }
         }
         val value = e.literal match {
