@@ -4,7 +4,7 @@ public interface Probe {
     func apply<T>(value: T): T
 }
 
-// An AOT generic container also checks that reconstructed T is compatible
+// AOT generic container also checks that reconstructed T is compatible
 // with the native runtime when CBC builds another generic TypeInfo using it.
 public class NativeBox<T> {
     public let value: T
@@ -40,7 +40,7 @@ private enum HiddenGeneric<T> {
 }
 
 public func runNongeneric(probe: Probe): Bool {
-    for (_ in 0..2) {
+    for (_ in 0..10) {
         let text = "native-" + Int64(123).toString()
         match (probe.apply<NativeEnum>(NativeEnum.Text(text))) {
             case Text(actual) => if (actual != text) { return false }
@@ -51,7 +51,7 @@ public func runNongeneric(probe: Probe): Bool {
 }
 
 public func runGeneric(probe: Probe): Bool {
-    for (_ in 0..2) {
+    for (_ in 0..10) {
         let payload = Payload("generic-" + Int64(456).toString())
         match (probe.apply<NativeGeneric<Payload>>(NativeGeneric<Payload>.Value(payload))) {
             case Value(actual) => if (!refEq(actual, payload)) { return false }
@@ -71,7 +71,7 @@ public func runGeneric(probe: Probe): Bool {
 }
 
 public func runOpaque(probe: Probe): Bool {
-    for (_ in 0..2) {
+    for (_ in 0..10) {
         let payload = Payload("opaque-" + Int64(789).toString())
         match (probe.apply<HiddenEnum>(HiddenEnum.Value(payload))) {
             case Value(actual) => if (!refEq(actual, payload)) { return false }

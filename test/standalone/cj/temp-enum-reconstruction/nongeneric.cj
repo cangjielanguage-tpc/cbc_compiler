@@ -12,12 +12,12 @@ class CollectingProbe <: Probe {
     public func apply<T>(value: T): T {
         let holder = Holder<T>(value)
         gc(heavy: true)
-        // Native code checks the generic container's TypeInfo after GC.
+        // AOT code checks the generic container's TypeInfo after GC.
         unwrap<T>(NativeBox<T>(holder.value))
     }
 }
 
-// Refer to public definitions without acquiring their TypeInfos before the callback.
+// reference the enum in CBC metadata without executing a TypeInfo lookup
 func metadata(value: NativeEnum): Unit {}
 
 main(): Int64 {
