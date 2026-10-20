@@ -20,7 +20,7 @@ import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
 import com.huawei.excelsior.jet.util.ScalaCollections
 
-import scala.PartialFunction.cond
+import scala.PartialFunction.{cond, condOpt}
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -47,6 +47,17 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
     res
   }
 
+  def sourceFullName(v: CHIR.Func): Option[String] = {
+    syntheticName(v).orElse(Option(v.srcCodeIdentifier)).filter(_.nonEmpty)
+  }
+
+  private def syntheticName(v: CHIR.Func): Option[String] = condOpt(v.identifier) {
+    // rename main-related functions to let interpreter start from "main" entry point
+    case "@user.main" => "user.main.invoke"
+    case CHIRPatchGeneratorFactory.cjEntryName => "main"
+    case _ if v.kind == CHIR.Func.Kind.MainEntry => "user.main"
+  }
+
   def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.GlobalVar | CHIR.FuncSig): String = {
     def typeDefName(v: CHIR.CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
@@ -59,12 +70,10 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
         case v: CHIR.GlobalVar => (false, None)
       }
       val (id, identifier, srcName) = v match {
-        // rename main-related functions to let interpreter start from "main" entry point
-        case v: CHIR.Func if v.identifier == "@user.main" => (v.id, "user.main.invoke", "user.main.invoke")
-        case v: CHIR.Func if v.kind == CHIR.Func.Kind.MainEntry => (v.id, "user.main", "user.main")
-        case v: CHIR.Func if v.identifier == CHIRPatchGeneratorFactory.cjEntryName => (v.id, "main", "main")
-
-        case v: CHIR.Func => (v.id, v.identifier, wrappedMethod.map(_.srcCodeIdentifier).getOrElse(v.srcCodeIdentifier))
+        case v: CHIR.Func => syntheticName(v) match {
+          case Some(name) => (v.id, name, name)
+          case None => (v.id, v.identifier, wrappedMethod.map(_.srcCodeIdentifier).getOrElse(v.srcCodeIdentifier))
+        }
         case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
       }
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
