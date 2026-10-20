@@ -2637,19 +2637,25 @@ trait CHIRParser
     }
 
     private def allocEnumObject(objType: SignatureType, args: Seq[Node]): Node = {
-      val obj = New(objType)()
+      val obj = if (objType.containsTypeVariables) {
+        NewGeneric(objType)(loadTypeInfo(objType))
+      } else {
+        New(objType)()
+      }
       val superType = asClassType(objType).getSuperClassSig
-      for ((arg, fieldRef) <- args zip (declaredFields(superType) ++ declaredFields(objType))) {
-        val sig = fieldRef.fieldType
+      for ((arg, i) <- args.zipWithIndex) {
+        val fields = fieldChain(objType, Seq(i))
+        val lastField = FieldSeqOperation.lastRef(fields)
+        val sig = lastField.fieldType
         if (sig.isZST) {
           // Nothing to do
 
         } else if (needsCopy(sig)) {
-          val mem = GetFieldSeqRef(maybeDerivedPtrBase(obj), obj, FieldReferenceNode(fieldRef))
+          val mem = GetFieldSeqRef(maybeDerivedPtrBase(obj), obj, fields: _*)
           copy(sig, mem, arg)
 
         } else {
-          StoreFieldSeq(maybeDerivedPtrBase(obj), obj, arg, FieldReferenceNode(fieldRef))
+          StoreFieldSeq(maybeDerivedPtrBase(obj), obj, arg, fields: _*)
         }
       }
       obj

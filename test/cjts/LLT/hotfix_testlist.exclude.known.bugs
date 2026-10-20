@@ -565,10 +565,6 @@ API/std/unittest/mock/compiler/ensurePreparedToMock/onlyTestMode.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/properWritingHandlerDecls.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/topLevelFunctions.cj
 
-# bug 166 (assertion failed: ObjectOperationNodes$New.<init>(ObjectOperationNodes.scala:562))
-compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_07.cj
-compiler/Sema/lambda/test_fold.cj
-
 # bug 167 (unexpected StackOverflowError while executing `main` (function with backticks in name))
 compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
 compiler/Mangle/MangledName/mangle14_c_struct_overload.cj
