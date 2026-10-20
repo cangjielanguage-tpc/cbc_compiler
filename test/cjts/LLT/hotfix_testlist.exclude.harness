@@ -6,6 +6,9 @@
 # no debugger support in near future
 Tools/cjdb
 
+# cjc options: misalign when hotfix enabled
+compiler/Driver/options/help/test_showall.cj
+
 # environment: android-related
 compiler/Driver/options/toolchain/android_clang_search_lib.cj
 compiler/Driver/options/toolchain/android_clang_search_lib64.cj
