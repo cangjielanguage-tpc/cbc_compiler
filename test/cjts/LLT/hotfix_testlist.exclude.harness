@@ -135,6 +135,9 @@ compiler/CHIROpt/Optimizations/GlobalConstVars
 # ignore tests that rely on particular level of optimization ("incremental compilation triggered")
 compiler/CHIROpt/ValueRangeAnalysis/issue04/RangeAnalysis_Incr.cj
 
+# ignore tests that rely on particular level of optimization ("an exception was thrown while evaluating constant")
+compiler/ConstEval/testExceptionMod.cj
+
 # ignore due to "invalid file or directory %disableCHIROpt"
 compiler/CHIROpt/O2Optimization/testO2DisableCHIROpt.cj
 
