@@ -83,6 +83,32 @@ object Build {
     Some(env.graalvm).filter(usable)
   }
 
+  private def nativeImageSettings(outputName: String) = Def.settings(
+    TaskKey[Unit]("nativeImage", s"Builds target/$outputName using GraalVM Native Image") := {
+      val jar = assembly.value
+      val output = target.value / outputName
+
+      nativeImageBinary match {
+        case None => throw new MessageOnlyException(s"native-image not found for graalvm=${env.graalvm}")
+
+        case Some(binary) =>
+          streams.value.log.info(s"Building $outputName with $binary")
+          val command = Seq(
+            binary,
+            "-J-Xmx4g",
+            "-O3",
+            "--no-fallback",
+            s"-J-XX:ActiveProcessorCount=${env.graalvmCompilationThreads}",
+            "-jar", jar.absolutePath,
+            "-o", output.absolutePath,
+          )
+          if (command.! != 0) {
+            throw new MessageOnlyException(s"native-image failed: ${command.mkString(" ")}")
+          }
+      }
+    },
+  )
+
   lazy val commonSourceLayout = Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src")
   lazy val commonTestLayout   = Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test")
 
@@ -144,6 +170,7 @@ object Build {
       target := baseDirectory.value / "target/aot",
       assembly / mainClass := Some("com.huawei.excelsior.jet.compiler.starter.AOTStarter"),
       assembly / assemblyOutputPath := target.value / "aot.jar",
+      nativeImageSettings("cbc-compiler-native"),
     )
 
   lazy val xscalaVMDependent = (project in file("core/xscala-vm-dependent"))
@@ -202,29 +229,7 @@ object Build {
       compilerAssemblySettings(),
       assembly / mainClass := Some("com.huawei.excelsior.jet.assembler.cbc.AsmParser"),
       assembly / assemblyOutputPath := target.value / "cbc-asm.jar",
-
-      TaskKey[Unit]("nativeImage", "Builds target/cbc-asm-native using GraalVM Native Image") := {
-        val jar = (assembly / assemblyOutputPath).value
-        val output = target.value / "cbc-asm-native"
-
-        nativeImageBinary match {
-          case None => throw new MessageOnlyException(s"native-image not found for graalvm=${env.graalvm}")
-
-          case Some(binary) =>
-            streams.value.log.info(s"Building cbc-asm native image with $binary")
-            val command = Seq(
-              binary,
-              "-J-Xmx3g",
-              "-O3",
-              "--no-fallback",
-              "-jar", jar.absolutePath,
-              "-o", output.absolutePath,
-            )
-            if (command.! != 0) {
-              throw new MessageOnlyException(s"native-image failed: ${command.mkString(" ")}")
-            }
-        }
-      },
+      nativeImageSettings("cbc-asm-native"),
     )
     .disablePlugins(JUnitXmlReportPlugin)
 
