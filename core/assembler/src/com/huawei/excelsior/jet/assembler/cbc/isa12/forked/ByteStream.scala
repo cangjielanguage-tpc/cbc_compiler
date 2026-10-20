@@ -55,7 +55,7 @@ trait ByteStream {
     uleb(0)
   }
 
-  final def ts16(ts: StackSlot.Typed): ByteStream = write16(ts.idx)
+  final def ts16(ts: StackSlot.Typed): ByteStream = uleb(ts.idx)
   final def us16(us: StackSlot.Untyped): ByteStream = write16(us.slot)
   final def opc8(x: Opcode): ByteStream = write8(x.ordinal)
 

@@ -896,7 +896,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.LoadUntyped)
       .bits(_.w4(IR_ACC_IDX).w4(ldk))
-      .write16(src.slot)
+      .uleb(src.slot)
   }
 
   def loadUntyped(dst: Rg, ldk: LoadAccessKind, src: StackSlot.Untyped): Unit = instr {
@@ -904,7 +904,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.LoadUntyped)
       .bits(_.w4(dst).w4(ldk))
-      .write16(src.slot)
+      .uleb(src.slot)
   }
 
   def storeUntyped(src: Rg, stk: StoreAccessKind, dst: StackSlot.Untyped): Unit = instr {
@@ -912,7 +912,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.StoreUntyped)
       .bits(_.w4(src).w4(stk))
-      .write16(dst.slot)
+      .uleb(dst.slot)
   }
 
   def loadUntyped(dst: Rg, tk: CbcTypeKind, src: StackSlot.Untyped): Unit = loadUntyped(dst, LoadAccessKind.from(tk), src)
@@ -922,7 +922,7 @@ trait ForkedAssembler {
   def storeUntypedImm(src: Long, dst: StackSlot.Untyped): Unit = {
     stream
       .opc8(Opcode.StoreUntypedImm)
-      .write16(analyzer.prim(dst).slot)
+      .uleb(analyzer.prim(dst).slot)
       .sleb(src)
   }
 
