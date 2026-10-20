@@ -408,12 +408,6 @@ compiler/Sema/record/static_init/generic_struct_static_init_01/main.cj
 # bug 148 (LLT/compiler/ConstEval/Overflow: error: expected at least one source code file when compiling source code)
 compiler/ConstEval/Overflow
 
-# bug 111 (should not reach here: CheckCast got arg with tags ArraySeq(VALUE))
-compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
-compiler/CodegenCJNative/generic/generic_struct.cj
-compiler/CodegenCJNative/storeElementRef.cj
-compiler/Sema/unusedImport/unusedImport002/unused016/unused016.cj
-
 # bug 149 (Unexpected duplicate linkage names)
 API/std/unittest/delta_comparison/assert/user_defined_types/comparison_fail.cj
 API/std/unittest/delta_comparison/assert/user_defined_types/comparison_success.cj
