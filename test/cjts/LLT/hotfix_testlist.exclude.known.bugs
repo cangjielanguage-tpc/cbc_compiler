@@ -540,6 +540,8 @@ API/std/unittest/prop_test/arbitrary_range/arbitrary_range_integer_imaginable_un
 compiler/Mangle/MangledName/mangle15_boxed_base_decl.cj
 API/std/unittest/prop_test/arbitrary/arbitrary_hashmap.cj
 compiler/Sema/generics/rearrange_multi_impl/main.cj
+compiler/Sema/generics/instantiation/instantiation007.cj
+compiler/Sema/generics/instantiation_rearrange_01/test.cj
 
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
@@ -911,3 +913,24 @@ compiler/CodegenCJNative/demangle/decl/nested_package/main.cj
 
 # bug 179 (extra spaces in type printing via reflection)
 compiler/CodegenCJNative/ExtensionDef/extensiondef_07.cj
+
+# bug 183 (Resolved method is abi incompatible)
+compiler/Sema/class/class_inheritance_9.cj
+
+# bug 184 (StackOverflowError in CangjieNodes$StoreFieldSeq.blockRef)
+API/std/collection/test_Concurrent.cj
+
+# bug 186 (compiler failure for @PowerAssert annotated source)
+API/std/unittest/powerAssert/nodeTypes/matchExpr.cj
+
+# bug 187 (exception at creation of empty HashMap<int32, CString>)
+compiler/CodegenCommon/lambda/lambda_cstring.cj
+
+# bug 188 (extend+is cornercase)
+compiler/CodegenCJNative/is/is_01.cj
+
+# bug 189 (`launcher` segfaults (rc 139) whenever program argument contains invalid UTF-8 bytes)
+compiler/CodegenCommon/main/invalidUTF8/main.cj
+
+# bug 190 (extra information: arg#4 of NewSomeOptionGeneric expected to have tag VALUE & type Plain but got arg LConst[2])
+compiler/Sema/IsOrAsExpr/import_generic_as_01/test.cj
