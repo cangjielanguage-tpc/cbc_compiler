@@ -6,6 +6,9 @@
 # no debugger support in near future
 Tools/cjdb
 
+# cjc options: misalign when hotfix enabled
+compiler/Driver/options/help/test_showall.cj
+
 # environment: android-related
 compiler/Driver/options/toolchain/android_clang_search_lib.cj
 compiler/Driver/options/toolchain/android_clang_search_lib64.cj
@@ -131,6 +134,9 @@ compiler/CHIROpt/Optimizations/GlobalConstVars
 
 # ignore tests that rely on particular level of optimization ("incremental compilation triggered")
 compiler/CHIROpt/ValueRangeAnalysis/issue04/RangeAnalysis_Incr.cj
+
+# ignore tests that rely on particular level of optimization ("an exception was thrown while evaluating constant")
+compiler/ConstEval/testExceptionMod.cj
 
 # ignore due to "invalid file or directory %disableCHIROpt"
 compiler/CHIROpt/O2Optimization/testO2DisableCHIROpt.cj
@@ -279,6 +285,7 @@ compiler/DeMangle/Filename/fileHashcodeTest2.cj
 compiler/DeMangle/Operator/ge.cj
 compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl2.cj
 compiler/DeMangle/Operator/lt.cj
+API/std/core/exclusiveScope/exception.cj
 
 # ignore due to frontend error
 compiler/CHIROpt/VarInitCheck/InitOrder/circular1.cj
