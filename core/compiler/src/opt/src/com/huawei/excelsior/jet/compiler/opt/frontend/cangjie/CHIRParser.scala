@@ -1131,9 +1131,6 @@ trait CHIRParser
           val (calleeVal, argVals) = (e.callee, e.args)
           val retType = resolver.typeSig(e.resultTpe)
           val paramTypes = argVals.map { case ValueSig(sig) => sig }
-          if (retType.isRecord || paramTypes.exists(_.isRecord)) {
-            notImplemented("TODO: pass by value")
-          }
           val mt = MethodType(MethodSignature(retType, paramTypes), CallConv.CCALL, CallKind.CJ_CFUNC, MethodType.SpecialParamSet(), false)
           val args = argVals.map(state.apply)
           val call = Call(new MethodReference(mt, MAK.STATIC))(state(calleeVal) +: args: _*)
