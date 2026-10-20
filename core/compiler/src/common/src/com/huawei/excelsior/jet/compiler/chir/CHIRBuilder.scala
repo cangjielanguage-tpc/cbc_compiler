@@ -276,8 +276,12 @@ object CHIRBuilder {
         val overrideSig = resolver.getOverrideSrcFuncType(m).map(s => resolver.functionSig(s.tpe, hasReceiver = !modifiers.contains(STATIC))._1)
         val hasRetByVal = overrideSig.exists(_.returnType.isTypeVariable)
 
+        val vtableNames = (name +: resolver.findVTableMethods(m).map(_.name)).distinct
+
         // TODO: explain
         val symMethods = if (rcvSig.isVariableSizeType && !modifiers.contains(STATIC)) {
+
+          // TODO: move wrapper generation and VST receiver adjustment to CHIR level
 
           val mutMethod = Option.when(hasMutParam) {
             val mutName = resolver.mutWithoutTI(name)
@@ -288,34 +292,40 @@ object CHIRBuilder {
               m.sourceFile, resolver.sourceFullName(m))
           }
 
-          val mutWrapperName = name
-          val mutWrapperLinkageName = linkageName
-          val mutWrapperModifiers = modifiers - Modifier.CJ_MUT
-          val mutWrapperHasMutParam = false
-          val mutWrapperReceiver = Some(SignatureType.Box(rcvSig))
-          val mutWrapper = builder.addMethod(symType, mutWrapperName, sig, mutWrapperLinkageName, mutWrapperModifiers.value, genericInfo,
-            ABI.Description(mutWrapperReceiver, mutWrapperHasMutParam, hasThisTypeInfoParam,
-            isCFunc = false, hasOuterTypeInfo, hasRetByVal, genericFuncParamsCount),
-            m.sourceFile, resolver.sourceFullName(m))
-
-          if (mutMethod.nonEmpty) {
-            builder.markAsMutWrapper(mutWrapper)
+          val wrapperLinkageName = linkageName
+          val wrapperModifiers = modifiers - Modifier.CJ_MUT
+          val wrapperHasMutParam = false
+          val wrapperReceiver = Some(SignatureType.Box(rcvSig))
+          val wrappers = vtableNames map { vtableName =>
+            builder.addMethod(symType, vtableName, sig, wrapperLinkageName, wrapperModifiers.value, genericInfo,
+              ABI.Description(wrapperReceiver, wrapperHasMutParam, hasThisTypeInfoParam,
+                isCFunc = false, hasOuterTypeInfo, hasRetByVal, genericFuncParamsCount),
+              m.sourceFile, resolver.sourceFullName(m))
           }
 
-          virtMethods(m) = mutWrapper
+          for (wrapper <- wrappers) {
+            if (mutMethod.nonEmpty) {
+              builder.markAsMutWrapper(wrapper)
+            }
+            virtMethods(m) = wrapper
+          }
 
-          mutMethod.toSeq ++ Seq(mutWrapper)
+          mutMethod.toSeq ++ wrappers
 
         } else {
-          val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
-            ABI.Description(rcvParam,
-            hasMutParam, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, hasRetByVal = hasRetByVal, genericFuncParamsCount),
-            m.sourceFile, resolver.sourceFullName(m))
-          if (SignatureType.fromSymType(symType).isCangjieLambda && name == "$GenericVirtualFunc") {
-            assert(symMethod.hasRetByValParameter)
+          val symMethods = vtableNames map { vtableName =>
+            builder.addMethod(symType, vtableName, sig, linkageName, modifiers.value, genericInfo,
+              ABI.Description(rcvParam,
+                hasMutParam, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, hasRetByVal = hasRetByVal, genericFuncParamsCount),
+              m.sourceFile, resolver.sourceFullName(m))
           }
-          virtMethods(m) = symMethod
-          Seq(symMethod)
+          for (symMethod <- symMethods) {
+            if (SignatureType.fromSymType(symType).isCangjieLambda && name == "$GenericVirtualFunc") {
+              assert(symMethod.hasRetByValParameter)
+            }
+            virtMethods(m) = symMethod
+          }
+          symMethods
         }
 
         for (symMethod <- symMethods) {
@@ -361,6 +371,8 @@ object CHIRBuilder {
       val hasOuterTypeInfo = true // All member functions have outer type info parameter
       val hasThisTypeInfoParam = modifiers.contains(STATIC)
       val linkageName = resolver.linkageName(m)
+
+      assert(!resolver.isOperator(m), m.identifier)
 
       val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
         ABI.Description(rcv, hasMutParam = false, hasThisTypeInfoParam,
