@@ -422,8 +422,6 @@ API/std/unittest/prop_test/coverage_guided/special/one_integer.cj
 API/std/unittest/prop_test/coverage_guided/special/string.cj
 API/std/unittest/prop_test/coverage_guided/special/two_integers.cj
 API/std/unittest/prop_test/coverage_guided/zero_generation.cj
-## CSTRING_INIT
-API/std/core/test_cstring.cj
 ## GET_TYPE_FOR_TYPE_PARAMETER
 API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_interface.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package.cj
