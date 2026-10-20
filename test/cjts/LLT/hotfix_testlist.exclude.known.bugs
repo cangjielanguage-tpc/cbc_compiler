@@ -560,11 +560,6 @@ API/std/io/BufferedInputStream/test_seekable.cj
 API/std/fs/test_fs_file_coverage.cj
 API/std/io/StringReader/test_seekable.cj
 
-# bug 163 (assertion failed Types$ValueType$.fromSig(Types.scala:333))
-API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
-compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_3.cj
-compiler/Sema/exception/exception_throw_02.cj
-
 # bug 165 (java.lang.NullPointerException: Cannot invoke "com.huawei.excelsior.jet.compiler.types.ReferenceTypes$ReferenceType.isFinal()" because "root" is null)
 API/std/unittest/mock/compiler/ensurePreparedToMock/onlyTestMode.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/properWritingHandlerDecls.cj
@@ -647,6 +642,3 @@ compiler/CodegenCJNative/is/is_01.cj
 
 # bug 189 (`launcher` segfaults (rc 139) whenever program argument contains invalid UTF-8 bytes)
 compiler/CodegenCommon/main/invalidUTF8/main.cj
-
-# bug 190 (extra information: arg#4 of NewSomeOptionGeneric expected to have tag VALUE & type Plain but got arg LConst[2])
-compiler/Sema/IsOrAsExpr/import_generic_as_01/test.cj
