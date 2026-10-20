@@ -1734,13 +1734,18 @@ trait CHIRParser
               case Seq(base, idx) => (state(base), state(idx))
             }
             cpointerType.pointee match {
-              case baseType: SignatureType =>
-                val mem = Add(base, Mul(LConst(baseType.toAsm.sizeInBytes), idx))
-                state(e) = if (baseType.isPrimitive) {
-                  LoadMemory(baseType.toAsm, baseType, atomic = false)(mem)
+              case pointee: SignatureType =>
+                state(e) = if (pointee.isZST) {
+                  // CPointer<Unit> means void*
+                  Void()
                 } else {
-                  assert(baseType.isRecord)
-                  Add(base, Mul(LConst(baseType.toAsm.sizeInBytes), idx))
+                  val mem = Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
+                  if (pointee.isPrimitive) {
+                    LoadMemory(pointee.toAsm, pointee, atomic = false)(mem)
+                  } else {
+                    assert(pointee.isRecord)
+                    Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
+                  }
                 }
               case _ =>
                 // TODO pointer to a method?
@@ -1755,18 +1760,24 @@ trait CHIRParser
               case Seq(base, idx, value) => (state(base), state(idx), state(value))
             }
             cpointerType.pointee match {
-              case baseType: SignatureType =>
-                val mem = Add(base, Mul(LConst(baseType.toAsm.sizeInBytes), idx))
-                if (baseType.isPrimitive) {
-                  StoreMemory(baseType.toAsm, baseType, atomic = false)(mem, value)
+              case pointee: SignatureType =>
+                if (pointee.isZST) {
+                  // CPointer<Unit> means void*
+                  // so do nothing
                 } else {
-                  assert(baseType.isRecord)
-                  copy(baseType, mem, value)
+                  val mem = Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
+                  if (pointee.isPrimitive) {
+                    StoreMemory(pointee.toAsm, pointee, atomic = false)(mem, value)
+                  } else {
+                    assert(pointee.isRecord)
+                    copy(pointee, mem, value)
+                  }
                 }
               case _ =>
                 // TODO pointer to a method?
                 shouldNotReachHere(cpointerType)
             }
+
 
           case CHIR.Intrinsic.Kind.CPointerInit0 =>
             state(e) = LConst(0)
