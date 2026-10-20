@@ -172,7 +172,7 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
   }
 
   override def addMethod(clazz: ClassType, name: String, sig: MethodSignature, exportedName: String, modifiers: Int, genericInfo: GenericInfo, 
-                         abiDesc: ABI.Description, sourceFile: Option[String]): Method = {
+                         abiDesc: ABI.Description, sourceFile: Option[String], sourceFullname: Option[String]): Method = {
     val dup = clazz.findDeclaredMethodOrNull(XString(name), sig)
     if (dup != null) {
       // TODO: checks?
@@ -195,6 +195,7 @@ class CHIRSymLevelBuilderImpl extends CHIRSymLevelBuilder {
       if (!env.enabled(IgnoreSourceFileNameForCbc)) {
         sourceFile.foreach(f => m.sourceFile = XString(f))
       }
+      sourceFullname.foreach(x => m.setSourceFullName(XString(x)))
 
       methodByO2Object(m)
     }

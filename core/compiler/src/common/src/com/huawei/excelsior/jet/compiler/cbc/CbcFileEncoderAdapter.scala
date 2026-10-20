@@ -288,7 +288,11 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       if (method.hasSourceFile) {
         builder.setSourceFile(method.getSourceFile.toString)
       }
-      
+
+      if (method.hasSourceFullName) {
+        builder.setSourceFullName(method.getSourceFullName.toString)
+      }
+
       if (method.getCHIRDef.isEmpty) {
         //fixme: assert virtual
         builder.addFlag(MethodFlag.AOT)
