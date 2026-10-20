@@ -725,7 +725,11 @@ trait CHIRParser
         val n = (resSig: @unchecked) match {
           case Boolean =>
             val cv = if (sig == Unit) {
-              True()
+              e.kind match {
+                case CHIR.Binary.Kind.Eq => True()
+                case CHIR.Binary.Kind.NotEq => False()
+                case x => shouldNotReachHere(s"unexpected unit binary comparison: ${e.kind}")
+              }
             } else {
               val unsigned = sig match {
                 case sig: Integral => !sig.signed
