@@ -1841,7 +1841,8 @@ trait CHIRParser
             case CHIR.BuiltinType.Float32 => FConst(v.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.toDouble)
             case CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => IntegralConst(AddrType)(v)
-            case _: CHIR.CustomType | _: CHIR.VArrayType | _: CHIR.TupleType => IntegralConst(AddrType)(v)
+            case _: CHIR.CustomType | _: CHIR.VArrayType | _: CHIR.TupleType |
+                 _: CHIR.CPointerType => IntegralConst(AddrType)(v)
           }
         }
         val value = e.literal match {
