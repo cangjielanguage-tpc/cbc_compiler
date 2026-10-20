@@ -3,6 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 
+# Fallback to python script if there are (-l / -L) arguments.
+for arg in "$@"; do
+    if [[ "$arg" == "-l" || "$arg" == "-L" || "$arg" == -l?* || "$arg" == -L?* ]]; then
+        exec "$SCRIPT_DIR/cjc-wrapper.py" "$@"
+    fi
+done
+
 # Find cjc output: -o <out>
 out=""
 
@@ -28,4 +35,3 @@ if [ -n "$out" ] && compgen -G "*.chir" > /dev/null; then
     java -jar $SCRIPT_DIR/../tools/bin/cbc-compiler.jar *.chir +genlibrary -outputname="$out"
   fi
 fi
-

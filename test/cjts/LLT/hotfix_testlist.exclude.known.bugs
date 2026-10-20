@@ -196,12 +196,10 @@ compiler/FFI/CFFI/type_cast/type_cast_11.cj
 compiler/FFI/CFFI/type_cast/type_cast_12.cj
 compiler/FFI/CFFI/type_cast/type_cast_3.cj
 compiler/FFI/CFFI/type_cast/type_cast_6.cj
-compiler/FFI/CFFI/type_cast/type_cast_7.cj
 compiler/FFI/CFFI/type_cast/type_cast_9.cj
 compiler/Sema/ffi/c_type_in_generictype.cj
 API/std/unittest/prop_test/coverage_guided/dbg.cj
 compiler/Mangle/MangledName/mangle11_func.cj
-compiler/Parser/ar/type_parameter/cfunc.cj
 
 # bug 145 (not implemented: cast from TU<*>)
 compiler/CHIROpt/match/testSwitch4_11.cj
@@ -243,20 +241,6 @@ compiler/Sema/call/call21.cj
 
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
-
-# bug 78 (not found function: native_entry)
-compiler/CodegenCJNative/LegacyTests/native.cj
-compiler/FFI/CFFI/record/small_15.cj
-compiler/FFI/CFFI/record/small_16.cj
-compiler/FFI/CFFI/record/small_17.cj
-compiler/FFI/CFFI/record/small_18.cj
-compiler/CodegenCommon/cffi/foreign/01/foreign_01.cj
-compiler/CodegenCJNative/incremental/foreign/foreign1.cj
-compiler/CHIR/CHIR2HLIR/generic/generic_external_use_ffic/main.cj
-compiler/Sema/ffi/bugfix1/c_ffi.cj
-compiler/Sema/varray/varray_cffi/varray_cstruct02.cj
-Runtime/CJNative/Signal/signal001.cj
-compiler/Driver/test_separate_compilation/export_for_test_foreign/main.cj
 
 # bug 79 (Cast Float32 -> Int32 does not throw on overflow)
 compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
