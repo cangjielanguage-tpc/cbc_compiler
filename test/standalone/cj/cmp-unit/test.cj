@@ -6,4 +6,5 @@ main() {
         ()
     }
     println(res == ())
+    println(res != ())
 }

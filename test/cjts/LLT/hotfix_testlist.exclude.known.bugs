@@ -651,6 +651,3 @@ API/std/unittest/mock/integration/stub_in_before_each.cj
 API/std/unittest/mock/integration/unnecessary_stubbing.cj
 API/std/unittest/rendering/rendering_main.cj
 API/std/unittest/rendering/rendering_worker.cj
-
-# bug 193 (Unit != Unit)
-API/std/unittest/powerAssert/nodeTypes/litConstExpr.cj
