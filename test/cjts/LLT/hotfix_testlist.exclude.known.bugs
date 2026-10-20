@@ -542,6 +542,7 @@ API/std/unittest/prop_test/arbitrary/arbitrary_hashmap.cj
 compiler/Sema/generics/rearrange_multi_impl/main.cj
 compiler/Sema/generics/instantiation/instantiation007.cj
 compiler/Sema/generics/instantiation_rearrange_01/test.cj
+compiler/Sema/generics/generic_static_field_prop/generic_static_nested_func.cj
 
 # bug 116 (cannot rewrite when extension function calls an inherited protected static method through a type alias)
 compiler/Sema/Extend/extend_export/direct_extend/extend_generic03/pass01.cj
@@ -934,3 +935,19 @@ compiler/CodegenCommon/main/invalidUTF8/main.cj
 
 # bug 190 (extra information: arg#4 of NewSomeOptionGeneric expected to have tag VALUE & type Plain but got arg LConst[2])
 compiler/Sema/IsOrAsExpr/import_generic_as_01/test.cj
+
+# bug 192 (`<unknown location>` instead of file name in testsuite messages)
+API/std/unittest/mock/integration/expectation_failed.cj
+API/std/unittest/mock/integration/runtime_too_many_invocations.cj
+API/std/unittest/mock/integration/shared_mock.cj
+API/std/unittest/mock/integration/shared_mock_setup.cj
+API/std/unittest/mock/integration/stateful_stub_in_before_all1.cj
+API/std/unittest/mock/integration/stateful_stub_in_before_all2.cj
+API/std/unittest/mock/integration/stateful_stub_in_before_all3.cj
+API/std/unittest/mock/integration/stub_in_before_each.cj
+API/std/unittest/mock/integration/unnecessary_stubbing.cj
+API/std/unittest/rendering/rendering_main.cj
+API/std/unittest/rendering/rendering_worker.cj
+
+# bug 193 (Unit != Unit)
+API/std/unittest/powerAssert/nodeTypes/litConstExpr.cj
