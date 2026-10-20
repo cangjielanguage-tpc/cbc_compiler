@@ -2188,8 +2188,13 @@ trait CHIRParser
         val arrayType = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.VArray]
         val mem = StackAlloc.Local(arrayType)
         val initializer = state(e.initializer)
-        val init: Node => Node = initializer match {
-          case _: AnyNull => _ => state(e.initValue)
+        initializer match {
+          case _: AnyNull =>
+            if (!arrayType.elemType.isZST) {
+              val value = state(e.initValue)
+              VArrayFill(arrayType)(maybeDerivedPtrBase(mem), mem, maybeDerivedPtrBase(value), value)
+            }
+
           case _ =>
             val ValueSig(lambdaType) = e.initializer
             val vtable = asClassType(lambdaType).getCHIRVTable
@@ -2204,11 +2209,12 @@ trait CHIRParser
             val target = new MethodReference(method, MAK.VIRTUAL, CompiledType(lambdaType), vnum)
             val retType = arrayType.elemType
 
-            index =>
-              callMethod(target, Some(lambdaType), Some(lambdaType), retType, Seq(lambdaType, SignatureType.Int64), Seq(initializer, index), None)
-        }
-        for (index <- 0L until arrayType.length) {
-          varrayPut(arrayType, mem, LConst(index), init(LConst(index)))
+            for (index <- 0L until arrayType.length) {
+              val indexNode = LConst(index)
+              val value = callMethod(target, Some(lambdaType), Some(lambdaType), retType,
+                Seq(lambdaType, SignatureType.Int64), Seq(initializer, indexNode), None)
+              varrayPut(arrayType, mem, indexNode, value)
+            }
         }
         state(e) = mem
 

@@ -487,6 +487,37 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
     continue(whileCheck.falseExit)
   }
 
+  private[lowering] def lowerVArrayFill(arrayFill: VArrayFill): Unit = {
+    val arrayType = arrayFill.arrayType
+    val elementType = arrayType.elemType
+
+    // Start new block to guarantee valid creation of loop index in header with exactly one forward edge.
+    // Backward edge will be added later, when Proxy is replaced by Phi function.
+    val header = continue(Goto())
+    val index = Proxy(LongType)(header)
+
+    // TODO: JET-17408
+    val whileCheck = If(Cmp(index.tpe, Condition.ULT)(index, LConst(arrayType.length)))
+
+    continue(whileCheck.trueExit)
+
+    val field = IndexFieldReference(arrayType, elementType)(index)
+    if (elementType.isRecord) {
+      val address = GetFieldSeqRef(arrayFill.baseRef, arrayFill.array, field)
+      CopyStructure(elementType)(arrayFill.baseRef, address, arrayFill.valueBaseRef, arrayFill.value)
+    } else {
+      StoreFieldSeq(arrayFill.baseRef, arrayFill.array, arrayFill.value, field)
+    }
+
+    // Add backward edge and replace Proxy with proper Phi function.
+    val backEdge = Goto()
+    header.addArg(backEdge)
+    assert(header.args.size == 2)
+    index.replaceBy(Phi(index.tpe)(header, LConst(0), Add(index, LConst(1))))
+
+    continue(whileCheck.falseExit)
+  }
+
   private[lowering] def lowerCangjieArrayFillGeneric(arrayFill: CangjieArrayFillGeneric): Unit = {
     val array = arrayFill.array
     val arrayType = arrayFill.arrayType
