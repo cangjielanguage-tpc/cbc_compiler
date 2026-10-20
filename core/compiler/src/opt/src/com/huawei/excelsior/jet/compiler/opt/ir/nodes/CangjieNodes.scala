@@ -268,6 +268,32 @@ trait CangjieNodes { self: Universe =>
     def apply(arrayType: SignatureType): Proto = Prototype.intern(Proto(arrayType))
   }
 
+  /** Initializes a fixed-size Cangjie VArray by invoking a lambda for every index. */
+  class VArrayFillByLambda private(proto: VArrayFillByLambda.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode
+    with CanThrow with CompositeNode with NotProducesValue {
+
+    def arrayType: SignatureType.VArray = proto.arrayType.asInstanceOf[SignatureType.VArray]
+    def target: MethodReference = proto.target
+    def lambdaType: SignatureType = proto.lambdaType
+    def baseRef = arg(2)
+    def array = arg(3)
+    def initializer = arg(4)
+  }
+
+  object VArrayFillByLambda {
+    case class Proto private[VArrayFillByLambda](arrayType: SignatureType, target: MethodReference, lambdaType: SignatureType)
+      extends FixedArgs[VArrayFillByLambda](ControlType, MemoryType, TRefType, ValueType.fromSig(arrayType),
+        ValueType.fromSig(lambdaType))(ControlType) with ControlMemoryTagged[VArrayFillByLambda] {
+
+      assert(arrayType.isVArray)
+      assert(!arrayType.containsTypeVariables, arrayType)
+      def newInstance() = new VArrayFillByLambda(this)
+    }
+
+    def apply(arrayType: SignatureType, target: MethodReference, lambdaType: SignatureType): Proto =
+      Prototype.intern(Proto(arrayType, target, lambdaType))
+  }
+
   class StoreStaticFieldSeq private(proto: StoreStaticFieldSeq.Proto)
     extends NodeWithVarArgs(proto) with FieldSeqOperation with SpinalMemoryNode with NotProducesValue {
 

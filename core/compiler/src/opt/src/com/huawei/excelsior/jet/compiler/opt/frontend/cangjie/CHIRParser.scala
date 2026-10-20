@@ -2209,12 +2209,17 @@ trait CHIRParser
             val target = new MethodReference(method, MAK.VIRTUAL, CompiledType(lambdaType), vnum)
             val retType = arrayType.elemType
 
-            for (index <- 0L until arrayType.length) {
-              val indexNode = LConst(index)
-              val value = callMethod(target, Some(lambdaType), Some(lambdaType), retType,
-                Seq(lambdaType, SignatureType.Int64), Seq(initializer, indexNode), None)
-              varrayPut(arrayType, mem, indexNode, value)
+            import SpecialParameter.*
+            target.methodType.specialParameters.elements.foreach {
+              case RetByVal if retType.isRecord || retType.isZST =>
+              case Receiver | OuterTypeInfo | SpecialParameter.ThisTypeInfo =>
+              case special =>
+                shouldNotReachHere(s"Unsupported VArray lambda special parameter $special in $target")
             }
+
+            ensurePrepared(PreparationRequired.forInvoke(target))
+            packageInitCheck(target.refClass)
+            VArrayFillByLambda(arrayType, target, lambdaType)(maybeDerivedPtrBase(mem), mem, initializer)
         }
         state(e) = mem
 

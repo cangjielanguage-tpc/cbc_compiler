@@ -148,6 +148,7 @@ trait IOComponent extends BinaryIO { self: Universe =>
     CangjieArrayFillGeneric.Proto,
     CopyStructureGeneric.Proto,
     VArrayFill.Proto,
+    VArrayFillByLambda.Proto,
     // Add new prototypes above this line.
     "dummy last element for ease of rebase"
   )

@@ -28,6 +28,7 @@ import com.huawei.excelsior.jet.compiler.*
 import com.huawei.excelsior.jet.compiler.driver.ProjectLogic
 import com.huawei.excelsior.jet.compiler.options.BoolOption
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.AddrUInt
+import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.util.ScalaCollections
 import xscala.util.MathUtils.*
 
@@ -507,6 +508,72 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
       CopyStructure(elementType)(arrayFill.baseRef, address, arrayFill.valueBaseRef, arrayFill.value)
     } else {
       StoreFieldSeq(arrayFill.baseRef, arrayFill.array, arrayFill.value, field)
+    }
+
+    // Add backward edge and replace Proxy with proper Phi function.
+    val backEdge = Goto()
+    header.addArg(backEdge)
+    assert(header.args.size == 2)
+    index.replaceBy(Phi(index.tpe)(header, LConst(0), Add(index, LConst(1))))
+
+    continue(whileCheck.falseExit)
+  }
+
+  private[lowering] def lowerVArrayFillByLambda(arrayFill: VArrayFillByLambda): Unit = {
+    import SpecialParameter.*
+
+    val arrayType = arrayFill.arrayType
+    val elementType = arrayType.elemType
+    val target = arrayFill.target
+
+    // Start new block to guarantee valid creation of loop index in header with exactly one forward edge.
+    // Backward edge will be added later, when Proxy is replaced by Phi function.
+    val header = continue(Goto())
+    val index = Proxy(LongType)(header)
+
+    // TODO: JET-17408
+    val whileCheck = If(Cmp(index.tpe, Condition.ULT)(index, LConst(arrayType.length)))
+
+    continue(whileCheck.trueExit)
+
+    val retByValResult = if (target.methodType.hasRetByValParameter) {
+      if (elementType.isZST) {
+        Some(Void())
+      } else {
+        assert(elementType.isRecord, elementType)
+        Some(StackAlloc.Local(elementType, workaroundForNonZeroedTraceableRecords = true))
+      }
+    } else {
+      None
+    }
+
+    val startArgs = target.methodType.specialParameters.specialParametersStart.map {
+      case RetByVal => retByValResult.get
+      case Receiver => arrayFill.initializer
+      case special => shouldNotReachHere(special)
+    }.toSeq
+    val endArgs = target.methodType.specialParameters.specialParametersEnd.map {
+      case OuterTypeInfo => ThisTypeInfoBy(arrayFill.initializer)
+      case SpecialParameter.ThisTypeInfo => LoadTypeInfo(arrayFill.lambdaType)
+      case special => shouldNotReachHere(special)
+    }.toSeq
+
+    SaveCallRefTypeInfo(LoadTypeInfo(target.refType.sigType))
+    val call = Invoke(target)((startArgs ++ Seq(index) ++ endArgs): _*)
+
+    if (!elementType.isZST) {
+      val field = IndexFieldReference(arrayType, elementType)(index)
+      if (elementType.isRecord) {
+        val address = GetFieldSeqRef(arrayFill.baseRef, arrayFill.array, field)
+        CopyStructure(elementType)(arrayFill.baseRef, address, DerivedPtr.Local(), retByValResult.get)
+      } else {
+        val value = if (elementType.isShortIntegral) {
+          BitFieldExtract.BFX(IntType, 0, elementType.toAsm.sizeInBits, signExtension = false, call)
+        } else {
+          call
+        }
+        StoreFieldSeq(arrayFill.baseRef, arrayFill.array, value, field)
+      }
     }
 
     // Add backward edge and replace Proxy with proper Phi function.

@@ -478,6 +478,7 @@ trait Lowering extends PreLowering with TypeChecks with Allocators with Invokes 
       case x: ArrayFill                       => lowerArrayFill(x); null
       case x: AJArrayFill                     => lowerAJArrayFill(x); null
       case x: VArrayFill                      => lowerVArrayFill(x); null
+      case x: VArrayFillByLambda              => lowerVArrayFillByLambda(x); null
       case x: CangjieArrayFillGeneric         => lowerCangjieArrayFillGeneric(x); null
       case x: AnyInvokeTarget                 => lowerAnyInvokeTarget(x)
       case x: Call                            => lowerCall(x)

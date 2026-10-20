@@ -257,6 +257,7 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: ArrayFill => ArrayFill.Proto
         case _: AJArrayFill => AJArrayFill.Proto
         case _: VArrayFill => VArrayFill.Proto
+        case _: VArrayFillByLambda => VArrayFillByLambda.Proto
         case _: CangjieArrayFillGeneric => CangjieArrayFillGeneric.Proto
         case _: ReinterpretCast => ReinterpretCast.Proto
         case _: ValueConvert => ValueConvert.Proto
