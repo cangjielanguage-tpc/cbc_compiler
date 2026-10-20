@@ -1453,9 +1453,21 @@ trait CHIRParser
           case (from: ClassBasedEnum, to: Tuple) =>
             val ctors = from.info.constructors
             val targetCtor = to.params.tail // first element is tag
-            val idx = ctors.indexWhere(_.params.map(_.instantiate(from.params, Seq.empty)) == targetCtor)
-            assert(idx >= 0)
-            val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
+            val idx = singleton(
+              for {
+                (c, idx) <- ctors.zipWithIndex
+                iparams = c.params.map(_.instantiate(from.params, Seq.empty))
+                if iparams.size == targetCtor.size
+                if iparams zip targetCtor forall {
+                  case (x, y) if x == y => true
+                  // Ignore boxes that might have been inserted for recursive enums
+                  case (SignatureType.Box(x), y) if x == y => true
+                  case _ => false
+                }
+              } yield idx
+            )
+            assert(idx.nonEmpty, s"$targetCtor -> ${ctors}")
+            val enumName = resolver.classBasedEnumConstructorName(from.name, idx.get)
             val enumType = if (from.params.isEmpty) {
               CangjieReference(enumName)
             } else {
