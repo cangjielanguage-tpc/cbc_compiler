@@ -2134,8 +2134,8 @@ trait CHIRParser
                     case Seq(IConst(c), x) =>
                       assert(c == 0 || c == 1, c)
                       StoreFieldSeq(maybeDerivedPtrBase(mem), mem, IConst(c), tagChain*)
-                            val payloadChain = fieldChain(enumType, Seq(1))
-                            val lastFieldType = FieldSeqOperation.lastRef(payloadChain)
+                      val payloadChain = fieldChain(enumType, Seq(1))
+                      val lastFieldType = FieldSeqOperation.lastRef(payloadChain)
                       if (payloadType.isZST) {
                         // nothing to do
                       } else if (needsCopy(payloadType)) {
@@ -2199,6 +2199,13 @@ trait CHIRParser
                 LoadFieldSeq(base.baseRef, base.base, base.fields: _*)
               case base => shouldNotReachHere(s"unexpected cast base: $base")
             }
+          }
+        } else if (targetType.isTypeVariable) {
+          if (base.tpe.isTraceableRefType) {
+            base
+          } else {
+            val ValueSig(sig) = e.value
+            Box(sig)(loadTypeInfo(sig), base)
           }
         } else {
           if (base.tpe.isTraceableRefType) {
