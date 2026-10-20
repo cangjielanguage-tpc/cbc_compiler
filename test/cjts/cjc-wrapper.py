@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """Fallback cjc-wrapper: build native libraries and drive cjc + cbc-compiler.
 
 Recognised on the cjc command line:
