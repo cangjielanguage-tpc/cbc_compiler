@@ -44,7 +44,7 @@ trait CHIRPatchGenerator {
   def generatePatch(id: Int): Option[CHIR.Func]
 }
 
-class CHIRThrowPatch(_pkg: CHIR.Package, patch: ThrowPatch) extends CHIRPatchGenerator {
+class CHIRThrowPatchGenerator(_pkg: CHIR.Package, patch: ThrowPatch) extends CHIRPatchGenerator {
   implicit val pkg: CHIR.Package = _pkg
 
   def generatePatch(_id: Int): Option[Func] = {
@@ -93,38 +93,25 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
   private val Unit = CHIR.BuiltinType.Unit
   private val Int64 = CHIR.BuiltinType.Int64
 
-  private def cjEntryBody(_id: Int, userMain: CHIR.Func): Func = {
+  def generatePatch(_id: Int): Option[Func] = pkg.getFunc("user.main").map { userMain =>
     new CHIR.Func {
       private var _retVal: CHIR.LocalVar = _
 
       def tpe: CHIR.FuncType = new CHIR.FuncType {
         def paramTypes: Seq[CHIR.Type] = Seq.empty
-
         def paramTypesWithoutReceiver: Seq[CHIR.Type] = Seq.empty
-
         def receiverType: CHIR.Type = CodeHelpers.shouldNotCallThis(s"receiver type is not expected for $name")
-
         def returnType: CHIR.Type = Int64
-
         def isC: Boolean = false
-
         def hasVarArg: Boolean = false
       }
-
       def sourceFile: Option[String] = Option.empty
-
       def id: Long = _id
-
       def identifier: String = cjEntryName
-
       def srcCodeIdentifier: String = cjEntryName
-
       def packageName: String = userMain.packageName
-
       def kind: CHIR.Func.Kind = CHIR.Func.Kind.Default
-
       def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
-
       val body: Option[CHIR.BlockGroup] = Some(CHIRDSL.genBlockGroup(pkg) { gen =>
 
         // Reserve blocks for main CFG path
@@ -218,20 +205,14 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
         gen.local(Unit, gen.raise(ex, exceptionBlock = None))
       })
 
-      def params: Seq[CHIR.Parameter] = Seq.empty
-
       def retVal: Option[CHIR.LocalVar] = {
         val _ = body.get // just to ensure, that body is generated before the method is called
         Some(_retVal)
       }
-
+      def params: Seq[CHIR.Parameter] = Seq.empty
       def annotations: Seq[CHIR.Annotation] = Seq.empty
-
       def attributes: Seq[CHIR.Attribute] = Seq.empty
-
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
     }
   }
-
-  def generatePatch(_id: Int): Option[Func] = pkg.getFunc("user.main").map(main => cjEntryBody(_id, main))
 }

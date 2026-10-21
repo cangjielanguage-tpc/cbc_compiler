@@ -2,22 +2,19 @@ package com.huawei.excelsior.jet.compiler.chir
 
 object PatchedPackage {
   def apply(pkg: CHIR.Package): PatchedPackage = {
-    val patchGenerators = Seq(
-      CHIRThrowPatch(pkg, ThrowPatch.symbolResolutionErrorPatch),
-      CHIRThrowPatch(pkg, ThrowPatch.abstractMethodErrorPatch),
+    new PatchedPackage(pkg, Seq(
+      CHIRThrowPatchGenerator(pkg, ThrowPatch.symbolResolutionErrorPatch),
+      CHIRThrowPatchGenerator(pkg, ThrowPatch.abstractMethodErrorPatch),
       CHIRCJEntryGenerator(pkg)
-    )
-
-    val startingId: Int = pkg.values.length
-
-    val ids = startingId until (startingId + patchGenerators.length)
-    val generators = patchGenerators.zip(ids).flatMap((generator, id) => generator.generatePatch(id))
-
-    new PatchedPackage(pkg, generators)
+    ))
   }
 }
 
-class PatchedPackage(pkg: CHIR.Package, patches: Seq[CHIR.Func]) extends CHIR.Package {
+class PatchedPackage(pkg: CHIR.Package, patchGenerators: Seq[CHIRPatchGenerator]) extends CHIR.Package {
+  private val startingId: Int = pkg.values.length
+  private val ids = startingId until (startingId + patchGenerators.length)
+  private val patches = patchGenerators.zip(ids).flatMap((generator, id) => generator.generatePatch(id))
+
   private val patchesById = patches.map(h => (h.id.toInt, h)).toMap
   private val patchesByName = patches.map(h => (h.name, h)).toMap
 
