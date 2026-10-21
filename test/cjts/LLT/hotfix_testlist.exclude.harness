@@ -303,6 +303,7 @@ compiler/CHIROpt/ValueRangeAnalysis/VArray2.cj
 compiler/CHIROpt/VarInitCheck/var_circular_dependency.cj
 compiler/CHIROpt/lambda_reduce/thread_lambda_inline.cj
 compiler/Sema/APILevelChecker/hide/mix_macro1.cj
+API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
 
 # driver mangles cjc args ("No such directory: '-lstdx.syntax'") / driver warning noise breaks expected-output compare
 compiler/CHIR/CHIR2HLIR/package/scanDepPkg/test.cj
