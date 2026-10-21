@@ -70,11 +70,15 @@ final class GlobalVarImpl(g: GlobalVar, val id: Long)(using val provider: CHIRIt
 }
 
 final class LocalVarImpl(l: LocalVar)(using provider: CHIRItemProvider) extends CHIR.LocalVar {
+  def identifier: String = l.base.identifier
+  def srcCodeIdentifier: String = l.srcCodeIdentifier
   def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`).get
   def associatedExpr: CHIR.Expression = provider.getExpr[CHIR.Expression](l.associatedExpr)
 }
 
 final class ParameterImpl(p: Parameter)(using provider: CHIRItemProvider) extends CHIR.Parameter {
+  def identifier: String = p.base.identifier
+  def srcCodeIdentifier: String = p.srcCodeIdentifier
   def tpe: CHIR.Type = provider.getType[CHIR.Type](p.base.`type`).get
 }
 

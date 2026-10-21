@@ -129,11 +129,15 @@ object CHIR {
   }
 
   trait LocalVar extends Value {
+    def identifier: String
+    def srcCodeIdentifier: String
     def tpe: Type
     def associatedExpr: Expression
   }
 
   trait Parameter extends Value {
+    def identifier: String
+    def srcCodeIdentifier: String
     def tpe: Type
   }
 

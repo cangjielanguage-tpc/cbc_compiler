@@ -4,14 +4,29 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR.*
 
 object Equality {
 
+  /** Compares corresponding blocks and their expressions, including terminators, in order. */
+  def sameCode(left: BlockGroup, right: BlockGroup): Boolean = {
+    val leftBlocks = left.blocks
+    val rightBlocks = right.blocks
+    leftBlocks.size == rightBlocks.size &&
+      leftBlocks.iterator.zip(rightBlocks.iterator).forall { case (a, b) =>
+        val leftExprs = a.expressions
+        val rightExprs = b.expressions
+        leftExprs.size == rightExprs.size &&
+          leftExprs.iterator.zip(rightExprs.iterator).forall { case (a, b) => sameExprs(a, b) }
+      }
+  }
+
   /** Compares declarations using their equality, literals by type and payload, and locals
-    * and parameters by type. Blocks are ignored.
+    * and parameters by identifiers and type. Blocks are ignored.
     */
-  def sameValues(left: Value, right: Value): Boolean = (left, right) match {
+  private def sameValues(left: Value, right: Value): Boolean = (left, right) match {
     case (a: Func, b: Func) => a == b
     case (a: GlobalVar, b: GlobalVar) => a == b
-    case (a: LocalVar, b: LocalVar) => a.tpe == b.tpe
-    case (a: Parameter, b: Parameter) => a.tpe == b.tpe
+    case (a: LocalVar, b: LocalVar) =>
+      a.identifier == b.identifier && a.srcCodeIdentifier == b.srcCodeIdentifier && a.tpe == b.tpe
+    case (a: Parameter, b: Parameter) =>
+      a.identifier == b.identifier && a.srcCodeIdentifier == b.srcCodeIdentifier && a.tpe == b.tpe
     case (a: NullLiteral, b: NullLiteral) => a.tpe == b.tpe
     case (a: IntLiteral, b: IntLiteral) => a.tpe == b.tpe && a.value == b.value
     case (a: FloatLiteral, b: FloatLiteral) =>
@@ -40,7 +55,7 @@ object Equality {
   /** Compares operations through the CHIR trait API. Debug locations, result-variable
     * identities, and block targets are ignored; value operands use [[sameValues]].
     */
-  def sameExprs(left: Expression, right: Expression): Boolean = (left, right) match {
+  private def sameExprs(left: Expression, right: Expression): Boolean = (left, right) match {
     case (a: Cast, b: Cast) =>
       val sameKind = (a, b) match {
         case (a: NumericCast, b: NumericCast) => a.overflowStrategy == b.overflowStrategy
