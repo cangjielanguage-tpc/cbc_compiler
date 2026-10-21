@@ -134,6 +134,28 @@ $ sbt jar
 
 The resulting compiler jar will be located at [core/compiler/target/aot/aot.jar](core/compiler/target/aot/aot.jar).
 
+### Native Image Builds
+
+The compiler and the `cbc-asm` assembler can also be built as
+[GraalVM native images](https://www.graalvm.org/latest/reference-manual/native-image/),
+which start up much faster than the corresponding jars:
+
+```bash
+$ sbt compiler/nativeImage
+$ sbt cbcAsm/nativeImage
+```
+
+This requires the `native-image` utility from a GraalVM distribution,
+configured via the `graalvm` property in `env.properties`:
+
+```bash
+graalvm=<graalvm>/bin/native-image
+```
+
+The resulting binaries are located at `core/compiler/target/cbc-compiler-native`
+and `core/cbc-asm/target/cbc-asm-native`. `<binary>.info` file is generated to save
+MD5 hashes of the source jar and of the binary itself.
+
 ### Supported CHIR versions
 
 | CHIR version | CBC option          | Notes                    |
