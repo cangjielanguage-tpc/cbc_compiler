@@ -15,7 +15,7 @@ import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.GenerationTarget.{EXE, STDLIB}
-import com.huawei.excelsior.jet.compiler.chir.CHIRLoader
+import com.huawei.excelsior.jet.compiler.chir.{CHIRLoader, CHIRPatchGeneratorFactory, IntrinsicsCHIRLoader}
 import com.huawei.excelsior.jet.compiler.debug.dwarf.Dwarf
 import com.huawei.excelsior.jet.compiler.delayed.DelayedIntrinsicsUsageTracker
 import com.huawei.excelsior.jet.compiler.driver.CompilationMode.O2
@@ -236,14 +236,20 @@ object CangjieMain {
 
     if (isStandalone) {
       val chirBuilder = new CHIRSymLevelBuilderImpl
-      for ((f, i) <- p.files.zipWithIndex) {
-        printProgress(f, i, p.files.size)
-        val src = xfs.sys.createFileDescriptor(f)
-        if (src.getName.toString.endsWith(".chir")) {
-          chirBuilder.srcFD = src
-          CHIRLoader.load(chirBuilder, src.getName.toString)
-        } else {
-          shouldNotReachHere(s"Unknown input file format: ${src.getName}")
+      if (env.enabled(GenCbcIntrinsics)) {
+        assert(p.files.isEmpty)
+        chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(CHIRPatchGeneratorFactory.intrinsicsSourceName))
+        IntrinsicsCHIRLoader().load(chirBuilder)
+      } else {
+        for ((f, i) <- p.files.zipWithIndex) {
+          printProgress(f, i, p.files.size)
+          val src = xfs.sys.createFileDescriptor(f)
+          if (src.getName.toString.endsWith(".chir")) {
+            chirBuilder.srcFD = src
+            CHIRLoader(src.getName.toString).load(chirBuilder)
+          } else {
+            shouldNotReachHere(s"Unknown input file format: ${src.getName}")
+          }
         }
       }
       chirBuilder.build()
@@ -262,7 +268,7 @@ object CangjieMain {
 
     ExtraPassModule.exi()
 
-    if (!genLibrary && !genCbcStdLibrary) {
+    if (!genLibrary && !genCbcStdLibrary && !env.enabled(GenCbcIntrinsics)) {
       checkMain()
     }
 
@@ -400,8 +406,12 @@ object CangjieMain {
   private def setOutputName(): Unit = {
     val outputname = xiEnv.config.equation("outputname")
     if (outputname == null) {
-      val lastArg = FS.cutExt(xiEnv.args.getArg(xiEnv.args.number() - 1))
-      xiEnv.config.setEquation2("outputname", lastArg)
+      if (env.enabled(GenCbcIntrinsics)) {
+        xiEnv.config.setEquation2("outputname", XString(CHIRPatchGeneratorFactory.intrinsicsPackageName))
+      } else {
+        val lastArg = FS.cutExt(xiEnv.args.getArg(xiEnv.args.number() - 1))
+        xiEnv.config.setEquation2("outputname", lastArg)
+      }
     }
   }
 

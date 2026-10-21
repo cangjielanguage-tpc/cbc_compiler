@@ -13,6 +13,8 @@ object CHIR {
     case _ => notImplemented("unsupported CHIR version", version)
   })
 
+  def intrinsicsPackage: Package = new IntrinsicsPackage
+
   trait Package {
     def name: String
     def typeDefs: Iterator[CustomTypeDef]
@@ -22,6 +24,9 @@ object CHIR {
     def packageInitLiteralFunc: Func
     def getFunc(identifier: String): Option[Func]
     def getDef(identifier: String): Option[CustomTypeDef]
+
+    /** Imported type defs are declarations from other packages and must not be emitted as local types. */
+    def externalImports: Boolean = false
   }
 
   trait HasAnnotations {

@@ -16,20 +16,26 @@ import scala.collection.mutable
 import scala.ref.SoftReference
 
 object CHIRLoader {
-
-  def load(builder: CHIRSymLevelBuilder, source: String): Unit = builder.env.stage(Stage.CangjieModuleParsing) {
-    val resolver = getCHIRResolver(source)(builder.env)
-    CHIRBuilder.parse(builder, resolver)
-  }
-
   private val parsedCHIR = mutable.HashMap.empty[String, scala.ref.Reference[CHIRResolver]]
+}
 
-  def getCHIRResolver(source: String)(implicit env: Environment): CHIRResolver = {
-    parsedCHIR.get(source).flatMap(_.get).getOrElse {
-      val pkg: CHIR.Package = CHIR.newPackage(source, env.valueOf(CHIRVersion))
+class CHIRLoader(source: String) {
+  protected def packageGen(env: Environment): CHIR.Package = CHIR.newPackage(source, env.valueOf(CHIRVersion))
+  def resolver(env: Environment): CHIRResolver = {
+    CHIRLoader.parsedCHIR.get(source).flatMap(_.get).getOrElse {
+      val pkg: CHIR.Package = packageGen(env)
       val resolver = CHIRResolver(pkg, env)
-      parsedCHIR.put(source, new SoftReference(resolver))
+      CHIRLoader.parsedCHIR.put(source, new SoftReference(resolver))
       resolver
     }
   }
+
+  def load(builder: CHIRSymLevelBuilder): Unit = builder.env.stage(Stage.CangjieModuleParsing) {
+    val chirResolver = resolver(builder.env)
+    CHIRBuilder.parse(builder, chirResolver)
+  }
+}
+
+class IntrinsicsCHIRLoader extends CHIRLoader(CHIRPatchGeneratorFactory.intrinsicsSourceName) {
+  override protected def packageGen(_env: Environment): CHIR.Package = CHIR.intrinsicsPackage
 }
