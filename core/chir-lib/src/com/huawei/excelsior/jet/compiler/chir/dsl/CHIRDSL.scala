@@ -18,6 +18,7 @@ object CHIRDSL {
     val entryBlock: Block = newBlock()
 
     private var curBlock: Block = _
+    private var nextLocalId = 0
 
     def finish(): BlockGroup = BlockGroup(blocks.toSeq, entryBlock)
 
@@ -41,7 +42,9 @@ object CHIRDSL {
     def local(tpe: CHIR.Type, expr: CHIR.Expression): CHIR.LocalVar = {
       assert(!curBlock.frozen)
 
-      val loc = LocalVar(tpe, expr)
+      val identifier = s"local$nextLocalId"
+      nextLocalId += 1
+      val loc = LocalVar(tpe, expr, identifier, identifier)
 
       expr match {
         case expr: HasResultVar =>
