@@ -47,6 +47,8 @@ enum BoolOption(override val isAlias: Boolean,
   // Might be used to skip generation of Java asserts.
   case XGenAsserts extends BoolOption(true)
 
+  case GenCbcIntrinsics extends BoolOption(false)
+
   case IgnoreNumbersInPositionsOutput extends BoolOption(false)
 
   case ForceAddAggressiveClinitAnalysisAssert  extends BoolOption(_ => isWorkMode)

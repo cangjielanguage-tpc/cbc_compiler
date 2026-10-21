@@ -26,7 +26,7 @@ import com.huawei.excelsior.jet.compiler.o2lib.u.xiFilesModule.FileDescriptor
 import com.huawei.excelsior.jet.compiler.o2lib.u.{JStringsModule as js, PackagerModule as Packager, PropertiesModule as Properties, RawFileModule as RawFile, TextFileModule as TextFile, TimeRecModule as TimeRec, xOptionsModule as opt, xcFModule as xcF, xcMain0Module as xcMain0, xcMainModule as xcMain, xcMakeModule as mk, xcModesModule as xcModes, xcResourcesModule as xcResources, xcVersionModule as xcVersion, xiEnvModule as env, xiFilesModule as xfs, xmArgsModule as xmArgs, xmErrorsModule as xmErrors, xmFS2Module as xmFS2}
 import com.huawei.excelsior.jet.compiler.o2lib.xmlib.{FSModule as FS, MemoryManagementModule as mm}
 import com.huawei.excelsior.jet.compiler.options.BoolOption
-import com.huawei.excelsior.jet.compiler.options.BoolOption.{GenDebug, GenLibrary, GenMegaObj, Makefile, PackPDB, ReuseRtDwarf}
+import com.huawei.excelsior.jet.compiler.options.BoolOption.{GenCbcIntrinsics, GenDebug, GenLibrary, GenMegaObj, Makefile, PackPDB, ReuseRtDwarf}
 import com.huawei.excelsior.jet.compiler.options.Option.SmartKind
 import com.huawei.excelsior.jet.compiler.options.Option.SmartKind.*
 import com.huawei.excelsior.jet.compiler.options.StrOption.{FrontEnd, Locales, OPTRTFILES, PackExtraItems, TargetDir, TargetZip}
@@ -657,6 +657,15 @@ object xmModule { /* Ned 03-Mar-94. */
     if (xcModes.clean) {
       RTCache.cleanGlobalCache()
     }
+
+    if (O2Env.env.enabled(GenCbcIntrinsics)) {
+      assert(env.args.number() == 0)
+      pcO.isCangjie = true
+      CangjieMain.main(new CangjieProject)
+      exit()
+      return
+    }
+
     if (env.args.number() == 0) {
       printUsage()
       return

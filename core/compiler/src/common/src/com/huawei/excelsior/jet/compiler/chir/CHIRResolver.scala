@@ -54,7 +54,7 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   private def syntheticName(v: CHIR.Func): Option[String] = condOpt(v.identifier) {
     // rename main-related functions to let interpreter start from "main" entry point
     case "@user.main" => "user.main.invoke"
-    case CHIRPatchGeneratorFactory.cjEntryName => "main"
+    case CHIRCJEntryGenerator.cjEntryName => "main"
     case _ if v.kind == CHIR.Func.Kind.MainEntry => "user.main"
   }
 

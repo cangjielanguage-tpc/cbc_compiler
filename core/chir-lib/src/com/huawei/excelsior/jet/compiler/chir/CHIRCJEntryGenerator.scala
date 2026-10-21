@@ -2,98 +2,19 @@ package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.common.CodeHelpers
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
-import com.huawei.excelsior.jet.compiler.chir.CHIRPatchGeneratorFactory.{cjEntryName, intrinsicsPackageName}
 import com.huawei.excelsior.jet.compiler.chir.dsl.CHIRDSL
 
-/** We expect this types and functions to be included in the compiled CHIR package.
- *
- * It is not guaranteed that they are included.
- */
-object AOTDefs {
-  def OOM(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat16OutOfMemoryErrorE").get.tpe
-  def Object(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat6ObjectE").get.tpe
-  def String(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat6StringE").get.tpe
-  def Error(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat5ErrorE").get.tpe
-  def Exception(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat9ExceptionE").get.tpe
-  def arrOfStr(implicit pkg: CHIR.Package): CHIR.Type = pkg.getDef("_CNat5ArrayIRNat6StringEE").get.tpe
-  def initException(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat9Exception6<init>HRNat6StringE").get
-  def eprintlnFunc(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat8eprintlnHRNat6StringE").get
-  def errToString(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat5Error8toStringHv").get
-  def handleExFunc(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat15handleExceptionHCNat9ExceptionE").get
-  def atExitCallbacks(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat27CJ_CORE_ExecAtexitCallbacksHv").get
-  def getCommandLineArgs(implicit pkg: CHIR.Package): CHIR.Func = pkg.getFunc("_CNat18getCommandLineArgsHv").get
-}
-
-object CHIRPatchGeneratorFactory {
+object CHIRCJEntryGenerator {
   val cjEntryName = "cj_entry"
-  val intrinsicsPackageName = "cbc_intrinsics"
 }
 
-object ThrowPatch {
-  val symbolResolutionErrorPatch = ThrowPatch("throwSymbolResolutionError", "CBC internal error: symbol resolution error")
-  val abstractMethodErrorPatch = ThrowPatch("throwAbstractMethodCallError", "CBC internal error: symbol resolution error")
-  def throwPatches: Seq[ThrowPatch] = Seq(
-    symbolResolutionErrorPatch,
-    abstractMethodErrorPatch
-  )
-}
-
-case class ThrowPatch(name: String, exceptionMsg: String)
-
-trait CHIRPatchGenerator {
-  def generatePatch(id: Int): Option[CHIR.Func]
-}
-
-class CHIRThrowPatch(_pkg: CHIR.Package, patch: ThrowPatch) extends CHIRPatchGenerator {
-  implicit val pkg: CHIR.Package = _pkg
-
-  def generatePatch(_id: Int): Option[Func] = {
-    Option(new CHIR.Func {
-      def tpe: CHIR.FuncType = new CHIR.FuncType {
-        def paramTypes: Seq[CHIR.Type] = Seq.empty
-        def paramTypesWithoutReceiver: Seq[CHIR.Type] = Seq.empty
-        def receiverType: CHIR.Type = CodeHelpers.shouldNotCallThis(s"receiver type is not expected for internal throw helper")
-        def returnType: CHIR.Type = CHIR.BuiltinType.Nothing
-        def isC: Boolean = false
-        def hasVarArg: Boolean = false
-      }
-      def id: Long = _id
-      def identifier: String = patch.name
-      def srcCodeIdentifier: String = patch.name
-      def packageName: String = intrinsicsPackageName
-      def kind: Func.Kind = CHIR.Func.Kind.Default
-      def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
-      def sourceFile: Option[String] = Option.empty
-      def body: Option[CHIR.BlockGroup] = Option(CHIRDSL.genBlockGroup(_pkg) { gen =>
-        val exceptionType: CHIR.Type = AOTDefs.Exception
-        val exceptionInitFunc: CHIR.Func = AOTDefs.initException
-        gen.startBlock(gen.entryBlock)
-        val exception = gen.local(exceptionType, gen.alloc(exceptionType))
-
-        val exceptionMsg = gen.local(AOTDefs.String, gen.const(AOTDefs.String, patch.exceptionMsg))
-
-        gen.apply(exceptionInitFunc, Some(exceptionType), Some(exception), exception, exceptionMsg)
-
-        gen.local(CHIR.BuiltinType.Void, gen.apply(exceptionInitFunc, Some(exceptionType), Some(exception), exception, exceptionMsg))
-
-        gen.local(CHIR.BuiltinType.Nothing, gen.raise(exception, Option.empty))
-      })
-      def params: Seq[CHIR.Parameter] = Seq.empty
-      def retVal: Option[CHIR.LocalVar] = Option.empty
-      def annotations: Seq[CHIR.Annotation] = Seq.empty
-      def attributes: Seq[CHIR.Attribute] = Seq.empty
-      def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
-    })
-  }
-}
-
-class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
+class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRFuncGenerator {
   implicit val pkg: CHIR.Package = _pkg
   private val Bool = CHIR.BuiltinType.Boolean
   private val Unit = CHIR.BuiltinType.Unit
   private val Int64 = CHIR.BuiltinType.Int64
 
-  private def cjEntryBody(_id: Int, userMain: CHIR.Func): Func = {
+  def generateFunc(_id: Int): Option[Func] = pkg.getFunc("user.main").map(userMain =>
     new CHIR.Func {
       private var _retVal: CHIR.LocalVar = _
 
@@ -115,9 +36,9 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
 
       def id: Long = _id
 
-      def identifier: String = cjEntryName
+      def identifier: String = CHIRCJEntryGenerator.cjEntryName
 
-      def srcCodeIdentifier: String = cjEntryName
+      def srcCodeIdentifier: String = CHIRCJEntryGenerator.cjEntryName
 
       def packageName: String = userMain.packageName
 
@@ -231,7 +152,5 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
 
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
     }
-  }
-
-  def generatePatch(_id: Int): Option[Func] = pkg.getFunc("user.main").map(main => cjEntryBody(_id, main))
+  )
 }
