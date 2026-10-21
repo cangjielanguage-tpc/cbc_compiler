@@ -796,11 +796,6 @@ compiler/Sema/Extend/interface_default_implement/prop_call_virtual.cj
 compiler/Sema/box/call_boxed_super_01.cj
 compiler/Sema/box/call_boxed_super_02.cj
 
-# bug 158 (Check failed: IsMarkedObject(offset) )
-API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
-API/std/collection/concurrent/test_concurrent_hashmap_init_extend.cj
-API/std/collection/concurrent/test_non_blocking_queue.cj
-
 # bug 161 (io/fs related bugs (environment or miscompilation of foreigns, need investigation))
 API/std/io/ByteBuffer/test_setLength.cj
 API/std/io/ByteBuffer/test_seekable.cj
