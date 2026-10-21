@@ -15,6 +15,8 @@ import sbt.plugins.JUnitXmlReportPlugin
 import sbtassembly.*
 import sbtassembly.AssemblyKeys.*
 
+import java.io.{File, FileInputStream}
+import java.security.MessageDigest
 import scala.sys.process._
 
 object Build {
@@ -83,6 +85,28 @@ object Build {
     Some(env.graalvm).filter(usable)
   }
 
+  private def md5Hex(file: File): String = {
+    val digest = MessageDigest.getInstance("MD5")
+    val in = new FileInputStream(file)
+    try {
+      val buffer = new Array[Byte](64 * 1024)
+      var read = 0
+      while ({ read = in.read(buffer); read >= 0 }) digest.update(buffer, 0, read)
+    } finally in.close()
+    digest.digest().map(b => f"${b & 0xff}%02x").mkString
+  }
+
+  private def writeNativeInfo(jar: File, native: File, log: Logger): Unit = {
+    val base = native.getName.stripSuffix("-native")
+    val info = new File(native.getParentFile, s"$base-native.info")
+    val content =
+      s"""$base-jar.md5 = ${md5Hex(jar)}
+         |$base-native.md5 = ${md5Hex(native)}
+         |""".stripMargin
+    IO.write(info, content)
+    log.info(s"Wrote $info")
+  }
+
   private def nativeImageSettings(outputName: String) = Def.settings(
     TaskKey[Unit]("nativeImage", s"Builds target/$outputName using GraalVM Native Image") := {
       val jar = assembly.value
@@ -105,6 +129,7 @@ object Build {
           if (command.! != 0) {
             throw new MessageOnlyException(s"native-image failed: ${command.mkString(" ")}")
           }
+          writeNativeInfo(jar, output, streams.value.log)
       }
     },
   )
