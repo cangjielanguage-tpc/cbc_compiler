@@ -87,7 +87,7 @@ trait CHIRParser
 
   private def loadMutWrapper(method: Method, args: Seq[Node]): Return = {
     val Some(source, idx) = method.getCHIRDef
-    implicit val resolver: CHIRResolver = CHIRLoader.getCHIRResolver(source.toString)(env)
+    implicit val resolver: CHIRResolver = CHIRLoader(source.toString).getResolver(env)
     implicit val pkg: CHIR.Package = resolver.pkg
 
     // Mut wrapper C.foo is a wrapper around method C.foo$withoutTI
@@ -144,7 +144,7 @@ trait CHIRParser
 
   private def loadNormal(method: Method, args: Seq[Node]): Return = {
     val Some(source, idx) = method.getCHIRDef
-    implicit val resolver: CHIRResolver = CHIRLoader.getCHIRResolver(source.toString)(env)
+    implicit val resolver: CHIRResolver = CHIRLoader(source.toString).getResolver(env)
     implicit val pkg: CHIR.Package = resolver.pkg
 
     val func = pkg.function(idx)
