@@ -1453,21 +1453,27 @@ trait CHIRParser
           case (from: ClassBasedEnum, to: Tuple) =>
             val ctors = from.info.constructors
             val targetCtor = to.params.tail // first element is tag
-            val idx = singleton(
-              for {
-                (c, idx) <- ctors.zipWithIndex
-                iparams = c.params.map(_.instantiate(from.params, Seq.empty))
-                if iparams.size == targetCtor.size
-                if iparams zip targetCtor forall {
-                  case (x, y) if x == y => true
-                  // Ignore boxes that might have been inserted for recursive enums
-                  case (SignatureType.Box(x), y) if x == y => true
-                  case _ => false
-                }
-              } yield idx
-            )
-            assert(idx.nonEmpty, s"$targetCtor -> ${ctors}")
-            val enumName = resolver.classBasedEnumConstructorName(from.name, idx.get)
+            val indices = for {
+              (c, idx) <- ctors.zipWithIndex
+              iparams = c.params.map(_.instantiate(from.params, Seq.empty))
+              if iparams.size == targetCtor.size
+              if iparams zip targetCtor forall {
+                case (x, y) if x == y => true
+                // Ignore boxes that might have been inserted for recursive enums
+                case (SignatureType.Box(x), y) if x == y => true
+                case _ => false
+              }
+            } yield idx
+
+            // Unfortunately there is no reliable way to distinguish differently named constructors
+            // with same parameters when we get this "StaticClassCast" from Enum to Tuple.
+            // So we have to pick arbitrary constructor representative which has "the same" layout
+            // as expected Tuple and hope it works.
+            // CJC leaves us no choice here.
+            assert(indices.nonEmpty, s"$targetCtor -> ${ctors}")
+            val idx = indices.head
+
+            val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
             val enumType = if (from.params.isEmpty) {
               CangjieReference(enumName)
             } else {
