@@ -67,6 +67,9 @@ object CHIR {
     def params: Seq[Parameter]
     def retVal: Option[LocalVar]
     def sourceFile: Option[String]
+
+    override def equalityKey: Product =
+      (classOf[Func], super.equalityKey, srcCodeIdentifier, packageName, kind, attributes)
   }
 
   object Func {
@@ -109,6 +112,20 @@ object CHIR {
     def packageName: String
     def tpe: Type
     def initializer: Option[Value]
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: GlobalVar =>
+        (this eq that) ||
+          (identifier == that.identifier &&
+            srcCodeIdentifier == that.srcCodeIdentifier &&
+            packageName == that.packageName &&
+            tpe == that.tpe &&
+            attributes == that.attributes)
+      case _ => false
+    }
+
+    final override def hashCode(): Int =
+      (identifier, srcCodeIdentifier, packageName, tpe, attributes).hashCode()
   }
 
   trait LocalVar extends Value {
@@ -157,6 +174,13 @@ object CHIR {
 
   trait BoxType extends Type {
     def baseType: Type
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: BoxType => (this eq that) || baseType == that.baseType
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (classOf[BoxType], baseType).hashCode()
   }
 
   enum BuiltinType extends Type {
@@ -174,22 +198,44 @@ object CHIR {
   trait CustomType extends Type {
     def typeDef: CustomTypeDef
     def genericTypeParams: Seq[Type]
+
+    def equalityKey: Product = (classOf[CustomType], typeDef, genericTypeParams)
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: CustomType => (this eq that) || equalityKey == that.equalityKey
+      case _ => false
+    }
+
+    final override def hashCode(): Int = equalityKey.hashCode()
   }
 
   trait ClassType extends CustomType {
     def typeDef: ClassDef
+
+    override def equalityKey: Product = (classOf[ClassType], super.equalityKey)
   }
 
   trait EnumType extends CustomType {
     def typeDef: EnumDef
+
+    override def equalityKey: Product = (classOf[EnumType], super.equalityKey)
   }
 
   trait StructType extends CustomType {
     def typeDef: StructDef
+
+    override def equalityKey: Product = (classOf[StructType], super.equalityKey)
   }
 
   trait CPointerType extends Type {
     def elementType: Type
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: CPointerType => (this eq that) || elementType == that.elementType
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (classOf[CPointerType], elementType).hashCode()
   }
 
   trait FuncType extends Type {
@@ -199,15 +245,44 @@ object CHIR {
     def returnType: Type
     def isC: Boolean
     def hasVarArg: Boolean
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: FuncType =>
+        (this eq that) ||
+          (paramTypes == that.paramTypes &&
+            returnType == that.returnType &&
+            isC == that.isC &&
+            hasVarArg == that.hasVarArg)
+      case _ => false
+    }
+
+    final override def hashCode(): Int =
+      (paramTypes, returnType, isC, hasVarArg).hashCode()
   }
 
   trait GenericType extends Type {
     def identifier: String
     def upperBounds: Seq[Type]
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: GenericType =>
+        (this eq that) ||
+          (identifier == that.identifier && upperBounds == that.upperBounds)
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (identifier, upperBounds).hashCode()
   }
 
   trait RefType extends Type {
     def baseType: Type
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: RefType => (this eq that) || baseType == that.baseType
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (classOf[RefType], baseType).hashCode()
   }
 
   object RefType {
@@ -220,15 +295,40 @@ object CHIR {
   trait RawArrayType extends Type {
     def elementType: Type
     def dimension: Long
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: RawArrayType =>
+        (this eq that) ||
+          (elementType == that.elementType && dimension == that.dimension)
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (elementType, dimension).hashCode()
   }
 
   trait TupleType extends Type {
     def fieldTypes: Seq[Type]
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: TupleType => (this eq that) || fieldTypes == that.fieldTypes
+      case _ => false
+    }
+
+    final override def hashCode(): Int = fieldTypes.hashCode()
   }
 
   trait VArrayType extends Type {
     def elementType: Type
     def size: Long
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: VArrayType =>
+        (this eq that) ||
+          (elementType == that.elementType && size == that.size)
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (elementType, size).hashCode()
   }
 
   trait CustomTypeDef extends HasAttributes with HasAnnotations {
@@ -241,32 +341,63 @@ object CHIR {
     def methods: Seq[Func]
     def vtables: Seq[VTable]
     def implementedInterfaces: Seq[ClassType]
+
+    def equalityKey: Product =
+      (classOf[CustomTypeDef], packageName, identifier, srcCodeIdentifier, attributes)
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: CustomTypeDef => (this eq that) || equalityKey == that.equalityKey
+      case _ => false
+    }
+
+    final override def hashCode(): Int = equalityKey.hashCode()
   }
 
   trait EnumDef extends CustomTypeDef {
     def nonExhaustive: Boolean
     def tpe: EnumType
     def ctors: Seq[EnumCtor]
+
+    override def equalityKey: Product =
+      (classOf[EnumDef], super.equalityKey, nonExhaustive, ctors)
   }
 
   trait ClassDef extends CustomTypeDef {
     def isClass: Boolean
     def tpe: ClassType
     def superClass: Option[ClassType]
+
+    override def equalityKey: Product =
+      (classOf[ClassDef], super.equalityKey, isClass, superClass)
   }
 
   trait StructDef extends CustomTypeDef {
     def tpe: StructType
+
+    override def equalityKey: Product =
+      (classOf[StructDef], super.equalityKey)
   }
 
   trait ExtendDef extends CustomTypeDef {
     def genericTypeParams: Seq[GenericType]
+
+    override def equalityKey: Product =
+      (classOf[ExtendDef], super.equalityKey, genericTypeParams)
   }
 
   trait FuncSig {
     def name: String
     def tpe: FuncType
     def genericTypeParams: Seq[Type]
+
+    def equalityKey: Product = (classOf[FuncSig], name, tpe, genericTypeParams)
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: FuncSig => (this eq that) || equalityKey == that.equalityKey
+      case _ => false
+    }
+
+    final override def hashCode(): Int = equalityKey.hashCode()
   }
 
   trait VTable {
@@ -279,6 +410,9 @@ object CHIR {
     def originalType: FuncType
     def parentType: Type
     def returnType: Type
+
+    override def equalityKey: Product =
+      (classOf[VMethod], super.equalityKey, instance, originalType, parentType, returnType, attributes)
   }
 
   trait EnumCtor {
