@@ -1162,52 +1162,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
         "CustomTypeDef" -> "customTypeDefId genericDecl")).toMap
   }
 
-  // APIs currently called only by tests in this repository (excluding forwarders).
-  def typeId(tpe: CHIR.Type): Long = {
-    // Primitive type objects are shared singletons. Use the first equivalent
-    // table entry as their canonical reference, without rewriting loaded IDs.
-    if (!typeIds.containsKey(tpe)) (1L to length(p.getTypes).toLong).foreach(getType[CHIR.Type])
-    registered(typeIds, tpe, "type")
-  }
-
-  def newBlock(isLandingPad: Boolean = false): CHIR.Block = {
-    val b = new BlockT
-    b.setBase(newValue(s"#$nextBlockName", ValueKind.BLOCK))
-    b.setIsLandingPadBlock(isLandingPad)
-    nextBlockName = Math.addExact(nextBlockName, 1L)
-    blockView(appendValue(ValueElem.Block, b))
-  }
-
-  def newBlockGroup(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block): CHIR.BlockGroup = {
-    val blockIds = checkedBlocks(0L, blocks, entryBlock)
-    val g = new BlockGroupT
-    g.setBase(newValue(nextGroupName.toString, ValueKind.BLOCK_GROUP))
-    g.setBlocks(blockIds)
-    g.setEntryBlock(valueId(entryBlock))
-    nextGroupName = Math.addExact(nextGroupName, 1L)
-    val id = appendValue(ValueElem.BlockGroup, g)
-    blockIds.foreach(blockTable(_).setParentGroup(id))
-    rememberOwners()
-    rebuildPredecessors()
-    group(id)
-  }
-
-  def newBranch(
-    condition: CHIR.Value,
-    trueBlock: CHIR.Block,
-    falseBlock: CHIR.Block,
-    debugLoc: Option[CHIR.DebugLocation] = None
-  ): CHIR.Branch = {
-    val conditionId = valueId(condition)
-    require(isBoolean(conditionId), "Branch condition must have Boolean type")
-    val t = valueId(trueBlock); val f = valueId(falseBlock)
-    blockTable(t); blockTable(f)
-    val b = new BranchT
-    b.setBase(newExpression(CHIRExprKind.Branch, Array(conditionId, t, f), debugLoc))
-    getExpr[CHIR.Branch](appendExpression(ExpressionElem.Branch, b))
-  }
-
-  // Implementation of Func.replaceBody, currently exercised only by tests.
+  // Shared implementation of Func.replaceBody and Func.removeBody.
   private[v13002] def replaceFunctionBody(
     functionId: Long,
     body: Option[CHIR.BlockGroup],
@@ -1327,5 +1282,51 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     target.setBlockGroupId(groupCounter)
     rememberOwners()
   }
+
+  // APIs currently called only by tests in this repository (excluding forwarders).
+  def typeId(tpe: CHIR.Type): Long = {
+    // Primitive type objects are shared singletons. Use the first equivalent
+    // table entry as their canonical reference, without rewriting loaded IDs.
+    if (!typeIds.containsKey(tpe)) (1L to length(p.getTypes).toLong).foreach(getType[CHIR.Type])
+    registered(typeIds, tpe, "type")
+  }
+
+  def newBlock(isLandingPad: Boolean = false): CHIR.Block = {
+    val b = new BlockT
+    b.setBase(newValue(s"#$nextBlockName", ValueKind.BLOCK))
+    b.setIsLandingPadBlock(isLandingPad)
+    nextBlockName = Math.addExact(nextBlockName, 1L)
+    blockView(appendValue(ValueElem.Block, b))
+  }
+
+  def newBlockGroup(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block): CHIR.BlockGroup = {
+    val blockIds = checkedBlocks(0L, blocks, entryBlock)
+    val g = new BlockGroupT
+    g.setBase(newValue(nextGroupName.toString, ValueKind.BLOCK_GROUP))
+    g.setBlocks(blockIds)
+    g.setEntryBlock(valueId(entryBlock))
+    nextGroupName = Math.addExact(nextGroupName, 1L)
+    val id = appendValue(ValueElem.BlockGroup, g)
+    blockIds.foreach(blockTable(_).setParentGroup(id))
+    rememberOwners()
+    rebuildPredecessors()
+    group(id)
+  }
+
+  def newBranch(
+    condition: CHIR.Value,
+    trueBlock: CHIR.Block,
+    falseBlock: CHIR.Block,
+    debugLoc: Option[CHIR.DebugLocation] = None
+  ): CHIR.Branch = {
+    val conditionId = valueId(condition)
+    require(isBoolean(conditionId), "Branch condition must have Boolean type")
+    val t = valueId(trueBlock); val f = valueId(falseBlock)
+    blockTable(t); blockTable(f)
+    val b = new BranchT
+    b.setBase(newExpression(CHIRExprKind.Branch, Array(conditionId, t, f), debugLoc))
+    getExpr[CHIR.Branch](appendExpression(ExpressionElem.Branch, b))
+  }
+
 
 }

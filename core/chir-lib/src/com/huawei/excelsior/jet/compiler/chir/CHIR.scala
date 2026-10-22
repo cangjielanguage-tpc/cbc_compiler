@@ -127,6 +127,11 @@ object CHIR {
       */
     def moveBody(destination: Func): Unit
 
+    /** Remove the body and return local, leaving the signature and attributes intact.
+      * Calling this on a declaration has no effect. Nothing is serialized here.
+      */
+    def removeBody(): Unit
+
     // APIs currently called only by tests in this repository (excluding forwarders).
     /** Replace body and return local together. Reject foreign/unregistered
       * nodes and bodies still owned by another function. Use moveBody

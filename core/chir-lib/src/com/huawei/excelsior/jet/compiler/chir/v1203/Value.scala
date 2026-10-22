@@ -55,6 +55,9 @@ final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider:
     }
   }
 
+  def removeBody(): Unit =
+    provider.asInstanceOf[PackageImpl].replaceFunctionBody(id, None, None)
+
   // APIs currently called only by tests in this repository (excluding forwarders).
   def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit =
     provider.asInstanceOf[PackageImpl].replaceFunctionBody(id, body, retVal)

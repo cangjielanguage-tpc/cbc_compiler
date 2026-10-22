@@ -63,7 +63,11 @@ object MoveFooBodyMain {
     require(from.body.get.blocks.size == 3 && to.body.get.blocks.size == 3)
     println("EDIT: global foo has 3 blocks and no Branch; C.foo is still unchanged (in memory)")
     from.moveBody(to)
-    require(from.body.isEmpty && to.body.get.blocks.size == 3)
+    from.removeBody()
+    from.replaceAttributes((from.attributes :+ CHIR.Attribute.Imported).distinct)
+    require(from.body.isEmpty && from.retVal.isEmpty && to.body.get.blocks.size == 3)
+    require(from.attributes.contains(CHIR.Attribute.Imported))
+    println("EDIT: global foo is Imported with no body or return local")
     require(heldCast.value eq to.params(1), "Held cast must use the destination parameter")
     require(heldInvoke.thisType eq to.genericTypeParams.head,
       "Held Invoke must use the destination generic type")
@@ -97,9 +101,14 @@ object MoveFooBodyMain {
     require(finalBody.blocks.size == 3 &&
       !finalBody.blocks.exists(_.expressions.exists(_.isInstanceOf[CHIR.Branch])),
       "The moved body must retain the edited three-block control flow")
-    require(reloaded.function(from.id.toInt).body.isEmpty, "Source must become a declaration")
+    val imported = reloaded.function(from.id.toInt)
+    require(imported.body.isEmpty && imported.retVal.isEmpty, "Source must become a declaration")
+    require(imported.attributes.contains(CHIR.Attribute.Imported), "Source must stay Imported after serialization")
+    require(saved.getValues()((from.id - 1).toInt).asFunction().getBody == 0 &&
+      saved.getValues()((from.id - 1).toInt).asFunction().getRetVal == 0)
+    println("VERIFIED: global foo is Imported with body ID=0 and return local ID=0 after serialization")
     println("VERIFIED: ToString bound preserved; moved Invoke uses the destination generic type")
-    println("VERIFIED: edited body moved to C.foo with 3 blocks and no Branch; global foo is a declaration")
+    println("VERIFIED: edited body moved to C.foo with 3 blocks and no Branch; global foo is an imported declaration")
     disassemble(toolchain, out, output, "AFTER", Seq(from.identifier, to.identifier))
     println(s"Saved artifacts: $out")
   }

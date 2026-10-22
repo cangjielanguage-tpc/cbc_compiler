@@ -86,6 +86,9 @@ class CHIRThrowPatchGenerator(_pkg: CHIR.Package, patch: ThrowPatch) extends CHI
       def attributes: Seq[CHIR.Attribute] = Seq.empty
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
 
+      def removeBody(): Unit =
+        CodeHelpers.shouldNotReachHere("Cannot remove the body of a synthetic throw helper")
+
       def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
         CodeHelpers.shouldNotReachHere("Cannot replace attributes of a synthetic throw helper")
 
@@ -227,6 +230,9 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
       def annotations: Seq[CHIR.Annotation] = Seq.empty
       def attributes: Seq[CHIR.Attribute] = Seq.empty
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
+
+      def removeBody(): Unit =
+        CodeHelpers.shouldNotReachHere("Cannot remove the body of a synthetic entry function")
 
       def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
         CodeHelpers.shouldNotReachHere("Cannot replace attributes of a synthetic entry function")

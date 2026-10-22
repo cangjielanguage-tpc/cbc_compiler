@@ -27,6 +27,8 @@ val destination = pkg.values.collectFirst {
   case f: CHIR.Func if f.srcCodeIdentifier == "foo" && f.params.size == 2 => f
 }.get
 f.moveBody(destination)
+f.removeBody()
+f.replaceAttributes((f.attributes :+ CHIR.Attribute.Imported).distinct)
 pkg.write(output) // The only serialization, after both transformations.
 ```
 
@@ -46,7 +48,10 @@ Attribute edits update the backing nodes immediately and are saved by `write`.
 removal and calls the library's `moveBody` operation, then writes once. Run it
 with the command below.
 
-The new API implements `replaceBody`, `moveBody`, block expression/terminator replacement,
+`f.removeBody()` turns a function into a declaration, clearing its body and return
+local while preserving its signature and attributes. Save with `pkg.write(output)`.
+
+The new API implements `replaceBody`, `removeBody`, `moveBody`, block expression/terminator replacement,
 block-group membership replacement, factories for blocks/groups/gotos/branches,
 automatic unreachable-block removal, internal validation and writing. Factories register nodes;
 cross-package or unregistered nodes are rejected. New nodes may be temporarily
@@ -147,6 +152,6 @@ rather than editing shared type entries. This demonstration does not implement
 arbitrary generic specialization or cloning of generic custom definitions.
 
 This is a serialization/disassembly demo, not an executable hotfix: the source
-becomes a bodyless declaration, and the example's existing call to it is not
+becomes an imported bodyless declaration, and the example's existing call to it is not
 rewritten. Both tool disassemblies and a reload through chirLib were verified.
 
