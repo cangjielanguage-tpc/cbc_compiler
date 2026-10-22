@@ -86,7 +86,7 @@ private final class IntrinsicsPackage extends CHIR.Package {
 
   def packageInitFunc: CHIR.Func = IntrinsicsPackage.initFunc
 
-  override def packageInitLiteralFunc: CHIR.Func = IntrinsicsPackage.initFunc
+  def packageInitLiteralFunc: CHIR.Func = IntrinsicsPackage.initFunc
 }
 
 private object IntrinsicsPackage {
@@ -117,13 +117,13 @@ private final class FakeFunc(
   val attributes: Seq[CHIR.Attribute],
   val declaringDef: Option[CHIR.CustomTypeDef]
 ) extends CHIR.Func {
-  override def id: Long = 1L
-  override def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
-  override def body: Option[CHIR.BlockGroup] = None
-  override def params: Seq[CHIR.Parameter] = Seq.empty
-  override def retVal: Option[CHIR.LocalVar] = None
-  override def sourceFile: Option[String] = None
-  override def annotations: Seq[CHIR.Annotation] = Seq.empty
+  def id: Long = 1L
+  def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
+  def body: Option[CHIR.BlockGroup] = None
+  def params: Seq[CHIR.Parameter] = Seq.empty
+  def retVal: Option[CHIR.LocalVar] = None
+  def sourceFile: Option[String] = None
+  def annotations: Seq[CHIR.Annotation] = Seq.empty
 }
 
 private final class FakeClassDef(
@@ -131,7 +131,7 @@ private final class FakeClassDef(
   val identifier: String,
   val srcCodeIdentifier: String,
   val attributes: Seq[CHIR.Attribute],
-  override val superClass: Option[CHIR.ClassType],
+  val superClass: Option[CHIR.ClassType],
   methods0: => Seq[CHIR.Func]
 ) extends CHIR.ClassDef {
   lazy val tpe: CHIR.ClassType = new CHIR.ClassType {
