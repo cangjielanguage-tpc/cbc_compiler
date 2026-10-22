@@ -28,7 +28,7 @@ while [[ $i -lt $# ]]; do
     i=$((i+1))
 done
 
-cjc --emit-chir "${@:2}"
+cjc --emit-chir --continue "${@:2}"
 
 if [ -n "$out" ] && compgen -G "*.chir" > /dev/null; then
   if [[ "$out" != *.a ]]; then

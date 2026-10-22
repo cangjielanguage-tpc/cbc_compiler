@@ -111,7 +111,7 @@ def main():
     repair_fake_libs(native_names, lib_dirs)
     write_foreignlibspath(lib_paths)
 
-    run(["cjc", "--emit-chir"] + sys.argv[2:])  # like bash: cjc --emit-chir "${@:2}"
+    run(["cjc", "--emit-chir", "--continue"] + sys.argv[2:])
 
     if out and not out.endswith(".a") and glob.glob("*.chir"):
         genlibrary(out, native_names, lib_dirs, script_dir)
