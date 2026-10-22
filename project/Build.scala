@@ -107,9 +107,11 @@ object Build {
     log.info(s"Wrote $info")
   }
 
-  private def nativeImageSettings(outputName: String) = Def.settings(
+  lazy val copyAotJar = taskKey[File]("Copies the assembled aot.jar to cbc-compiler.jar")
+
+  private def nativeImageSettings(outputName: String, jarTask: TaskKey[File] = assembly) = Def.settings(
     TaskKey[Unit]("nativeImage", s"Builds target/$outputName using GraalVM Native Image") := {
-      val jar = assembly.value
+      val jar = jarTask.value
       val output = target.value / outputName
 
       nativeImageBinary match {
@@ -142,7 +144,7 @@ object Build {
   lazy val all = (project in projectRoot)
     .settings(
       addCommandAlias("test", "tests/test"),
-      addCommandAlias("jar", "compiler/assembly"),
+      addCommandAlias("jar", "compiler/copyAotJar"),
       addCommandAlias("compile", "compiler/compile"),
       addCommandAlias("clean", "all/clean;all/cleanAll"),
 
@@ -195,7 +197,18 @@ object Build {
       target := baseDirectory.value / "target/aot",
       assembly / mainClass := Some("com.huawei.excelsior.jet.compiler.starter.AOTStarter"),
       assembly / assemblyOutputPath := target.value / "aot.jar",
-      nativeImageSettings("cbc-compiler-native"),
+      nativeImageSettings("cbc-compiler-native", copyAotJar),
+      copyAotJar := {
+        val jar = assembly.value
+        val copy = target.value / "cbc-compiler.jar"
+        IO.copyFile(jar, copy)
+        val script = (ThisBuild / baseDirectory).value / "scripts" / "cbc-compiler.sh"
+        val launcher = target.value / script.getName
+        IO.copyFile(script, launcher)
+        launcher.setExecutable(true)
+        streams.value.log.info(s"Copied $jar to $copy, $script to $launcher")
+        copy
+      },
     )
 
   lazy val xscalaVMDependent = (project in file("core/xscala-vm-dependent"))
