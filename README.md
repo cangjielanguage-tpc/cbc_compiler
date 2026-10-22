@@ -191,6 +191,37 @@ The input CHIR file is expected to be produced from cjc compilation with option 
 $ cjc --emit-chir test.cj
 ```
 
+### Development Container
+
+A dev container image with all the prerequisites preinstalled (JDK, sbt, flatc,
+GraalVM native-image) can be built for a given architecture from `dockerfile/dev`:
+
+```bash
+./dockerfile/dev/build.sh amd64
+```
+
+The compiler jar together with the native image can be built in a single invocation,
+without any configuration changes:
+
+```bash
+(export image="s3.excelsior.internal:5000/cbc-compiler-dev:v1-amd64" && \
+ podman pull "$image" && \
+ podman run -it --rm -v "$(pwd):/workspace" -w /workspace "${image}" \
+   sbt -Dgraalvm=/opt/graalvm/bin/native-image compiler/nativeImage)
+```
+
+To work inside the container with the repository mounted at `/workspace`
+
+- copy `env.properties.sample` as `env.properties`
+- uncomment optional properties (`flatc`, `graalvm`)
+- run interactive seesion
+
+```bash
+(export image="s3.excelsior.internal:5000/cbc-compiler-dev:v1-amd64" && \
+ podman pull "$image" && \
+ podman run -it --rm -v "$(pwd):/workspace" -w /workspace "${image}")
+```
+
 ## License
 
 This project is licensed under [Apache-2.0 with Runtime Library Exception](./LICENSE).
