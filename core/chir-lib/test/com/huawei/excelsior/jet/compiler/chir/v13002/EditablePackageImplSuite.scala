@@ -29,7 +29,7 @@ class EditablePackageImplSuite extends AnyFunSuite {
     assert(p.typeId(f.tpe) == 5)
     assert(p.values.size == 12 && p.typeDefs.isEmpty)
     assert(p.getFunc("missing").isEmpty && p.getDef("missing").isEmpty)
-    assert(p.validate().isEmpty)
+    assert(p.validationIssues().isEmpty)
   }
 
   test("replaceTerminator updates the existing IR view, ownership and predecessors") {
@@ -46,7 +46,7 @@ class EditablePackageImplSuite extends AnyFunSuite {
     assert(jump.debugLoc.contains(CHIR.DebugLocation(10, 11)))
     assert(p.expressionTable(p.expressionId(old)).asExpression().getOwner == 0)
     assert(p.blockTable(3).getPredecessors.sameElements(Array(3L)))
-    assert(p.validate().isEmpty)
+    assert(p.validationIssues().isEmpty)
     roundTrip(p) { saved =>
       val b = saved.function(1).body.get.entryBlock
       assert(b.terminator.asInstanceOf[CHIR.Goto].destination eq b)
@@ -67,7 +67,7 @@ class EditablePackageImplSuite extends AnyFunSuite {
       spare.replaceTerminator(oldExit) // historical owner is not an active attachment
       val group = saved.function(1).body.get
       group.replaceBlocks(group.blocks :+ spare, group.entryBlock)
-      assert(saved.validate().isEmpty)
+      assert(saved.validationIssues().isEmpty)
     }
     assert(p.expressionTable(2).asExpression().getOwner == 0)
   }
@@ -76,13 +76,19 @@ class EditablePackageImplSuite extends AnyFunSuite {
     val p = fresh()
     val block = p.newBlock()
     val jump = p.newGoto(block)
-    assert(p.validate().exists(_.message.contains("New expression has not been attached")))
-    assert(p.validate().exists(_.message.contains("New block has not been attached")))
+    assert(p.validationIssues().exists(_.message.contains("New expression has not been attached")))
+    assert(p.validationIssues().exists(_.message.contains("New block has not been attached")))
     block.replaceTerminator(jump)
     val group = p.newBlockGroup(Seq(block), block)
-    assert(p.validate().exists(_.message.contains("New group has not been attached")))
+    assert(p.validationIssues().exists(_.message.contains("New group has not been attached")))
+    val output = Files.createTempFile("staged-chir-", ".chir")
+    try {
+      val error = intercept[IllegalArgumentException](p.write(output))
+      assert(error.getMessage.contains("New group has not been attached"))
+      assert(Files.size(output) == 0)
+    } finally Files.delete(output)
     p.function(1).replaceBody(Some(group), None)
-    assert(p.validate().isEmpty)
+    assert(p.validationIssues().isEmpty)
     roundTrip(p)(saved => assert(saved.function(1).body.get.blocks.size == 1))
   }
 
@@ -107,7 +113,7 @@ class EditablePackageImplSuite extends AnyFunSuite {
     g.replaceBlocks(Seq(first, second), first)
     assert(p.blockTable(p.valueId(second)).getParentGroup == p.valueId(g))
     assert(p.blockTable(p.valueId(second)).getPredecessors.sameElements(Array(3L)))
-    assert(p.validate().isEmpty)
+    assert(p.validationIssues().isEmpty)
     roundTrip(p) { saved =>
       val body = saved.function(1).body.get
       val b = body.entryBlock.terminator.asInstanceOf[CHIR.Branch]
@@ -126,22 +132,43 @@ class EditablePackageImplSuite extends AnyFunSuite {
     assert(p.function(1).body.get eq body)
     assert(p.groupTable(p.valueId(body)).getOwnedFunc == 1)
     assert(p.groupTable(2).getOwnedFunc == 0)
-    assert(p.validate().isEmpty)
+    assert(p.validationIssues().isEmpty)
     roundTrip(p) { saved => assert(saved.function(1).body.get.entryBlock.isLandingPadBlock) }
   }
 
-  test("removeUnreachableBlocks detaches unused blocks and preserves IDs") {
+  test("terminator replacement automatically prunes a complete attached body") {
+    val p = fresh()
+    val g = p.function(1).body.get
+    val entry = g.entryBlock
+    val unused = p.newBlock()
+    val unusedId = p.valueId(unused)
+    // Membership can be staged; no caller-triggered cleanup is necessary.
+    g.replaceBlocks(g.blocks :+ unused, entry)
+    assert(g.blocks.size == 2)
+    entry.replaceTerminator(p.newGoto(entry))
+    assert(g.blocks == Seq(entry))
+    assert(p.blockTable(unusedId).getParentGroup == 0)
+    roundTrip(p)(saved => assert(saved.function(1).body.get.blocks.size == 1))
+  }
+
+  test("moveBody automatically validates before transferring a body") {
+    val data = genericMoveData()
+    data.getExprs()(0).asAllocateBase().getBase.setResultTy(9999)
+    val p = EditablePackageImpl.fromBytes(data.serializeToBinary())
+    val before = p.data.serializeToBinary()
+    val error = intercept[IllegalArgumentException](p.moveBody(p.function(1), p.function(8)))
+    assert(error.getMessage.contains("invalid Types ID"))
+    assert(p.data.serializeToBinary().sameElements(before))
+  }
+
+  test("write automatically detaches unreachable blocks and preserves IDs") {
     val p = fresh()
     val f = p.function(1)
     val g = f.body.get
     val unused = p.newBlock()
     val unusedId = p.valueId(unused)
     g.replaceBlocks(g.blocks :+ unused, g.entryBlock)
-    assert(p.validate().isEmpty) // raw CHIR permits empty unreachable blocks
-    p.removeUnreachableBlocks(f)
-    assert(g.blocks.size == 1)
-    assert(p.valueId(unused) == unusedId && p.blockTable(unusedId).getParentGroup == 0)
-    assert(p.validate().isEmpty)
+    assert(p.validationIssues().isEmpty) // raw CHIR permits empty unreachable blocks
     roundTrip(p) { saved =>
       val active = saved.function(1).body.get
       assert(active.blocks.size == 1)
@@ -150,7 +177,8 @@ class EditablePackageImplSuite extends AnyFunSuite {
       assert(saved.groupTable(retired.getParentGroup).getBlocks.contains(unusedId))
       assert(retired.getExprs.isEmpty)
     }
-    assert(p.blockTable(unusedId).getParentGroup == 0)
+    assert(g.blocks.size == 1)
+    assert(p.valueId(unused) == unusedId && p.blockTable(unusedId).getParentGroup == 0)
   }
 
   test("foreign nodes, shared expressions and invalid branches fail without edits") {
@@ -183,7 +211,7 @@ class EditablePackageImplSuite extends AnyFunSuite {
     val p = fresh()
     val b = p.function(1).body.get.entryBlock
     b.replaceExpressions(Seq.empty, b.terminator) // removes the return-local definition
-    assert(p.validate().exists(_.message.contains("Return local is defined outside body")))
+    assert(p.validationIssues().exists(_.message.contains("Return local is defined outside body")))
     val output = Files.createTempFile("invalid-chir-", ".chir")
     val sentinel = Array[Byte](1, 2, 3)
     try {
@@ -196,11 +224,11 @@ class EditablePackageImplSuite extends AnyFunSuite {
   test("validate reports malformed references and control-flow edges") {
     val p = fresh()
     p.expressionTable(1).asAllocateBase().getBase.setResultTy(9999)
-    assert(p.validate().exists(_.message.contains("invalid Types ID")))
+    assert(p.validationIssues().exists(_.message.contains("invalid Types ID")))
     val q = fresh()
     val b = q.function(1).body.get.entryBlock
     b.replaceTerminator(q.newGoto(q.function(8).body.get.entryBlock))
-    assert(q.validate().exists(_.message.contains("outside group")))
+    assert(q.validationIssues().exists(_.message.contains("outside group")))
   }
 
   test("serialization preserves original metadata and identifier convention") {
@@ -228,7 +256,7 @@ class EditablePackageImplSuite extends AnyFunSuite {
     val p = fresh()
     p.expressionTable(2).asExpression().setKind(CHIRExprKind.Goto)
     p.expressionTable(2).asExpression().setOperands(Array(12L))
-    assert(p.validate().exists(_.message.contains("Goto target is not a block")))
+    assert(p.validationIssues().exists(_.message.contains("Goto target is not a block")))
 
     val data = EditableTestData.fixtureData()
     data.getValues()(0).asFunction().setRetVal(0)
@@ -239,7 +267,7 @@ class EditablePackageImplSuite extends AnyFunSuite {
     data.getExprs()(0).asAllocateBase().getBase.setOwner(0)
     data.getValues()(2).asBlock().setExprs(Array(6L, 2L))
     val q = EditablePackageImpl.fromBytes(data.serializeToBinary())
-    assert(q.validate().exists(_.message.contains("Local operand is defined outside")))
+    assert(q.validationIssues().exists(_.message.contains("Local operand is defined outside")))
   }
 
   test("distinct Unit literals retain individual identities and IDs") {
@@ -293,7 +321,7 @@ class EditablePackageImplSuite extends AnyFunSuite {
     assert(cast.targetTpe eq target.genericTypeParams.head)
     assert(allocation.allocatedType eq target.genericTypeParams.head)
     assert(result.tpe.asInstanceOf[CHIR.RefType].baseType eq target.genericTypeParams.head)
-    assert(p.validate().isEmpty)
+    assert(p.validationIssues().isEmpty)
     roundTrip(p) { saved =>
       assert(saved.function(1).body.isEmpty)
       val f = saved.function(8)
@@ -378,7 +406,7 @@ class EditablePackageImplSuite extends AnyFunSuite {
     try {
       p.write(output)
       val saved = EditablePackageImpl.read(output)
-      assert(saved.validate().isEmpty)
+      assert(saved.validationIssues().isEmpty)
       check(saved)
     } finally Files.delete(output)
   }

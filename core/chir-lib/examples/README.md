@@ -20,7 +20,6 @@ val b = f.body.get.blocks.find(
 ).get
 val branch = b.terminator.asInstanceOf[CHIR.Branch]
 b.replaceTerminator(pkg.newGoto(branch.falseBlock, branch.debugLoc))
-pkg.removeUnreachableBlocks(f)
 val destination = pkg.values.collectFirst {
   case f: EditableCHIR.Func if f.srcCodeIdentifier == "foo" && f.params.size == 2 => f
 }.get
@@ -34,10 +33,15 @@ with the command below.
 
 The new API implements `replaceBody`, `moveBody`, block expression/terminator replacement,
 block-group membership replacement, factories for blocks/groups/gotos/branches,
-unreachable-block removal, validation and writing. Factories register nodes;
+automatic unreachable-block removal, internal validation and writing. Factories register nodes;
 cross-package or unregistered nodes are rejected. New nodes may be temporarily
 unattached during editing but must be attached before writing. Existing orphaned
 entries may remain so table IDs do not change.
+
+Changing a terminator automatically removes unreachable blocks when its attached
+body has a complete CFG. Staged edits remain possible; moving a body and writing
+a package automatically perform cleanup and validation. Callers do not invoke
+cleanup or validation separately.
 
 Writing validates the active graph, then replaces the output through a temporary
 file. It retains all schema payloads and the input's file-identifier convention.
@@ -46,8 +50,8 @@ native `chir-dis` dereferences those links even for unused records. Removed bloc
 are placed in a separate unreferenced storage group, with empty instruction lists,
 so native deserialization cannot reattach them to the live body or reconstruct
 obsolete predecessor edges. Their table IDs and retained expression/local records
-remain allocated. The in-memory graph still detaches removed nodes; writing does
-not mutate it. Newly created nodes include the empty debug metadata expected by
+remain allocated. Cleanup detaches removed nodes in memory; wire compatibility normalization
+does not reattach them. Newly created nodes include the empty debug metadata expected by
 the native toolchain.
 
 Validation checks schema ID ranges, union payloads, ownership, definitions,

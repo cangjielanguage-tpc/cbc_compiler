@@ -34,6 +34,7 @@ final class EditablePackageImpl private (
   hasIdentifier: Boolean
 ) extends EditableCHIR.Package with CHIRItemProvider {
   import EditableStorage.*
+  import EditableValidation.{EntityRef, EntityTable, ValidationIssue}
 
   private val valueViews = mutable.LongMap.empty[CHIR.Value]
   private val expressionViews = mutable.LongMap.empty[CHIR.Expression]
@@ -181,6 +182,7 @@ final class EditablePackageImpl private (
     valueId(source); valueId(destination)
     require((source.ownerPackage eq this) && (destination.ownerPackage eq this),
       "Functions belong to another package")
+    prepareBodies()
     val refs = FunctionBodyMove.move(data, source, destination)
     refs.expressions.foreach { id =>
       referenceProjections(id) = refs :: referenceProjections.getOrElse(id, Nil)
@@ -188,6 +190,7 @@ final class EditablePackageImpl private (
     rememberOwners()
     rebuildPredecessors()
     refreshCounters()
+    requireValid()
   }
 
   private def opaque(e: ExpressionT): CHIR.Expression =
@@ -262,6 +265,7 @@ final class EditablePackageImpl private (
     table.setExprs(replacement)
     rememberOwners()
     rebuildPredecessors()
+    enclosingFunction(table.getParentGroup).foreach(pruneUnreachableBlocks)
   }
 
   private[v13002] def replaceBlocks(groupId: Long, blocks: Seq[EditableCHIR.Block], entry: EditableCHIR.Block): Unit = {
@@ -291,7 +295,7 @@ final class EditablePackageImpl private (
     result
   }
 
-  def removeUnreachableBlocks(function: EditableCHIR.Func): Unit = {
+  private def pruneUnreachableBlocks(function: EditableCHIR.Func): Unit = {
     valueId(function)
     val seenGroups = mutable.Set.empty[Long]
     def visit(g: EditableCHIR.BlockGroup): Unit = {
@@ -300,15 +304,23 @@ final class EditablePackageImpl private (
       val members = g.blocks.map(valueId).toSet
       val reachable = mutable.Set.empty[Long]
       val todo = mutable.Stack(valueId(g.entryBlock))
-      while (todo.nonEmpty) {
+      var closed = true
+      while (todo.nonEmpty && closed) {
         val id = todo.pop()
-        require(members(id), "Control-flow edge leaves the body group")
-        if (reachable.add(id)) {
+        if (!members(id)) closed = false
+        else if (reachable.add(id)) {
           val exprs = ids(blockTable(id).getExprs)
-          if (exprs.nonEmpty) todo.pushAll(successorIds(expressionBase(expressionTable(exprs.last).getValue)))
+          if (exprs.isEmpty) closed = false
+          else {
+            val last = expressionBase(expressionTable(exprs.last).getValue)
+            if (!isTerminator(last)) closed = false
+            else todo.pushAll(successorIds(last))
+          }
         }
       }
-      g.replaceBlocks(g.blocks.filter(b => reachable(valueId(b))), g.entryBlock)
+      // An edge to a block not yet added to the group is a staged edit.
+      // Do not retire nodes until all reachable blocks form a complete CFG.
+      if (closed) g.replaceBlocks(g.blocks.filter(b => reachable(valueId(b))), g.entryBlock)
       g.blocks.foreach { b =>
         ids(blockTable(valueId(b)).getExprs).foreach { id =>
           nestedGroups(expressionTable(id).getValue).foreach(gid => visit(group(gid)))
@@ -318,26 +330,57 @@ final class EditablePackageImpl private (
     function.body.foreach(visit)
   }
 
-  def validate(): Seq[EditableCHIR.ValidationIssue] = {
-    val staged = mutable.ArrayBuffer.empty[EditableCHIR.ValidationIssue]
+  private[v13002] def validationIssues(): Seq[ValidationIssue] = {
+    val staged = mutable.ArrayBuffer.empty[ValidationIssue]
     (originalExpressionCount.toLong + 1L to length(data.getExprs).toLong).foreach { id =>
       if (expressionBase(expressionTable(id).getValue).getOwner == 0 && !historicalExpressionOwners.contains(id))
-        staged += EditableCHIR.ValidationIssue("New expression has not been attached", Some(EditableCHIR.EntityRef(EditableCHIR.EntityTable.Expressions, id)))
+        staged += ValidationIssue("New expression has not been attached", Some(EntityRef(EntityTable.Expressions, id)))
     }
     (originalValueCount.toLong + 1L to length(data.getValues).toLong).foreach { id =>
       val entry = valueTable(id)
       if (entry.getType == ValueElem.Block && entry.asBlock().getParentGroup == 0 && !historicalBlockParents.contains(id))
-        staged += EditableCHIR.ValidationIssue("New block has not been attached", Some(EditableCHIR.EntityRef(EditableCHIR.EntityTable.Values, id)))
+        staged += ValidationIssue("New block has not been attached", Some(EntityRef(EntityTable.Values, id)))
       if (entry.getType == ValueElem.BlockGroup && entry.asBlockGroup().getOwnedFunc == 0 &&
         entry.asBlockGroup().getOwnedExpression == 0 && !historicalGroupOwners.contains(id))
-        staged += EditableCHIR.ValidationIssue("New group has not been attached", Some(EditableCHIR.EntityRef(EditableCHIR.EntityTable.Values, id)))
+        staged += ValidationIssue("New group has not been attached", Some(EntityRef(EntityTable.Values, id)))
     }
     staged.toSeq ++ EditableValidation.validate(this)
   }
 
-  def write(output: Path): Unit = {
-    val problems = validate()
+  private def requireValid(): Unit = {
+    val problems = validationIssues()
     require(problems.isEmpty, problems.map(_.message).mkString("Invalid CHIR: ", "; ", ""))
+  }
+
+  private def prepareBodies(): Unit = {
+    // Validate before traversing raw IDs, then check the normalized graph too.
+    // Staged/invalid edits cannot silently pass through a move or a write.
+    requireValid()
+    values.collect { case f: EditableCHIR.Func if f.body.nonEmpty => f }.toVector
+      .foreach(pruneUnreachableBlocks)
+    requireValid()
+  }
+
+  private def enclosingFunction(groupId: Long): Option[EditableCHIR.Func] = {
+    val visited = mutable.Set.empty[Long]
+    def find(id: Long): Option[EditableCHIR.Func] = {
+      if (id == 0 || !visited.add(id)) None
+      else {
+        val g = groupTable(id)
+        if (g.getOwnedFunc != 0) {
+          val f = function(Math.toIntExact(g.getOwnedFunc))
+          Option.when(f.body.exists(valueId(_) == id))(f)
+        } else if (g.getOwnedExpression != 0) {
+          val e = expressionBase(expressionTable(g.getOwnedExpression).getValue)
+          if (e.getOwner == 0) None else find(blockTable(e.getOwner).getParentGroup)
+        } else None
+      }
+    }
+    find(groupId)
+  }
+
+  def write(output: Path): Unit = {
+    prepareBodies()
     val builder = new FlatBufferBuilder(1024)
     // Keep table IDs stable, including retired entries. Native chir-dis still
     // dereferences the owner fields of those entries, even when body/block lists

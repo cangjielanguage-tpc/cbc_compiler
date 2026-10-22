@@ -1,6 +1,5 @@
 package com.huawei.excelsior.jet.compiler.chir.v13002
 
-import com.huawei.excelsior.jet.compiler.chir.EditableCHIR
 import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
 
 import scala.collection.mutable
@@ -12,7 +11,11 @@ import scala.util.control.NonFatal
   */
 private[v13002] object EditableValidation {
   import EditableStorage.*
-  import EditableCHIR.{EntityRef, EntityTable, ValidationIssue}
+  enum EntityTable {
+    case Types, Values, Expressions, Definitions
+  }
+  final case class EntityRef(table: EntityTable, id: Long)
+  final case class ValidationIssue(message: String, entity: Option[EntityRef] = None)
   import EntityTable.*
 
   def validate(pkg: EditablePackageImpl): Seq[ValidationIssue] = {
