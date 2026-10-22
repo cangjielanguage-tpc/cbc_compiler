@@ -72,7 +72,7 @@ object PackageImpl {
     (ids(expressionBase(x).getBlockGroups) ++ extra).distinct
   }
 
-  private def nextName(names: Iterable[String], prefix: String): Long = names.foldLeft(0L) { (next, name) =>
+  private def nextName(names: Iterable[String], prefix: String, initial: Long = 0L): Long = names.foldLeft(initial) { (next, name) =>
     if (name == null || !name.startsWith(prefix)) next
     else name.substring(prefix.length).toLongOption match {
       case Some(n) if n >= 0 => math.max(next, Math.addExact(n, 1L))
@@ -456,14 +456,11 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       remapAnnotations(base.getBase, remapType.apply)
       nextLocal += 1
     }
-    changes.set(targetId)(group.setOwnedFunc)
-    changes.set(from.getBody)(to.setBody)
-    changes.set(from.getRetVal)(to.setRetVal)
+    changeFunctionBody(sourceId, from, 0L, 0L)
+    changeFunctionBody(targetId, to, from.getBody, from.getRetVal)
     changes.set(nextLocal)(to.setLocalId)
     changes.set(math.max(to.getBlockId, from.getBlockId))(to.setBlockId)
     changes.set(math.max(to.getBlockGroupId, from.getBlockGroupId))(to.setBlockGroupId)
-    changes.set(0L)(from.setBody)
-    changes.set(0L)(from.setRetVal)
 
     changes.commit()
     rememberOwners()
@@ -1055,9 +1052,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
             val ops = ids(e.getOperands)
             check(ops.length == 3, "Branch needs condition and two targets", eref)
             if (ops.length == 3 && ops(0) > 0) {
-              val typeId = valueBase(pkg.valueTable(ops(0)).getValue).getType
-              check(typeId > 0 && typeBase(p.getTypes()((typeId - 1).toInt).getValue).getKind == CHIRTypeKind.BOOLEAN,
-                "Branch condition is not Boolean", eref)
+              check(isBoolean(ops(0)), "Branch condition is not Boolean", eref)
             }
             if (ops.length == 3) ops.drop(1).foreach { target =>
               check(target > 0 && pkg.valueTable(target).getType == ValueElem.Block,
@@ -1162,6 +1157,22 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
         "CustomTypeDef" -> "customTypeDefId genericDecl")).toMap
   }
 
+  private def changeFunctionBody(
+    functionId: Long,
+    function: FunctionT,
+    bodyId: Long,
+    retValId: Long
+  )(using changes: Changes): Unit = {
+    if (function.getBody != bodyId && function.getBody != 0)
+      changes.set(0L)(groupTable(function.getBody).setOwnedFunc)
+    if (function.getRetVal != retValId && function.getRetVal != 0)
+      changes.set(false)(localTable(function.getRetVal).setIsRetVal)
+    if (bodyId != 0) changes.set(functionId)(groupTable(bodyId).setOwnedFunc)
+    if (retValId != 0) changes.set(true)(localTable(retValId).setIsRetVal)
+    changes.set(bodyId)(function.setBody)
+    changes.set(retValId)(function.setRetVal)
+  }
+
   // Shared implementation of Func.replaceBody and Func.removeBody.
   private[v13002] def replaceFunctionBody(
     functionId: Long,
@@ -1179,7 +1190,6 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       require(g.getOwnedFunc == functionId && g.getOwnedExpression == 0,
         "Existing body has inconsistent ownership")
     }
-    val oldRetVal = Option.when(target.getRetVal != 0)(localTable(target.getRetVal))
     val replacement = Option.when(bodyId != 0)(groupTable(bodyId))
     val newRetVal = Option.when(retValId != 0)(localTable(retValId))
 
@@ -1221,11 +1231,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
               require(result.getAssociatedExpr == expressionId, "Result local points to another expression")
               require(resultLocals.add(e.getResultLocalVar), "Expressions share a result local")
             }
-            val nested = ids(e.getBlockGroups) ++ (payload match {
-              case lambda: LambdaT if lambda.getBody != 0 => Array(lambda.getBody)
-              case _ => Array.emptyLongArray
-            })
-            nested.distinct.foreach(visit(_, expressionId))
+            nestedGroups(payload).foreach(visit(_, expressionId))
           }
         }
       }
@@ -1252,34 +1258,22 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       }
     }
 
-    def nextCounter(current: Long, identifiers: Iterable[String], prefix: String): Long =
-      identifiers.foldLeft(current) { (next, name) =>
-        if (name == null || !name.startsWith(prefix)) next
-        else name.substring(prefix.length).toLongOption match {
-          case Some(n) if n >= 0 => math.max(next, Math.addExact(n, 1L))
-          case _ => next
-        }
-      }
-
     // Calculate counters before committing, so failures leave the graph intact.
-    val localCounter = nextCounter(target.getLocalId,
+    val localCounter = nextName(
       resultLocals.toSeq.map(id => localTable(id).getBase.getIdentifier) ++
-        ids(target.getParams).toSeq.map(id => valueTable(id).asParameter().getBase.getIdentifier), "%")
-    val blockCounter = nextCounter(target.getBlockId,
-      blocks.toSeq.map(id => valueTable(id).asBlock().getBase.getIdentifier), "#")
-    val groupCounter = nextCounter(target.getBlockGroupId,
-      groups.toSeq.map(id => groupTable(id).getBase.getIdentifier), "")
+        ids(target.getParams).toSeq.map(id => valueTable(id).asParameter().getBase.getIdentifier), "%", target.getLocalId)
+    val blockCounter = nextName(
+      blocks.toSeq.map(id => valueTable(id).asBlock().getBase.getIdentifier), "#", target.getBlockId)
+    val groupCounter = nextName(
+      groups.toSeq.map(id => groupTable(id).getBase.getIdentifier), "", target.getBlockGroupId)
 
     // Commit only after all references, ownership and counters have been checked.
-    if (target.getBody != bodyId) oldBody.foreach(_.setOwnedFunc(0L))
-    if (target.getRetVal != retValId) oldRetVal.foreach(_.setIsRetVal(false))
-    replacement.foreach(_.setOwnedFunc(functionId))
-    newRetVal.foreach(_.setIsRetVal(true))
-    target.setBody(bodyId)
-    target.setRetVal(retValId)
-    target.setLocalId(localCounter)
-    target.setBlockId(blockCounter)
-    target.setBlockGroupId(groupCounter)
+    given changes: Changes = new Changes
+    changeFunctionBody(functionId, target, bodyId, retValId)
+    changes.set(localCounter)(target.setLocalId)
+    changes.set(blockCounter)(target.setBlockId)
+    changes.set(groupCounter)(target.setBlockGroupId)
+    changes.commit()
     rememberOwners()
   }
 
