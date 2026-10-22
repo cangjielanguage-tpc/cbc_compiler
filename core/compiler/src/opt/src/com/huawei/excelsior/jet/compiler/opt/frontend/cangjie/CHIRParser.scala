@@ -1490,7 +1490,7 @@ trait CHIRParser
                 val field = asClassType(declType).findDeclaredFieldOrNull(xstr(resolver.symName(g)))
                 assert(field.isStatic, field)
                 val value = g.initializer.map {
-                  case CHIR.UnitLiteral => null
+                  case _: CHIR.UnitLiteralValue => null
                   case _: CHIR.NullLiteral => IntegralConst(ValueType.fromSig(field.getType))(0)
                   case v: CHIR.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.value)
                   case v: CHIR.FloatLiteral => field.getType match {
@@ -1820,7 +1820,7 @@ trait CHIRParser
         }
         val value = e.literal match {
           case v: CHIR.BoolLiteral => IConst(if (v.value) 1 else 0)
-          case CHIR.UnitLiteral => Void()
+          case _: CHIR.UnitLiteralValue => Void()
           case v: CHIR.RuneLiteral => IConst(v.value.toInt)
           case v: CHIR.NullLiteral => if (resolver.typeSig(e.resultTpe).isTraceableReference) Null() else intConst(0, v)
           case v: CHIR.IntLiteral => intConst(v.value, v)

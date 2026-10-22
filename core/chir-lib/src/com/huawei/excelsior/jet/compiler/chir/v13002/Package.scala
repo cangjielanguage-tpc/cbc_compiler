@@ -31,13 +31,19 @@ trait CHIRItemProvider {
  *  - Exprs
  *  - Defs
  */
-final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvider {
+final class PackageImpl private (
+  loadBytes: () => Array[Byte],
+  providerOverride: Option[CHIRItemProvider]
+) extends CHIR.Package with CHIRItemProvider {
 
-  given provider: CHIRItemProvider = this
+  def this(source: String) = this(
+    () => java.nio.file.Files.readAllBytes(java.io.File(source).toPath), None)
+
+  given provider: CHIRItemProvider = providerOverride.getOrElse(this)
 
   private lazy val pkg: CHIRPackage = {
     // TODO: fix performance regression of XScala IO compared to JDK IO
-    val bytes = java.nio.file.Files.readAllBytes(java.io.File(source).toPath)
+    val bytes = loadBytes()
     val buf = ByteBuffer.wrap(bytes)
     CHIRPackage.getRootAsCHIRPackage(buf)
   }
@@ -308,4 +314,10 @@ final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvid
       typeDefs.find(_.identifier == id)
     }
   }
+}
+
+object PackageImpl {
+  /** Immutable schema snapshot whose references resolve through an editor. */
+  private[v13002] def snapshot(bytes: Array[Byte], provider: CHIRItemProvider): PackageImpl =
+    new PackageImpl(() => bytes, Some(provider))
 }

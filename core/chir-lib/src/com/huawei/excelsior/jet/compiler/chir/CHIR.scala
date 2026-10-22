@@ -2,6 +2,9 @@ package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.common.CodeHelpers.*
 
+/** Read interfaces for CHIR. [[EditableCHIR]] extends these interfaces with
+  * package-owned editing and serialization contracts.
+  */
 object CHIR {
 
   val defaultVersion = 13002
@@ -141,7 +144,9 @@ object CHIR {
     def tpe: Type
   }
 
-  object UnitLiteral extends Literal {
+  trait UnitLiteralValue extends Literal
+
+  object UnitLiteral extends UnitLiteralValue {
     def tpe: Type = BuiltinType.Unit
   }
 

@@ -149,7 +149,8 @@ object Build {
   lazy val chirLib = (project in file("core/chir-lib"))
     .dependsOn(commonJavaLib)
     .settings(flatbuffersSettings)
-    .settings(commonSourceLayout)
+    .settings(commonSourceTestLayout)
+    .settings(commonTestSettings)
     .settings(
       Compile / sourceGenerators += Def.task {
         val versionsDirs: Seq[File] = (file("core/chir-lib/schema") * DirectoryFilter).get()
@@ -161,14 +162,14 @@ object Build {
           val schema = versionDir / "PackageFormat.fbs"
           val version = versionDir.getName
 
-          val cached = FileFunction.cached(cache, FilesInfo.hash, FilesInfo.exists) { _ =>
+          val cached = FileFunction.cached(cache / version, FilesInfo.hash, FilesInfo.exists) { _ =>
             val chirPackage = s"com.huawei.excelsior.jet.compiler.chir.$version"
             val generated = generatedRoot / s"com/huawei/excelsior/jet/compiler/chir/$version"
 
             IO.delete(generated / "PackageFormat")
 
             Seq(env.flatc,
-              "--no-warnings", "--java",
+              "--no-warnings", "--java", "--gen-object-api",
               "-o", generatedRoot.toString,
               "--java-package-prefix", chirPackage,
               schema.toString
