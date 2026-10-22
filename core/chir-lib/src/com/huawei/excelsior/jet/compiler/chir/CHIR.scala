@@ -1,7 +1,12 @@
 package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.common.CodeHelpers.*
+import java.nio.file.Path
 
+/** CHIR read and editing interfaces. Loaded packages use generated mutable
+  * object-API tables as their single backing representation. Existing read
+  * signatures remain unchanged; ownership-aware edits maintain graph invariants.
+  */
 object CHIR {
 
   val defaultVersion = CHIRConfig.defaultVersion
@@ -9,6 +14,14 @@ object CHIR {
   def newPackage(source: String, version: Int): Package = AugmentedPackage(CHIRConfig.newPackage(source, version))
 
   def newIntrinsicsPackage: Package = new IntrinsicsPackage
+
+  /** Load the serialized package itself, without compiler-generated overlays. */
+  def read(input: Path, version: Int = defaultVersion): Package =
+    CHIRConfig.newPackage(input.toString, version)
+
+  trait PackageOwned {
+    def ownerPackage: Package
+  }
 
   trait Package {
     def name: String
@@ -19,6 +32,17 @@ object CHIR {
     def packageInitLiteralFunc: Func
     def getFunc(identifier: String): Option[Func]
     def getDef(identifier: String): Option[CustomTypeDef]
+
+    /** Create and register a goto expression in this package. */
+    def newGoto(destination: Block, debugLoc: Option[DebugLocation] = None): Goto
+
+    /** Clean up unreachable blocks, validate, then save the complete schema.
+      * Preserve table IDs, metadata and the input file-identifier convention.
+      * Reject invalid graphs before replacing an existing output file.
+      */
+    def write(output: Path): Unit
+
+
   }
 
   trait HasAnnotations {
@@ -51,7 +75,7 @@ object CHIR {
   trait Value {
   }
 
-  trait Func extends Value with FuncSig with HasDeclaringDef with HasAnnotations with HasAttributes {
+  trait Func extends Value with PackageOwned with FuncSig with HasDeclaringDef with HasAnnotations with HasAttributes {
     def tpe: FuncType
     def id: Long
     def identifier: String
@@ -65,8 +89,37 @@ object CHIR {
     def retVal: Option[LocalVar]
     def sourceFile: Option[String]
 
+    /** Replace the complete attribute set; an empty sequence clears all attributes. */
+    def replaceAttributes(attributes: Seq[Attribute]): Unit
+
     override def equalityKey: Product =
       (classOf[Func], super.equalityKey, srcCodeIdentifier, packageName, kind, attributes)
+
+    /** Move this function's body to another function in the same package,
+      * whether either function is a member or not. Equal parameter counts map
+      * positionally, including receivers. An extra leading destination parameter
+      * is left unused; a leading source parameter may be omitted only if unused.
+      * Mapped parameter types, return types, generic bounds and calling conventions
+      * must match after generic substitution. Preserve the destination signature
+      * and leave the source as a declaration. Composite destination types must
+      * exist. Nested groups, lambdas, spawn, generic instances and source self
+      * references are currently unsupported; package initializer bodies cannot move.
+      * Cleanup and validation are automatic; nothing is serialized here.
+      */
+    def moveBody(destination: Func): Unit
+
+    /** Remove the body and return local, leaving the signature and attributes intact.
+      * Calling this on a declaration has no effect. Nothing is serialized here.
+      */
+    def removeBody(): Unit
+
+    // APIs currently called only by tests in this repository (excluding forwarders).
+    /** Replace body and return local together. Reject foreign/unregistered
+      * nodes and bodies still owned by another function. Use moveBody
+      * for transfers that require parameter and generic-type substitution.
+      */
+    def replaceBody(body: Option[BlockGroup], retVal: Option[LocalVar]): Unit
+
   }
 
   object Func {
@@ -89,16 +142,28 @@ object CHIR {
     }
   }
 
-  trait BlockGroup extends Value {
+  trait BlockGroup extends Value with PackageOwned {
     def blocks: Seq[Block]
     def entryBlock: Block
+
+    /** Update membership, parents and predecessors; entry must be a member.
+      * Reject duplicate/shared/foreign blocks. Complete cleanup and validation
+      * run automatically before writing or moving a body.
+      */
+    def replaceBlocks(blocks: Seq[Block], entryBlock: Block): Unit
   }
 
-  trait Block extends Value {
+  trait Block extends Value with PackageOwned {
     def expressions: Seq[Expression]
     def nonTerminatorExpressions: Seq[Expression]
     def terminator: Terminator
     def isLandingPadBlock: Boolean
+
+    /** Maintain ownership and predecessors, pruning unreachable blocks when
+      * the attached body has complete control flow. Staged edits are allowed.
+      */
+    def replaceTerminator(terminator: Terminator): Unit
+    def replaceExpressions(nonTerminators: Seq[Expression], terminator: Terminator): Unit
   }
 
   // static field or global var
@@ -109,6 +174,9 @@ object CHIR {
     def packageName: String
     def tpe: Type
     def initializer: Option[Value]
+
+    /** Replace the complete attribute set; an empty sequence clears all attributes. */
+    def replaceAttributes(attributes: Seq[Attribute]): Unit
 
     final override def equals(other: Any): Boolean = other match {
       case that: GlobalVar =>
@@ -138,7 +206,9 @@ object CHIR {
     def tpe: Type
   }
 
-  object UnitLiteral extends Literal {
+  trait UnitLiteralValue extends Literal
+
+  object UnitLiteral extends UnitLiteralValue {
     def tpe: Type = BuiltinType.Unit
   }
 
