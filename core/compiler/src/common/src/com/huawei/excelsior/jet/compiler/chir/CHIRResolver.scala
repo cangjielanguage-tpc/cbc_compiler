@@ -31,6 +31,9 @@ import scala.collection.mutable
 class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   private implicit val typeProvider: TypeProvider = env.getTypeProvider
 
+  // Parsed identifiers have an @ sigil; synthesized helpers and entrypoints do not.
+  private def stripSigil(s: String): String = if (s.startsWith("@")) s.substring(1) else s
+
   private val symTypeByTable = mutable.HashMap.empty[CHIR.Type | CHIR.CustomTypeDef, SymType]
   def symType(v: CHIR.Type | CHIR.CustomTypeDef): Option[SymType] = symTypeByTable.get(v) orElse {
     val res = (v: @unchecked) match {
@@ -50,7 +53,7 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.GlobalVar | CHIR.FuncSig): String = {
     def typeDefName(v: CHIR.CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
-      if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
+      if (srcName.isEmpty || isGenericInstantiated(v)) stripSigil(v.identifier) else s"${v.packageName}:$srcName"
     }
 
     def memberName(v: CHIR.Func | CHIR.GlobalVar): String = {
@@ -97,7 +100,7 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
           }
           if (srcName.isEmpty || srcName == "$lambda" || isInitializer || !vtableInstance ||
             (isPackageGlobal && isPrivate)) {
-            identifier.tail
+            stripSigil(identifier)
           } else {
             srcName + suffix
           }
@@ -117,8 +120,8 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   }
 
   def linkageName(v: CHIR.Func | CHIR.GlobalVar | CHIR.InstanceVar): String = v match {
-    case v: CHIR.Func => v.identifier.tail
-    case v: CHIR.GlobalVar => v.identifier.tail
+    case v: CHIR.Func => stripSigil(v.identifier)
+    case v: CHIR.GlobalVar => stripSigil(v.identifier)
     case v: CHIR.InstanceVar => null
   }
 
