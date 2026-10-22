@@ -166,7 +166,7 @@ class StandaloneTestSuite(TestSuite):
         super().__init__(toolchain_path)
         self.asm_jar = self.toolchain_path + "/tools/bin/cbc-asm.jar"
         self.asm_jar_cds = dotjsa(self.asm_jar)
-        self.compiler_sh = self.toolchain_path + "/tools/bin/cbc-compiler.sh"
+        self.compiler_sh = self.toolchain_path + "/tools/bin/cbc-compiler"
         self.compilation_failures = []
         # Reset cds cache if it exists
         if os.path.isfile(self.asm_jar_cds):

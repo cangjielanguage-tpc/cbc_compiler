@@ -121,10 +121,11 @@ object Build {
           streams.value.log.info(s"Building $outputName with $binary")
           val command = Seq(
             binary,
-            "-J-Xmx4g",
+            "-J-Xmx5g",
             "-O3",
             "--no-fallback",
-            s"-J-XX:ActiveProcessorCount=${env.graalvmCompilationThreads}",
+            "--static-nolibc",
+            s"-J-XX:ActiveProcessorCount=${env.graalvmParallelism}",
             "-jar", jar.absolutePath,
             "-o", output.absolutePath,
           )
@@ -202,7 +203,7 @@ object Build {
         val jar = assembly.value
         val copy = target.value / "cbc-compiler.jar"
         IO.copyFile(jar, copy)
-        val script = (ThisBuild / baseDirectory).value / "scripts" / "cbc-compiler.sh"
+        val script = (ThisBuild / baseDirectory).value / "scripts" / "cbc-compiler"
         val launcher = target.value / script.getName
         IO.copyFile(script, launcher)
         launcher.setExecutable(true)

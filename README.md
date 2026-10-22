@@ -136,7 +136,7 @@ The resulting compiler jar will be located at [core/compiler/target/aot/aot.jar]
 
 ### Native Image Builds
 
-The compiler and the `cbc-asm` assembler can also be built as
+The compiler and the CBC assembler can also be built as
 [GraalVM native images](https://www.graalvm.org/latest/reference-manual/native-image/),
 which start up much faster than the corresponding jars:
 
@@ -152,8 +152,8 @@ configured via the `graalvm` property in `env.properties`:
 graalvm=<graalvm>/bin/native-image
 ```
 
-The resulting binaries are located at `core/compiler/target/cbc-compiler-native`
-and `core/cbc-asm/target/cbc-asm-native`. `<binary>.info` file is generated to save
+The resulting binaries are located at [core/compiler/target/cbc-compiler-native](core/compiler/target/cbc-compiler-native)
+and [core/cbc-asm/target/cbc-asm-native](core/cbc-asm/target/cbc-asm-native). `<binary>.info` file is generated to save
 MD5 hashes of the source jar and of the binary itself.
 
 ### Supported CHIR versions
@@ -194,32 +194,28 @@ $ cjc --emit-chir test.cj
 ### Development Container
 
 A dev container image with all the prerequisites preinstalled (JDK, sbt, flatc,
-GraalVM native-image) can be built for a given architecture from `dockerfile/dev`:
+GraalVM native-image) can be built locally:
 
 ```bash
-./dockerfile/dev/build.sh amd64
+(ARCH="amd64" && docker build --network=host --pull --no-cache \
+  $(xargs -I{} echo --build-arg {} < "versions.env") \
+  --build-arg=TARGETARCH=${ARCH} \
+  --platform "linux/${ARCH}" \
+  -t "cbc-compiler-dev" \
+  .)
 ```
 
 The compiler jar together with the native image can be built in a single invocation,
 without any configuration changes:
 
 ```bash
-(export image="s3.excelsior.internal:5000/cbc-compiler-dev:v1-amd64" && \
- podman pull "$image" && \
- podman run -it --rm -v "$(pwd):/workspace" -w /workspace "${image}" \
-   sbt -Dgraalvm=/opt/graalvm/bin/native-image compiler/nativeImage)
-```
-
-To work inside the container with the repository mounted at `/workspace`
-
-- copy `env.properties.sample` as `env.properties`
-- uncomment optional properties (`flatc`, `graalvm`)
-- run interactive seesion
-
-```bash
-(export image="s3.excelsior.internal:5000/cbc-compiler-dev:v1-amd64" && \
- podman pull "$image" && \
- podman run -it --rm -v "$(pwd):/workspace" -w /workspace "${image}")
+(image="cbc-compiler-dev" && docker run -it --rm \
+   -v "$(pwd):/workspace" \
+   -w /workspace \
+   "${image}" \
+   sbt \
+     -Dgraalvm=/opt/graalvm/bin/native-image \
+     compiler/nativeImage)
 ```
 
 ## License

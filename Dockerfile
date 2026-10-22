@@ -55,7 +55,9 @@ RUN mkdir -p /opt/graalvm && \
       arm64) graalvm_arch="aarch64" ;; \
       *) echo "Error: Unsupported architecture '${TARGETARCH}'." >&2; exit 1 ;; \
     esac && \
-    (curl -fsSL "https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAALVM_VERSION}/graalvm-community-jdk-${GRAALVM_VERSION}_linux-${graalvm_arch}_bin.tar.gz" | \
+    i="$(echo "${GRAALVM_VERSION}" | cut -d. -f2)" && \
+    jdk="25.0.${GRAALVM_VERSION#*.*.}" && \
+    (curl -fsSL "https://github.com/graalvm/graalvm-ce-builds/releases/download/graal-${GRAALVM_VERSION}/graalvm-community-jdk-25i${i}-${jdk}_linux-${graalvm_arch}_bin.tar.gz" | \
     tar -xz -C /opt/graalvm --strip-components=1 --no-same-owner || true) && \
     chmod +x /opt/graalvm/bin/* && \
     rm -rf /opt/graalvm/lib/src.zip /opt/graalvm/jmods && \
