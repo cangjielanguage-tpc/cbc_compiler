@@ -267,6 +267,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
   private var nextBlockName = nextName(valuesOf(ValueElem.Block).map(_.asBlock().getBase.getIdentifier), "#")
   private var nextGroupName = nextName(valuesOf(ValueElem.BlockGroup).map(_.asBlockGroup().getBase.getIdentifier), "")
   rememberOwners()
+
   def name: String = data.getName
   def values: Iterator[CHIR.Value] = (1L to length(data.getValues).toLong).iterator.map(value)
 
@@ -331,41 +332,38 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     }).asInstanceOf[T]
   }
 
-  def moveBody(source: CHIR.Func, destination: CHIR.Func): Unit = {
-    valueId(source)
-    valueId(destination)
-    require((source.ownerPackage eq this) && (destination.ownerPackage eq this),
-      "Functions belong to another package")
+  private[v1203] def moveBody(source: FunctionT, destination: FunctionT): Unit = {
+    def functionId(function: FunctionT): Long = {
+      val tableIndex = data.getValues.indexWhere(v =>
+        v.getType == ValueElem.Function && (v.asFunction() eq function))
+      require(tableIndex >= 0, "Function is not registered in this package")
+      tableIndex.toLong + 1
+    }
+
+    val sourceId = functionId(source)
+    val targetId = functionId(destination)
     prepareBodies()
-    val target = destination
-    val sourceId = source.id
-    val targetId = target.id
+    val from = source
+    val to = destination
     require(sourceId != targetId, "Source and destination must differ")
-    require(source.body.nonEmpty, "Source has no body")
-    require(source.kind == CHIR.Func.Kind.Default && target.kind == CHIR.Func.Kind.Default,
-      "Only ordinary functions are supported")
-    require(target.params.size == source.params.size + 1,
-      "Destination must have one extra leading parameter")
-    require(!source.tpe.hasVarArg && !target.tpe.hasVarArg &&
-      source.tpe.isC == target.tpe.isC, "Incompatible calling conventions")
+    require(from.getBody != 0, "Source has no body")
+    val sourceParams = ids(from.getParams)
+    val targetParams = ids(to.getParams)
+    // Receivers are parameters too. Equal arities map positionally; a single
+    // extra leading parameter can be introduced or, if unused, removed.
+    val (mappedSourceParams, mappedTargetParams) = targetParams.length - sourceParams.length match {
+      case 0 => (sourceParams, targetParams)
+      case 1 => (sourceParams, targetParams.drop(1))
+      case -1 => (sourceParams.drop(1), targetParams)
+      case _ => throw new IllegalArgumentException("Parameter counts must match or differ by one leading parameter")
+    }
+    val removedParams = sourceParams.toSet -- mappedSourceParams.toSet
+    val sourceType = data.getTypes()(index(from.getBase.getBase.getType)).asFuncType()
+    val targetType = data.getTypes()(index(to.getBase.getBase.getType)).asFuncType()
+    require(sourceType.getHasVarArg == targetType.getHasVarArg &&
+      sourceType.getIsCfuncType == targetType.getIsCfuncType, "Incompatible calling conventions")
     def value(id: Long): ValueElemUnion = valueTable(id)
 
-    def function(id: Long): FunctionT = {
-      val v = value(id)
-      require(v.getType == ValueElem.Function, s"Value $id is not a function")
-      v.asFunction()
-    }
-
-    val from = function(source.id)
-    val to = function(target.id)
-    require(from.getBase.getDeclaredParent == 0,
-      "A member source requires explicit handling of its original receiver")
-    // The destination may be a Patch instance method. Its leading receiver is
-    // deliberately left unused; retain its signature and declaredParent.
-    if (to.getBase.getDeclaredParent != 0) {
-      require(target.params.head.tpe == target.tpe.receiverType,
-        "The first destination parameter must match its receiver type")
-    }
     require(from.getGenericDecl == 0 && to.getGenericDecl == 0,
       "Generic instances are unsupported")
     val sourceGenerics = ids(from.getGenericTypeParams)
@@ -381,7 +379,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       require(ids(sourceBounds).map(remapType.apply).sameElements(ids(targetBounds)),
         "Generic upper bounds must match after substitution")
     }
-    require(ids(from.getParams).zip(ids(to.getParams).drop(1)).forall { (a, b) =>
+    require(mappedSourceParams.zip(mappedTargetParams).forall { (a, b) =>
       remapType(value(a).asParameter().getBase.getType) == value(b).asParameter().getBase.getType
     }, "Corresponding parameter types must match after substitution")
 
@@ -393,7 +391,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       "Cannot remove a package initializer body")
 
     // 2. Build the source-parameter-ID -> target-parameter-ID mapping.
-    val parameterMap = ids(from.getParams).zip(ids(to.getParams).drop(1)).toMap
+    val parameterMap = mappedSourceParams.zip(mappedTargetParams).toMap
     parameterMap.foreach { (oldId, newId) =>
       require(value(oldId).getType == ValueElem.Parameter &&
         value(newId).getType == ValueElem.Parameter, "Invalid parameter IDs")
@@ -422,8 +420,10 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
         val e = expressionBase(payload)
         require(e.getOwner == blockId, "Invalid expression owner")
         require(ids(e.getBlockGroups).isEmpty, "Nested block groups are unsupported")
+        require(!ids(e.getOperands).exists(removedParams.contains),
+          "Cannot remove a leading parameter that is used by the body")
         require(!ids(e.getOperands).contains(sourceId),
-          "Self references need explicit handling of the extra argument")
+          "Source self references require explicit handling")
         e
       }
     }
@@ -448,12 +448,12 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     }
     changes.set(remapType(group.getBase.getType))(group.getBase.setType)
     remapAnnotations(group.getBase.getBase, remapType.apply)
-    // Printed local identifiers are function-scoped too. Make room for the
-    // receiver, without changing global values-table IDs or associatedExpr IDs.
+    // Printed local identifiers are function-scoped too. Start after the new
+    // parameters, without changing global values-table IDs or associatedExpr IDs.
     val localIds = (expressions.map(_.getResultLocalVar) :+ from.getRetVal)
       .filter(_ != 0).distinct
       .sortBy(id => value(id).asLocalVar().getBase.getIdentifier.stripPrefix("%").toLong)
-    var nextLocal = target.params.size.toLong
+    var nextLocal = ids(to.getParams).length.toLong
     localIds.foreach { id =>
       require(value(id).getType == ValueElem.LocalVar, "Expected a result local")
       val base = value(id).asLocalVar().getBase

@@ -5,12 +5,18 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
 import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v13002.CHIRUtils.{toTypeSeq, toValueSeq}
 
-final class FuncImpl(f: FunctionT, val id: Long)(using val provider: CHIRItemProvider) extends CHIR.Func
+final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider: CHIRItemProvider) extends CHIR.Func
   with HasAnnotationsImpl with HasAttributesImpl with HasDeclaringDefImpl {
   def gv: GlobalValueT = f.getBase
   private def v = gv.getBase
   def base: BaseT = v.getBase
   def attrs: Long = base.getAttributes
+
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = {
+    val mask = attributes.foldLeft(0L)((bits, attribute) => bits | (1L << attribute.ordinal))
+    base.setAttributes(mask)
+  }
+
   def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.getType).get
   def identifier: String = v.getIdentifier
   def srcCodeIdentifier: String = gv.getSrcCodeIdentifier
@@ -38,6 +44,17 @@ final class FuncImpl(f: FunctionT, val id: Long)(using val provider: CHIRItemPro
   def retVal: Option[CHIR.LocalVar] = provider.getValue[CHIR.LocalVar](f.getRetVal)
   def sourceFile: Option[String] = Option(base).flatMap(b => Option(b.getLoc)).flatMap(l => Option(l.getFilePath))
   def ownerPackage: CHIR.Package = provider.asInstanceOf[PackageImpl]
+
+  def moveBody(destination: CHIR.Func): Unit = {
+    val pkg = provider.asInstanceOf[PackageImpl]
+    pkg.valueId(this)
+    pkg.valueId(destination)
+    destination match {
+      case target: FuncImpl if target.provider eq provider => pkg.moveBody(f, target.f)
+      case _ => throw new IllegalArgumentException("Functions belong to another package")
+    }
+  }
+
   // APIs currently called only by tests in this repository (excluding forwarders).
   def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit =
     provider.asInstanceOf[PackageImpl].replaceFunctionBody(id, body, retVal)
@@ -82,6 +99,12 @@ final class GlobalVarImpl(g: GlobalVarT, val id: Long)(using val provider: CHIRI
   private def v = gv.getBase
   def base: BaseT = v.getBase
   def attrs: Long = base.getAttributes
+
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = {
+    val mask = attributes.foldLeft(0L)((bits, attribute) => bits | (1L << attribute.ordinal))
+    base.setAttributes(mask)
+  }
+
   def identifier: String = v.getIdentifier
   def srcCodeIdentifier: String = gv.getSrcCodeIdentifier
   def packageName: String = gv.getPackageName

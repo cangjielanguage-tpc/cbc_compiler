@@ -62,7 +62,7 @@ object MoveFooBodyMain {
     removeIf(pkg, from)
     require(from.body.get.blocks.size == 3 && to.body.get.blocks.size == 3)
     println("EDIT: global foo has 3 blocks and no Branch; C.foo is still unchanged (in memory)")
-    pkg.moveBody(from, to)
+    from.moveBody(to)
     require(from.body.isEmpty && to.body.get.blocks.size == 3)
     require(heldCast.value eq to.params(1), "Held cast must use the destination parameter")
     require(heldInvoke.thisType eq to.genericTypeParams.head,

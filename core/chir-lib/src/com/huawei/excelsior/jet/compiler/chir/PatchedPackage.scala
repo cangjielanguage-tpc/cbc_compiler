@@ -38,7 +38,6 @@ class PatchedPackage(pkg: CHIR.Package, patchGenerators: Seq[CHIRPatchGenerator]
   def definitionId(definition: CHIR.CustomTypeDef): Long = pkg.definitionId(definition)
   def newGoto(destination: CHIR.Block, debugLoc: Option[CHIR.DebugLocation] = None): CHIR.Goto =
     pkg.newGoto(destination, debugLoc)
-  def moveBody(source: CHIR.Func, destination: CHIR.Func): Unit = pkg.moveBody(source, destination)
   def write(output: java.nio.file.Path): Unit = {
     if (patches.nonEmpty) CodeHelpers.shouldNotReachHere(
       "Compiler-only synthetic patches are not serialized; load the original package with CHIR.read")

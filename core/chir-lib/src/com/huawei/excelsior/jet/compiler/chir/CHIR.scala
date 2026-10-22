@@ -46,15 +46,6 @@ object CHIR {
     /** Create and register a goto expression in this package. */
     def newGoto(destination: Block, debugLoc: Option[DebugLocation] = None): Goto
 
-    /** Move a non-member body to a function with one extra leading receiver.
-      * Remap parameters and generic types; preserve the destination signature
-      * and leave the source as a declaration. Bounds must match and composite
-      * destination types must exist. Nested groups, lambdas, spawn, generic
-      * instances and source self references are currently unsupported.
-      * Cleanup and validation are automatic; nothing is serialized here.
-      */
-    def moveBody(source: Func, destination: Func): Unit
-
     /** Clean up unreachable blocks, validate, then save the complete schema.
       * Preserve table IDs, metadata and the input file-identifier convention.
       * Reject invalid graphs before replacing an existing output file.
@@ -117,12 +108,28 @@ object CHIR {
     def retVal: Option[LocalVar]
     def sourceFile: Option[String]
 
+    /** Replace the complete attribute set; an empty sequence clears all attributes. */
+    def replaceAttributes(attributes: Seq[Attribute]): Unit
+
     override def equalityKey: Product =
       (classOf[Func], super.equalityKey, srcCodeIdentifier, packageName, kind, attributes)
 
+    /** Move this function's body to another function in the same package,
+      * whether either function is a member or not. Equal parameter counts map
+      * positionally, including receivers. An extra leading destination parameter
+      * is left unused; a leading source parameter may be omitted only if unused.
+      * Mapped parameter types, return types, generic bounds and calling conventions
+      * must match after generic substitution. Preserve the destination signature
+      * and leave the source as a declaration. Composite destination types must
+      * exist. Nested groups, lambdas, spawn, generic instances and source self
+      * references are currently unsupported; package initializer bodies cannot move.
+      * Cleanup and validation are automatic; nothing is serialized here.
+      */
+    def moveBody(destination: Func): Unit
+
     // APIs currently called only by tests in this repository (excluding forwarders).
     /** Replace body and return local together. Reject foreign/unregistered
-      * nodes and bodies still owned by another function. Use Package.moveBody
+      * nodes and bodies still owned by another function. Use moveBody
       * for transfers that require parameter and generic-type substitution.
       */
     def replaceBody(body: Option[BlockGroup], retVal: Option[LocalVar]): Unit
@@ -181,6 +188,9 @@ object CHIR {
     def packageName: String
     def tpe: Type
     def initializer: Option[Value]
+
+    /** Replace the complete attribute set; an empty sequence clears all attributes. */
+    def replaceAttributes(attributes: Seq[Attribute]): Unit
 
     final override def equals(other: Any): Boolean = other match {
       case that: GlobalVar =>

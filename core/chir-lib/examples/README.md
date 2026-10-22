@@ -26,9 +26,21 @@ b.replaceTerminator(pkg.newGoto(branch.falseBlock, branch.debugLoc))
 val destination = pkg.values.collectFirst {
   case f: CHIR.Func if f.srcCodeIdentifier == "foo" && f.params.size == 2 => f
 }.get
-pkg.moveBody(f, destination)
+f.moveBody(destination)
 pkg.write(output) // The only serialization, after both transformations.
 ```
+
+Functions and global variables also support replacing their complete attribute set:
+
+```scala
+f.replaceAttributes(Seq(CHIR.Attribute.Public, CHIR.Attribute.NoInline))
+val global = pkg.values.collectFirst { case g: CHIR.GlobalVar => g }.get
+global.replaceAttributes(Seq(CHIR.Attribute.Private, CHIR.Attribute.Mut))
+// replaceAttributes(Seq.empty) clears all attributes.
+pkg.write(output)
+```
+
+Attribute edits update the backing nodes immediately and are saved by `write`.
 
 `MoveFooBodyMain.scala` is the only scenario runner. It contains the `if`
 removal and calls the library's `moveBody` operation, then writes once. Run it
@@ -86,7 +98,7 @@ An optional argument supplies a different absolute toolchain directory; the
 default is `~/Projects/software/hotfix-20.10`. The main prints `foo.cj` first,
 invokes `cjc --emit-chir=raw`, loads the package through `CHIR.read`, and
 prints the two functions' IDs, parameters, and block contents. It removes the
-global `foo` conditional and calls `pkg.moveBody(from, to)` on the same editable
+global `foo` conditional and calls `from.moveBody(to)` on the same editable
 package. It checks the updated parameter and generic references through expression
 views held before the move, then calls `pkg.write` once. There is no intermediate
 CHIR file or serialization between editing and moving. `chir-dis` runs twice,
@@ -120,6 +132,13 @@ return variable and body owner, and renames moved result locals to avoid the new
 receiver's function-local naming collisions. Entity-table IDs do not change.
 Existing destination-body entries are retained but no longer used by the method.
 Source locations continue to point to the original body.
+
+`Func.moveBody` accepts member and non-member sources and destinations. Equal
+parameter counts map positionally, including any receiver. A single extra leading
+destination parameter is left unused; a single extra leading source parameter can
+be omitted only when the body does not use it. Mapped parameter types, return
+types and generic bounds must remain compatible. Function kinds are not restricted
+to ordinary functions; package initializer bodies cannot be moved.
 
 Generic instances (`genericDecl != 0`), nested bodies, lambdas, and spawn remain
 unsupported. Substituting a composite type requires the corresponding destination

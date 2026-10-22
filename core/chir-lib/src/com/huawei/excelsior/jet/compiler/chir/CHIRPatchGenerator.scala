@@ -85,6 +85,13 @@ class CHIRThrowPatchGenerator(_pkg: CHIR.Package, patch: ThrowPatch) extends CHI
       def annotations: Seq[CHIR.Annotation] = Seq.empty
       def attributes: Seq[CHIR.Attribute] = Seq.empty
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
+
+      def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
+        CodeHelpers.shouldNotReachHere("Cannot replace attributes of a synthetic throw helper")
+
+      def moveBody(destination: CHIR.Func): Unit =
+        CodeHelpers.shouldNotReachHere("Cannot move the body of a synthetic throw helper")
+
       // APIs currently called only by tests in this repository (excluding forwarders).
       def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit =
         CodeHelpers.shouldNotReachHere("Cannot replace the body of a synthetic throw helper")
@@ -220,6 +227,13 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
       def annotations: Seq[CHIR.Annotation] = Seq.empty
       def attributes: Seq[CHIR.Attribute] = Seq.empty
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
+
+      def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
+        CodeHelpers.shouldNotReachHere("Cannot replace attributes of a synthetic entry function")
+
+      def moveBody(destination: CHIR.Func): Unit =
+        CodeHelpers.shouldNotReachHere("Cannot move the body of a synthetic entry function")
+
       // APIs currently called only by tests in this repository (excluding forwarders).
       def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit =
         CodeHelpers.shouldNotReachHere("Cannot replace the body of a synthetic entry function")
