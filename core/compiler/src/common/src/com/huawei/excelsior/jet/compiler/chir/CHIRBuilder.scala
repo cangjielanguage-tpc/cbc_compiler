@@ -57,7 +57,7 @@ object CHIRBuilder {
         case d: CHIR.ClassDef => !d.isClass
         case _ => false
       }
-      val symType = asClassType(resolver.symType(d).getOrElse {
+      asClassType(resolver.symType(d).getOrElse {
         d match {
           case d: CHIR.ClassDef =>
             val modifiers = resolver.symModifiers(d).value
@@ -91,7 +91,6 @@ object CHIRBuilder {
             builder.addClass(symPackage, name, Modifiers(Modifier.PUBLIC).value, isCangjie = true, isCangjieLambda = false, genericInfo)
         }
       })
-      symType
     }
 
     for (d <- pkg.typeDefs) symTypeDefs += makeSymType(d)

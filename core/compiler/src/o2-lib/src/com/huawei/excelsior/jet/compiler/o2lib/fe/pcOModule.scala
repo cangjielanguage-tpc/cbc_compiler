@@ -1862,9 +1862,6 @@ object pcOModule {
       _fileDescriptor = fd
     }
 
-    /** Marks the class as imported from another compilation unit, so it is not emitted as a local type. */
-    def markAsImportedType(): Unit = _fileDescriptor = null
-
     def isInCompilationSet: Boolean = if (isAnonymous) hostClass.isInCompilationSet else _fileDescriptor != null
 
     def classInfo = {
