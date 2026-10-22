@@ -1,11 +1,11 @@
 package com.huawei.excelsior.jet.compiler.chir.v13008
 
-import com.huawei.excelsior.jet.compiler.chir.CHIR
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, ReadOnlyFunc, ReadOnlyBlock, ReadOnlyBlockGroup, ReadOnlyGlobalVar}
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
 import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRUtils.{toExprSeq, toTypeSeq, toValueSeq}
 
-final class FuncImpl(f: Function, val id: Long)(using val provider: CHIRItemProvider) extends CHIR.Func
+final class FuncImpl(f: Function, val id: Long)(using val provider: CHIRItemProvider) extends ReadOnlyFunc
   with HasAnnotationsImpl with HasAttributesImpl with HasDeclaringDefImpl {
 
   val gv: GlobalValue = f.base
@@ -41,20 +41,20 @@ final class FuncImpl(f: Function, val id: Long)(using val provider: CHIRItemProv
   def sourceFile: Option[String] = Option(base.loc.filePath)
 }
 
-final class BlockGroupImpl(b: BlockGroup)(using provider: CHIRItemProvider) extends CHIR.BlockGroup {
+final class BlockGroupImpl(b: BlockGroup)(using provider: CHIRItemProvider) extends ReadOnlyBlockGroup {
   def blocks = b.blocksVector.toValueSeq[CHIR.Block]
   def entryBlock: CHIR.Block = block(b.entryBlock)
   private def block(idx: Long) = provider.getValue[CHIR.Block](idx).get
 }
 
-final class BlockImpl(b: Block)(using provider: CHIRItemProvider) extends CHIR.Block {
+final class BlockImpl(b: Block)(using provider: CHIRItemProvider) extends ReadOnlyBlock {
   lazy val expressions = b.exprsVector.toExprSeq[CHIR.Expression]
   def nonTerminatorExpressions: Seq[CHIR.Expression] = expressions.init
   def terminator: CHIR.Terminator = expressions.last.asInstanceOf[CHIR.Terminator]
   def isLandingPadBlock: Boolean = b.isLandingPadBlock
 }
 
-final class GlobalVarImpl(g: GlobalVar, val id: Long)(using val provider: CHIRItemProvider) extends CHIR.GlobalVar
+final class GlobalVarImpl(g: GlobalVar, val id: Long)(using val provider: CHIRItemProvider) extends ReadOnlyGlobalVar
   with HasAnnotationsImpl with HasAttributesImpl with HasDeclaringDefImpl {
 
   val gv: GlobalValue = g.base
@@ -70,11 +70,15 @@ final class GlobalVarImpl(g: GlobalVar, val id: Long)(using val provider: CHIRIt
 }
 
 final class LocalVarImpl(l: LocalVar)(using provider: CHIRItemProvider) extends CHIR.LocalVar {
+  def identifier: String = l.base.identifier
+  def srcCodeIdentifier: String = l.srcCodeIdentifier
   def tpe: CHIR.Type = provider.getType[CHIR.Type](l.base.`type`).get
   def associatedExpr: CHIR.Expression = provider.getExpr[CHIR.Expression](l.associatedExpr)
 }
 
 final class ParameterImpl(p: Parameter)(using provider: CHIRItemProvider) extends CHIR.Parameter {
+  def identifier: String = p.base.identifier
+  def srcCodeIdentifier: String = p.srcCodeIdentifier
   def tpe: CHIR.Type = provider.getType[CHIR.Type](p.base.`type`).get
 }
 
