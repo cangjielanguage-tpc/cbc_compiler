@@ -1,5 +1,6 @@
 package com.huawei.excelsior.jet.compiler.chir.v13002
 
+import com.huawei.excelsior.common.CodeHelpers.*
 import com.huawei.excelsior.jet.compiler.chir.*
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{Binary, Intrinsic, Unary}
 import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
@@ -130,6 +131,8 @@ class IntrinsicImpl(in: IntrinsicBase)(implicit provider: CHIRItemProvider) exte
     case IntrinsicKind.PREINITIALIZE => Intrinsic.Kind.Preinitialize
     case IntrinsicKind.CPOINTER_INIT0 => Intrinsic.Kind.CPointerInit0
     case IntrinsicKind.CPOINTER_INIT1 => Intrinsic.Kind.CPointerInit1
+    case IntrinsicKind.CSTRING_INIT => Intrinsic.Kind.CStringInit
+    case IntrinsicKind.INOUT_PARAM => Intrinsic.Kind.InoutParam
     case IntrinsicKind.CPOINTER_READ => Intrinsic.Kind.CPointerRead
     case IntrinsicKind.CPOINTER_WRITE => Intrinsic.Kind.CPointerWrite
     case IntrinsicKind.OBJECT_ZERO_VALUE => Intrinsic.Kind.ObjectZeroValue
@@ -137,8 +140,15 @@ class IntrinsicImpl(in: IntrinsicBase)(implicit provider: CHIRItemProvider) exte
     case IntrinsicKind.POW => Intrinsic.Kind.Pow
     case IntrinsicKind.SIN => Intrinsic.Kind.Sin
     case IntrinsicKind.COS => Intrinsic.Kind.Cos
+    case IntrinsicKind.LOG => Intrinsic.Kind.Log
+    case IntrinsicKind.CEIL => Intrinsic.Kind.Ceil
+    case IntrinsicKind.FLOOR => Intrinsic.Kind.Floor
+    case IntrinsicKind.BLACK_BOX => Intrinsic.Kind.BlackBox
+    case IntrinsicKind.GET_TYPE_FOR_TYPE_PARAMETER => Intrinsic.Kind.GetTypeForTypeParameter
+    case k => notImplemented(s"intrinsic ${IntrinsicKind.name(k)}")
   }
   def args: Seq[CHIR.Value] = operands
+  def instantiatedTypeArgs = in.base.instantiatedTypeArgsVector.toTypeSeq[CHIR.Type]
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.resultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.resultLocalVar).get
 }

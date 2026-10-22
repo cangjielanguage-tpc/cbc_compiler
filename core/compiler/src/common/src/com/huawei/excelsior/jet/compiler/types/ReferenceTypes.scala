@@ -318,6 +318,8 @@ object ReferenceTypes {
 
               iter(t1, t1.cohenLevel, t2, t2.cohenLevel)
 
+            case (_, _) if isStandalone => ReferenceType.cangjieStdCoreObject
+
             case (t: InterfaceType, _) => commonSuper(t.superclass, t2)
             case (_, t: InterfaceType) => commonSuper(t1, t.superclass)
           }

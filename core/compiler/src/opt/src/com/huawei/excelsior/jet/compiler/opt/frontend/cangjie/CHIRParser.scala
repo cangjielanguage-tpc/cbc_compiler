@@ -725,7 +725,11 @@ trait CHIRParser
         val n = (resSig: @unchecked) match {
           case Boolean =>
             val cv = if (sig == Unit) {
-              True()
+              e.kind match {
+                case CHIR.Binary.Kind.Eq => True()
+                case CHIR.Binary.Kind.NotEq => False()
+                case x => shouldNotReachHere(s"unexpected unit binary comparison: ${e.kind}")
+              }
             } else {
               val unsigned = sig match {
                 case sig: Integral => !sig.signed
@@ -1090,18 +1094,29 @@ trait CHIRParser
             case _ => SignatureType.fromSymType(declClass)
           }
 
+          def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
+            val cparams = genericParams(refType)
+            val lparams = Seq.empty
+
+            val refClass = asClassType(refType)
+            Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
+              refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
+          }
+
+          val refType = (Iterator(declType) ++ refineSuperTypes(declType)).find(t => asClassType(t) == declClass).get
+
           val name = resolver.symName(func)
-          val _target = calcMethodRef(declClass, declType, name, func)
+          val _target = calcMethodRef(declClass, refType, name, func)
 
           // TODO: add instantiated type parameters to base MethodReference
           val lparams = e.instantiatedTypeArgs.map(resolver.typeSig)
           var target = if (lparams.nonEmpty) {
-            _target.toInstantiatedMethodReference(lparams, declType)
+            _target.toInstantiatedMethodReference(lparams, refType)
           } else {
             _target
           }
           val argVals = e.args
-          val outerType = if (asClassType(declType).isCangjieExtend) thisType else Some(declType)
+          val outerType = if (asClassType(refType).isCangjieExtend) thisType else Some(refType)
 
           val args = argVals match {
             case Seq(gv: CHIR.GlobalVar, rest: _*) =>
@@ -1438,8 +1453,26 @@ trait CHIRParser
           case (from: ClassBasedEnum, to: Tuple) =>
             val ctors = from.info.constructors
             val targetCtor = to.params.tail // first element is tag
-            val idx = ctors.indexWhere(_.params.map(_.instantiate(from.params, Seq.empty)) == targetCtor)
-            assert(idx >= 0)
+            val indices = for {
+              (c, idx) <- ctors.zipWithIndex
+              iparams = c.params.map(_.instantiate(from.params, Seq.empty))
+              if iparams.size == targetCtor.size
+              if iparams zip targetCtor forall {
+                case (x, y) if x == y => true
+                // Ignore boxes that might have been inserted for recursive enums
+                case (SignatureType.Box(x), y) if x == y => true
+                case _ => false
+              }
+            } yield idx
+
+            // Unfortunately there is no reliable way to distinguish differently named constructors
+            // with same parameters when we get this "StaticClassCast" from Enum to Tuple.
+            // So we have to pick arbitrary constructor representative which has "the same" layout
+            // as expected Tuple and hope it works.
+            // CJC leaves us no choice here.
+            assert(indices.nonEmpty, s"$targetCtor -> ${ctors}")
+            val idx = indices.head
+
             val enumName = resolver.classBasedEnumConstructorName(from.name, idx)
             val enumType = if (from.params.isEmpty) {
               CangjieReference(enumName)
@@ -1694,6 +1727,21 @@ trait CHIRParser
               case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_COS)(x)
             }
 
+          case CHIR.Intrinsic.Kind.Log =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG)(x)
+            }
+
+          case CHIR.Intrinsic.Kind.Ceil =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_CEIL)(x)
+            }
+
+          case CHIR.Intrinsic.Kind.Floor =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_FLOOR)(x)
+            }
+
           case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>
             e.args.map(state.apply) match {
               case Seq(x) =>
@@ -1708,13 +1756,18 @@ trait CHIRParser
               case Seq(base, idx) => (state(base), state(idx))
             }
             cpointerType.pointee match {
-              case baseType: SignatureType =>
-                val mem = Add(base, Mul(LConst(baseType.toAsm.sizeInBytes), idx))
-                state(e) = if (baseType.isPrimitive) {
-                  LoadMemory(baseType.toAsm, baseType, atomic = false)(mem)
+              case pointee: SignatureType =>
+                state(e) = if (pointee.isZST) {
+                  // CPointer<Unit> means void*
+                  Void()
                 } else {
-                  assert(baseType.isRecord)
-                  Add(base, Mul(LConst(baseType.toAsm.sizeInBytes), idx))
+                  val mem = Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
+                  if (pointee.isPrimitive) {
+                    LoadMemory(pointee.toAsm, pointee, atomic = false)(mem)
+                  } else {
+                    assert(pointee.isRecord)
+                    Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
+                  }
                 }
               case _ =>
                 // TODO pointer to a method?
@@ -1729,23 +1782,38 @@ trait CHIRParser
               case Seq(base, idx, value) => (state(base), state(idx), state(value))
             }
             cpointerType.pointee match {
-              case baseType: SignatureType =>
-                val mem = Add(base, Mul(LConst(baseType.toAsm.sizeInBytes), idx))
-                if (baseType.isPrimitive) {
-                  StoreMemory(baseType.toAsm, baseType, atomic = false)(mem, value)
+              case pointee: SignatureType =>
+                if (pointee.isZST) {
+                  // CPointer<Unit> means void*
+                  // so do nothing
                 } else {
-                  assert(baseType.isRecord)
-                  copy(baseType, mem, value)
+                  val mem = Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
+                  if (pointee.isPrimitive) {
+                    StoreMemory(pointee.toAsm, pointee, atomic = false)(mem, value)
+                  } else {
+                    assert(pointee.isRecord)
+                    copy(pointee, mem, value)
+                  }
                 }
               case _ =>
                 // TODO pointer to a method?
                 shouldNotReachHere(cpointerType)
             }
 
+
           case CHIR.Intrinsic.Kind.CPointerInit0 =>
             state(e) = LConst(0)
 
           case CHIR.Intrinsic.Kind.CPointerInit1 =>
+            state(e) = state(e.args.head)
+
+          case CHIR.Intrinsic.Kind.CStringInit =>
+            state(e) = state(e.args.head)
+
+          case CHIR.Intrinsic.Kind.InoutParam =>
+            state(e) = state(e.args.head)
+
+          case CHIR.Intrinsic.Kind.BlackBox =>
             state(e) = state(e.args.head)
 
           case CHIR.Intrinsic.Kind.ArrayAcquireRawData =>
@@ -1775,6 +1843,15 @@ trait CHIRParser
               ZeroValueNode(ValueType.fromSig(sig))
             }
             state(e) = res
+
+          case CHIR.Intrinsic.Kind.GetTypeForTypeParameter =>
+            // Dereferences first field typeName from TypeInfo of given type parameter
+            val sig = resolver.typeSig(e.resultTpe)
+            assert(sig == SignatureType.BString, sig)
+            val Seq(tv) = e.instantiatedTypeArgs
+            val tvSig = resolver.typeSig(tv)
+            val ti = loadTypeInfo(tvSig)
+            state(e) = LoadMemory(sig.toAsm, sig, atomic = false)(ti)
         }
 
       case e: CHIR.Spawn =>
@@ -1806,7 +1883,7 @@ trait CHIRParser
         def intConst(v: Long, l: CHIR.Literal): Node = {
           l.tpe match {
             case CHIR.BuiltinType.Int8 | CHIR.BuiltinType.Int16 | CHIR.BuiltinType.Int32 |
-                 CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 | 
+                 CHIR.BuiltinType.UInt8 | CHIR.BuiltinType.UInt16 | CHIR.BuiltinType.UInt32 |
                  CHIR.BuiltinType.Boolean |
                  CHIR.BuiltinType.Rune => IConst(v.toInt)
             case CHIR.BuiltinType.Int64 | CHIR.BuiltinType.IntNative |
@@ -1815,7 +1892,13 @@ trait CHIRParser
             case CHIR.BuiltinType.Float32 => FConst(v.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.toDouble)
             case CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => IntegralConst(AddrType)(v)
-            case _: CHIR.CustomType | _: CHIR.VArrayType | _: CHIR.TupleType => IntegralConst(AddrType)(v)
+            case _: CHIR.CustomType | _: CHIR.VArrayType | _: CHIR.TupleType |
+                 _: CHIR.CPointerType => IntegralConst(AddrType)(v)
+            case t: CHIR.GenericType =>
+              // std.unittest assertion macros might produce this garbage
+              assert(v == 0, t.identifier)
+              val sig = resolver.typeSig(t)
+              ZeroValueGeneric(loadTypeInfo(sig))
           }
         }
         val value = e.literal match {
@@ -2069,8 +2152,8 @@ trait CHIRParser
                     case Seq(IConst(c), x) =>
                       assert(c == 0 || c == 1, c)
                       StoreFieldSeq(maybeDerivedPtrBase(mem), mem, IConst(c), tagChain*)
-                            val payloadChain = fieldChain(enumType, Seq(1))
-                            val lastFieldType = FieldSeqOperation.lastRef(payloadChain)
+                      val payloadChain = fieldChain(enumType, Seq(1))
+                      val lastFieldType = FieldSeqOperation.lastRef(payloadChain)
                       if (payloadType.isZST) {
                         // nothing to do
                       } else if (needsCopy(payloadType)) {
@@ -2134,6 +2217,13 @@ trait CHIRParser
                 LoadFieldSeq(base.baseRef, base.base, base.fields: _*)
               case base => shouldNotReachHere(s"unexpected cast base: $base")
             }
+          }
+        } else if (targetType.isTypeVariable) {
+          if (base.tpe.isTraceableRefType) {
+            base
+          } else {
+            val ValueSig(sig) = e.value
+            Box(sig)(loadTypeInfo(sig), base)
           }
         } else {
           if (base.tpe.isTraceableRefType) {
@@ -2565,19 +2655,25 @@ trait CHIRParser
     }
 
     private def allocEnumObject(objType: SignatureType, args: Seq[Node]): Node = {
-      val obj = New(objType)()
+      val obj = if (objType.containsTypeVariables) {
+        NewGeneric(objType)(loadTypeInfo(objType))
+      } else {
+        New(objType)()
+      }
       val superType = asClassType(objType).getSuperClassSig
-      for ((arg, fieldRef) <- args zip (declaredFields(superType) ++ declaredFields(objType))) {
-        val sig = fieldRef.fieldType
+      for ((arg, i) <- args.zipWithIndex) {
+        val fields = fieldChain(objType, Seq(i))
+        val lastField = FieldSeqOperation.lastRef(fields)
+        val sig = lastField.fieldType
         if (sig.isZST) {
           // Nothing to do
 
         } else if (needsCopy(sig)) {
-          val mem = GetFieldSeqRef(maybeDerivedPtrBase(obj), obj, FieldReferenceNode(fieldRef))
+          val mem = GetFieldSeqRef(maybeDerivedPtrBase(obj), obj, fields: _*)
           copy(sig, mem, arg)
 
         } else {
-          StoreFieldSeq(maybeDerivedPtrBase(obj), obj, arg, FieldReferenceNode(fieldRef))
+          StoreFieldSeq(maybeDerivedPtrBase(obj), obj, arg, fields: _*)
         }
       }
       obj

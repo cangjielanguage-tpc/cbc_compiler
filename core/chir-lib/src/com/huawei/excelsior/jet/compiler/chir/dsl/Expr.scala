@@ -4,6 +4,7 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR
 
 final class Intrinsic(val kind: CHIR.Intrinsic.Kind, val args: Seq[CHIR.Value]) extends CHIR.Intrinsic with HasResultVar {
   def debugLoc: Option[CHIR.DebugLocation] = None
+  def instantiatedTypeArgs = Seq.empty
 }
 
 final class InstanceOf(val obj: CHIR.Value, val testType: CHIR.Type) extends CHIR.InstanceOf with HasResultVar {

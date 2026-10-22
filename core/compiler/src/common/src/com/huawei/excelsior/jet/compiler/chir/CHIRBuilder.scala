@@ -285,7 +285,7 @@ object CHIRBuilder {
             builder.addMethod(symType, mutName, sig, mutLinkageName, modifiers.value, genericInfo,
               ABI.Description(rcvParam, hasMutParam, hasThisTypeInfoParam,
                 isCFunc = false, hasOuterTypeInfo, hasRetByVal, genericFuncParamsCount),
-              m.sourceFile)
+              m.sourceFile, resolver.sourceFullName(m))
           }
 
           val mutWrapperName = name
@@ -296,7 +296,7 @@ object CHIRBuilder {
           val mutWrapper = builder.addMethod(symType, mutWrapperName, sig, mutWrapperLinkageName, mutWrapperModifiers.value, genericInfo,
             ABI.Description(mutWrapperReceiver, mutWrapperHasMutParam, hasThisTypeInfoParam,
             isCFunc = false, hasOuterTypeInfo, hasRetByVal, genericFuncParamsCount),
-            m.sourceFile)
+            m.sourceFile, resolver.sourceFullName(m))
 
           if (mutMethod.nonEmpty) {
             builder.markAsMutWrapper(mutWrapper)
@@ -310,7 +310,7 @@ object CHIRBuilder {
           val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
             ABI.Description(rcvParam,
             hasMutParam, hasThisTypeInfoParam, isCFunc = false, hasOuterTypeInfo, hasRetByVal = hasRetByVal, genericFuncParamsCount),
-            m.sourceFile)
+            m.sourceFile, resolver.sourceFullName(m))
           if (SignatureType.fromSymType(symType).isCangjieLambda && name == "$GenericVirtualFunc") {
             assert(symMethod.hasRetByValParameter)
           }
@@ -365,7 +365,7 @@ object CHIRBuilder {
       val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
         ABI.Description(rcv, hasMutParam = false, hasThisTypeInfoParam,
           isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount),
-          m.sourceFile)
+          m.sourceFile, resolver.sourceFullName(m))
       virtMethods(m) = symMethod
 
       if (symType.isCHIRDef) {
@@ -456,7 +456,7 @@ object CHIRBuilder {
         val linkageName = resolver.linkageName(m)
         val symMethod = builder.addMethod(symPkg, name, sig, linkageName, modifiers, genericInfo, ABI.Description(None, hasMutParam = false, hasThisTypeInfoParam = false,
           isCFunc, hasOuterTypeInfo = false, hasRetByVal = false, genericFuncParamsCount),
-          m.sourceFile)
+          m.sourceFile, resolver.sourceFullName(m))
         if (pkg.packageInitFunc == m) {
           builder.markAsPackageInit(symMethod)
         }
