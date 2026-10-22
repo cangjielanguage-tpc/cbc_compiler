@@ -1,9 +1,11 @@
 package com.huawei.excelsior.jet.compiler.chir
 
 import com.huawei.excelsior.common.CodeHelpers.*
+import java.nio.file.Path
 
-/** Read interfaces for CHIR. [[EditableCHIR]] extends these interfaces with
-  * package-owned editing and serialization contracts.
+/** CHIR read and editing interfaces. Loaded packages use generated mutable
+  * object-API tables as their single backing representation. Existing read
+  * signatures remain unchanged; ownership-aware edits maintain graph invariants.
   */
 object CHIR {
 
@@ -16,6 +18,17 @@ object CHIR {
     case _ => notImplemented("unsupported CHIR version", version)
   })
 
+  /** Load the serialized package itself, without compiler-generated overlays. */
+  def read(input: Path, version: Int = defaultVersion): Package = version match {
+    case CHIR.defaultVersion => v13002.PackageImpl.read(input)
+    case CHIR.releaseBeta120Rc3Version => v1203.PackageImpl.read(input)
+    case _ => notImplemented("unsupported CHIR version", version)
+  }
+
+  trait PackageOwned {
+    def ownerPackage: Package
+  }
+
   trait Package {
     def name: String
     def typeDefs: Iterator[CustomTypeDef]
@@ -25,6 +38,39 @@ object CHIR {
     def packageInitLiteralFunc: Func
     def getFunc(identifier: String): Option[Func]
     def getDef(identifier: String): Option[CustomTypeDef]
+
+    def valueId(value: Value): Long
+    def expressionId(expression: Expression): Long
+    def definitionId(definition: CustomTypeDef): Long
+
+    /** Create and register a goto expression in this package. */
+    def newGoto(destination: Block, debugLoc: Option[DebugLocation] = None): Goto
+
+    /** Move a non-member body to a function with one extra leading receiver.
+      * Remap parameters and generic types; preserve the destination signature
+      * and leave the source as a declaration. Bounds must match and composite
+      * destination types must exist. Nested groups, lambdas, spawn, generic
+      * instances and source self references are currently unsupported.
+      * Cleanup and validation are automatic; nothing is serialized here.
+      */
+    def moveBody(source: Func, destination: Func): Unit
+
+    /** Clean up unreachable blocks, validate, then save the complete schema.
+      * Preserve table IDs, metadata and the input file-identifier convention.
+      * Reject invalid graphs before replacing an existing output file.
+      */
+    def write(output: Path): Unit
+
+    // APIs currently called only by tests in this repository (excluding forwarders).
+    def typeId(tpe: Type): Long
+
+    /** Factories immediately register nodes. Graph edits may be staged, but
+      * all new nodes must be attached before moving a body or writing a file.
+      */
+    def newBlock(isLandingPad: Boolean = false): Block
+    def newBlockGroup(blocks: Seq[Block], entryBlock: Block): BlockGroup
+    def newBranch(condition: Value, trueBlock: Block, falseBlock: Block,
+                  debugLoc: Option[DebugLocation] = None): Branch
   }
 
   trait HasAnnotations {
@@ -57,7 +103,7 @@ object CHIR {
   trait Value {
   }
 
-  trait Func extends Value with FuncSig with HasDeclaringDef with HasAnnotations with HasAttributes {
+  trait Func extends Value with PackageOwned with FuncSig with HasDeclaringDef with HasAnnotations with HasAttributes {
     def tpe: FuncType
     def id: Long
     def identifier: String
@@ -73,6 +119,14 @@ object CHIR {
 
     override def equalityKey: Product =
       (classOf[Func], super.equalityKey, srcCodeIdentifier, packageName, kind, attributes)
+
+    // APIs currently called only by tests in this repository (excluding forwarders).
+    /** Replace body and return local together. Reject foreign/unregistered
+      * nodes and bodies still owned by another function. Use Package.moveBody
+      * for transfers that require parameter and generic-type substitution.
+      */
+    def replaceBody(body: Option[BlockGroup], retVal: Option[LocalVar]): Unit
+
   }
 
   object Func {
@@ -95,16 +149,28 @@ object CHIR {
     }
   }
 
-  trait BlockGroup extends Value {
+  trait BlockGroup extends Value with PackageOwned {
     def blocks: Seq[Block]
     def entryBlock: Block
+
+    /** Update membership, parents and predecessors; entry must be a member.
+      * Reject duplicate/shared/foreign blocks. Complete cleanup and validation
+      * run automatically before writing or moving a body.
+      */
+    def replaceBlocks(blocks: Seq[Block], entryBlock: Block): Unit
   }
 
-  trait Block extends Value {
+  trait Block extends Value with PackageOwned {
     def expressions: Seq[Expression]
     def nonTerminatorExpressions: Seq[Expression]
     def terminator: Terminator
     def isLandingPadBlock: Boolean
+
+    /** Maintain ownership and predecessors, pruning unreachable blocks when
+      * the attached body has complete control flow. Staged edits are allowed.
+      */
+    def replaceTerminator(terminator: Terminator): Unit
+    def replaceExpressions(nonTerminators: Seq[Expression], terminator: Terminator): Unit
   }
 
   // static field or global var

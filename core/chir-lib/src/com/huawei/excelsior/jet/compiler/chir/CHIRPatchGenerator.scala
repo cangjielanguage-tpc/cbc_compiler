@@ -49,6 +49,8 @@ class CHIRThrowPatchGenerator(_pkg: CHIR.Package, patch: ThrowPatch) extends CHI
 
   def generatePatch(_id: Int): Option[Func] = {
     Option(new CHIR.Func {
+      def ownerPackage: CHIR.Package =
+        CodeHelpers.shouldNotReachHere("Synthetic throw helpers have no serialized package owner")
       def tpe: CHIR.FuncType = new CHIR.FuncType {
         def paramTypes: Seq[CHIR.Type] = Seq.empty
         def paramTypesWithoutReceiver: Seq[CHIR.Type] = Seq.empty
@@ -83,6 +85,9 @@ class CHIRThrowPatchGenerator(_pkg: CHIR.Package, patch: ThrowPatch) extends CHI
       def annotations: Seq[CHIR.Annotation] = Seq.empty
       def attributes: Seq[CHIR.Attribute] = Seq.empty
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
+      // APIs currently called only by tests in this repository (excluding forwarders).
+      def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit =
+        CodeHelpers.shouldNotReachHere("Cannot replace the body of a synthetic throw helper")
     })
   }
 }
@@ -95,6 +100,8 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
 
   def generatePatch(_id: Int): Option[Func] = pkg.getFunc("user.main").map { userMain =>
     new CHIR.Func {
+      def ownerPackage: CHIR.Package =
+        CodeHelpers.shouldNotReachHere("Synthetic entry functions have no serialized package owner")
       private var _retVal: CHIR.LocalVar = _
 
       def tpe: CHIR.FuncType = new CHIR.FuncType {
@@ -213,6 +220,9 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRPatchGenerator {
       def annotations: Seq[CHIR.Annotation] = Seq.empty
       def attributes: Seq[CHIR.Attribute] = Seq.empty
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
+      // APIs currently called only by tests in this repository (excluding forwarders).
+      def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit =
+        CodeHelpers.shouldNotReachHere("Cannot replace the body of a synthetic entry function")
     }
   }
 }

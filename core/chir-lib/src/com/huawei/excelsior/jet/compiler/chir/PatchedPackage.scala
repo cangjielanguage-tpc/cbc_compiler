@@ -1,5 +1,7 @@
 package com.huawei.excelsior.jet.compiler.chir
 
+import com.huawei.excelsior.common.CodeHelpers
+
 object PatchedPackage {
   def apply(pkg: CHIR.Package): PatchedPackage = {
     new PatchedPackage(pkg, Seq(
@@ -30,4 +32,26 @@ class PatchedPackage(pkg: CHIR.Package, patchGenerators: Seq[CHIRPatchGenerator]
   def packageInitFunc: CHIR.Func = pkg.packageInitFunc
   def packageInitLiteralFunc: CHIR.Func = pkg.packageInitLiteralFunc
   def typeDefs: Iterator[CHIR.CustomTypeDef] = pkg.typeDefs
+
+  def valueId(value: CHIR.Value): Long = pkg.valueId(value)
+  def expressionId(expression: CHIR.Expression): Long = pkg.expressionId(expression)
+  def definitionId(definition: CHIR.CustomTypeDef): Long = pkg.definitionId(definition)
+  def newGoto(destination: CHIR.Block, debugLoc: Option[CHIR.DebugLocation] = None): CHIR.Goto =
+    pkg.newGoto(destination, debugLoc)
+  def moveBody(source: CHIR.Func, destination: CHIR.Func): Unit = pkg.moveBody(source, destination)
+  def write(output: java.nio.file.Path): Unit = {
+    if (patches.nonEmpty) CodeHelpers.shouldNotReachHere(
+      "Compiler-only synthetic patches are not serialized; load the original package with CHIR.read")
+    pkg.write(output)
+  }
+
+  // APIs currently called only by tests in this repository (excluding forwarders).
+  def typeId(tpe: CHIR.Type): Long = pkg.typeId(tpe)
+  def newBlock(isLandingPad: Boolean = false): CHIR.Block = pkg.newBlock(isLandingPad)
+  def newBlockGroup(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block): CHIR.BlockGroup =
+    pkg.newBlockGroup(blocks, entryBlock)
+  def newBranch(condition: CHIR.Value, trueBlock: CHIR.Block, falseBlock: CHIR.Block,
+                         debugLoc: Option[CHIR.DebugLocation] = None): CHIR.Branch =
+    pkg.newBranch(condition, trueBlock, falseBlock, debugLoc)
+
 }

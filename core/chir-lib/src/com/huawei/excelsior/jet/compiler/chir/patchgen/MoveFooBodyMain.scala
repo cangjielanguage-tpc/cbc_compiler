@@ -1,10 +1,9 @@
 package com.huawei.excelsior.jet.compiler.chir.patchgen
 
-import com.huawei.excelsior.jet.compiler.chir.{CHIR, EditableCHIR}
+import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.v13002.PackageImpl
 import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
 
-import java.nio.ByteBuffer
 import java.nio.file.{Files, Path, Paths}
 import scala.sys.process.*
 
@@ -23,29 +22,28 @@ object MoveFooBodyMain {
     run(toolchain, out, "cjc", "--emit-chir=raw", "--output-dir", out.toString, source.toString)
     val input = out.resolve("bodymove.chir")
     val output = out.resolve("bodymove-moved.chir")
-    val pkg = EditableCHIR.read(input)
-    val functions = pkg.values.collect { case f: EditableCHIR.Func => f }.toVector
+    val pkg = CHIR.read(input)
+    val functions = pkg.values.collect { case f: CHIR.Func => f }.toVector
     val foos = functions.filter(f => f.srcCodeIdentifier == "foo" && f.genericTypeParams.nonEmpty)
-    val from: EditableCHIR.Func = foos.find(_.params.size == 1).getOrElse(
+    val from: CHIR.Func = foos.find(_.params.size == 1).getOrElse(
       throw new IllegalArgumentException("Missing global foo(x)"))
-    val to: EditableCHIR.Func = foos.find(_.params.size == 2).getOrElse(
+    val to: CHIR.Func = foos.find(_.params.size == 2).getOrElse(
       throw new IllegalArgumentException("Missing C.foo(this, x)"))
-    val raw = CHIRPackage.getRootAsCHIRPackage(ByteBuffer.wrap(Files.readAllBytes(input)))
+    val raw = CHIRPackageT.deserializeFromBinary(Files.readAllBytes(input))
     println(s"CHIR.Package: implementation=${pkg.getClass.getName}, name=${pkg.name}")
-    println(s"tables: types=${raw.typesLength()}, values=${raw.valuesLength()}, " +
-      s"expressions=${raw.exprsLength()}, definitions=${raw.defsLength()}")
+    println(s"tables: types=${raw.getTypes.length}, values=${raw.getValues.length}, " +
+      s"expressions=${raw.getExprs.length}, definitions=${raw.getDefs.length}")
     Seq(from, to).foreach { f =>
       println(s"CHIR.Func: id=${f.id}, identifier=${f.identifier}, name=${f.srcCodeIdentifier}")
       println("  parameters=" + f.params.map(p => s"${p.identifier}[${p.srcCodeIdentifier}]:${showType(p.tpe)}").mkString(", "))
       println(s"  returnType=${showType(f.tpe.returnType)}, blocks=${f.body.toSeq.flatMap(_.blocks).size}")
-      val table = raw.values(new Function(), (f.id - 1).toInt).asInstanceOf[Function]
-      println(s"  parameter IDs=${(0 until table.paramsLength()).map(table.params).mkString(",")}, " +
-        s"body ID=${table.body()}, return local ID=${table.retVal()}")
-      (0 until table.genericTypeParamsLength()).foreach { i =>
-        val id = table.genericTypeParams(i)
-        val t = raw.types(new GenericType(), (id - 1).toInt).asInstanceOf[GenericType]
-        println(s"  generic type ID=$id, identifier=${t.identifier()}, " +
-          s"bounds=${(0 until t.upperBoundsLength()).map(t.upperBounds).mkString(",")}")
+      val table = raw.getValues()((f.id - 1).toInt).asFunction()
+      println(s"  parameter IDs=${table.getParams.toSeq.mkString(",")}, " +
+        s"body ID=${table.getBody}, return local ID=${table.getRetVal}")
+      table.getGenericTypeParams.foreach { id =>
+        val t = raw.getTypes()((id - 1).toInt).asGenericType()
+        println(s"  generic type ID=$id, identifier=${t.getIdentifier}, " +
+          s"bounds=${t.getUpperBounds.toSeq.mkString(",")}")
       }
       f.body.foreach(_.blocks.zipWithIndex.foreach { (b, i) =>
         println(s"  block[$i]: ${b.expressions.map(e => e.getClass.getInterfaces.find(
@@ -72,30 +70,27 @@ object MoveFooBodyMain {
     println("VERIFIED IN MEMORY: source detached; parameter and generic references updated")
     pkg.write(output)
     println(s"SERIALIZED ONCE: $output")
-    val saved = CHIRPackage.getRootAsCHIRPackage(ByteBuffer.wrap(Files.readAllBytes(output)))
-    val moved = saved.values(new Function(), (to.id - 1).toInt).asInstanceOf[Function]
-    val group = saved.values(new BlockGroup(), (moved.body() - 1).toInt).asInstanceOf[BlockGroup]
-    require(group.ownedFunc() == to.id)
-    require(moved.params(0) != moved.params(1))
-    println(s"MOVE: parameter ${raw.values(new Function(), (from.id - 1).toInt).asInstanceOf[Function].params(0)} " +
-      s"-> ${moved.params(1)}; receiver ${moved.params(0)} remains unused")
-    val sourceTable = raw.values(new Function(), (from.id - 1).toInt).asInstanceOf[Function]
-    println(s"MOVE: generic type ${sourceTable.genericTypeParams(0)} -> ${moved.genericTypeParams(0)}")
-    val destinationTable = raw.values(new Function(), (to.id - 1).toInt).asInstanceOf[Function]
-    require(moved.genericTypeParams(0) == destinationTable.genericTypeParams(0),
+    val saved = CHIRPackageT.deserializeFromBinary(Files.readAllBytes(output))
+    val moved = saved.getValues()((to.id - 1).toInt).asFunction()
+    val group = saved.getValues()((moved.getBody - 1).toInt).asBlockGroup()
+    require(group.getOwnedFunc == to.id)
+    require(moved.getParams()(0) != moved.getParams()(1))
+    println(s"MOVE: parameter ${raw.getValues()((from.id - 1).toInt).asFunction().getParams()(0)} " +
+      s"-> ${moved.getParams()(1)}; receiver ${moved.getParams()(0)} remains unused")
+    val sourceTable = raw.getValues()((from.id - 1).toInt).asFunction()
+    println(s"MOVE: generic type ${sourceTable.getGenericTypeParams()(0)} -> ${moved.getGenericTypeParams()(0)}")
+    val destinationTable = raw.getValues()((to.id - 1).toInt).asFunction()
+    require(moved.getGenericTypeParams()(0) == destinationTable.getGenericTypeParams()(0),
       "The destination generic declaration must stay unchanged")
-    val sourceGeneric = saved.types(new GenericType(), (sourceTable.genericTypeParams(0) - 1).toInt)
-      .asInstanceOf[GenericType]
-    val targetGeneric = saved.types(new GenericType(), (moved.genericTypeParams(0) - 1).toInt)
-      .asInstanceOf[GenericType]
-    require(sourceGeneric.upperBounds(0) == targetGeneric.upperBounds(0), "ToString bound changed")
-    val invokes = (0 until group.blocksLength()).flatMap { i =>
-      val block = saved.values(new Block(), (group.blocks(i) - 1).toInt).asInstanceOf[Block]
-      (0 until block.exprsLength()).map(j => (block.exprs(j) - 1).toInt)
-        .filter(j => saved.exprsType(j) == ExpressionElem.InvokeBase)
-        .map(j => saved.exprs(new InvokeBase(), j).asInstanceOf[InvokeBase])
+    val sourceGeneric = saved.getTypes()((sourceTable.getGenericTypeParams()(0) - 1).toInt).asGenericType()
+    val targetGeneric = saved.getTypes()((moved.getGenericTypeParams()(0) - 1).toInt).asGenericType()
+    require(sourceGeneric.getUpperBounds.sameElements(targetGeneric.getUpperBounds), "ToString bound changed")
+    val invokes = group.getBlocks.toSeq.flatMap { id =>
+      val block = saved.getValues()((id - 1).toInt).asBlock()
+      block.getExprs.toSeq.map(id => saved.getExprs()((id - 1).toInt))
+        .filter(_.getType == ExpressionElem.InvokeBase).map(_.asInvokeBase())
     }
-    require(invokes.nonEmpty && invokes.forall(_.base().objType() == moved.genericTypeParams(0)),
+    require(invokes.nonEmpty && invokes.forall(_.getBase.getObjType == moved.getGenericTypeParams()(0)),
       "ToString invocation must reference the destination T")
     val reloaded = new PackageImpl(output.toString)
     val finalBody = reloaded.function(to.id.toInt).body.get
@@ -109,7 +104,7 @@ object MoveFooBodyMain {
     println(s"Saved artifacts: $out")
   }
 
-  private def removeIf(pkg: EditableCHIR.Package, function: EditableCHIR.Func): Unit = {
+  private def removeIf(pkg: CHIR.Package, function: CHIR.Func): Unit = {
     require(function.ownerPackage eq pkg, "Function belongs to another package")
     val body = function.body.get
     val before = body.blocks.size

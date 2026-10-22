@@ -2,40 +2,39 @@ package com.huawei.excelsior.jet.compiler.chir.v1203
 
 import com.huawei.excelsior.jet.compiler.chir.*
 import com.huawei.excelsior.jet.compiler.chir.v1203.PackageFormat.*
-import com.huawei.excelsior.jet.compiler.chir.v1203.CHIRUtils.{toSeq, toTypeSeq, toValueSeq}
+import com.huawei.excelsior.jet.compiler.chir.v1203.CHIRUtils.{toTypeSeq, toValueSeq}
 
-abstract class CustomTypeDefImpl(d: CustomTypeDef)(using val provider: CHIRItemProvider) extends CHIR.CustomTypeDef
+abstract class CustomTypeDefImpl(d: CustomTypeDefT)(using val provider: CHIRItemProvider) extends CHIR.CustomTypeDef
   with HasAnnotationsImpl with HasAttributesImpl {
-  val base: Base = d.base
-  val attrs: Long = base.attributes
-
-  def packageName: String = d.packageName
-  def identifier: String = d.identifier
-  def srcCodeIdentifier: String = d.srcCodeIdentifier
-  def instanceVars: Seq[CHIR.InstanceVar] = d.instanceMemberVarsVector.toSeq
-  def staticVars = d.staticMemberVarsVector.toValueSeq[CHIR.GlobalVar]
-  def methods = d.methodsVector.toValueSeq[CHIR.Func]
-  def vtables: Seq[CHIR.VTable] = d.vtableVector.toSeq
-  def implementedInterfaces = d.implementedInterfacesVector.toTypeSeq[CHIR.ClassType]
+  def base: BaseT = d.getBase
+  def attrs: Long = base.getAttributes
+  def packageName: String = d.getPackageName
+  def identifier: String = d.getIdentifier
+  def srcCodeIdentifier: String = d.getSrcCodeIdentifier
+  def instanceVars: Seq[CHIR.InstanceVar] = Option(d.getInstanceMemberVars).toSeq.flatten.map(InstanceVarImpl(_))
+  def staticVars = d.getStaticMemberVars.toValueSeq[CHIR.GlobalVar]
+  def methods = d.getMethods.toValueSeq[CHIR.Func]
+  def vtables: Seq[CHIR.VTable] = Option(d.getVtable).toSeq.flatten.map(VTableImpl(_))
+  def implementedInterfaces = d.getImplementedInterfaces.toTypeSeq[CHIR.ClassType]
 }
 
-final class EnumDefImpl(e: EnumDef)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(e.base) with CHIR.EnumDef {
-  def tpe: CHIR.EnumType = provider.getType[CHIR.EnumType](e.base.`type`).get
-  def nonExhaustive: Boolean = e.nonExhaustive
-  def ctors: Seq[CHIR.EnumCtor] = e.ctorsVector.toSeq
+final class EnumDefImpl(e: EnumDefT)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(e.getBase) with CHIR.EnumDef {
+  def tpe: CHIR.EnumType = provider.getType[CHIR.EnumType](e.getBase.getType).get
+  def nonExhaustive: Boolean = e.getNonExhaustive
+  def ctors: Seq[CHIR.EnumCtor] = Option(e.getCtors).toSeq.flatten.map(EnumCtorImpl(_))
 }
 
-final class ClassDefImpl(c: ClassDef)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(c.base) with CHIR.ClassDef {
-  def tpe: CHIR.ClassType = provider.getType[CHIR.ClassType](c.base.`type`).get
-  def isClass: Boolean = c.isClass
-  def superClass: Option[CHIR.ClassType] = provider.getType[CHIR.ClassType](c.superClass)
+final class ClassDefImpl(c: ClassDefT)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(c.getBase) with CHIR.ClassDef {
+  def tpe: CHIR.ClassType = provider.getType[CHIR.ClassType](c.getBase.getType).get
+  def isClass: Boolean = c.getIsClass
+  def superClass: Option[CHIR.ClassType] = provider.getType[CHIR.ClassType](c.getSuperClass)
 }
 
-final class StructDefImpl(s: StructDef)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(s.base) with CHIR.StructDef {
-  def tpe: CHIR.StructType = provider.getType[CHIR.StructType](s.base.`type`).get
+final class StructDefImpl(s: StructDefT)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(s.getBase) with CHIR.StructDef {
+  def tpe: CHIR.StructType = provider.getType[CHIR.StructType](s.getBase.getType).get
 }
 
-final class ExtendDefImpl(e: ExtendDef)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(e.base) with CHIR.ExtendDef {
-  def tpe: CHIR.Type = provider.getType[CHIR.Type](e.extendedType).get
-  def genericTypeParams = e.genericParamsVector.toTypeSeq[CHIR.GenericType]
+final class ExtendDefImpl(e: ExtendDefT)(using provider: CHIRItemProvider) extends CustomTypeDefImpl(e.getBase) with CHIR.ExtendDef {
+  def tpe: CHIR.Type = provider.getType[CHIR.Type](e.getExtendedType).get
+  def genericTypeParams = e.getGenericParams.toTypeSeq[CHIR.GenericType]
 }

@@ -4,16 +4,19 @@ Run the commands below from the repository root. The Cangjie source lives in
 `core/chir-lib/examples`; runnable v13002 examples live in the module’s `src`
 directory under the `patchgen` package.
 
-## Editable v13002 package API
+## Unified CHIR package API
 
-`EditableCHIR.read(path)` now returns a real package backed by `CHIRPackageT`.
-Functions, blocks and block groups are stable editable views. For example, to
+`CHIR.read(path)` returns a package backed only by generated `*T` objects.
+The existing read methods and new editing methods share the same `CHIR.Package`,
+`CHIR.Func`, `CHIR.BlockGroup`, and `CHIR.Block` interfaces. No separate editable
+hierarchy, original-buffer reader, or proxy projection is retained. Held views
+read the current objects directly, including parameter and generic references. For example, to
 keep the false arm of the first `if` in global `foo` from the demo:
 
 ```scala
-val pkg = EditableCHIR.read(input)
+val pkg = CHIR.read(input)
 val f = pkg.values.collectFirst {
-  case f: EditableCHIR.Func if f.srcCodeIdentifier == "foo" && f.params.size == 1 => f
+  case f: CHIR.Func if f.srcCodeIdentifier == "foo" && f.params.size == 1 => f
 }.get
 val b = f.body.get.blocks.find(
   _.expressions.lastOption.exists(_.isInstanceOf[CHIR.Branch])
@@ -21,7 +24,7 @@ val b = f.body.get.blocks.find(
 val branch = b.terminator.asInstanceOf[CHIR.Branch]
 b.replaceTerminator(pkg.newGoto(branch.falseBlock, branch.debugLoc))
 val destination = pkg.values.collectFirst {
-  case f: EditableCHIR.Func if f.srcCodeIdentifier == "foo" && f.params.size == 2 => f
+  case f: CHIR.Func if f.srcCodeIdentifier == "foo" && f.params.size == 2 => f
 }.get
 pkg.moveBody(f, destination)
 pkg.write(output) // The only serialization, after both transformations.
@@ -58,8 +61,14 @@ Validation checks schema ID ranges, union payloads, ownership, definitions,
 predecessors/successors, reachable terminators and selected type relationships.
 It is not a replacement for the compiler's full type checker. Schema nodes that
 lack a specialized CHIR interface are retained and exposed as generic expression
-views. The editor currently supports v13002 only; it does not provide factories
-for arbitrary new functions, definitions or types.
+views. Both v13002 and v1203 use the T-backed implementation; pass the version to
+`CHIR.read` for v1203. Factories for arbitrary new functions, definitions or types
+are not provided.
+
+The existing `new PackageImpl(source)` constructors and `CHIR.newPackage` read API
+remain available. `CHIR.newPackage` retains the compiler's synthetic patch
+overlay; use `CHIR.read` for file transformations. An overlay containing synthetic
+DSL functions cannot be written as a CHIR file.
 
 Run the editor tests with `sbt 'chirLib/test'`.
 
@@ -75,7 +84,7 @@ sbt 'chirLib/runMain com.huawei.excelsior.jet.compiler.chir.patchgen.MoveFooBody
 
 An optional argument supplies a different absolute toolchain directory; the
 default is `~/Projects/software/hotfix-20.10`. The main prints `foo.cj` first,
-invokes `cjc --emit-chir=raw`, loads the package through `EditableCHIR.read`, and
+invokes `cjc --emit-chir=raw`, loads the package through `CHIR.read`, and
 prints the two functions' IDs, parameters, and block contents. It removes the
 global `foo` conditional and calls `pkg.moveBody(from, to)` on the same editable
 package. It checks the updated parameter and generic references through expression
