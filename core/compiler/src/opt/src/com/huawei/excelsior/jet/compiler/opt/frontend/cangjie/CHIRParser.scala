@@ -68,6 +68,7 @@ trait CHIRParser
       // Such casts can happen when the same record is instantiated in different packages with different mangled names.
       // TODO: check actual layout of records or better -- prohibit such casts at all
       assert(from.sigType.isInstanceOf[SignatureType.Tuple] || to.sigType.isInstanceOf[SignatureType.Tuple] ||
+        from.sigType.isInstanceOf[SignatureType.PackedTuple] || to.sigType.isInstanceOf[SignatureType.PackedTuple] ||
         from.sigType.getRawObjectSize == to.sigType.getRawObjectSize, s"inconsistent record type size: cast $from -> $to")
       ReinterpretCast(from, to)(n)
 
@@ -983,7 +984,15 @@ trait CHIRParser
         }
 
         val (mem, host) = _mem match {
-          case x: EnumCast => (x.base, x.enumType)
+          case x: EnumCast =>
+            // A boxed enum value (see the Box(enumType) in the cast creation) resolves its
+            // fields against the unboxed enum; fieldChain re-wraps variable-size hosts
+            // in Box for the field refs itself.
+            val enumType = x.enumType match {
+              case SignatureType.Box(b) => b
+              case t                    => t
+            }
+            (x.base, enumType)
           case x =>
             val ValueSig(host) = memBase
             (x, host)
@@ -1014,7 +1023,7 @@ trait CHIRParser
           case host: SignatureType.UnionBasedEnum =>
             val res = chirPath match {
               case Seq(0) =>
-                val tupleType = SignatureType.Tuple(Seq(SignatureType.UInt32))
+                val tupleType = SignatureType.PackedTuple(Seq(SignatureType.UInt32))
                 LoadFieldSeq(
                   maybeDerivedPtrBase(mem),
                   ReinterpretCast(ValueType(host), ValueType(tupleType))(mem),
@@ -1445,7 +1454,11 @@ trait CHIRParser
             // Have to account for erasure in case of recursive option types
             assert(x == y || (x == ReferenceType.cangjieStdCoreObject.sigType && y.isTraceableReference), s"cast from $from to $to")
             if (from.isNullableOption || x.isVariableSizeType) {
-              EnumCast(from)(value)
+              // A value of an enum type involving type variables may arrive boxed
+              // (std.core.Box) per the generic calling convention; then the cast must be
+              // typed over the Box so ValueType.fromSig matches the traceable-ref arg.
+              val enumType = if (!from.isTraceableReference && value.tpe.isTraceableRefType) SignatureType.Box(from) else from
+              EnumCast(enumType)(value)
             } else {
               ReinterpretCast(fromTpe, toTpe)(value)
             }
@@ -1482,7 +1495,13 @@ trait CHIRParser
             EnumCast(enumType)(value)
 
           case (from: UnionBasedEnum, to: Tuple) =>
-            ReinterpretCast(fromTpe, toTpe)(value)
+            // Plain tuples are laid out naturally aligned, while native (CJNative) union enums
+            // are packed (tag u32 at +0, payload at +4), so the layouts diverge at the
+            // bytecode-to-native boundary (see bug #161).
+            // EnumCast is a reinterpret cast carrying the target repr as PackedTuple,
+            // so ConstIndex references resolve against the packed layout matching the
+            // native ABI; its arg/result types are governed by ValueType.fromSig(enumType).
+            EnumCast(SignatureType.PackedTuple(to.params))(value)
 
           case (from: ZeroSizedEnum, UInt32) =>
             IConst(0)
@@ -2118,7 +2137,7 @@ trait CHIRParser
                   case args@Seq(IConst(c), _*) =>
                     assert(c >= 0, c)
                     val constrTypes = enumType.info.constructors(c).params
-                    val tupleType = Tuple(UInt32 +: constrTypes)
+                    val tupleType = PackedTuple(UInt32 +: constrTypes)
                     state(e) = allocTuple(tupleType, args)
                 }
 
@@ -2580,6 +2599,9 @@ trait CHIRParser
           case refType: SignatureType.Tuple =>
             val fieldType = refType.params(idx.toInt)
             createConstIndexNode(idx.toLong, fieldRefType, fieldType)
+          case refType: SignatureType.PackedTuple =>
+            val fieldType = refType.params(idx.toInt)
+            createConstIndexNode(idx.toLong, fieldRefType, fieldType)
           case refType: SignatureType.OptionLikeEnum =>
             assert(!refType.isNullableOption && !refType.someType.isTypeVariable, refType)
             val fieldType = idx match {
@@ -2679,13 +2701,17 @@ trait CHIRParser
       obj
     }
 
-    private def allocTuple(tupleType: SignatureType.Tuple, args: Seq[Node]): Node = {
+    private def allocTuple(tupleType: (SignatureType.Tuple | SignatureType.PackedTuple), args: Seq[Node]): Node = {
       val mem = if (tupleType.isVariableSizeType) {
         NewGeneric(tupleType)(loadTypeInfo(tupleType))
       } else {
         StackAlloc.Local(tupleType)
       }
-      for (((arg, i), sig) <- args.zipWithIndex zip tupleType.params) {
+      val params = tupleType match {
+        case tupleType: SignatureType.Tuple => tupleType.params
+        case tupleType: SignatureType.PackedTuple => tupleType.params
+      }
+      for (((arg, i), sig) <- args.zipWithIndex zip params) {
         val fieldRef = createConstIndexNode(i, tupleType, sig)
         if (sig.isZST) {
           // Nothing to do

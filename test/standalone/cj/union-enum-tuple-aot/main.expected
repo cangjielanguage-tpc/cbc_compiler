@@ -1,0 +1,8 @@
+[natpkg] tuple: tag = 0, payload = 5
+main got tuple payload = 5
+[natpkg] enum payload = 2
+main got enum payload = 2
+[natpkg] enum pair: first = 3, second = 4
+main got pair result = 304
+PASS
+0

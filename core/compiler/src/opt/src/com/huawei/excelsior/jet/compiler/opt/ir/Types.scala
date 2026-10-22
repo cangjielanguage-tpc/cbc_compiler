@@ -332,7 +332,7 @@ trait Types { this: CompilerEnvironment =>
         case ThisTypeInfo => AddrType
         case _: TypeVariable => assert(!isStandalone); HolderType(sigType)
         case _: Box => TRefType
-        case _: Record | _: InstantiatedRecord | _: ArraySlice | _: VArray | _: Tuple => RecordAddrType(sigType)
+        case _: Record | _: InstantiatedRecord | _: ArraySlice | _: VArray | _: Tuple | _: PackedTuple => RecordAddrType(sigType)
         case _: JavaArray | _: CangjieArray => TRefType
         case _: Reference | _: InstantiatedReference =>
           if (!isStandalone && eopTypeForInterfaces && sigType.isInterface && !sigType.isDeferred) {

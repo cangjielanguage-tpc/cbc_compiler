@@ -361,6 +361,7 @@ private enum SignatureTag(val tag: Byte) {
   case Option           extends SignatureTag(0x15)
   case UnionEnum        extends SignatureTag(0x16)
   case PrimitiveEnum    extends SignatureTag(0x17)
+  case PackedTupleHack  extends SignatureTag(0x18)
 }
 
 private enum TypeTag(val tag: Byte) {
@@ -675,6 +676,10 @@ private class SignaturePool extends Pool[Signature] { self: RawPool with PoolPro
         output.putULEB(signatures.add(retType))
       case Tuple(args) =>
         output.putW8(SignatureTag.Tuple.tag)
+        output.putULEB(args.size)
+        args.map(signatures.add).foreach(output.putULEB)
+      case PackedTupleHack(args) =>
+        output.putW8(SignatureTag.PackedTupleHack.tag)
         output.putULEB(args.size)
         args.map(signatures.add).foreach(output.putULEB)
       case CangjieArray(tpe) =>
