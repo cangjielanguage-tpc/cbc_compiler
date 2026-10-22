@@ -108,14 +108,14 @@ object Assembler {
     case Mod
     case Pow
     case Lsl
-    case Asr // arithmetic right shift; on unsigned values identical to logical
+    case Asr
     case UAdd
     case USub
     case UMul
     case UDiv
-    case UMod
-    case ULsl
-    case ULsr
+    case UMod // TODO: remove and fix #110
+    case ULsl // TODO: remove
+    case Lsr
 
     inline def opc: Int = ordinal
     inline def format(width: Width): Int = p(s2(opc), freeBits = 2) | s2(width.opc)
