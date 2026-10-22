@@ -229,7 +229,8 @@ object Build {
   lazy val chirLib = (project in file("core/chir-lib"))
     .dependsOn(commonJavaLib)
     .settings(flatbuffersSettings)
-    .settings(commonSourceLayout)
+    .settings(commonSourceTestLayout)
+    .settings(commonTestSettings)
     .settings(
       // Supported CHIR versions and the default one (configurable via `chir.defaultVersion`
       // in env.properties or `-Dchir.defaultVersion=<n>`) are collected from the schema dirs.
@@ -269,7 +270,7 @@ object Build {
           val schemaFile = if (schema.exists()) schema else versionDir / "PackageFormat.fbs"
           val version = versionDir.getName
 
-          val cached = FileFunction.cached(cache, FilesInfo.hash, FilesInfo.exists) { _ =>
+          val cached = FileFunction.cached(cache / (version + "-object-api"), FilesInfo.hash, FilesInfo.exists) { _ =>
             val chirPackage = s"com.huawei.excelsior.jet.compiler.chir.$version"
             val generated = generatedRoot / s"com/huawei/excelsior/jet/compiler/chir/$version"
 
@@ -277,7 +278,7 @@ object Build {
             IO.delete(generated / "CHIRFormat")
 
             Seq(env.flatc,
-              "--no-warnings", "--java",
+              "--no-warnings", "--java", "--gen-object-api",
               "-o", generatedRoot.toString,
               "--java-package-prefix", chirPackage,
               schemaFile.toString
