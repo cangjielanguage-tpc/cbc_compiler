@@ -206,7 +206,6 @@ object Build {
         val script = (ThisBuild / baseDirectory).value / "scripts" / "cbc-compiler"
         val launcher = target.value / script.getName
         IO.copyFile(script, launcher)
-        launcher.setExecutable(true)
         streams.value.log.info(s"Copied $jar to $copy, $script to $launcher")
         copy
       },
@@ -268,9 +267,19 @@ object Build {
       compilerAssemblySettings(),
       assembly / mainClass := Some("com.huawei.excelsior.jet.assembler.cbc.AsmParser"),
       assembly / assemblyOutputPath := target.value / "cbc-asm.jar",
-      nativeImageSettings("cbc-asm-native"),
+      copyAsmWrapper := {
+        val jar = assembly.value
+        val script = (ThisBuild / baseDirectory).value / "scripts" / "cbc-asm"
+        val launcher = target.value / script.getName
+        IO.copyFile(script, launcher)
+        streams.value.log.info(s"Copied $script to $launcher")
+        jar
+      },
+      nativeImageSettings("cbc-asm-native", copyAsmWrapper),
     )
     .disablePlugins(JUnitXmlReportPlugin)
+
+  lazy val copyAsmWrapper = taskKey[File]("Copies the cbc-asm wrapper script next to the assembled cbc-asm.jar")
 
   lazy val commonJavaLib = (project in file("core/common-java-lib"))
     .dependsOn(xscalaVMDependent)
