@@ -74,6 +74,7 @@ object JavaSymbolsImpl {
                _: SignatureType.InstantiatedReference |
                _: SignatureType.InstantiatedRecord |
                _: SignatureType.Tuple |
+               _: SignatureType.PackedTuple |
                _: SignatureType.Box |
                _: SignatureType.CangjieEnum |
                _: SignatureType.TypeVariable |

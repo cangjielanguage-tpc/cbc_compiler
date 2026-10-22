@@ -93,6 +93,10 @@ object CbcFileFormat {
     def isReference = false
     def needsFstWrapper: Boolean = args.forall(_.needsFstWrapper)
   }
+  case class PackedTupleHack(args: Seq[Signature]) extends Signature {
+    def isReference = false
+    def needsFstWrapper: Boolean = args.forall(_.needsFstWrapper)
+  }
   case class Functional(args: Seq[Signature], result: Signature) extends Signature {
     def isReference = true
     def needsFstWrapper: Boolean = false

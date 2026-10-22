@@ -556,9 +556,12 @@ trait CangjieNodes { self: Universe =>
 
   object EnumCast {
     case class Proto private[EnumCast](enumType: SignatureType)
-      extends FixedArgs[EnumCast](TRefType)(TRefType) {
-      require(enumType.isTraceableReference || enumType.isInstanceOf[SignatureType.OptionLikeEnum])
-      // TODO: assert enum
+      extends FixedArgs[EnumCast](ValueType.fromSig(enumType))(ValueType.fromSig(enumType)) {
+      require(
+        enumType.isTraceableReference || enumType.isInstanceOf[SignatureType.OptionLikeEnum] ||
+          enumType.isInstanceOf[SignatureType.PackedTuple],
+        s"unexpected enum type $enumType"
+      )
 
       def newInstance() = new EnumCast(this)
     }
@@ -1066,7 +1069,7 @@ trait CangjieNodes { self: Universe =>
 
   @tailrec
   private def checkConstIndexRefType(t: SignatureType): Boolean = t match {
-    case _: (SignatureType.Tuple | SignatureType.OptionLikeEnum | SignatureType.VArray | SignatureType.CangjieArray) => true
+    case _: (SignatureType.Tuple | SignatureType.PackedTuple | SignatureType.OptionLikeEnum | SignatureType.VArray | SignatureType.CangjieArray) => true
     case t: SignatureType.Box => checkConstIndexRefType(t.base)
     case _ => false
   }

@@ -32,7 +32,7 @@ case class CangjieIndexReference(idx: Long, refType: SignatureType, fieldType: S
 // Note: no Options here!
 @tailrec
 private def checkConstIndexRefType(t: SignatureType): Boolean = t match {
-  case _: (SignatureType.Tuple | SignatureType.VArray | SignatureType.CangjieArray) => true
+  case _: (SignatureType.Tuple | SignatureType.PackedTuple | SignatureType.VArray | SignatureType.CangjieArray) => true
   case t: SignatureType.Box => checkConstIndexRefType(t.base)
   case _ => false
 }
