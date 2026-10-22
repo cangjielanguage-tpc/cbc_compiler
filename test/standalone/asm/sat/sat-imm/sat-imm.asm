@@ -102,21 +102,21 @@
       call.direct #print, IR1       ; 2147483647
       @dead IR1 IR2
 
-      ; ---- sslhi.64: shift by 32 (outside the signed 12-bit range as a signed value? no, fits) ----
+      ; ---- slsli.64: shift by 32 (outside the signed 12-bit range as a signed value? no, fits) ----
       movi.64 IR2, 1
-      sslhi.64 IR1, IR2, 32
+      slsli.64 IR1, IR2, 32
       call.direct #print, IR1       ; 4294967296
       @dead IR1 IR2
 
-      ; ---- sslhi.64: shift by 100 (outside the 12-bit signed range) ----
+      ; ---- slsli.64: shift by 100 (outside the 12-bit signed range) ----
       movi.64 IR2, 1
-      sslhi.64 IR1, IR2, 100
+      slsli.64 IR1, IR2, 100
       call.direct #print, IR1       ; 9223372036854775807 (clamped)
       @dead IR1 IR2
 
-      ; ---- ssrhi.64: shift by -2049 (negative, outside the 12-bit range; clamped to 0) ----
+      ; ---- sasri.64: shift by -2049 (negative, outside the 12-bit range; clamped to 0) ----
       movi.64 IR2, 42
-      ssrhi.64 IR1, IR2, -2049
+      sasri.64 IR1, IR2, -2049
       call.direct #print, IR1       ; 42
       @dead IR1 IR2
 
