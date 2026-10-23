@@ -1,0 +1,7 @@
+An exception has occurred:
+ArithmeticException
+	 at cangjie.runtime.cbcengine.helper::throwImplicitException(Int64)(SOURCE:6)
+	 at default::$default$PatchImpl$GC::$default$Patch$GC$foo$$Int64$_Int64$GF(Int64, Int64)(unknown:6)
+	 at default::foo(Int64, Int64)(SOURCE:0)
+	 at default::$default$PatchImpl$GC::$default$Patch$GC$main$GF()(unknown:2)
+	 at default::main()(SOURCE:0)
