@@ -197,7 +197,7 @@ A dev container image with all the prerequisites preinstalled (JDK, sbt, flatc,
 GraalVM native-image) can be built locally:
 
 ```bash
-(ARCH="amd64" && docker build --network=host --pull --no-cache \
+$ (ARCH="amd64" && docker build --network=host --pull --no-cache \
   $(xargs -I{} echo --build-arg {} < "versions.env") \
   --build-arg=TARGETARCH=${ARCH} \
   --platform "linux/${ARCH}" \
@@ -209,7 +209,7 @@ The compiler jar together with the native image can be built in a single invocat
 without any configuration changes:
 
 ```bash
-(image="cbc-compiler-dev" && docker run -it --rm \
+$ (image="cbc-compiler-dev" && docker run -it --rm \
    -v "$(pwd):/workspace" \
    -w /workspace \
    "${image}" \
