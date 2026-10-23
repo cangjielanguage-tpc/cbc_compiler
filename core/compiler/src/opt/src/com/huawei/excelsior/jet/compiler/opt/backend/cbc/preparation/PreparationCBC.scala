@@ -29,20 +29,6 @@ trait PreparationCBC extends Preparation with FieldChainsCBC { self: Universe wi
   override protected def machineDependentStepsBeforeTypeChecksDisabling(): Unit = {
     if (!isStandalone) {
       step("collect field chains", collectFieldChains())
-    } else if (rootMethod.isCangjieMut) {
-      step("mut receiver owner kept alive", keepMutReceiverOwnerAlive())
-    }
-  }
-
-  private def keepMutReceiverOwnerAlive(): Unit = {
-    val owner = rootMethodParam(rootMethod.getMutObjectArgIdx)
-    for (call <- all[Call].toList) {
-      // The receiver address can outlive its last explicit use of the owner,
-      // including when the two components are forwarded to another mut call.
-      // Keep the owner in the caller's GC map while a call can invalidate it.
-      insertCodeAfter(call) {
-        LocalReachabilityShield(owner)
-      }
     }
   }
   
