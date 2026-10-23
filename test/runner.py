@@ -443,7 +443,7 @@ class StandaloneTestSuite(TestSuite):
 class HotfixTestSuite(StandaloneTestSuite):
     suite_mode = "hotfix"
     compilation_modes = [("default", [])]
-    standalone_tests = parse_tests_list(os.path.join(TestSuite.root_dir, "test-list-hotfix.cfg"),
+    standalone_tests = parse_tests_list(os.path.join(TestSuite.root_dir, "tests-list-hotfix.cfg"),
                                        root_dir=TestSuite.root_dir)
 
     def expected_file(self, test_name: str):
