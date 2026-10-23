@@ -22,6 +22,8 @@ class Env(props: Properties) {
   val mode               = apply("mode",                None,                "work", "enduser")
   val languagePack       = apply("language.pack",       Some("cangjie"),     "none", "java", "cangjie", "scala")
   val flatc              = apply("flatc",               Some("flatc"))
+  val graalvm            = apply("graalvm",             Some(""))
+  val graalvmParallelism = apply("graalvmParallelism",  Some("2"))
 
   def apply(name: String, default: Option[String], variants: String*): String = {
     sys.props.get(name)

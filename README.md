@@ -134,6 +134,28 @@ $ sbt jar
 
 The resulting compiler jar will be located at [core/compiler/target/aot/aot.jar](core/compiler/target/aot/aot.jar).
 
+### Native Image Builds
+
+The compiler and the CBC assembler can also be built as
+[GraalVM native images](https://www.graalvm.org/latest/reference-manual/native-image/),
+which start up much faster than the corresponding jars:
+
+```bash
+$ sbt compiler/nativeImage
+$ sbt cbcAsm/nativeImage
+```
+
+This requires the `native-image` utility from a GraalVM distribution,
+configured via the `graalvm` property in `env.properties`:
+
+```bash
+graalvm=<graalvm>/bin/native-image
+```
+
+The resulting binaries are located at [core/compiler/target/cbc-compiler-native](core/compiler/target/cbc-compiler-native)
+and [core/cbc-asm/target/cbc-asm-native](core/cbc-asm/target/cbc-asm-native). `<binary>.info` file is generated to save
+MD5 hashes of the source jar and of the binary itself.
+
 ### Supported CHIR versions
 
 | CHIR version | CBC option          | Notes                    |
@@ -167,6 +189,33 @@ The input CHIR file is expected to be produced from cjc compilation with option 
 
 ```bash
 $ cjc --emit-chir test.cj
+```
+
+### Development Container
+
+A dev container image with all the prerequisites preinstalled (JDK, sbt, flatc,
+GraalVM native-image) can be built locally:
+
+```bash
+$ (ARCH="amd64" && docker build --network=host --pull --no-cache \
+  $(xargs -I{} echo --build-arg {} < "versions.env") \
+  --build-arg=TARGETARCH=${ARCH} \
+  --platform "linux/${ARCH}" \
+  -t "cbc-compiler-dev" \
+  .)
+```
+
+The compiler jar together with the native image can be built in a single invocation,
+without any configuration changes:
+
+```bash
+$ (image="cbc-compiler-dev" && docker run -it --rm \
+   -v "$(pwd):/workspace" \
+   -w /workspace \
+   "${image}" \
+   sbt \
+     -Dgraalvm=/opt/graalvm/bin/native-image \
+     compiler/nativeImage)
 ```
 
 ## License

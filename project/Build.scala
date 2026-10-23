@@ -15,6 +15,8 @@ import sbt.plugins.JUnitXmlReportPlugin
 import sbtassembly.*
 import sbtassembly.AssemblyKeys.*
 
+import java.io.{File, FileInputStream}
+import java.security.MessageDigest
 import scala.sys.process._
 
 object Build {
@@ -75,6 +77,66 @@ object Build {
     libraryDependencies += "com.google.flatbuffers" % "flatbuffers-java" % flatbuffersVersion,
   )
 
+  private def nativeImageBinary: Option[String] = {
+    def usable(path: String): Boolean = {
+      val file = new File(path)
+      file.isFile && file.canExecute
+    }
+    Some(env.graalvm).filter(usable)
+  }
+
+  private def md5Hex(file: File): String = {
+    val digest = MessageDigest.getInstance("MD5")
+    val in = new FileInputStream(file)
+    try {
+      val buffer = new Array[Byte](64 * 1024)
+      var read = 0
+      while ({ read = in.read(buffer); read >= 0 }) digest.update(buffer, 0, read)
+    } finally in.close()
+    digest.digest().map(b => f"${b & 0xff}%02x").mkString
+  }
+
+  private def writeNativeInfo(jar: File, native: File, log: Logger): Unit = {
+    val base = native.getName.stripSuffix("-native")
+    val info = new File(native.getParentFile, s"$base-native.info")
+    val content =
+      s"""$base-jar.md5 = ${md5Hex(jar)}
+         |$base-native.md5 = ${md5Hex(native)}
+         |""".stripMargin
+    IO.write(info, content)
+    log.info(s"Wrote $info")
+  }
+
+  lazy val copyAotJar = taskKey[File]("Copies the assembled aot.jar to cbc-compiler.jar")
+
+  private def nativeImageSettings(outputName: String, jarTask: TaskKey[File] = assembly) = Def.settings(
+    TaskKey[Unit]("nativeImage", s"Builds target/$outputName using GraalVM Native Image") := {
+      val jar = jarTask.value
+      val output = target.value / outputName
+
+      nativeImageBinary match {
+        case None => throw new MessageOnlyException(s"native-image not found for graalvm=${env.graalvm}")
+
+        case Some(binary) =>
+          streams.value.log.info(s"Building $outputName with $binary")
+          val command = Seq(
+            binary,
+            "-J-Xmx5g",
+            "-O3",
+            "--no-fallback",
+            "--static-nolibc",
+            s"-J-XX:ActiveProcessorCount=${env.graalvmParallelism}",
+            "-jar", jar.absolutePath,
+            "-o", output.absolutePath,
+          )
+          if (command.! != 0) {
+            throw new MessageOnlyException(s"native-image failed: ${command.mkString(" ")}")
+          }
+          writeNativeInfo(jar, output, streams.value.log)
+      }
+    },
+  )
+
   lazy val commonSourceLayout = Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src")
   lazy val commonTestLayout   = Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test")
 
@@ -83,7 +145,7 @@ object Build {
   lazy val all = (project in projectRoot)
     .settings(
       addCommandAlias("test", "tests/test"),
-      addCommandAlias("jar", "compiler/assembly"),
+      addCommandAlias("jar", "compiler/copyAotJar"),
       addCommandAlias("compile", "compiler/compile"),
       addCommandAlias("clean", "all/clean;all/cleanAll"),
 
@@ -136,6 +198,17 @@ object Build {
       target := baseDirectory.value / "target/aot",
       assembly / mainClass := Some("com.huawei.excelsior.jet.compiler.starter.AOTStarter"),
       assembly / assemblyOutputPath := target.value / "aot.jar",
+      nativeImageSettings("cbc-compiler-native", copyAotJar),
+      copyAotJar := {
+        val jar = assembly.value
+        val copy = target.value / "cbc-compiler.jar"
+        IO.copyFile(jar, copy)
+        val script = (ThisBuild / baseDirectory).value / "scripts" / "cbc-compiler"
+        val launcher = target.value / script.getName
+        IO.copyFile(script, launcher)
+        streams.value.log.info(s"Copied $jar to $copy, $script to $launcher")
+        copy
+      },
     )
 
   lazy val xscalaVMDependent = (project in file("core/xscala-vm-dependent"))
@@ -194,8 +267,19 @@ object Build {
       compilerAssemblySettings(),
       assembly / mainClass := Some("com.huawei.excelsior.jet.assembler.cbc.AsmParser"),
       assembly / assemblyOutputPath := target.value / "cbc-asm.jar",
+      copyAsmWrapper := {
+        val jar = assembly.value
+        val script = (ThisBuild / baseDirectory).value / "scripts" / "cbc-asm"
+        val launcher = target.value / script.getName
+        IO.copyFile(script, launcher)
+        streams.value.log.info(s"Copied $script to $launcher")
+        jar
+      },
+      nativeImageSettings("cbc-asm-native", copyAsmWrapper),
     )
     .disablePlugins(JUnitXmlReportPlugin)
+
+  lazy val copyAsmWrapper = taskKey[File]("Copies the cbc-asm wrapper script next to the assembled cbc-asm.jar")
 
   lazy val commonJavaLib = (project in file("core/common-java-lib"))
     .dependsOn(xscalaVMDependent)
