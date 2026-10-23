@@ -28,10 +28,12 @@ while [[ $i -lt $# ]]; do
     i=$((i+1))
 done
 
-cjc "${@:2}"
+export TEMP_DIR=temps
+mkdir -p $TEMP_DIR
+cjc --save-temps $TEMP_DIR "${@:2}"
 
-if [ -n "$out" ] && compgen -G "*.chir" > /dev/null; then
+if [ -n "$out" ] && compgen -G $TEMP_DIR/*.chir > /dev/null; then
   if [[ "$out" != *.a ]]; then
-    java -jar $SCRIPT_DIR/../tools/bin/cbc-compiler.jar *.chir +genlibrary -outputname="$out"
+    java -jar $SCRIPT_DIR/../tools/bin/cbc-compiler.jar $TEMP_DIR/*.chir +genlibrary -outputname="$out"
   fi
 fi
