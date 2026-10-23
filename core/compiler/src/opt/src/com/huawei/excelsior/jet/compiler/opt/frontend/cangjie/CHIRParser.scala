@@ -1941,6 +1941,10 @@ trait CHIRParser
                   } else {
                     LoadStaticFieldSeq(DerivedPtr.Global(), fields*)
                   }
+                case mem if !sig.isVariableSizeType && needsCopy(sig) =>
+                  val res = StackAlloc.Local(sig)
+                  copy(sig, res, mem)
+                  res
                 case mem =>
                   if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive || sig.isTypeVariable) {
                     mem
