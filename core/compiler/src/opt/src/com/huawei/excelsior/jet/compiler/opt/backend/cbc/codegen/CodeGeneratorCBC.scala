@@ -229,8 +229,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case CheckedOp.Kind.ADD => if (op.signed) asm.caddi(d, l, r, op.width) else asm.cuaddi(d, l, r, op.width)
             case CheckedOp.Kind.SUB => if (op.signed) asm.csubi(d, l, r, op.width) else asm.cusubi(d, l, r, op.width)
             case CheckedOp.Kind.MUL => if (op.signed) asm.cmuli(d, l, r, op.width) else asm.cumuli(d, l, r, op.width)
-            case CheckedOp.Kind.LSHIFT => asm.clshi(d, l, r, op.width)
-            case CheckedOp.Kind.RSHIFT => if (op.signed) asm.crshi(d, l, r, op.width) else asm.curshi(d, l, r, op.width)
+            case CheckedOp.Kind.LSHIFT => asm.clsli(d, l, r, op.width)
+            case CheckedOp.Kind.RSHIFT => if (op.signed) asm.casri(d, l, r, op.width) else asm.clsri(d, l, r, op.width)
             case CheckedOp.Kind.POW => assert(op.signed); asm.cpowi(d, l, r, op.width)
           }
 
@@ -241,8 +241,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case CheckedOp.Kind.MUL if d == r && d != l => if (op.signed) asm.cmul(d, r, l, op.width) else asm.cumul(d, r, l, op.width)
             case CheckedOp.Kind.ADD => if (op.signed) asm.cadd(d, l, r, op.width) else asm.cuadd(d, l, r, op.width)
             case CheckedOp.Kind.MUL => if (op.signed) asm.cmul(d, l, r, op.width) else asm.cumul(d, l, r, op.width)
-            case CheckedOp.Kind.LSHIFT => asm.clsh(d, l, r, op.width)
-            case CheckedOp.Kind.RSHIFT => if (op.signed) asm.crsh(d, l, r, op.width) else asm.cursh(d, l, r, op.width)
+            case CheckedOp.Kind.LSHIFT => asm.clsl(d, l, r, op.width)
+            case CheckedOp.Kind.RSHIFT => if (op.signed) asm.casr(d, l, r, op.width) else asm.clsr(d, l, r, op.width)
             case CheckedOp.Kind.SUB => assert(d != r); if (op.signed) asm.csub(d, l, r, op.width) else asm.cusub(d, l, r, op.width)
             case CheckedOp.Kind.DIV => assert(d != r); assert(op.signed); asm.cdiv(d, l, r, op.width)
             case CheckedOp.Kind.POW => assert(d != r); assert(op.signed); asm.cpow(d, l, r, op.width)
@@ -264,10 +264,10 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case (SaturatingOp.Kind.MOD, true)  => Saturating.Mod
         case (SaturatingOp.Kind.MOD, false) => Saturating.UMod
         case (SaturatingOp.Kind.POW, true)  => Saturating.Pow
-        case (SaturatingOp.Kind.SHL, true)  => Saturating.Lsh
-        case (SaturatingOp.Kind.SHL, false) => Saturating.ULsh
-        case (SaturatingOp.Kind.SHR, true)  => Saturating.Rsh
-        case (SaturatingOp.Kind.SHR, false) => Saturating.URsh
+        case (SaturatingOp.Kind.SHL, true)  => Saturating.Lsl
+        case (SaturatingOp.Kind.SHL, false) => Saturating.ULsl
+        case (SaturatingOp.Kind.SHR, true)  => Saturating.Asr
+        case (SaturatingOp.Kind.SHR, false) => Saturating.Lsr
       }
 
       (op, op.l, op.r) match {
