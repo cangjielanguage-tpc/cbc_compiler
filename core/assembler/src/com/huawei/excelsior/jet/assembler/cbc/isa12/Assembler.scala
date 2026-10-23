@@ -90,9 +90,9 @@ object Assembler {
     case USub
     case UMul
     case Pow
-    case Lsh
-    case Rsh // logical right shift
-    case Ash // arithmetic right shift
+    case Lsl
+    case Lsr // logical right shift
+    case Asr // arithmetic right shift
     case Neg
 
     inline def opc: Int = ordinal
@@ -107,15 +107,15 @@ object Assembler {
     case Div
     case Mod
     case Pow
-    case Lsh
-    case Rsh // logical right shift on unsigned, arithmetic on signed
+    case Lsl
+    case Asr
     case UAdd
     case USub
     case UMul
     case UDiv
-    case UMod
-    case ULsh
-    case URsh
+    case UMod // TODO: remove and fix #110
+    case ULsl // TODO: remove
+    case Lsr
 
     inline def opc: Int = ordinal
     inline def format(width: Width): Int = p(s2(opc), freeBits = 2) | s2(width.opc)

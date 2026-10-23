@@ -1053,8 +1053,8 @@ private object InstructionParser {
   instr("sdiv.32")  { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("smod.32")  { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("spow.32")  { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sshl.32")  { (a, s) => a.sslh(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sshr.32")  { (a, s) => a.ssrh(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("slsl.32")  { (a, s) => a.slsl(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("sasr.32")  { (a, s) => a.sasr(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("sneg.32")  { (a, s) => a.sneg(s.ireg, s.ireg, Width.W32) }
 
   // 64-bit saturating arithmetic
@@ -1064,8 +1064,8 @@ private object InstructionParser {
   instr("sdiv.64")  { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("smod.64")  { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("spow.64")  { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sshl.64")  { (a, s) => a.sslh(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sshr.64")  { (a, s) => a.ssrh(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("slsl.64")  { (a, s) => a.slsl(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("sasr.64")  { (a, s) => a.sasr(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("sneg.64")  { (a, s) => a.sneg(s.ireg, s.ireg, Width.W64) }
 
   // 8/16-bit saturating arithmetic
@@ -1075,8 +1075,8 @@ private object InstructionParser {
   instr("sdiv.8")   { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W8) }
   instr("smod.8")   { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W8) }
   instr("spow.8")   { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sshl.8")   { (a, s) => a.sslh(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sshr.8")   { (a, s) => a.ssrh(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("slsl.8")   { (a, s) => a.slsl(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("sasr.8")   { (a, s) => a.sasr(s.ireg, s.ireg, s.ireg, Width.W8) }
   instr("sneg.8")   { (a, s) => a.sneg(s.ireg, s.ireg, Width.W8) }
   instr("sadd.16")  { (a, s) => a.sadd(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("ssub.16")  { (a, s) => a.ssub(s.ireg, s.ireg, s.ireg, Width.W16) }
@@ -1084,8 +1084,8 @@ private object InstructionParser {
   instr("sdiv.16")  { (a, s) => a.sdiv(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("smod.16")  { (a, s) => a.smod(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("spow.16")  { (a, s) => a.spow(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sshl.16")  { (a, s) => a.sslh(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sshr.16")  { (a, s) => a.ssrh(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("slsl.16")  { (a, s) => a.slsl(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("sasr.16")  { (a, s) => a.sasr(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("sneg.16")  { (a, s) => a.sneg(s.ireg, s.ireg, Width.W16) }
 
   // unsigned saturating arithmetic (register form)
@@ -1094,16 +1094,16 @@ private object InstructionParser {
   instr("sumul.8")  { (a, s) => a.sumul(s.ireg, s.ireg, s.ireg, Width.W8) }
   instr("sudiv.8")  { (a, s) => a.sudiv(s.ireg, s.ireg, s.ireg, Width.W8) }
   instr("sumod.8")  { (a, s) => a.sumod(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sushl.8")  { (a, s) => a.suslh(s.ireg, s.ireg, s.ireg, Width.W8) }
-  instr("sushr.8")  { (a, s) => a.susrh(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("sulsl.8")  { (a, s) => a.sulsl(s.ireg, s.ireg, s.ireg, Width.W8) }
+  instr("sulsr.8")  { (a, s) => a.sulsr(s.ireg, s.ireg, s.ireg, Width.W8) }
   instr("suneg.8")  { (a, s) => a.suneg(s.ireg, s.ireg, Width.W8) }
   instr("suadd.16") { (a, s) => a.suadd(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("susub.16") { (a, s) => a.susub(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("sumul.16") { (a, s) => a.sumul(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("sudiv.16") { (a, s) => a.sudiv(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("sumod.16") { (a, s) => a.sumod(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sushl.16") { (a, s) => a.suslh(s.ireg, s.ireg, s.ireg, Width.W16) }
-  instr("sushr.16") { (a, s) => a.susrh(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("sulsl.16") { (a, s) => a.sulsl(s.ireg, s.ireg, s.ireg, Width.W16) }
+  instr("sulsr.16") { (a, s) => a.sulsr(s.ireg, s.ireg, s.ireg, Width.W16) }
   instr("suneg.16") { (a, s) => a.suneg(s.ireg, s.ireg, Width.W16) }
   instr("suadd.32") { (a, s) => a.suadd(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("susub.32") { (a, s) => a.susub(s.ireg, s.ireg, s.ireg, Width.W32) }
@@ -1116,39 +1116,39 @@ private object InstructionParser {
   instr("sumul.64") { (a, s) => a.sumul(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("sudiv.64") { (a, s) => a.sudiv(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("sumod.64") { (a, s) => a.sumod(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sushl.32") { (a, s) => a.suslh(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sushr.32") { (a, s) => a.susrh(s.ireg, s.ireg, s.ireg, Width.W32) }
-  instr("sushl.64") { (a, s) => a.suslh(s.ireg, s.ireg, s.ireg, Width.W64) }
-  instr("sushr.64") { (a, s) => a.susrh(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("sulsl.32") { (a, s) => a.sulsl(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("sulsr.32") { (a, s) => a.sulsr(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("sulsl.64") { (a, s) => a.sulsl(s.ireg, s.ireg, s.ireg, Width.W64) }
+  instr("sulsr.64") { (a, s) => a.sulsr(s.ireg, s.ireg, s.ireg, Width.W64) }
   instr("suneg.64") { (a, s) => a.suneg(s.ireg, s.ireg, Width.W64) }
 
   // saturating immediate arithmetic
   instr("saddi.8")   { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("ssubi.8")    { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("smuli.8")    { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("sslhi.8")    { (a, s) => a.sslhi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("ssrhi.8")    { (a, s) => a.ssrhi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("slsli.8")    { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("sasri.8")    { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W8) }
   instr("suaddi.8")   { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("susubi.8")   { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("sumuli.8")   { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W8) }
   instr("saddi.16")  { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("ssubi.16")  { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("smuli.16")  { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("sslhi.16")  { (a, s) => a.sslhi(s.ireg, s.ireg, s.int, Width.W16) }
-  instr("ssrhi.16")  { (a, s) => a.ssrhi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("slsli.16")  { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("sasri.16")  { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W16) }
   instr("suaddi.16") { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("susubi.16") { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("sumuli.16") { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W16) }
   instr("saddi.32")  { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("ssubi.32")  { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("smuli.32")  { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("sslhi.32")  { (a, s) => a.sslhi(s.ireg, s.ireg, s.int, Width.W32) }
-  instr("ssrhi.32")  { (a, s) => a.ssrhi(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("slsli.32")  { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("sasri.32")  { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W32) }
   instr("saddi.64")  { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("ssubi.64")  { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("smuli.64")  { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("sslhi.64")  { (a, s) => a.sslhi(s.ireg, s.ireg, s.int, Width.W64) }
-  instr("ssrhi.64")  { (a, s) => a.ssrhi(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("slsli.64")  { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("sasri.64")  { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W64) }
   instr("suaddi.32") { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("susubi.32") { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("sumuli.32") { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W32) }
