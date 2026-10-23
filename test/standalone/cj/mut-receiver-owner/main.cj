@@ -13,10 +13,8 @@ public struct OwnerProbe {
 
     public mut func readAfterGC(): String {
         value = value + "!"
-        // The receiver address remains live across this call, even when the
-        // owner has no further explicit uses. readValue is deliberately non-mut.
         gc(heavy: true)
-        readValue()
+        readValue() // uses stuct and implicitly uses containing object to copy record
     }
 }
 
