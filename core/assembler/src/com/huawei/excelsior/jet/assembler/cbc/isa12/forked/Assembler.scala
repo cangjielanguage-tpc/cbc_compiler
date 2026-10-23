@@ -202,7 +202,7 @@ trait ForkedAssembler {
   def sudiv(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.UDiv, w, d, l, r)
   def sumod(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.UMod, w, d, l, r)
   def sulsl(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.ULsl, w, d, l, r)
-  def sulsr(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.ULsr, w, d, l, r)
+  def sulsr(d: IR, l: IR, r: IR, w: AsmWidth): Unit = genSaturatingBinary(Saturating.Lsr, w, d, l, r)
 
   def sneg(dst: IR, src: IR, w: AsmWidth) = ssub(dst, IRZ, src, w)
   def suneg(dst: IR, src: IR, w: AsmWidth) = susub(dst, IRZ, src, w)

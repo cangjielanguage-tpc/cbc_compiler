@@ -267,7 +267,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case (SaturatingOp.Kind.SHL, true)  => Saturating.Lsl
         case (SaturatingOp.Kind.SHL, false) => Saturating.ULsl
         case (SaturatingOp.Kind.SHR, true)  => Saturating.Asr
-        case (SaturatingOp.Kind.SHR, false) => Saturating.ULsr
+        case (SaturatingOp.Kind.SHR, false) => Saturating.Lsr
       }
 
       (op, op.l, op.r) match {
