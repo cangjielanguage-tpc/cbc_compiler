@@ -1,0 +1,9 @@
+An exception has occurred:
+IllegalArgumentException
+	 at aot::test4_helper2(Int64, Int64)(SOURCE:5)
+	 at default::$default$PatchImpl$GC::$default$Patch$GC$TestClass$GC$test4_helper1$$default.TestClass$_Int64$_Int64$GF(@default:TestClass, Int64, Int64)(unknown:69)
+	 at default::TestClass::test4_helper1(Int64, Int64)(SOURCE:0)
+	 at default::$default$PatchImpl$GC::$default$Patch$GC$test4$$Int64$_Int64$GF(Int64, Int64)(unknown:77)
+	 at default::test4(Int64, Int64)(SOURCE:0)
+	 at default::$default$PatchImpl$GC::$default$Patch$GC$main$GF()(unknown:93)
+	 at default::main()(SOURCE:0)
