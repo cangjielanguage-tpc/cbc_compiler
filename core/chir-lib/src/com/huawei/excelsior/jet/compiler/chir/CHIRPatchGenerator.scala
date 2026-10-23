@@ -26,7 +26,7 @@ object AOTDefs {
 
 object CHIRPatchGeneratorFactory {
   val cjEntryName = "cj_entry"
-  val intrinsicsPackageName = "cbc_intrinsics"
+  val intrinsicsPackageName = "cbc-intrinsics"
   val intrinsicsSourceName = intrinsicsPackageName + ".chir"
 }
 
