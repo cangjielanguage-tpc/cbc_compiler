@@ -13,7 +13,7 @@ import os
 import shlex
 import subprocess
 import sys
-
+from pathlib import Path
 
 def run(cmd):
     """Run cmd; on failure exit with its status (like bash `set -e`)."""
@@ -91,13 +91,13 @@ def write_foreignlibspath(lib_paths):
             f.write("# no -L paths\n")
 
 
-def genlibrary(out, names, lib_dirs, script_dir):
+def genlibrary(out, names, lib_dirs, script_dir, temps):
     """Produce <out>.cbc, registering foreign libs for the engine."""
     # Cangjie packages have lib<name>.so.cbc and run as bytecode: skip them.
     foreign = [n for n in names
                if not any(os.path.isfile(os.path.join(d, f"lib{n}.so.cbc")) for d in lib_dirs)]
     cmd = ["java", "-jar", os.path.join(script_dir, os.pardir, "tools", "bin", "cbc-compiler.jar"),
-           *sorted(glob.glob("*.chir")), "+genlibrary", f"-outputname={out}"]
+           *sorted(glob.glob(temps + "/*.chir")), "+genlibrary", f"-outputname={out}"]
     if foreign:
         cmd.append("-foreignlibs=" + ",".join(foreign))
     run(cmd)
@@ -111,10 +111,12 @@ def main():
     repair_fake_libs(native_names, lib_dirs)
     write_foreignlibspath(lib_paths)
 
-    run(["cjc", "--emit-chir", "--continue"] + sys.argv[2:])
+    temps = "temps"
+    Path(temps).mkdir(parents=True, exist_ok=True)
+    run(["cjc", "--save-temps", temps] + sys.argv[2:])  # like bash: cjc --emit-chir "${@:2}"
 
-    if out and not out.endswith(".a") and glob.glob("*.chir"):
-        genlibrary(out, native_names, lib_dirs, script_dir)
+    if out and not out.endswith(".a") and glob.glob(temps + "/*.chir"):
+        genlibrary(out, native_names, lib_dirs, script_dir, temps)
 
 
 if __name__ == "__main__":
