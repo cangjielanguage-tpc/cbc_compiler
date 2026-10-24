@@ -13,7 +13,7 @@ struct Value {
         this.text = text
     }
 
-    public mut func unpack<T>(reader: T) where T <: StringReader {
+    public mut func unpack(reader: StringReader) {
         // A virtual call supplies the argument to another mut method.
         set(reader.read())
     }
