@@ -430,7 +430,6 @@ compiler/Sema/typealias/import_alias/typeaslias.cj
 API/std/collection/concurrent/test_concurrent_hashmap.cj
 API/std/deriving/arbitrary_t_test.cj
 API/std/unittest/examples/advance1.cj
-API/std/unittest/api/reporters/csv_case.cj
 API/std/unittest/api/serialization/test_datamodel_seq.cj
 compiler/Mangle/MangledName/new_mangle_fuzz_02.cj
 
