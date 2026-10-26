@@ -1,0 +1,5 @@
+Hello CJC
+An exception has occurred:
+IllegalArgumentException: bad args
+	 at default::$default$PatchImpl$GC::$default$Patch$GC$main$GF()(unknown:7)
+	 at default::main()(SOURCE:0)
