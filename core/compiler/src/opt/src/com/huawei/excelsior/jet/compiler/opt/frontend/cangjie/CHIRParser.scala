@@ -1322,10 +1322,9 @@ trait CHIRParser
 
         val saturatingCast = e match {
           case e: CHIR.NumericCast => e.overflowStrategy match {
-            case CHIR.OverflowStrategy.Wrapping | CHIR.OverflowStrategy.Na => false
             case CHIR.OverflowStrategy.Checked => shouldNotReachHere("checked type cast")
-            case CHIR.OverflowStrategy.Throwing => false // TODO: do we need to support it?
             case CHIR.OverflowStrategy.Saturating => true
+            case _ => false
           }
           case _ => false
         }
@@ -1334,6 +1333,27 @@ trait CHIRParser
             case (_: Integral, _: Integral) => // clamped below where needed
             case _ => notImplemented("saturating type cast")
           }
+        }
+
+        val throwingCast = e match {
+          case e: CHIR.NumericCast => e.overflowStrategy match {
+            case CHIR.OverflowStrategy.Throwing => true
+            case _ => false
+          }
+          case _ => false
+        }
+
+        val shouldGenerateCheckedCast: Boolean = (from, to) match {
+          case (from: Integral, to: Integral) =>
+            // Throwing integral casts should be checked in two scenarios:
+            // 1. You cast from unsigned type to signed or the other way around.
+            // 2. You cast from wider type to narrower type.
+            val isSameSignedness = fromAsm.signed != toAsm.signed
+            val sizeCriteria = fromAsm.width > toAsm.width
+            throwingCast && (isSameSignedness || sizeCriteria)
+
+          case (from: FloatingPoint, to: Integral) => throwingCast
+          case _ => false
         }
 
         // Select the bound when the comparison holds, using an all-ones mask.
@@ -1366,38 +1386,42 @@ trait CHIRParser
             value
 
           case (from: Integral, to: Integral) =>
-            // Saturating casts must clamp to the target range *before* truncation.
-            // No clamping is needed when the target range fully contains the
-            // source range (widening casts and same-width same-signedness casts).
-            // Clamp analysis by source/target signedness:
-            //   signed -> signed,   narrowing: clamp to [to.min, to.max] (both bounds representable in src)
-            //   signed -> unsigned, narrowing: clamp negatives to 0; hi = 2^to.bits - 1 is either
-            //                                  not representable in src (same width) or unreachable
-            //   signed -> unsigned, widening:  hi unreachable; clamp negatives to 0
-            //   unsigned -> signed, same width: clamp hi to to.max (representable); lo unreachable
-            //   unsigned -> signed, narrowing: clamp hi to to.max; lo unreachable
-            //   unsigned -> unsigned, any:     clamp hi to to.max when narrowing; lo unreachable
-            val lowerNeeded = from.signed && (to.bits < from.bits || !to.signed)
-            val upperNeeded = (to.bits < from.bits) || (to.bits == from.bits && !from.signed && to.signed)
-            val needsClamp = saturatingCast && (lowerNeeded || upperNeeded)
-            val clamped =
-              if (!needsClamp) value
-              else {
-                // min/max bounds of `to`; the comparisons follow the *source* signedness
-                val lo  = if (to.signed) -(1L << (to.bits - 1)) else 0L
-                val hi  = if (to.signed) (1L << (to.bits - 1)) - 1 else (if (to.bits == 64) -1L else (1L << to.bits) - 1)
-                val (loCond, hiCond) = if (from.signed) (Condition.LT, Condition.GT) else (Condition.ULT, Condition.UGT)
+            if (shouldGenerateCheckedCast) {
+              CheckedValueConvert(fromAsm, toAsm)(value)
+            } else {
+              // Saturating casts must clamp to the target range *before* truncation.
+              // No clamping is needed when the target range fully contains the
+              // source range (widening casts and same-width same-signedness casts).
+              // Clamp analysis by source/target signedness:
+              //   signed -> signed,   narrowing: clamp to [to.min, to.max] (both bounds representable in src)
+              //   signed -> unsigned, narrowing: clamp negatives to 0; hi = 2^to.bits - 1 is either
+              //                                  not representable in src (same width) or unreachable
+              //   signed -> unsigned, widening:  hi unreachable; clamp negatives to 0
+              //   unsigned -> signed, same width: clamp hi to to.max (representable); lo unreachable
+              //   unsigned -> signed, narrowing: clamp hi to to.max; lo unreachable
+              //   unsigned -> unsigned, any:     clamp hi to to.max when narrowing; lo unreachable
+              val lowerNeeded = from.signed && (to.bits < from.bits || !to.signed)
+              val upperNeeded = (to.bits < from.bits) || (to.bits == from.bits && !from.signed && to.signed)
+              val needsClamp = saturatingCast && (lowerNeeded || upperNeeded)
+              val clamped =
+                if (!needsClamp) value
+                else {
+                  // min/max bounds of `to`; the comparisons follow the *source* signedness
+                  val lo = if (to.signed) -(1L << (to.bits - 1)) else 0L
+                  val hi = if (to.signed) (1L << (to.bits - 1)) - 1 else (if (to.bits == 64) -1L else (1L << to.bits) - 1)
+                  val (loCond, hiCond) = if (from.signed) (Condition.LT, Condition.GT) else (Condition.ULT, Condition.UGT)
 
-                var v = value
-                if (upperNeeded) {
-                  v = clampSide(v, fromTpe, hi, hiCond)
+                  var v = value
+                  if (upperNeeded) {
+                    v = clampSide(v, fromTpe, hi, hiCond)
+                  }
+                  if (lowerNeeded) {
+                    v = clampSide(v, fromTpe, lo, loCond)
+                  }
+                  v
                 }
-                if (lowerNeeded) {
-                  v = clampSide(v, fromTpe, lo, loCond)
-                }
-                v
-              }
-            BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, clamped)
+              BFX(toTpe, 0, (from.bits min to.bits), signExtension = from.signed, clamped)
+            }
 
           case (from: Integral, UnicodeChar32) =>
             BFX(toTpe, 0, (from.bits min 32), signExtension = from.signed, value)
@@ -1430,18 +1454,22 @@ trait CHIRParser
               (fromAsm, value)
             }
 
-            toAsm match {
-              case I8 | U8 | I16 | U16 =>
-                // Floating-point casts saturate even with OverflowWrapping.
-                // Use the existing signed conversion (NaN -> 0), then clamp
-                // before narrowing so constant folding agrees with runtime.
-                val lo  = if (to.signed) -(1L << (to.bits - 1)) else 0L
-                val hi  = if (to.signed) (1L << (to.bits - 1)) - 1 else (1L << to.bits) - 1
-                var v = ValueConvert(fpFromAsm, I32)(fpValue)
-                v = clampSide(v, IntType, lo, Condition.LT)
-                v = clampSide(v, IntType, hi, Condition.GT)
-                BFX(toTpe, 0, to.bits, signExtension = to.signed, v)
-              case _ => ValueConvert(fpFromAsm, toAsm)(fpValue)
+            if (shouldGenerateCheckedCast) {
+              CheckedValueConvert(fpFromAsm, toAsm)(fpValue)
+            } else {
+              toAsm match {
+                case I8 | U8 | I16 | U16 =>
+                  // Floating-point casts saturate even with OverflowWrapping.
+                  // Use the existing signed conversion (NaN -> 0), then clamp
+                  // before narrowing so constant folding agrees with runtime.
+                  val lo = if (to.signed) -(1L << (to.bits - 1)) else 0L
+                  val hi = if (to.signed) (1L << (to.bits - 1)) - 1 else (1L << to.bits) - 1
+                  var v = ValueConvert(fpFromAsm, I32)(fpValue)
+                  v = clampSide(v, IntType, lo, Condition.LT)
+                  v = clampSide(v, IntType, hi, Condition.GT)
+                  BFX(toTpe, 0, to.bits, signExtension = to.signed, v)
+                case _ => ValueConvert(fpFromAsm, toAsm)(fpValue)
+              }
             }
 
           case (from: FloatingPoint, to: FloatingPoint) =>

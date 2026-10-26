@@ -259,6 +259,7 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: CangjieArrayFillGeneric => CangjieArrayFillGeneric.Proto
         case _: ReinterpretCast => ReinterpretCast.Proto
         case _: ValueConvert => ValueConvert.Proto
+        case _: CheckedValueConvert => CheckedValueConvert.Proto
         case _: BitFieldExtract => BitFieldExtract.Proto
         case _: StrConcat => StrConcat.Proto
         case _: MulH => MulH.Proto

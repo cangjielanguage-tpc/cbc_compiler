@@ -318,6 +318,14 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           }
       }
     }
+    private def genCheckedValueConvert(convert: CheckedValueConvert): Unit = {
+      val CheckedValueConvert(fromType, toType, arg) = convert
+      (convert, arg) match {
+        case (Reg(to), Reg(from)) =>
+          asm.checkedConvert(toType, fromType, to, from)
+        case _ => shouldNotReachHere(s"source or dest resource wasn't matched to any reg: (${convert.resource}, ${convert.arg.resource})")
+      }
+    }
 
     private def genNew(n: New): Unit = genNewImpl(n, n.allocType)
 
@@ -1308,6 +1316,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: BinaryOp                   => shouldNotReachHere(s"unexpected BinaryOp: $x")
         case x: Shift                      => genShift(x)
         case x: Cast                       => genCast(x)
+        case x: CheckedValueConvert        => genCheckedValueConvert(x)
         case x: New                        => genNew(x)
         case x: BitFieldExtract            => genBFX(x)
         case x: Neg                        => genNeg(x)
