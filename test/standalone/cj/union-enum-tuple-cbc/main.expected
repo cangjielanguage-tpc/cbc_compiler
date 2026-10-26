@@ -1,0 +1,5 @@
+[same pkg] tuple: tag = 0, payload = 5
+[same pkg] enum payload = 2
+[same pkg] enum pair: first = 3, second = 4
+PASS
+0

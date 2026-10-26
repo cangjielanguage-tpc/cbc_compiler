@@ -4167,6 +4167,9 @@ object pcOModule {
           writeJString(xstr(t.name))
           writeSeq(t.params)(writeSignatureType)
           writeSignatureType(t.someType)
+        case t: PackedTuple =>
+          curFile.writePackedInt(26)
+          writeSeq(t.params)(writeSignatureType)
       }
     }
 
@@ -4295,6 +4298,7 @@ object pcOModule {
         case 23 => ClassBasedEnum(curFile.readJString().toString, readSeq(readSignatureType))
         case 24 => UnionBasedEnum(curFile.readJString().toString, readSeq(readSignatureType))
         case 25 => OptionLikeEnum(curFile.readJString().toString, readSeq(readSignatureType), readSignatureType())
+        case 26 => PackedTuple(readSeq(readSignatureType))
       }
     }
 

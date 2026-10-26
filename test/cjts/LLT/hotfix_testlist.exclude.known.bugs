@@ -359,65 +359,8 @@ compiler/Sema/call/call_error_report_04.cj
 # bug 128: zero-sized struct assignment failed to compile
 compiler/CodegenCHIR/barrier/globalBarier5.cj
 
-# bug 137 ((Int32) -> Unit lambda does not return Unit)
-API/std/socket/redesign/methods/socket_keep_alive_config.cj
-API/std/socket/redesign/props/tcp_props_keep_alive.cj
-compiler/Sema/generics/generic_member/pkg01/main.cj
-compiler/Sema/lambda/lambda05.cj
-compiler/Sema/lambda/lambda06.cj
-API/std/socket/redesign/vars/socket_keep_alive_vars.cj
-compiler/CHIR/CHIR2HLIR/class_and_interface/class_and_interface_01.cj
-compiler/CHIR/CHIR2HLIR/globalVariable/globalvariable05.cj
-compiler/CHIR/CHIR2HLIR/package/finalizer/main.cj
-compiler/CJCov/global_capture.cj
-compiler/CodegenCJNative/interface/class_extend_interface.cj
-compiler/CodegenCJNative/interface/class_extend_interface_generic_constraint.cj
-compiler/CodegenCJNative/lambda/global_capture.cj
-compiler/Macro/replace/interface_decl.cj
-compiler/Sema/InitializationCheck/static_variable_use_before_init_02/file1.cj
-compiler/Sema/InitializationCheck/static_variable_use_before_init_06/file1.cj
-compiler/Sema/class/static_init/generic_class_static_init_01/main.cj
-compiler/Sema/class/static_init/generic_class_static_init_02/main.cj
-compiler/Sema/class/static_init/static_init_05.cj
-compiler/Sema/enum/enum27.cj
-compiler/Sema/match/bugfix/match_001.cj
-compiler/Sema/record/static_init/generic_struct_static_init_01/main.cj
-
 # bug 148 (LLT/compiler/ConstEval/Overflow: error: expected at least one source code file when compiling source code)
 compiler/ConstEval/Overflow
-
-# bug 149 (Unexpected duplicate linkage names)
-API/std/unittest/delta_comparison/assert/user_defined_types/comparison_fail.cj
-API/std/unittest/delta_comparison/assert/user_defined_types/comparison_success.cj
-API/std/unittest/delta_comparison/expect/user_defined_types/comparison_fail.cj
-API/std/unittest/delta_comparison/expect/user_defined_types/comparison_success.cj
-API/std/unittest/mock/framework/expectation_failed_test.cj
-API/std/unittest/mock/framework/listeners_test.cj
-API/std/unittest/mock/framework/runtime_failure_report_test.cj
-API/std/unittest/mock/framework/stub_base_test.cj
-compiler/CHIR/StaticAbstractMark/import/main.cj
-compiler/CHIR/StaticAbstractMark/import1/main.cj
-compiler/CHIR/StaticAbstractMark/import2/main.cj
-compiler/CHIR/StaticAbstractMark/import4/main.cj
-compiler/Modules/Package/extend/extend_box_opt/main.cj
-compiler/Sema/APILevelChecker/hide/mix_macro2.cj
-compiler/Sema/APILevelChecker/level/api_weak/external_weak01.cj
-compiler/Sema/APILevelChecker/level/api_weak/external_weak02.cj
-compiler/Sema/APILevelChecker/level/multi_anno.cj
-compiler/Sema/APILevelChecker/level/triple_format_positive.cj
-compiler/Sema/Extend_import/import10/main.cj
-compiler/Sema/Extend_import/import13/test.cj
-compiler/Sema/annotation/ifavailable/level_syscap_check/syscap_test02.cj
-compiler/Sema/box/import_inline_box_01/main.cj
-compiler/Sema/enum/enum34_test/main.cj
-compiler/Sema/generics/instantiation_rearrange_02/test.cj
-compiler/Sema/generics/pkgs0018_multi_packages_rhombus_import/pkgs0018004a.cj
-compiler/CHIR/ComplicatedCodeBugfix/Bugfix4/use_interface_def_imple_094.cj
-compiler/CHIR/StaticAbstractMark/import3/main.cj
-compiler/CHIR/StaticAbstractMark/import5/main.cj
-compiler/Sema/generics/generic_member10/main.cj
-compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
-compiler/Sema/typealias/import_alias/typeaslias.cj
 
 # bug 150 (SIGABRT in the GC write barrier)
 API/std/collection/concurrent/test_concurrent_hashmap.cj
@@ -538,11 +481,6 @@ API/std/unittest/mock/compiler/ensurePreparedToMock/onlyTestMode.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/properWritingHandlerDecls.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/topLevelFunctions.cj
 
-# bug 167 (unexpected StackOverflowError while executing `main` (function with backticks in name))
-compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
-compiler/Mangle/MangledName/mangle14_c_struct_overload.cj
-compiler/Sema/function/raw_init_main.cj
-
 # bug 170 (crash in MapleRuntime::IdleBarrier::ReadStruct)
 API/std/collection/test_Operation.cj
 API/std/collection/test_collection_endops_coverage.cj
@@ -567,23 +505,6 @@ compiler/Modules/Package/extend/extend_multiple_exportID/main.cj
 
 # bug 175 (CHIRParser.genericTypeInfoParam(CHIRParser.scala:2770))
 compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
-
-# bug 176 (could not find VTable slot for *)
-API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
-compiler/CHIR/CHIR2HLIR/operator_overload/all_assign.cj
-compiler/CHIR/UG/CallExpr/invoke_like_05.cj
-compiler/CodegenCJNative/vfe/vfe_01.cj
-compiler/Macro/basic_expansion/interface_operator.cj
-compiler/Modules/Package/operator/main.cj
-compiler/Sema/Extend/default_implement/default_implement_02.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00012.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00035.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00051.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00065.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00100.cj
-compiler/Sema/call/call19.cj
-compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_4.cj
-compiler/Sema/generics/generic_upperbound_reference_09.cj
 
 # bug 177 (unexpected runSingleCase.lambda in stacktrace)
 API/std/unittest/exception_rendering.cj

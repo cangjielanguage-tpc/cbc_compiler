@@ -61,51 +61,56 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.GlobalVar | CHIR.FuncSig): String = {
     def typeDefName(v: CHIR.CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
-      if (srcName.isEmpty || isGenericInstantiated(v)) v.identifier.tail else s"${v.packageName}:$srcName"
+      if (srcName.isEmpty || isGenericInstantiated(v)) {
+        // Lambda implementation classes ($Cl/$Cw/$Cf) carry no package in their
+        // mangled identifier and no source name, so identically-named but
+        // structurally different lambdas from different packages would otherwise
+        // collapse into a single class. Qualify them by package, mirroring the
+        // package-qualified `.ti` symbol used by the native backend. Closure super
+        // classes ($Ci/$Cg) are intentionally left unqualified: their name already
+        // encodes the full functional type and they are shared across packages.
+        val suffix = if (isLambda(v.tpe)) {
+          s"$$pkg$$${pkg.name}$$"
+        } else {
+          ""
+        }
+        v.identifier.stripPrefix("@") + suffix
+      } else {
+        s"${v.packageName}:$srcName"
+      }
     }
 
-    def memberName(v: CHIR.Func | CHIR.GlobalVar): String = {
-      val (isWrappedMethod, wrappedMethod) = v match {
-        case v: CHIR.Func => (getMethodWrappers(v).nonEmpty, getWrappedMethod(v))
-        case v: CHIR.GlobalVar => (false, None)
-      }
-      val (id, identifier, srcName) = v match {
-        case v: CHIR.Func => syntheticName(v) match {
-          case Some(name) => (v.id, name, name)
-          case None => (v.id, v.identifier, wrappedMethod.map(_.srcCodeIdentifier).getOrElse(v.srcCodeIdentifier))
-        }
-        case v: CHIR.GlobalVar => (v.id, v.identifier, v.srcCodeIdentifier)
-      }
-      val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
-      val isOperator = v.attributes.contains(CHIR.Attribute.Operator)
-      val isInitializer = v.attributes.contains(CHIR.Attribute.Initializer)
-      val isPackageGlobal = v.declaringDef.isEmpty
-      val suffix = if (isGenericInstantiated(v)) {
-        // TODO another way without id usage?
-        assert(id > 0)
-        s"$$instantiated$$${pkg.name}$$$id"
+    def funcName(v: CHIR.Func): String = {
+      val vnames = findVTableMethods(v).map(_.name)
+      if (vnames.isEmpty) {
+        syntheticName(v).getOrElse(v.identifier.stripPrefix("@"))
       } else {
-        ""
+        ScalaCollections.uniqueValue(vnames) getOrElse {
+          def msg = s"${v.identifier} -> ${vnames.toSet}"
+          assert(isOperator(v), msg)
+          assert(vnames.forall(name => Seq('~', '&', '%').contains(name.charAt(0))), msg)
+          ScalaCollections.uniqueValue(vnames.map(_.tail)) getOrElse {
+            shouldNotReachHere(msg)
+          }
+        }
       }
-      getOverrideSrcFuncType(v) match {
-        case Some(funcType) if !isOperator =>
-          val f = v.asInstanceOf[CHIR.Func]
-          val d = wrappedMethod.getOrElse(v).declaringDef.get
-          val vtableFuncs = d.vtables.flatMap(_.vMethods)
-          vtableFuncs.find(_.instance == f) match {
-            case Some(m) => m.name
-            case None =>
-              assert(srcName.nonEmpty, identifier)
-              srcName + suffix
-          }
-        case _ =>
-          // TODO: there must be another simpler way to cover all of the edge cases
-          if (srcName.isEmpty || srcName == "$lambda" || isInitializer || isWrappedMethod ||
-            (wrappedMethod.nonEmpty && !isOperator) || (isPackageGlobal && isPrivate)) {
-            identifier.tail
-          } else {
-            srcName + suffix
-          }
+    }
+
+    def globalVarName(v: CHIR.GlobalVar): String = {
+      val srcName = v.srcCodeIdentifier
+      if (srcName.isEmpty) {
+        // TODO: Check whether this could happen
+        v.identifier.stripPrefix("@")
+      } else {
+        val suffix = if (isGenericInstantiated(v)) {
+          val id = v.id
+          // TODO: Check whether this needed
+          assert(id > 0)
+          s"$$instantiated$$${pkg.name}$$$id"
+        } else {
+          ""
+        }
+        srcName + suffix
       }
     }
 
@@ -115,15 +120,15 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
       case v: CHIR.ClassDef => typeDefName(v)
       case v: CHIR.EnumDef => typeDefName(v) // TODO: support proper Enum
       case v: CHIR.ExtendDef => typeDefName(v)
-      case v: CHIR.Func => memberName(v)
-      case v: CHIR.GlobalVar => memberName(v)
+      case v: CHIR.Func => funcName(v)
+      case v: CHIR.GlobalVar => globalVarName(v)
       case v: CHIR.FuncSig => v.name
     }) ensuring (_.nonEmpty)
   }
 
   def linkageName(v: CHIR.Func | CHIR.GlobalVar | CHIR.InstanceVar): String = v match {
-    case v: CHIR.Func => v.identifier.tail
-    case v: CHIR.GlobalVar => v.identifier.tail
+    case v: CHIR.Func => v.identifier.stripPrefix("@")
+    case v: CHIR.GlobalVar => v.identifier.stripPrefix("@")
     case v: CHIR.InstanceVar => null
   }
 
@@ -276,6 +281,32 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
     ScalaCollections.singleton(ms)
   }
 
+  private lazy val vtableMethods: collection.Map[CHIR.Func, Seq[CHIR.VMethod]] = {
+    val cache = mutable.HashMap.empty[CHIR.Func, Seq[CHIR.VMethod]]
+
+    for (m <- pkg.typeDefs.flatMap(_.vtables).flatMap(_.vMethods)) {
+      val f = m.instance
+      val methods = cache.getOrElse(f, Seq.empty)
+      cache(f) = m +: methods
+    }
+
+    cache
+  }
+
+  def findVTableMethods(f: CHIR.Func): Seq[CHIR.VMethod] = {
+    vtableMethods.getOrElse(f, Seq.empty)
+  }
+
+  private def enclosingClosureClass(f: CHIR.Func): Option[CHIR.CustomTypeDef] =
+    if (f.declaringDef.nonEmpty) None
+    else f.tpe.paramTypes.headOption.flatMap {
+      case r: CHIR.RefType => r.baseType match {
+        case c: CHIR.CustomType if isLambda(c) => Some(c.typeDef)
+        case _ => None
+      }
+      case _ => None
+    }
+
   private lazy val typeVarCache: collection.Map[CHIR.GenericType, SignatureType.TypeVariable] = {
     val cache = mutable.HashMap.empty[CHIR.GenericType, SignatureType.TypeVariable]
 
@@ -348,8 +379,12 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
     t.attributes.contains(CHIR.Attribute.GenericInstantiated)
   }
 
-  def isOverflowOperator(t: CHIR.Func): Boolean = {
-    t.attributes.contains(CHIR.Attribute.Operator) && (t.srcCodeIdentifier match {
+  def isOperator(f: CHIR.Func): Boolean = {
+    f.attributes.contains(CHIR.Attribute.Operator)
+  }
+
+  def isOverflowOperator(f: CHIR.Func): Boolean = {
+    isOperator(f) && (symName(f) match {
       case "+" | "-" | "*" | "/" => true
       case _ => false
     })
@@ -380,8 +415,11 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
     t.annotations exists isAutoEnv
   }
 
-  private def isLambda(t: CHIR.Type): Boolean = {
-    typeSig(t).isCangjieLambda
+  private def isLambda(t: CHIR.Type): Boolean = t match {
+    case t: CHIR.CustomType =>
+      val ident = t.typeDef.identifier.stripPrefix("@")
+      ident.startsWith("$Cl") || ident.startsWith("$Cw") || ident.startsWith("$Cf")
+    case _ => false
   }
 
   private def isAutoEnv(x: CHIR.Annotation): Boolean = cond(x) {
