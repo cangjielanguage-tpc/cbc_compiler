@@ -307,8 +307,6 @@ compiler/CHIROpt/VarInitCheck/var_circular_dependency.cj
 compiler/CHIROpt/lambda_reduce/thread_lambda_inline.cj
 compiler/Sema/APILevelChecker/hide/mix_macro1.cj
 API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
-compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
-compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
 
 # driver mangles cjc args ("No such directory: '-lstdx.syntax'") / driver warning noise breaks expected-output compare
 compiler/CHIR/CHIR2HLIR/package/scanDepPkg/test.cj
@@ -403,3 +401,7 @@ compiler/Driver/options/obfuscation/test_layout/test4.info
 compiler/IncrementalCompilation
 compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_1.cj
 compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_2.cj
+
+# broken tests - test expect throwing of `ArithmeticException: pow` when cast should throw. issue-140
+compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
+compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
