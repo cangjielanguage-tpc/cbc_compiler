@@ -3,4 +3,5 @@
 !.sbtopts
 !project
 !core
+!scripts
 **/target

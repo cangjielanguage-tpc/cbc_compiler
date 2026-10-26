@@ -119,12 +119,15 @@ object Build {
 
         case Some(binary) =>
           streams.value.log.info(s"Building $outputName with $binary")
+          // GraalVM does not support --libc=musl on aarch64
+          // (https://github.com/oracle/graal/pull/14623),
+          // so fall back to an almost-static binary there.
+          val staticFlags = if (env.arch == "amd64") Seq("--static", "--libc=musl") else Seq("--static-nolibc")
           val command = Seq(
             binary,
             "-J-Xmx5g",
             "-O3",
-            "--no-fallback",
-            "--static-nolibc",
+          ) ++ staticFlags ++ Seq(
             s"-J-XX:ActiveProcessorCount=${env.graalvmParallelism}",
             "-jar", jar.absolutePath,
             "-o", output.absolutePath,
