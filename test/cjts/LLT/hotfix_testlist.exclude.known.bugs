@@ -24,13 +24,7 @@ compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_01.cj
 compiler/CodegenCommon/typecast/nan2integer.cj
 
 # bug 140 (not implemented: throwing binary expression)
-compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
-compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
-compiler/CHIROpt/ValueRangeAnalysis/Ifn.cj
-compiler/CHIROpt/ValueRangeAnalysis/RelopEquality.cj
-compiler/CHIROpt/ValueRangeAnalysis/Transitive.cj
 compiler/CodegenCommon/overflow/overshift1.cj
-compiler/CodegenCommon/overflow/overshift2.cj
 compiler/FFI/CFFI/case12-cpointer-complex/CPointerCase3.cj
 compiler/Sema/Extend/generic/primitive_00/ok.cj
 
