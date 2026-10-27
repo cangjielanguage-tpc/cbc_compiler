@@ -49,7 +49,7 @@ enum Linkage {
 
 /** SkipKind */
 enum SkipKind {
-  case NoSkip, SkipDceWarning, SkipForinExit, SkipVic
+  case NoSkip, SkipDceWarning, SkipForinExit, SkipVic, Checked
 }
 
 /** OverflowStrategy */
@@ -601,7 +601,9 @@ final class InvokeExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation
                        resultVar: Option[LocalVar], instantiatedTypeArgs: ArrayBuffer[Type],
                        objType: Option[Type], var callee: Func, var caller: Value, var args: ArrayBuffer[Value],
                        var overflowStrategy: OverflowStrategy, var isTry: Boolean,
-                       var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
+                       var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer(),
+                       /** v1203 only: virtual-method signature context (replaced by overflowStrategy in v13002). */
+                       var virMethodCtx: Option[FuncSigInfo] = None)
   extends FuncCallExpr(annos, loc, attributes, owner, blockGroups, resultVar, instantiatedTypeArgs, objType) {
   def thisArg: Option[Value] = args.headOption
 }
