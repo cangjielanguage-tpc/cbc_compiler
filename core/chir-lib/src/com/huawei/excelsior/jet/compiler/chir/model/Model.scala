@@ -88,9 +88,23 @@ enum Phase {
   case Raw, Opt, Plugin, AnalysisForCjlint
 }
 
-/** SourceExpr */
-enum SourceExprTag {
-  case IfExpr, WhileExpr, DoWhileExpr, MatchExpr, IfLetOrWhileLet, Quest, Binary, ForInExpr, Other
+/** SourceExpr — raw values mirror the C++ enum (which has MATCH_CASE=8, OTHER=9;
+  * the chir-lib schema enum stops at OTHER=8, so raw ints are used).
+  * Branch.sourceExpr defaults to 0 (IF_EXPR) when absent; MultiBranch.sourceExpr
+  * (not covered by the chir-lib schema) is treated as OTHER(9) — the C++ toolchain
+  * never emits MultiBranch in OPT-phase .chir files.
+  */
+object SourceExprTag {
+  val IfExpr: Int = 0
+  val WhileExpr: Int = 1
+  val DoWhileExpr: Int = 2
+  val MatchExpr: Int = 3
+  val IfLetOrWhileLet: Int = 4
+  val Quest: Int = 5
+  val Binary: Int = 6
+  val ForInExpr: Int = 7
+  val MatchCase: Int = 8
+  val Other: Int = 9
 }
 
 /** CHIRExprKind — full mirror of the schema enum (raw value = ordinal). */
@@ -170,7 +184,7 @@ final class FuncType(var isCFuncType: Boolean, var hasVarArg: Boolean, val argTy
   def paramTypesWithoutReceiver: ArrayBuffer[Type] = argTys.dropRight(1).drop(1)
 }
 
-final class CustomType(var customTypeDef: CustomTypeDef) extends Type {
+final class CustomType(var customTypeDef: Option[CustomTypeDef] = None) extends Type {
   /** Generic instantiation arguments (flatbuffer argTys). */
   val argTys: ArrayBuffer[Type] = ArrayBuffer()
 }
@@ -568,14 +582,14 @@ final class RawArrayAllocateExpr(annos: ArrayBuffer[Annotation], loc: Option[Deb
 final class SpawnExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                       resultVar: Option[LocalVar], var obj: Value,
-                      var executeClosure: Option[Func], var isTry: Boolean,
+                      var spawnArg: Option[Value], var executeClosure: Option[Func], var isTry: Boolean,
                       var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
 
 final class BranchExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                        owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                        resultVar: Option[LocalVar], var condition: Value, var trueBlock: Block,
-                       var falseBlock: Block, var sourceExpr: SourceExprTag)
+                       var falseBlock: Block, var sourceExpr: Int)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
 
 final class MultiBranchExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
