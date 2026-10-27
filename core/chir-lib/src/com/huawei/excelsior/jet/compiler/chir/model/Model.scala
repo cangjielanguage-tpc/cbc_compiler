@@ -246,6 +246,55 @@ final class VTableInType(var srcParentType: Type, var virtualMethods: ArrayBuffe
 final class EnumCtorInfo(var srcCodeName: String, var mangledName: String, var funcType: Type,
                          var annoInfo: Option[AnnoInfo])
 
+/** Attribute bit positions (mirror the C++ `Attribute` enum with STATIC = 0).
+  * Verified empirically against real .chir files: imported+internal global var
+  * carries bits {15, 19}; the package-init func carries {20, 21, 22, 30}.
+  */
+object Attribute {
+  val Static: Long = 1L << 0
+  val Public: Long = 1L << 1
+  val Private: Long = 1L << 2
+  val Protected: Long = 1L << 3
+  val Abstract: Long = 1L << 4
+  val Virtual: Long = 1L << 5
+  val Override: Long = 1L << 6
+  val Redef: Long = 1L << 7
+  val Sealed: Long = 1L << 8
+  val Foreign: Long = 1L << 9
+  val Mut: Long = 1L << 10
+  val Final: Long = 1L << 11
+  val Operator: Long = 1L << 12
+  val Readonly: Long = 1L << 13
+  val Const: Long = 1L << 14
+  val Imported: Long = 1L << 15
+  val GenericInstantiated: Long = 1L << 16
+  val NoDebugInfo: Long = 1L << 17
+  val Generic: Long = 1L << 18
+  val Internal: Long = 1L << 19
+  val CompilerAdd: Long = 1L << 20
+  val NoReflectInfo: Long = 1L << 21
+  val NoInline: Long = 1L << 22
+  val NonRecompile: Long = 1L << 23
+  val Unreachable: Long = 1L << 24
+  val NoSideEffect: Long = 1L << 25
+  val Common: Long = 1L << 26
+  val Specific: Long = 1L << 27
+  val SkipAnalysis: Long = 1L << 28
+  val Deserialized: Long = 1L << 29
+  val Initializer: Long = 1L << 30
+  val Unsafe: Long = 1L << 31
+  val JavaMirror: Long = 1L << 32
+  val JavaImpl: Long = 1L << 33
+  val ObjCMirror: Long = 1L << 34
+  val HasInitedField: Long = 1L << 35
+  val JavaHasDefault: Long = 1L << 36
+  val PreviouslyDeserialized: Long = 1L << 37
+  val DoesNotThrow: Long = 1L << 38
+  val ObjCImpl: Long = 1L << 39
+  val MatchPattern: Long = 1L << 40
+  val PluginAdded: Long = 1L << 41
+}
+
 // =====================================================================================
 // Values
 // =====================================================================================
@@ -345,7 +394,7 @@ final class Func(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], att
     packageName, declaredParent, features, annoInfo) {
   def kind: ValueKind = ValueKind.Func
 
-  def isImported: Boolean = (attributes & (1L << 14)) != 0L // Attribute.IMPORTED
+  def isImported: Boolean = (attributes & Attribute.Imported) != 0L
   def isLambda: Boolean = funcKind == FuncKind.Lambda
 
   /** Mints a fresh local var id, like C++ Function::GenerateLocalId. */
@@ -687,7 +736,7 @@ sealed trait CustomTypeDef {
   def vtable: ArrayBuffer[VTableInType]
   def instanceVarInitFunc: Option[Func]
 
-  def isImported: Boolean = (attributes & (1L << 14)) != 0L // Attribute.IMPORTED
+  def isImported: Boolean = (attributes & Attribute.Imported) != 0L
 }
 
 /** Common flatbuffer CustomTypeDef table part. */
