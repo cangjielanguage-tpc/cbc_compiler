@@ -231,6 +231,20 @@ compiler/FFI/CFFI/record/small_6.cj
 compiler/FFI/CFFI/record/small_19.cj
 compiler/FFI/CFFI/record/small_20.cj
 compiler/Sema/call/call21.cj
+compiler/CodegenCJNative/incremental/cfunc1/main.cj
+compiler/FFI/CFFI/c_ffi_00102/c_ffi_00102.cj
+compiler/FFI/CFFI/case7-struct/c_ffi_00101.cj
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_1.cj
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_2.cj
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_6.cj
+compiler/FFI/CFFI/cfunc/empty_type/empty_type.cj
+compiler/FFI/CFFI/dock/cfunc_record/main.cj
+compiler/FFI/CFFI/foreign/foreign002/foreign002.cj
+compiler/FFI/CFFI/foreign/foreign003/foreign003.cj
+compiler/FFI/CFFI/foreign/foreign004/foreign004.cj
+compiler/FFI/CFFI/import/import002/import002.cj
+compiler/FFI/CFFI/import/import003/import003.cj
+compiler/FFI/CFFI/import/import004/import004.cj
 
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
@@ -328,6 +342,11 @@ compiler/Sema/generics/rearrange_multi_impl/main.cj
 compiler/Sema/generics/instantiation/instantiation007.cj
 compiler/Sema/generics/instantiation_rearrange_01/test.cj
 compiler/Sema/generics/generic_static_field_prop/generic_static_nested_func.cj
+compiler/CHIR/SplitOperator/ovf.cj
+compiler/CHIR/SplitOperator/ovf_div.cj
+compiler/CHIR/SplitOperator/ovf_divu.cj
+compiler/CHIR/SplitOperator/ovf_mul.cj
+compiler/CHIR/SplitOperator/ovf_sub.cj
 
 # bug 120 (cbc_engine: Conflict found for reference)
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
@@ -541,3 +560,152 @@ API/std/unittest/mock/integration/stub_in_before_each.cj
 API/std/unittest/mock/integration/unnecessary_stubbing.cj
 API/std/unittest/rendering/rendering_main.cj
 API/std/unittest/rendering/rendering_worker.cj
+
+# bug 200 (CHIRParser.valueOfFunc crash for CFunc)
+Runtime/CJNative/debuginfo_ffic_expr.cj
+compiler/CHIR/AST2CHIR/BaseUseCase/lambdaExpr/lambda_func_02.cj
+compiler/CodegenCJNative/incremental/cfunc/main.cj
+compiler/FFI/CFFI/c_ffi_00104/c_ffi_00104.cj
+compiler/FFI/CFFI/callback_ptr/testCPointer.cj
+compiler/FFI/CFFI/callback_ptr/testCString.cj
+compiler/FFI/CFFI/case11-cfunc-export/CFunc2.cj
+compiler/FFI/CFFI/case9-cfunc/CFuncCase.cj
+compiler/FFI/CFFI/cfunc/as_field/class_field_0.cj
+compiler/FFI/CFFI/cfunc/as_field/incomplete_0.cj
+compiler/FFI/CFFI/cfunc/as_field/incomplete_1.cj
+compiler/FFI/CFFI/cfunc/as_field/record_field_0.cj
+compiler/FFI/CFFI/cfunc/as_param/as_param_0.cj
+compiler/FFI/CFFI/cfunc/as_type_param/in_array_0.cj
+compiler/FFI/CFFI/cfunc/as_type_param/in_array_1.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01101/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01102/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01103/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01104/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01105/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01106/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01107/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01108/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01109/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01110/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01111/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01112/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01113/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01114/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01115/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01116/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01117/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01118/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01119/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01120/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01121/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/c_ffi_011/c_ffi_01122/c_ffi_jni.cj
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_3.cj
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_4.cj
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_5.cj
+compiler/FFI/CFFI/cfunc/lambda/lambda_19.cj
+compiler/FFI/CFFI/cfunc/lambda/lambda_26.cj
+compiler/FFI/CFFI/cfunc/lambda/lambda_29.cj
+compiler/FFI/CFFI/cfunc/lambda/lambda_30.cj
+compiler/FFI/CFFI/cfunc/passed_in_params/foreign_01/foreign_01.cj
+compiler/FFI/CFFI/cfunc/test_stub/call_1.cj
+compiler/FFI/CFFI/cfunc/test_stub/call_by_native/call_by_native.cj
+compiler/FFI/CFFI/cpointer/ptr_0.cj
+compiler/FFI/CFFI/cpointer/read_write.cj
+compiler/FFI/CFFI/ctype/ctype_3.cj
+compiler/FFI/CFFI/import/import009/main.cj
+compiler/FFI/CFFI/inout/inout_11.cj
+compiler/FFI/CFFI/inout/inout_9.cj
+compiler/FFI/CFFI/type_cast/type_cast_10.cj
+compiler/FFI/CFFI/type_cast/type_cast_8.cj
+compiler/FFI/CFFI/unsafe/unsafe.cj
+compiler/Sema/varray/varray_cffi/varray_inout04.cj
+
+# bug 201 (cbc-compiler crashes with None.get: static interface func from extended interface calls other interface func)
+Runtime/CJNative/Class/Define/class_function_04.cj
+compiler/CHIR/AST2CHIR/BaseUseCase/extend/extend_03.cj
+compiler/CHIR/CHIR2HLIR/typeAlias/typealias_use_20.cj
+compiler/CHIR/UG/CallExpr/apply_like_07.cj
+compiler/CHIR/UG/ClosureConversion/staticFunc04.cj
+compiler/Sema/Extend/default_implement/default_implement_05.cj
+compiler/Sema/Extend/default_implement/default_implement_06.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_01.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_03.cj
+compiler/Sema/Extend/interface_default_implement/static_default_impl_04.cj
+compiler/Sema/Extend/visibility_between_extend/call_other_extend_interface.cj
+compiler/Sema/interface/interface_default_impl/static_defaule_impl_class.cj
+compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
+
+# bug 202 (some complicated foreign funcs build patterns in LLT testsuite)
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_interface.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package_separate.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_ret_generic.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_same_package_separate.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/same_package.cj
+compiler/CodegenCJNative/LegacyTests/native.cj
+compiler/CodegenCJNative/incremental/foreign/foreign1.cj
+compiler/FFI/CFFI/foreign/foreign001/foreign001.cj
+compiler/FFI/CFFI/foreign/foreign005/foreign005.cj
+compiler/FFI/CFFI/foreign/foreign006/foreign006.cj
+compiler/FFI/CFFI/foreign/foreign007/foreign007.cj
+compiler/FFI/CFFI/foreign/foreign01.cj
+compiler/Sema/concurrency/spawn10.cj
+
+# bug 203 (sigsegv on partially constructed TypeInfo: class with functional type field that references same class in signature)
+API/std/unittest/custom_assertions/nested_expect_inside_assert.cj
+API/std/unittest/custom_assertions/nested_expect_inside_expect.cj
+compiler/CHIR/TypeMap/testTypeMap1/test.cj
+compiler/FFI/CFFI/inout/inout_12.cj
+compiler/FFI/CFFI/record/small_15.cj
+compiler/Sema/generics/instantiate_01.cj
+compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_005.cj
+
+# bug 204 (no TypeInfo metadata for `std.core:CString` compiled as `+genlibrary`)
+API/std/unittest/mock/compiler/ensurePreparedToMock/generics.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/generics/other_package.cj
+API/std/unittest/mock/compiler/misc/instance_member_ref_generic_class.cj
+API/std/unittest/mock/compiler/misc/instance_member_ref_generic_struct.cj
+API/std/unittest/mock/examples/repo_1.cj
+API/std/unittest/mock/framework/generic.cj
+API/std/unittest/mock/integration/wrong_type_args.cj
+compiler/CodegenCJNative/reflect/reflect_08.cj
+
+# bug 205 (`$withoutTI` appended to AOT function that has no such suffix in compiled code)
+API/std/unittest/new_bench/bench_measure_cycles.cj
+API/std/unittest/report_bench_csv/report_csv_class.cj
+API/std/unittest/report_bench_csv/report_csv_class_multiple_measurements.cj
+API/std/unittest/report_bench_csv/report_csv_raw_class.cj
+API/std/unittest/report_bench_csv/report_csv_raw_class_multiple_measurements.cj
+API/std/unittest/report_bench_csv/report_csv_raw_class_structure.cj
+API/std/unittest/report_bench_html/report_html_colon_name.cj
+API/std/unittest/report_bench_html/report_html_no_gnuplot.cj
+
+# bug 206 (mut generic struct interface -- could not find VTable slot for bar(BOXi32)BOXi32)
+compiler/CHIR/UG/OpenGeneric/extend.cj
+compiler/CHIR/UG/OpenGeneric/inter.cj
+compiler/CHIR/UG/OpenGeneric/mut.cj
+
+# bug 207 (GC stress test: assertion failed: tt->type == builder.type)
+Runtime/CJNative/GC/gc_tracing_roots.cj
+Runtime/CJNative/GC/gc_wcollector_finalizer.cj
+
+# bug 208 (inout tests fail)
+compiler/FFI/CFFI/inout/inout_0.cj
+compiler/Macro/inout/inout_m2.cj
+compiler/Macro/inout/inout_m5.cj
+
+# bug 209 (package recompilation test: new version of package ignored)
+compiler/CodegenCJNative/compitability/0_class_add_open_method/main.cj
+compiler/CodegenCJNative/compitability/class_add_open_method/main.cj
+compiler/CodegenCJNative/compitability/class_add_open_method2/main.cj
+compiler/CodegenCJNative/compitability/org_name/main.cj
+
+# bug 210 (inout tests: key not found compiler.chir.v13002.GlobalVarImpl)
+compiler/FFI/CFFI/inout/inout_13.cj
+compiler/FFI/CFFI/inout/inout_14.cj
+compiler/FFI/CFFI/inout/inout_7.cj
+
+# bug 211 (cjc --mock=on: could not find VTable slot for %+(Sstd.core:String;)Sstd.core:String;)
+API/std/unittest/mock/framework/spy_test.cj
+API/std/unittest/mock/framework/verification_failed_report_test.cj
+API/std/unittest/mock/framework/verify_misconfiguration_test.cj
