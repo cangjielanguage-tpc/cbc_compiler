@@ -28,23 +28,23 @@ trait MutPairsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
 
   def needMutInfo(n: Node): Boolean = needGCMap(n)
 
-  /** In CBC with implicit call allocation, receiver operands are copied to ABI argument locations
-    * before the call, where the callee tracks them. Their source locations only need mut-pair tracking if
-    * they are live after the call. */
-  private def isCalleeTrackedMutArgument(call: Call, argIdx: Int): Boolean = {
-    val methodType = call.methodType
-    // Implicit allocation lets operands use arbitrary registers or local spill slots;
-    // CBC-interpreter marshals them into ABI argument locations. With explicit allocation,
-    // outgoing ABI stack slots may need tracking by the caller.
-    env.enabled(ImplicitCallRegAllocInCBC) &&
-      methodType.hasMutRecordParameter && methodType.hasMutObjectParameter &&
-      (argIdx == methodType.getMutRecordArgIdx || argIdx == methodType.getMutObjectArgIdx)
-  }
-
   /** Calculates map from every point in IR which [[needMutInfo]] to set of nodes which [[hasMutValueProducer]] and live at this point. */
   private def calcMutValues(): collection.Map[Node, Set[Node]] = {
     val engine = new NodeLivenessEngine {
       override protected def valuesFilter(n: Node): Boolean = hasMutValueProducer(n)
+
+      /** In CBC with implicit call allocation, receiver operands are copied to ABI argument locations
+       * before the call, where the callee tracks them.
+       * So if mut-function call is last use of both elements of mut-pair, we mark them dead inside the call (see use). */
+      private def isCalleeTrackedMutArgument(call: Call, argIdx: Int): Boolean = {
+        val methodType = call.methodType
+        // Implicit allocation lets operands use arbitrary registers or local spill slots;
+        // CBC-interpreter marshals them into ABI argument locations. With explicit allocation,
+        // outgoing ABI stack slots may need tracking by the caller.
+        env.enabled(ImplicitCallRegAllocInCBC) &&
+          methodType.hasMutRecordParameter && methodType.hasMutObjectParameter &&
+          (argIdx == methodType.getMutRecordArgIdx || argIdx == methodType.getMutObjectArgIdx)
+      }
 
       override protected def processBlock(block: Block, output: Set[Node], updateLive: (Node, Set[Node]) => Unit): Set[Node] = {
         var curr = output
