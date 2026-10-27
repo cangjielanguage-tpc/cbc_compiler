@@ -4,11 +4,14 @@ import com.huawei.excelsior.common.CodeHelpers.*
 
 object CHIR {
 
-  val defaultVersion = 13002
+  // default: CHIR format of compiler v1.3.0-alpha.08 (schema StdxChirFormat.fbs, namespace CHIRFormat)
+  val defaultVersion = 13008
   val releaseBeta120Rc3Version = 1203
+  val v13002Version = 13002
 
   def newPackage(source: String, version: Int): Package = PatchedPackage(version match {
-    case CHIR.defaultVersion => new v13002.PackageImpl(source)
+    case CHIR.defaultVersion => new v13008.PackageImpl(source)
+    case CHIR.v13002Version => new v13002.PackageImpl(source)
     case CHIR.releaseBeta120Rc3Version => new v1203.PackageImpl(source)
     case _ => notImplemented("unsupported CHIR version", version)
   })
