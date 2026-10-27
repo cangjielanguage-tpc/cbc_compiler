@@ -53,6 +53,7 @@ trait XSitesToolbox extends RecordSlotsLiveness { self: Universe with BackEnd wi
         case x: DivisorCheck => x.canThrow
         case x: CheckedUnary => x.canThrow
         case x: CheckedOp => x.canThrow
+        case x: CheckedValueConvert => x.canThrow
         case x: ArrayIndexCheck => x.canThrow
         case x: ArrayStoreCheck => x.canThrow
         case _: LoadMemory.Soft => true
@@ -87,6 +88,7 @@ trait XSitesToolbox extends RecordSlotsLiveness { self: Universe with BackEnd wi
     case _: DivisorCheck => XSiteKind.CALL
     case _: CheckedUnary => XSiteKind.CALL
     case _: CheckedOp => XSiteKind.CALL
+    case _: CheckedValueConvert => XSiteKind.CALL
     case _: ArrayIndexCheck => XSiteKind.CALL
     case _: ArrayStoreCheck => XSiteKind.CALL
     case _: NullCheck | WithImplicitCheck(_: NullCheck) => XSiteKind.NULLCHECK
@@ -106,6 +108,7 @@ trait XSitesToolbox extends RecordSlotsLiveness { self: Universe with BackEnd wi
     case call: Call => call.targetRef
     case check: DivisorCheck => new MethodReference(env.getRTSProc(check.throwProc), MethodReferenceAccessKind.STATIC)
     case check: CheckedOp => new MethodReference(env.getRTSProc(check.throwProc), MethodReferenceAccessKind.STATIC)
+    case check: CheckedValueConvert => new MethodReference(env.getRTSProc(check.throwProc), MethodReferenceAccessKind.STATIC)
     case check: ArrayIndexCheck => new MethodReference(env.getRTSProc(check.throwProc), MethodReferenceAccessKind.STATIC)
     case check: ArrayStoreCheck => new MethodReference(env.getRTSProc(check.throwProc), MethodReferenceAccessKind.STATIC)
     case _: PackageInit | _: PackageInitCheck => null
