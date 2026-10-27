@@ -9,7 +9,7 @@
 package com.huawei.excelsior.jet.compiler.patchgen
 
 import java.nio.file.{Files, Paths}
-import com.huawei.excelsior.jet.compiler.chir.model.Package
+import com.huawei.excelsior.jet.compiler.chir.model.{Package, Phase}
 import com.huawei.excelsior.jet.compiler.chir.v1203.{Materializer1203, Serializer1203}
 import com.huawei.excelsior.jet.compiler.chir.v13002.{Materializer13002, Serializer13002}
 import scala.collection.mutable.ArrayBuffer
@@ -22,17 +22,18 @@ import scala.collection.mutable.ArrayBuffer
   *
   * With a single argument the patched package is used as its own source (the
   * whole package is treated as a hotfix); with two arguments a diff between
-  * the source and the patched versions is generated.
+  * the source and the patched versions is generated. The patch is written to
+  * `"diff" + <patched basename>` in the current working directory, phase OPT.
   */
 object Main {
   private val DefaultChirVersion = 13002
   private val SupportedChirVersions = Seq(13002, 1203)
 
   private def usage(): Unit = {
-    println("Usage:")
-    println("  patch-gen [--chir-version <v>] <patched_chir_path>")
-    println("  patch-gen [--chir-version <v>] <source_chir_path> <patched_chir_path>")
-    println("Supported versions: " + SupportedChirVersions.mkString(", ") +
+    System.err.println("Usage:")
+    System.err.println("  patch-gen [--chir-version <v>] <patched_chir_path>")
+    System.err.println("  patch-gen [--chir-version <v>] <source_chir_path> <patched_chir_path>")
+    System.err.println("Supported versions: " + SupportedChirVersions.mkString(", ") +
       " (default " + DefaultChirVersion + ")")
   }
 
@@ -47,27 +48,40 @@ object Main {
 
   private def serialize(pkg: Package, chirVersion: Int, outPath: String): Unit = {
     val bytes = chirVersion match {
-      case 13002 => Serializer13002.toBytes(pkg, pkg.phase)
-      case 1203  => Serializer1203.toBytes(pkg, pkg.phase)
+      case 13002 => Serializer13002.toBytes(pkg, Phase.Opt)
+      case 1203  => Serializer1203.toBytes(pkg, Phase.Opt)
       case v     => throw new IllegalArgumentException("unsupported CHIR version: " + v)
     }
     Files.write(Paths.get(outPath), bytes)
   }
 
-  /** Port of `PatchGen::createHotfix` (returns false on PatchGenException). */
-  private def createHotfix(sourcePath: Option[String], patchedPath: String, chirVersion: Int,
-                           diffFilePath: String, patchedDiffFilePath: String): Boolean = {
+  /** Port of `genPatch` (returns false on error, mirroring nullopt). */
+  private def genPatch(sourcePackage: Option[Package], patchedChirPath: String, chirVersion: Int): Boolean = {
+    if (!Files.isReadable(Paths.get(patchedChirPath))) {
+      System.err.println("Error: CHIR file does not exist: " + patchedChirPath)
+      return false
+    }
+    val patchedPackage = try {
+      load(patchedChirPath, chirVersion)
+    } catch {
+      case e: RuntimeException =>
+        System.err.println("Error: Couldn't deserialize: " + patchedChirPath)
+        System.err.println(e.getMessage)
+        return false
+    }
+
+    // TODO rename to patch everywhere
+    val patchFileName = "diff" + Paths.get(patchedChirPath).getFileName.toString
     try {
-      val sourcePackage = sourcePath.map(load(_, chirVersion))
-      val patchedPackage = load(patchedPath, chirVersion)
-      val patchGen = new PatchGen(patchedPath, sourcePackage, patchedPackage)
+      val patchGen = new PatchGen(patchFileName, sourcePackage, patchedPackage)
       patchGen.createPatch()
-      serialize(patchedPackage, chirVersion, diffFilePath)
-      serialize(patchedPackage, chirVersion, patchedDiffFilePath)
+      // C++ serializes inside PatchGen::genPatch; it always runs last there, so
+      // serializing here (only on success) is observably equivalent
+      serialize(patchedPackage, chirVersion, patchFileName)
       true
     } catch {
       case e: PatchGenException =>
-        println(e.getMessage)
+        System.err.println(e.getMessage)
         false
     }
   }
@@ -80,17 +94,17 @@ object Main {
     while (i < args.length) {
       if (args(i) == "--chir-version") {
         if (i + 1 >= args.length) {
-          println("missing value for --chir-version")
+          System.err.println("missing value for --chir-version")
           bad = true
           i = args.length
         } else {
           chirVersion = args(i + 1).toIntOption.getOrElse {
-            println("invalid --chir-version value: " + args(i + 1))
+            System.err.println("invalid --chir-version value: " + args(i + 1))
             bad = true
             DefaultChirVersion
           }
           if (!SupportedChirVersions.contains(chirVersion)) {
-            println("unsupported CHIR version: " + chirVersion)
+            System.err.println("unsupported CHIR version: " + chirVersion)
             bad = true
           }
           i += 2
@@ -110,12 +124,24 @@ object Main {
       case 2 => (Some(rest(0)), rest(1))
     }
 
-    val patchedFileName = Paths.get(patchedPath).getFileName.toString
-    val diffFileName = "diff" + patchedFileName
-    val patchedDiffFileName = "patcheddiff" + patchedFileName
+    val sourcePackage = sourcePath match {
+      case Some(sourceChirPath) =>
+        if (!Files.isReadable(Paths.get(sourceChirPath))) {
+          System.err.println("Error: Source CHIR file does not exist: " + sourceChirPath)
+          sys.exit(1)
+        }
+        try {
+          Some(load(sourceChirPath, chirVersion))
+        } catch {
+          case e: RuntimeException =>
+            System.err.println("Error: Couldn't deserialize: " + sourceChirPath)
+            System.err.println(e.getMessage)
+            sys.exit(1)
+        }
+      case None => None
+    }
 
-    val ok = createHotfix(sourcePath, patchedPath, chirVersion, diffFileName, patchedDiffFileName)
-    if (!ok) {
+    if (!genPatch(sourcePackage, patchedPath, chirVersion)) {
       sys.exit(1)
     }
   }
