@@ -382,12 +382,14 @@ final class Func(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], att
   def isImported: Boolean = (attributes & Attribute.Imported) != 0L
   def isLambda: Boolean = funcKind == FuncKind.Lambda
 
-  /** Mints a fresh local var id, like C++ Function::GenerateLocalId. */
-  def generateLocalId(): Long = { localId += 1; localId }
+  /** Mints a fresh local var id, like C++ `Function::GenerateLocalId`
+    * (`return localId++` — the counter holds the NEXT id to mint).
+    */
+  def generateLocalId(): Long = { val r = localId; localId += 1; r }
 
-  def generateBlockId(): Long = { blockId += 1; blockId }
+  def generateBlockId(): Long = { val r = blockId; blockId += 1; r }
 
-  def generateBlockGroupId(): Long = { blockGroupId += 1; blockGroupId }
+  def generateBlockGroupId(): Long = { val r = blockGroupId; blockGroupId += 1; r }
 }
 
 final class Block(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,

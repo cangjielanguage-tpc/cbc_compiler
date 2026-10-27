@@ -28,7 +28,7 @@ class CloneSpec extends AnyFunSuite {
   private def mkFunc(): (Func, BlockGroup, Block) = {
     val f = Func(ArrayBuffer(), None, 0L, Some(funcType), "@T.f", "f", "@T.f", "T",
       None, ArrayBuffer(), None, None, FuncKind.Default, false, false, None,
-      ArrayBuffer(), None, None, ArrayBuffer(), None, None, 10L, 1L, 1L)
+      ArrayBuffer(), None, None, ArrayBuffer(), None, None, 11L, 1L, 1L)
     val bg = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), Some(f), None)
     val b0 = Block(ArrayBuffer(), None, 0L, None, "0", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
     bg.entryBlock = Some(b0)
@@ -55,7 +55,7 @@ class CloneSpec extends AnyFunSuite {
     orig.resultVar.get.attributes = Attribute.Public
 
     val clone = ExprBuilder.cloneExpr(orig, b1).asInstanceOf[AllocateExpr]
-    // fresh result, identifier minted from the top-level counter (10 -> 11)
+    // fresh result, identifier minted from the top-level counter (next = 11)
     assert(clone ne orig)
     assert(clone.resultVar.get ne orig.resultVar.get)
     assert(clone.resultVar.get.identifier == "%11")
@@ -222,7 +222,7 @@ class CloneSpec extends AnyFunSuite {
       case k            => fail(s"expected Ref type, got $k")
     }
     assert(res.associatedExpr.contains(e))
-    assert(f.localId == 11L)
+    assert(f.localId == 12L)
   }
 
   test("factory newStore/newBoolConstant/newTuple/newApply create well-formed exprs") {

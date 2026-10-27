@@ -28,7 +28,7 @@ class ChirOpsSpec extends AnyFunSuite {
   private def mkFunc(identifier: String = "@T.f"): (Func, BlockGroup, Block) = {
     val f = Func(ArrayBuffer(), None, 0L, Some(funcType), identifier, "f", identifier, "T",
       None, ArrayBuffer(), None, None, FuncKind.Default, false, false, None,
-      ArrayBuffer(), None, None, ArrayBuffer(), None, None, 10L, 1L, 1L)
+      ArrayBuffer(), None, None, ArrayBuffer(), None, None, 11L, 1L, 1L)
     val bg = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), Some(f), None)
     val b0 = Block(ArrayBuffer(), None, 0L, None, "0", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
     bg.entryBlock = Some(b0)
@@ -378,14 +378,15 @@ class ChirOpsSpec extends AnyFunSuite {
   // ---------------------------------------------------------------- identifiers
 
   test("mintResult mints %<n> from the top-level localId counter") {
-    val (f, _, b0) = mkFunc() // localId = 10
+    val (f, _, b0) = mkFunc() // next id to mint = 11
     val e = AllocateExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, tI32,
       isTry = false, ArrayBuffer())
     val lv = ChirOps.mintResult(f, ExprBuilder.refTy(tI32), e)
     val refTpe = lv.tpe.get.asInstanceOf[TypeImpl]
     assert(refTpe.kind == TypeKind.Ref && (refTpe.argTys.head eq tI32))
     assert(lv.associatedExpr.contains(e))
-    assert(f.localId == 11L)
+    assert(f.localId == 12L)
+    assert(lv.identifier == "%11")
 
     val lv2 = ChirOps.mintResult(f, tI32, e)
     assert(lv2.identifier == "%12")

@@ -88,6 +88,7 @@ class ModelSpec extends AnyFunSuite {
     val main = pkg.getFunc("@N.Pkg.main").get
     assert(main.funcKind == FuncKind.MainEntry)
     assert(!main.isLambda)
-    assert(main.generateLocalId() == main.localId) // counter semantics: increment then return
+    assert(main.generateLocalId() == 20) // counter semantics: return current, then increment
+    assert(main.generateLocalId() == 21)
   }
 }
