@@ -1,6 +1,6 @@
-# arm64 CBC compiler crash on a mut-to-mut call
+# arm64 CBC regression test for a mut-to-mut call
 
-The arm64 CBC compiler fails with an assertion while compiling
+The arm64 CBC compiler originally failed with an assertion while compiling
 `Value.unpack(reader: StringReader)` in [main.cj](main.cj). This mutable method calls
 `set(reader.read())`: an interface method produces a `String`, which is passed
 to another mutable method on the same receiver.
@@ -9,6 +9,15 @@ This is a standalone reproduction of the assertion observed while compiling
 `protobuf.Pb2String.unpack` in the LinkX hotfix inputs. It requires no LinkX,
 protobuf, hotfix plugin, or interpreter dependencies. The failure occurs during
 CBC compilation, before program execution.
+
+The fix excludes outgoing mut receiver operands from the special mut-pair
+liveness rule that retains spilled call arguments. CBC copies these source
+operands into ABI argument locations before the call, where the callee tracks
+them. Values used after the call, including exception-handler uses, remain live
+in the caller; ordinary argument uses still make both components live above
+the call.
+
+The reproduction results and investigation below describe the original failure.
 
 ## Tested environment
 

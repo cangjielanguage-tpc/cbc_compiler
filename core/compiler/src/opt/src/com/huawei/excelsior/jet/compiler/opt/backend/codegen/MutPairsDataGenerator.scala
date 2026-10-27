@@ -4,12 +4,12 @@
 
 package com.huawei.excelsior.jet.compiler.opt.backend.codegen
 
-import com.huawei.excelsior.jet.assembler.Location
 import com.huawei.excelsior.jet.assembler.Location.AnyReg
+import com.huawei.excelsior.jet.compiler.abi.ABI.TailSlot
 import com.huawei.excelsior.jet.compiler.opt.backend.BackEnd
-import com.huawei.excelsior.jet.compiler.opt.ir.Resources.{FrameSlot, Immediate, Resource}
-import com.huawei.excelsior.jet.compiler.opt.ir.{Resources, Universe}
-import com.huawei.excelsior.jet.compiler.abi.ABI.{TailSlot}
+import com.huawei.excelsior.jet.compiler.opt.ir.Resources.{FrameSlot, Immediate}
+import com.huawei.excelsior.jet.compiler.opt.ir.Universe
+import com.huawei.excelsior.jet.compiler.options.BoolOption.ImplicitCallRegAllocInCBC
 
 trait MutPairsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
 
@@ -28,6 +28,19 @@ trait MutPairsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
 
   def needMutInfo(n: Node): Boolean = needGCMap(n)
 
+  /** In CBC with implicit call allocation, receiver operands are copied to ABI argument locations
+    * before the call, where the callee tracks them. Their source locations only need mut-pair tracking if
+    * they are live after the call. */
+  private def isCalleeTrackedMutArgument(call: Call, argIdx: Int): Boolean = {
+    val methodType = call.methodType
+    // Implicit allocation lets operands use arbitrary registers or local spill slots;
+    // CBC-interpreter marshals them into ABI argument locations. With explicit allocation,
+    // outgoing ABI stack slots may need tracking by the caller.
+    env.enabled(ImplicitCallRegAllocInCBC) &&
+      methodType.hasMutRecordParameter && methodType.hasMutObjectParameter &&
+      (argIdx == methodType.getMutRecordArgIdx || argIdx == methodType.getMutObjectArgIdx)
+  }
+
   /** Calculates map from every point in IR which [[needMutInfo]] to set of nodes which [[hasMutValueProducer]] and live at this point. */
   private def calcMutValues(): collection.Map[Node, Set[Node]] = {
     val engine = new NodeLivenessEngine {
@@ -45,14 +58,16 @@ trait MutPairsDataGenerator { self: Universe with BackEnd with CodeGenerator =>
 
           node match {
             case c: Call => {
-              curr |= c.invokeArgs.filter(arg => arg.mayHaveResource && (arg.resource match {
-                case fs: FrameSlot => hasMutValueProducer(arg)
-                case Immediate => false
-                case _: AnyReg =>
-                  // parameters passed on registers should be tracked by callee
-                  false
-                // no other parameters locations are expected, MatchError is intended
-              })).toSet
+              curr |= c.invokeArgs.iterator.zipWithIndex.collect {
+                case (arg, argIdx) if arg.mayHaveResource && !isCalleeTrackedMutArgument(c, argIdx) && (arg.resource match {
+                  case fs: FrameSlot => hasMutValueProducer(arg)
+                  case Immediate => false
+                  case _: AnyReg =>
+                    // parameters passed on registers should be tracked by callee
+                    false
+                  // no other parameters locations are expected, MatchError is intended
+                }) => arg
+              }.toSet
             }
             case _ =>
           }
