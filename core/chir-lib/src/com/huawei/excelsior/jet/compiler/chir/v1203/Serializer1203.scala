@@ -437,31 +437,27 @@ object Serializer1203 {
         case e: ExitExpr =>
           (ExpressionElem.Expression, exprT(e, CHIRExprKind.Exit, Seq.empty))
         case e: RaiseExceptionExpr =>
-          val ops = Seq(valueId(e.exceptionValue)) ++ e.exceptionBlock.map(valueId).toSeq
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.RaiseException, ops))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.RaiseException, e.operands.map(valueId)))
         case e: LoadExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.Load, Seq(valueId(e.location))))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.Load, e.operands.map(valueId)))
         case e: StoreExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.Store, Seq(valueId(e.value), valueId(e.location))))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.Store, e.operands.map(valueId)))
         case e: ConstantExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.Constant, Seq(valueId(e.literal))))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.Constant, e.operands.map(valueId)))
         case e: TupleExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.Tuple, e.elementValues.map(valueId)))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.Tuple, e.operands.map(valueId)))
         case e: GetExceptionExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.GetException, Seq.empty))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.GetException, e.operands.map(valueId)))
         case e: GetRTTIExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.GetRtti, Seq(valueId(e.obj))))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.GetRtti, e.operands.map(valueId)))
         case e: VArrayExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.VArrayExpr, e.elementValues.map(valueId)))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.VArrayExpr, e.operands.map(valueId)))
         case e: VArrayBuilderExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.VArrayBuilder,
-            Seq(valueId(e.size), valueId(e.initValue), valueId(e.initializer))))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.VArrayBuilder, e.operands.map(valueId)))
         case e: RawArrayLiteralInitExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.RawArrayLiteralInit,
-            valueId(e.array) +: e.elementValues.map(valueId)))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.RawArrayLiteralInit, e.operands.map(valueId)))
         case e: RawArrayInitByValueExpr =>
-          (ExpressionElem.Expression, exprT(e, CHIRExprKind.RawArrayInitByValue,
-            Seq(valueId(e.array), valueId(e.size), valueId(e.initValue))))
+          (ExpressionElem.Expression, exprT(e, CHIRExprKind.RawArrayInitByValue, e.operands.map(valueId)))
         case e: CastExpr =>
           val kind = e.op match {
             case CastOp.StaticCast     => CHIRExprKind.StaticCast
@@ -471,11 +467,11 @@ object Serializer1203 {
             case CastOp.CastToConcrete => CHIRExprKind.CastToConcrete
             case CastOp.CastToGeneric  => CHIRExprKind.CastToGeneric
           }
-          (ExpressionElem.Expression, exprT(e, kind, Seq(valueId(e.value))))
+          (ExpressionElem.Expression, exprT(e, kind, e.operands.map(valueId)))
         case e: AllocateExpr =>
           val u = new AllocateBaseT()
           u.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.Allocate, CHIRExprKind.TryAllocate),
-            if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty))
+            e.operands.map(valueId)))
           u.setAllocatedType(typeId(e.allocatedType))
           (ExpressionElem.AllocateBase, u)
         case e: UnaryExpr =>
@@ -484,9 +480,8 @@ object Serializer1203 {
             case UnaryOp.Not    => CHIRExprKind.Not
             case UnaryOp.BitNot => CHIRExprKind.BitNot
           }
-          val ops = Seq(valueId(e.operand)) ++ (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
           val u = new UnaryExpressionBaseT()
-          u.setBase(exprT(e, kind, ops))
+          u.setBase(exprT(e, kind, e.operands.map(valueId)))
           u.setOverflowStrategy(ofsWire(e.overflowStrategy))
           (ExpressionElem.UnaryExpressionBase, u)
         case e: BinaryExpr =>
@@ -509,24 +504,18 @@ object Serializer1203 {
             case BinaryOp.Eq     => CHIRExprKind.Equal
             case BinaryOp.NotEq  => CHIRExprKind.NotEqual
           }
-          val ops = Seq(valueId(e.leftOperand), valueId(e.rightOperand)) ++
-            (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
           val u = new BinaryExpressionBaseT()
-          u.setBase(exprT(e, kind, ops))
+          u.setBase(exprT(e, kind, e.operands.map(valueId)))
           u.setOverflowStrategy(ofsWire(e.overflowStrategy))
           (ExpressionElem.BinaryExpressionBase, u)
         case e: ApplyExpr =>
-          val ops = Seq(valueId(e.callee)) ++ e.args.map(valueId) ++
-            (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
-          val fc = funcCallT(e, tryKind(e.isTry, CHIRExprKind.Apply, CHIRExprKind.TryApply), ops)
+          val fc = funcCallT(e, tryKind(e.isTry, CHIRExprKind.Apply, CHIRExprKind.TryApply), e.operands.map(valueId))
           val u = new ApplyBaseT()
           u.setBase(fc)
           u.setIsSuperCall(!e.isTry && e.isSuperCall)
           (ExpressionElem.ApplyBase, u)
         case e: InvokeExpr =>
-          val ops = Seq(valueId(e.callee), valueId(e.caller)) ++ e.args.map(valueId) ++
-            (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
-          val fc = funcCallT(e, tryKind(e.isTry, CHIRExprKind.Invoke, CHIRExprKind.TryInvoke), ops)
+          val fc = funcCallT(e, tryKind(e.isTry, CHIRExprKind.Invoke, CHIRExprKind.TryInvoke), e.operands.map(valueId))
           val u = new InvokeBaseT()
           u.setBase(fc)
           // v1203 InvokeBase carries the virtual-method context instead of overflowStrategy
@@ -534,10 +523,8 @@ object Serializer1203 {
           (ExpressionElem.InvokeBase, u)
         case e: IntrinsicExpr =>
           // IntrinsicBase writes funcCall with thisType = 0 (mirrors the C++ serializer)
-          val ops = e.args.map(valueId) ++
-            (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
           val fc = new FuncCallT()
-          fc.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.Intrinsic, CHIRExprKind.TryIntrinsic), ops))
+          fc.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.Intrinsic, CHIRExprKind.TryIntrinsic), e.operands.map(valueId)))
           fc.setInstantiatedTypeArgs(typeIds(e.instantiatedTypeArgs))
           fc.setObjType(0L)
           val u = new IntrinsicBaseT()
@@ -545,89 +532,83 @@ object Serializer1203 {
           u.setIntrinsicKind(e.intrinsicKind)
           (ExpressionElem.IntrinsicBase, u)
         case e: NumericCastExpr =>
-          val ops = Seq(valueId(e.value)) ++ (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
           val u = new NumericCastBaseT()
-          u.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.NumericCast, CHIRExprKind.TryNumericCast), ops))
+          u.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.NumericCast, CHIRExprKind.TryNumericCast), e.operands.map(valueId)))
           u.setOverflowStrategy(ofsWire(e.overflowStrategy))
           (ExpressionElem.NumericCastBase, u)
         case e: RawArrayAllocateExpr =>
-          val ops = Seq(valueId(e.size)) ++ (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
           val u = new RawArrayAllocateBaseT()
-          u.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.RawArrayAllocate, CHIRExprKind.TryRawArrayAllocate), ops))
+          u.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.RawArrayAllocate, CHIRExprKind.TryRawArrayAllocate), e.operands.map(valueId)))
           u.setElementType(typeId(e.elementType))
           (ExpressionElem.RawArrayAllocateBase, u)
         case e: SpawnExpr =>
-          val ops = Seq(valueId(e.obj)) ++ e.spawnArg.map(valueId).toSeq ++
-            (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
           val u = new SpawnBaseT()
-          u.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.Spawn, CHIRExprKind.TrySpawn), ops))
+          u.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.Spawn, CHIRExprKind.TrySpawn), e.operands.map(valueId)))
           u.setExecuteClosure(e.executeClosure.map(valueId).getOrElse(0L))
           (ExpressionElem.SpawnBase, u)
         case e: BranchExpr =>
           val u = new BranchT()
-          u.setBase(exprT(e, CHIRExprKind.Branch,
-            Seq(valueId(e.condition), valueId(e.trueBlock), valueId(e.falseBlock))))
+          u.setBase(exprT(e, CHIRExprKind.Branch, e.operands.map(valueId)))
           u.setSourceExpr(e.sourceExpr)
           (ExpressionElem.Branch, u)
         case e: MultiBranchExpr =>
-          val ops = Seq(valueId(e.condition), valueId(e.defaultBlock)) ++ e.normalBlocks.map(valueId)
           val u = new MultiBranchT()
-          u.setBase(exprT(e, CHIRExprKind.MultiBranch, ops))
+          u.setBase(exprT(e, CHIRExprKind.MultiBranch, e.operands.map(valueId)))
           if (e.caseValues.nonEmpty) u.setCaseValues(e.caseValues.toArray)
           (ExpressionElem.MultiBranch, u)
         case e: GetElementRefExpr =>
           val u = new GetElementRefT()
-          u.setBase(exprT(e, CHIRExprKind.GetElementRef, Seq(valueId(e.base))))
+          u.setBase(exprT(e, CHIRExprKind.GetElementRef, e.operands.map(valueId)))
           if (e.path.nonEmpty) u.setPath(e.path.toArray)
           (ExpressionElem.GetElementRef, u)
         case e: GetElementByNameExpr =>
           val u = new GetElementByNameT()
-          u.setBase(exprT(e, CHIRExprKind.GetElementByName, Seq(valueId(e.base))))
+          u.setBase(exprT(e, CHIRExprKind.GetElementByName, e.operands.map(valueId)))
           u.setFieldNames(e.fieldNames.toArray)
           (ExpressionElem.GetElementByName, u)
         case e: StoreElementRefExpr =>
           val u = new StoreElementRefT()
-          u.setBase(exprT(e, CHIRExprKind.StoreElementRef, Seq(valueId(e.value), valueId(e.location))))
+          u.setBase(exprT(e, CHIRExprKind.StoreElementRef, e.operands.map(valueId)))
           if (e.path.nonEmpty) u.setPath(e.path.toArray)
           (ExpressionElem.StoreElementRef, u)
         case e: StoreElementByNameExpr =>
           val u = new StoreElementByNameT()
-          u.setBase(exprT(e, CHIRExprKind.StoreElementByName, Seq(valueId(e.value), valueId(e.location))))
+          u.setBase(exprT(e, CHIRExprKind.StoreElementByName, e.operands.map(valueId)))
           u.setFieldNames(e.fieldNames.toArray)
           (ExpressionElem.StoreElementByName, u)
         case e: FieldExpr =>
           val u = new FieldT()
-          u.setBase(exprT(e, CHIRExprKind.Field, Seq(valueId(e.base))))
+          u.setBase(exprT(e, CHIRExprKind.Field, e.operands.map(valueId)))
           if (e.path.nonEmpty) u.setPath(e.path.toArray)
           (ExpressionElem.Field, u)
         case e: FieldByNameExpr =>
           val u = new FieldByNameT()
-          u.setBase(exprT(e, CHIRExprKind.FieldByName, Seq(valueId(e.base))))
+          u.setBase(exprT(e, CHIRExprKind.FieldByName, e.operands.map(valueId)))
           u.setFieldNames(e.fieldNames.toArray)
           (ExpressionElem.FieldByName, u)
         case e: InstanceOfExpr =>
           val u = new InstanceOfT()
-          u.setBase(exprT(e, CHIRExprKind.InstanceOf, Seq(valueId(e.obj))))
+          u.setBase(exprT(e, CHIRExprKind.InstanceOf, e.operands.map(valueId)))
           u.setTargetType(typeId(e.targetType))
           (ExpressionElem.InstanceOf, u)
         case e: GetInstantiateValueExpr =>
           val u = new GetInstantiateValueT()
-          u.setBase(exprT(e, CHIRExprKind.GetInstantiateValue, Seq(valueId(e.instVal))))
+          u.setBase(exprT(e, CHIRExprKind.GetInstantiateValue, e.operands.map(valueId)))
           u.setInstantiateTypes(typeIds(e.instantiateTypes))
           (ExpressionElem.GetInstantiateValue, u)
         case e: GetRTTIStaticExpr =>
           val u = new GetRTTIStaticT()
-          u.setBase(exprT(e, CHIRExprKind.GetRttiStatic, Seq.empty))
+          u.setBase(exprT(e, CHIRExprKind.GetRttiStatic, e.operands.map(valueId)))
           u.setRttiType(typeId(e.rttiType))
           (ExpressionElem.GetRTTIStatic, u)
         case e: DebugExpr =>
           val u = new DebugT()
-          u.setBase(exprT(e, CHIRExprKind.Debug, Seq(valueId(e.value))))
+          u.setBase(exprT(e, CHIRExprKind.Debug, e.operands.map(valueId)))
           u.setSrcCodeName(e.srcCodeName)
           (ExpressionElem.Debug, u)
         case e: LambdaExpr =>
           val u = new LambdaT()
-          u.setBase(exprT(e, CHIRExprKind.Lambda, Seq.empty))
+          u.setBase(exprT(e, CHIRExprKind.Lambda, e.operands.map(valueId)))
           u.setFuncTy(typeId(e.funcTy))
           u.setIsLocalFunc(e.isLocalFunc)
           u.setIdentifier(e.identifier)
