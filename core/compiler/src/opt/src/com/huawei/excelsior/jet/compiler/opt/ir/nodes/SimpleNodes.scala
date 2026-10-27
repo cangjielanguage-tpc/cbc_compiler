@@ -1034,8 +1034,6 @@ trait SimpleNodes { self: Universe with Nodes =>
     }
 
     def apply(from: AsmType, to: AsmType) = Prototype.intern(Proto(from, to))
-
-    def unapply(cast: CheckedValueConvert): Option[(AsmType, AsmType, Node)] = Some(cast.fromAsm, cast.toAsm, cast.value)
   }
 
   object JavaConvert {

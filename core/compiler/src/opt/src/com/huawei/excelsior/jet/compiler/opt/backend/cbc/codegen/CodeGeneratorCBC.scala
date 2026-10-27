@@ -319,10 +319,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
     private def genCheckedValueConvert(convert: CheckedValueConvert): Unit = {
-      val CheckedValueConvert(fromType, toType, arg) = convert
-      (convert, arg) match {
+      (convert, convert.value) match {
         case (Reg(to), Reg(from)) =>
-          asm.checkedConvert(toType, fromType, to, from)
+          asm.checkedConvert(convert.toAsm, convert.fromAsm, to, from)
         case _ => shouldNotReachHere(s"source or dest resource wasn't matched to any reg: (${convert.resource}, ${convert.arg.resource})")
       }
     }
