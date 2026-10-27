@@ -41,53 +41,43 @@ enum TypeKind {
     Tuple, Struct, Enum, Func, Class,
     RawArray, VArray, CPointer, CString, Generic, Ref, Box, This
 }
-
 /** Linkage (int16) */
 enum Linkage {
   case WeakOdr, External, Internal, LinkonceOdr, ExternalWeak
 }
-
 /** SkipKind */
 enum SkipKind {
-  case NoSkip, SkipDceWarning, SkipForinExit, SkipVic, Checked
+  case NoSkip, SkipDceWarning, SkipForinExit, SkipVic
 }
-
-/** OverflowStrategy */
+/** OverflowStrategy (v1203 additionally carries CHECKED between NA and WRAPPING) */
 enum OverflowStrategy {
-  case Na, Wrapping, Throwing, Saturating
+  case Na, Checked, Wrapping, Throwing, Saturating
 }
-
 /** ConstantValueKind */
 enum ConstantValueKind {
   case Bool, Rune, Int, Float, String, Unit, Null, Func
 }
-
 /** ValueKind */
 enum ValueKind {
   case Literal, GlobalVar, Parameter, LocalVar, Func, Block, BlockGroup
 }
-
 /** FuncKind */
 enum FuncKind {
   case Default, Getter, Setter, Lambda, ClassCtor, PrimalClassCtor, StructCtor, PrimalStructCtor,
     GlobalVarInit, Finalizer, MainEntry, AnnoFactory, Macro, DefaultParameter, InstanceVarInit
 }
-
 /** CustomDefKind */
 enum CustomDefKind {
   case Struct, Enum, Class, Extend
 }
-
 /** PackageAccessLevel */
 enum PackageAccessLevel {
   case Invalid, Internal, Protected, Public
 }
-
 /** Phase */
 enum Phase {
   case Raw, Opt, Plugin, AnalysisForCjlint
 }
-
 /** SourceExpr — raw values mirror the C++ enum (which has MATCH_CASE=8, OTHER=9;
   * the chir-lib schema enum stops at OTHER=8, so raw ints are used).
   * Branch.sourceExpr defaults to 0 (IF_EXPR) when absent; MultiBranch.sourceExpr
@@ -129,7 +119,6 @@ enum ExprKind {
     Constant, Debug, Tuple, InstanceOf, GetException, Spawn, Lambda, GetInstantiateValue,
     Apply, Invoke, Intrinsic, GetRtti, GetRttiStatic
 }
-
 /** IntrinsicKind is too large to mirror as an enum; raw values are stored and compared. */
 object IntrinsicKind {
   val BeginCatch: Int = 404
@@ -140,17 +129,14 @@ object IntrinsicKind {
 enum BinaryOp {
   case Add, Sub, Mul, Div, Mod, Exp, LShift, RShift, And, Or, Xor, Lt, Gt, Le, Ge, Eq, NotEq
 }
-
 /** Unary expression op kinds (derived from CHIRExprKind). */
 enum UnaryOp {
   case Neg, Not, BitNot
 }
-
 /** Cast kinds stored in the wildcard Expression table kind. */
 enum CastOp {
   case StaticCast, Box, UnboxToValue, UnboxToRef, CastToConcrete, CastToGeneric
 }
-
 /** Flatbuffer ExpressionElem union tag (raw value = ordinal). */
 enum ExprTable {
   case Expression, AllocateBase, ApplyBase, BinaryExpressionBase, Branch, Debug, Field, FieldByName,
@@ -158,7 +144,6 @@ enum ExprTable {
     InvokeBase, Lambda, MultiBranch, NumericCastBase, RawArrayAllocateBase, SpawnBase,
     StoreElementByName, StoreElementRef, UnaryExpressionBase
 }
-
 // =====================================================================================
 // Types
 // =====================================================================================

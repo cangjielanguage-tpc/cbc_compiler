@@ -302,7 +302,7 @@ object Materializer13002 {
             val ops = opRefs(eb)
             new UnaryExpr(annosOf(b), locOf(b), b.getAttributes,
               blockRef(eb.getOwner), bgRefs(eb), localVarRef(eb.getResultLocalVar), unaryOp(eb.getKind),
-              OverflowStrategy.fromOrdinal(e.getOverflowStrategy), ops.head, isTry,
+              ofsFromWire(e.getOverflowStrategy), ops.head, isTry,
               ArrayBuffer.from(ops.drop(1).map(_.asInstanceOf[Block])))
           case ExpressionElem.BinaryExpressionBase =>
             val e = root.exprs(new FBinaryExpressionBase(), i).asInstanceOf[FBinaryExpressionBase].unpack()
@@ -312,7 +312,7 @@ object Materializer13002 {
             val ops = opRefs(eb)
             new BinaryExpr(annosOf(b), locOf(b), b.getAttributes,
               blockRef(eb.getOwner), bgRefs(eb), localVarRef(eb.getResultLocalVar), binaryOp(eb.getKind),
-              OverflowStrategy.fromOrdinal(e.getOverflowStrategy), ops(0), ops(1), isTry,
+              ofsFromWire(e.getOverflowStrategy), ops(0), ops(1), isTry,
               ArrayBuffer.from(ops.drop(2).map(_.asInstanceOf[Block])))
           case ExpressionElem.ApplyBase =>
             val e = root.exprs(new FApplyBase(), i).asInstanceOf[FApplyBase].unpack()
@@ -338,7 +338,7 @@ object Materializer13002 {
               blockRef(eb.getOwner), bgRefs(eb), localVarRef(eb.getResultLocalVar),
               tyRefs(fc.getInstantiatedTypeArgs), tyOpt(fc.getObjType), ops(0).asInstanceOf[Func],
               ops(1), ArrayBuffer.from(ops.slice(2, 2 + nArgs)),
-              OverflowStrategy.fromOrdinal(e.getOverflowStrategy), isTry, tryBlocks(eb, isTry))
+              ofsFromWire(e.getOverflowStrategy), isTry, tryBlocks(eb, isTry))
           case ExpressionElem.IntrinsicBase =>
             val e = root.exprs(new FIntrinsicBase(), i).asInstanceOf[FIntrinsicBase].unpack()
             val fc = e.getBase()
@@ -358,7 +358,7 @@ object Materializer13002 {
             val ops = opRefs(eb)
             new NumericCastExpr(annosOf(b), locOf(b), b.getAttributes,
               blockRef(eb.getOwner), bgRefs(eb), localVarRef(eb.getResultLocalVar),
-              OverflowStrategy.fromOrdinal(e.getOverflowStrategy), ops.head, isTry,
+              ofsFromWire(e.getOverflowStrategy), ops.head, isTry,
               ArrayBuffer.from(ops.drop(1).map(_.asInstanceOf[Block])))
           case ExpressionElem.RawArrayAllocateBase =>
             val e = root.exprs(new FRawArrayAllocateBase(), i).asInstanceOf[FRawArrayAllocateBase].unpack()
@@ -611,7 +611,7 @@ object Materializer13002 {
 
     private def wirePackageLevel(): Unit = {
       for (i <- values.indices) values(i) match {
-        case gv: GlobalVar => pkg.globalVars += gv
+        case g: GlobalVar => pkg.globalVars += g
         case f: Func => pkg.globalFuncs += f
         case _ =>
       }
@@ -678,6 +678,15 @@ object Materializer13002 {
       val bgs = e.getBlockGroups
       if (bgs != null) for (j <- bgs.indices) r += values((bgs(j) - 1).toInt).asInstanceOf[BlockGroup]
       r
+    }
+
+    /** v13002 wire ordinal -> model OverflowStrategy (no CHECKED in v13002) */
+    private def ofsFromWire(i: Int): OverflowStrategy = i match {
+      case 0 => OverflowStrategy.Na
+      case 1 => OverflowStrategy.Wrapping
+      case 2 => OverflowStrategy.Throwing
+      case 3 => OverflowStrategy.Saturating
+      case other => sys.error(s"Unexpected v13002 OverflowStrategy $other")
     }
 
     /** TryApply(5)..TryRShift(21) are the exception-throwing kinds. */
