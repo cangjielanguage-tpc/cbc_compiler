@@ -97,7 +97,10 @@ object Materializer13002 {
           case TypeElem.CustomType =>
             val t = root.types(new FCustomType(), i).asInstanceOf[FCustomType]
             val ct = new CustomType(null)
-            deferred += { () => ct.customTypeDef = defRef(t.customTypeDef()) }
+            deferred += { () =>
+              ct.customTypeDef = defRef(t.customTypeDef())
+              for (j <- 0 until t.base().argTysLength()) ct.argTys += ty(t.base().argTys(j))
+            }
             types(i) = ct
           case TypeElem.RawArrayType =>
             val t = root.types(new FRawArrayType(), i).asInstanceOf[FRawArrayType]
@@ -321,11 +324,11 @@ object Materializer13002 {
             val b = eb.base()
             val isTry = isTryKind(eb.kind())
             val ops = opRefs(eb)
-            val nArgs = ops.length - 2 - (if (isTry) 2 else 0) // minus callee and caller (+ try tail)
+            val nArgs = ops.length - 2 - (if (isTry) 2 else 0) // minus callee, caller (+ try tail)
             new InvokeExpr(annosOf(b), locOf(b), b.attributes(),
               blockRef(eb.owner()), bgRefs(eb), localVarRef(eb.resultLocalVar()),
               tyRefs(fc.instantiatedTypeArgsVector()), tyOpt(fc.objType()), ops(0).asInstanceOf[Func],
-              ArrayBuffer.from(ops.slice(2, 2 + nArgs)),
+              ops(1), ArrayBuffer.from(ops.slice(2, 2 + nArgs)),
               OverflowStrategy.fromOrdinal(e.overflowStrategy()), isTry, tryBlocks(eb, isTry))
           case ExpressionElem.IntrinsicBase =>
             val e = root.exprs(new FIntrinsicBase(), i).asInstanceOf[FIntrinsicBase]
@@ -447,7 +450,7 @@ object Materializer13002 {
             val eb = e.base()
             val b = eb.base()
             new GetInstantiateValueExpr(annosOf(b), locOf(b), b.attributes(),
-              blockRef(eb.owner()), bgRefs(eb), localVarRef(eb.resultLocalVar()),
+              blockRef(eb.owner()), bgRefs(eb), localVarRef(eb.resultLocalVar()), opRef(eb, 0),
               tyRefs(e.instantiateTypesVector()))
           case ExpressionElem.GetRTTIStatic =>
             val e = root.exprs(new FGetRTTIStatic(), i).asInstanceOf[FGetRTTIStatic]
