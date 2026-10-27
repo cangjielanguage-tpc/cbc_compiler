@@ -277,7 +277,7 @@ object Build {
             IO.delete(generated / "CHIRFormat")
 
             Seq(env.flatc,
-              "--no-warnings", "--java",
+              "--no-warnings", "--java", "--gen-object-api",
               "-o", generatedRoot.toString,
               "--java-package-prefix", chirPackage,
               schemaFile.toString
