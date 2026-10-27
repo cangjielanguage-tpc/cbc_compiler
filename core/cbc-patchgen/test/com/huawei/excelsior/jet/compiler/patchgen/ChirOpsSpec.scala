@@ -26,11 +26,10 @@ class ChirOpsSpec extends AnyFunSuite {
 
   /** A function `@T.f` with one empty entry block. */
   private def mkFunc(identifier: String = "@T.f"): (Func, BlockGroup, Block) = {
-    val f = Func(ArrayBuffer(), None, 0L, Some(funcType), identifier, "f", identifier, "T",
-      None, ArrayBuffer(), None, None, FuncKind.Default, false, false, None,
-      ArrayBuffer(), None, None, ArrayBuffer(), None, None, 11L, 1L, 1L)
-    val bg = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), Some(f), None)
-    val b0 = Block(ArrayBuffer(), None, 0L, None, "0", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val f = Func(tpe = Some(funcType), identifier = identifier, srcCodeIdentifier = "f",
+      rawMangledName = identifier, packageName = "T", localId = 11L, blockId = 1L, blockGroupId = 1L)
+    val bg = BlockGroup(identifier = "0", ownedFunc = Some(f))
+    val b0 = Block(identifier = "0", parentGroup = Some(bg))
     bg.entryBlock = Some(b0)
     bg.blocks += b0
     f.body = Some(bg)
@@ -44,17 +43,16 @@ class ChirOpsSpec extends AnyFunSuite {
   }
 
   private def alloc(tpe: Type, owner: Block): AllocateExpr = {
-    val e = AllocateExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, tpe,
-      isTry = false, ArrayBuffer())
-    e.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(ExprBuilder.refTy(tpe)),
-      "%1", Some(e), isRetVal = false, ""))
+    val e = AllocateExpr(allocatedType = tpe)
+    e.resultVar = Some(LocalVar(tpe = Some(ExprBuilder.refTy(tpe)), identifier = "%1",
+      associatedExpr = Some(e)))
     ChirOps.appendExpression(owner, e)
     e
   }
 
   private def store(value: Value, location: Value, owner: Block): StoreExpr = {
-    val e = StoreExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, value, location)
-    e.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(tUnit), "%2", Some(e), isRetVal = false, ""))
+    val e = StoreExpr(value0 = value, location0 = location)
+    e.resultVar = Some(LocalVar(tpe = Some(tUnit), identifier = "%2", associatedExpr = Some(e)))
     ChirOps.appendExpression(owner, e)
     e
   }
@@ -63,18 +61,16 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("visitFuncExprs visits blocks/expressions/lambda bodies in order") {
     val (f, bg, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(bg))
     bg.blocks += b1
     val e0 = alloc(tI32, b0)
     val e1 = alloc(tI32, b1)
 
     // a lambda in b1 with one expression of its own
-    val lambda = LambdaExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(),
-      Some(LocalVar(ArrayBuffer(), None, 0L, Some(funcType), "%3", None, isRetVal = false, "")),
-      funcType, isLocalFunc = true, "@T.f.lam", "<closure>",
-      ArrayBuffer(), ArrayBuffer(), None, None, isCompileTimeValue = false)
-    val lamBg = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), None, Some(lambda))
-    val lb0 = Block(ArrayBuffer(), None, 0L, None, "0", Some(lamBg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val lambda = LambdaExpr(resultVar = Some(LocalVar(tpe = Some(funcType), identifier = "%3")),
+      funcTy = funcType, isLocalFunc = true, identifier = "@T.f.lam", srcCodeName = "<closure>")
+    val lamBg = BlockGroup(identifier = "0", ownedExpression = Some(lambda))
+    val lb0 = Block(identifier = "0", parentGroup = Some(lamBg))
     lamBg.entryBlock = Some(lb0)
     lamBg.blocks += lb0
     lambda.body = Some(lamBg)
@@ -91,7 +87,7 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("visitFuncExprs iterates a snapshot: removing the current expr keeps the walk alive") {
     val (f, bg, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(bg))
     bg.blocks += b1
     alloc(tI32, b0)
     alloc(tI32, b0)
@@ -111,44 +107,39 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("operandsOf order matches C++ Expression::GetOperands") {
     val (_, bg, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(bg))
     bg.blocks += b1
     val lv = alloc(tI32, b0).resultVar.get
 
-    val store = StoreExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, lv, lv)
+    val store = StoreExpr(value0 = lv, location0 = lv)
     assert(ChirOps.operandsOf(store).toList == Seq[Value](lv, lv))
 
-    val callee = Func(ArrayBuffer(), None, 0L, None, "@T.g", "g", "@T.g", "T", None,
-      ArrayBuffer(), None, None, FuncKind.Default, false, false, None, ArrayBuffer(), None,
-      None, ArrayBuffer(), None, None, 1L, 1L, 1L)
-    val apply = ApplyExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None,
-      ArrayBuffer(), None, callee, ArrayBuffer(lv), isSuperCall = false, isTry = false, ArrayBuffer())
+    val callee = Func(identifier = "@T.g", srcCodeIdentifier = "g", rawMangledName = "@T.g",
+      packageName = "T", localId = 1L, blockId = 1L, blockGroupId = 1L)
+    val apply = ApplyExpr(callee0 = callee, args0 = ArrayBuffer(lv))
     assert(ChirOps.operandsOf(apply).toList == Seq[Value](callee, lv))
 
-    val tryApply = ApplyExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None,
-      ArrayBuffer(), None, callee, ArrayBuffer(lv), isSuperCall = false, isTry = true,
-      ArrayBuffer(b1))
+    val tryApply = ApplyExpr(callee0 = callee, args0 = ArrayBuffer(lv), isTry = true,
+      handlerBlocks0 = ArrayBuffer(b1))
     assert(ChirOps.operandsOf(tryApply).toList == Seq[Value](callee, lv, b1))
 
-    val invoke = InvokeExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None,
-      ArrayBuffer(), None, callee, lv, ArrayBuffer(lv), OverflowStrategy.Na, isTry = false,
-      ArrayBuffer())
+    val invoke = InvokeExpr(callee0 = callee, caller0 = lv, args0 = ArrayBuffer(lv),
+      overflowStrategy = OverflowStrategy.Na)
     assert(ChirOps.operandsOf(invoke).toList == Seq[Value](callee, lv, lv))
 
-    val mbranch = MultiBranchExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, lv,
-      ArrayBuffer(0L, 1L), b1, ArrayBuffer(b0, b1))
+    val mbranch = MultiBranchExpr(condition0 = lv, caseValues = ArrayBuffer(0L, 1L),
+      defaultBlock0 = b1, normalBlocks0 = ArrayBuffer(b0, b1))
     assert(ChirOps.operandsOf(mbranch).toList == Seq[Value](lv, b1, b0, b1))
 
-    val branch = BranchExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, lv, b0, b1,
-      SourceExprTag.IfExpr)
+    val branch = BranchExpr(condition0 = lv, trueBlock0 = b0, falseBlock0 = b1,
+      sourceExpr = SourceExprTag.IfExpr)
     assert(ChirOps.operandsOf(branch).toList == Seq[Value](lv, b0, b1))
 
-    val exit = ExitExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None)
+    val exit = ExitExpr()
     assert(ChirOps.operandsOf(exit).isEmpty)
 
-    val lambda = LambdaExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, funcType,
-      isLocalFunc = true, "@T.f.lam", "<closure>", ArrayBuffer(), ArrayBuffer(), None, None,
-      isCompileTimeValue = false)
+    val lambda = LambdaExpr(funcTy = funcType, isLocalFunc = true, identifier = "@T.f.lam",
+      srcCodeName = "<closure>")
     assert(ChirOps.operandsOf(lambda).isEmpty)
   }
 
@@ -161,12 +152,10 @@ class ChirOpsSpec extends AnyFunSuite {
     val s = store(lv, lv, b0)
 
     // second user inside a lambda body
-    val lambda = LambdaExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(),
-      Some(LocalVar(ArrayBuffer(), None, 0L, Some(funcType), "%3", None, isRetVal = false, "")),
-      funcType, isLocalFunc = true, "@T.f.lam", "<closure>",
-      ArrayBuffer(), ArrayBuffer(), None, None, isCompileTimeValue = false)
-    val lamBg = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), None, Some(lambda))
-    val lb0 = Block(ArrayBuffer(), None, 0L, None, "0", Some(lamBg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val lambda = LambdaExpr(resultVar = Some(LocalVar(tpe = Some(funcType), identifier = "%3")),
+      funcTy = funcType, isLocalFunc = true, identifier = "@T.f.lam", srcCodeName = "<closure>")
+    val lamBg = BlockGroup(identifier = "0", ownedExpression = Some(lambda))
+    val lb0 = Block(identifier = "0", parentGroup = Some(lamBg))
     lamBg.entryBlock = Some(lb0)
     lamBg.blocks += lb0
     lambda.body = Some(lamBg)
@@ -177,7 +166,7 @@ class ChirOpsSpec extends AnyFunSuite {
     val users = ChirOps.usersOf(lv, pkg)
     assert(users.toSet == Set[Expression](s, s2))
 
-    val unused = LocalVar(ArrayBuffer(), None, 0L, Some(tI32), "%99", None, isRetVal = false, "")
+    val unused = LocalVar(tpe = Some(tI32), identifier = "%99")
     assert(ChirOps.usersOf(unused, pkg).isEmpty)
   }
 
@@ -188,32 +177,31 @@ class ChirOpsSpec extends AnyFunSuite {
     val oldV = alloc(tI32, b0).resultVar.get
     val newV = alloc(tI32, b0).resultVar.get
 
-    val tuple = TupleExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None,
-      ArrayBuffer(oldV, newV, oldV))
+    val tuple = TupleExpr(elementValues0 = ArrayBuffer(oldV, newV, oldV))
     ChirOps.replaceOperand(tuple, oldV, newV)
     assert(tuple.elementValues.toSeq == Seq[Value](newV, newV, newV))
 
-    val bin = BinaryExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, BinaryOp.Add,
-      OverflowStrategy.Na, oldV, newV, isTry = false, ArrayBuffer())
+    val bin = BinaryExpr(op = BinaryOp.Add, overflowStrategy = OverflowStrategy.Na,
+      leftOperand0 = oldV, rightOperand0 = newV)
     ChirOps.replaceOperand(bin, oldV, newV)
     assert(bin.leftOperand eq newV)
   }
 
   test("replaceOperand on a block operand updates predecessor edges (deduped)") {
     val (_, bg, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
-    val b2 = Block(ArrayBuffer(), None, 0L, None, "2", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(bg))
+    val b2 = Block(identifier = "2", parentGroup = Some(bg))
     bg.blocks ++= ArrayBuffer(b1, b2)
     b1.predecessors += b0
 
-    val goto = GotoExpr(ArrayBuffer(), None, 0L, Some(b0), ArrayBuffer(), None, b1)
+    val goto = GotoExpr(owner = Some(b0), destination0 = b1)
     ChirOps.replaceOperand(goto, b1, b2)
     assert(goto.destination eq b2)
     assert(!b1.predecessors.exists(_ eq b0))
     assert(b2.predecessors.count(_ eq b0) == 1)
 
     // replacing with the same value is a no-op
-    val goto2 = GotoExpr(ArrayBuffer(), None, 0L, Some(b0), ArrayBuffer(), None, b1)
+    val goto2 = GotoExpr(owner = Some(b0), destination0 = b1)
     b1.predecessors += b0
     ChirOps.replaceOperand(goto2, b1, b1)
     assert(b1.predecessors.count(_ eq b0) == 1)
@@ -223,19 +211,18 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("appendExpression sets owner, appends, adds successor preds; re-append moves") {
     val (_, bg, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(bg))
     bg.blocks += b1
 
-    val e = AllocateExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, tI32,
-      isTry = false, ArrayBuffer())
-    e.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(ExprBuilder.refTy(tI32)),
-      "%1", Some(e), isRetVal = false, ""))
+    val e = AllocateExpr(allocatedType = tI32)
+    e.resultVar = Some(LocalVar(tpe = Some(ExprBuilder.refTy(tI32)), identifier = "%1",
+      associatedExpr = Some(e)))
     ChirOps.appendExpression(b0, e)
     assert(e.owner.contains(b0))
     assert(b0.exprs.last eq e)
 
     // a goto in b0 targets b1; appending goto must add the pred edge
-    val goto = GotoExpr(ArrayBuffer(), None, 0L, Some(b0), ArrayBuffer(), None, b1)
+    val goto = GotoExpr(owner = Some(b0), destination0 = b1)
     goto.resultVar = None
     ChirOps.appendExpression(b0, goto)
     assert(b1.predecessors.count(_ eq b0) == 1)
@@ -249,10 +236,10 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("removeSelfFromBlock drops the expr and its successors' pred edges") {
     val (_, bg, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(bg))
     bg.blocks += b1
     b1.predecessors += b0
-    val goto = GotoExpr(ArrayBuffer(), None, 0L, Some(b0), ArrayBuffer(), None, b1)
+    val goto = GotoExpr(owner = Some(b0), destination0 = b1)
     goto.resultVar = None
     ChirOps.appendExpression(b0, goto)
 
@@ -265,7 +252,7 @@ class ChirOpsSpec extends AnyFunSuite {
   test("removeSelfFromBlockGroup unlinks the block and its expressions") {
     val (f, bg, b0) = mkFunc()
     val e = alloc(tI32, b0)
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(bg))
     bg.blocks += b1
 
     ChirOps.removeSelfFromBlockGroup(b1)
@@ -320,11 +307,11 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("moveAfter a terminator carries predecessor edges to the target block") {
     val (_, bg, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
-    val b2 = Block(ArrayBuffer(), None, 0L, None, "2", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(bg))
+    val b2 = Block(identifier = "2", parentGroup = Some(bg))
     bg.blocks ++= ArrayBuffer(b1, b2)
 
-    val goto = GotoExpr(ArrayBuffer(), None, 0L, Some(b0), ArrayBuffer(), None, b1)
+    val goto = GotoExpr(owner = Some(b0), destination0 = b1)
     goto.resultVar = None
     ChirOps.appendExpression(b0, goto)
     assert(b1.predecessors.count(_ eq b0) == 1)
@@ -337,9 +324,9 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("moveTo appends to the target block with pred-edge fixup") {
     val (_, bg, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(bg))
     bg.blocks += b1
-    val goto = GotoExpr(ArrayBuffer(), None, 0L, Some(b0), ArrayBuffer(), None, b1)
+    val goto = GotoExpr(owner = Some(b0), destination0 = b1)
     goto.resultVar = None
     ChirOps.appendExpression(b0, goto)
 
@@ -365,8 +352,8 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("replaceBody sets the new body and its owner") {
     val (f, _, _) = mkFunc()
-    val bg2 = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), None, None)
-    val nb0 = Block(ArrayBuffer(), None, 0L, None, "0", Some(bg2), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val bg2 = BlockGroup(identifier = "0")
+    val nb0 = Block(identifier = "0", parentGroup = Some(bg2))
     bg2.entryBlock = Some(nb0)
     bg2.blocks += nb0
 
@@ -379,8 +366,7 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("mintResult mints %<n> from the top-level localId counter") {
     val (f, _, b0) = mkFunc() // next id to mint = 11
-    val e = AllocateExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, tI32,
-      isTry = false, ArrayBuffer())
+    val e = AllocateExpr(allocatedType = tI32)
     val lv = ChirOps.mintResult(f, ExprBuilder.refTy(tI32), e)
     val refTpe = lv.tpe.get.asInstanceOf[TypeImpl]
     assert(refTpe.kind == TypeKind.Ref && (refTpe.argTys.head eq tI32))
@@ -394,11 +380,9 @@ class ChirOpsSpec extends AnyFunSuite {
 
   test("topLevelFunc resolves through a lambda expression") {
     val (f, _, b0) = mkFunc()
-    val lambda = LambdaExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(),
-      Some(LocalVar(ArrayBuffer(), None, 0L, Some(funcType), "%3", None, isRetVal = false, "")),
-      funcType, isLocalFunc = true, "@T.f.lam", "<closure>",
-      ArrayBuffer(), ArrayBuffer(), None, None, isCompileTimeValue = false)
-    val lamBg = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), None, Some(lambda))
+    val lambda = LambdaExpr(resultVar = Some(LocalVar(tpe = Some(funcType), identifier = "%3")),
+      funcTy = funcType, isLocalFunc = true, identifier = "@T.f.lam", srcCodeName = "<closure>")
+    val lamBg = BlockGroup(identifier = "0", ownedExpression = Some(lambda))
     lambda.body = Some(lamBg)
     lambda.blockGroups += lamBg
     ChirOps.appendExpression(b0, lambda)

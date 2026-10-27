@@ -21,27 +21,24 @@ class EqualitySpec extends AnyFunSuite {
   private val tBool: Type = TypeImpl(TypeKind.Boolean)
 
   private def classDef(pkg: String, srcName: String): ClassDef =
-    ClassDef(ArrayBuffer(), None, 0L, srcName, "@" + srcName, pkg, None, None,
-      ArrayBuffer(), ArrayBuffer(), ArrayBuffer(), ArrayBuffer(), None, ArrayBuffer(), None,
-      true, false, ArrayBuffer(), None)
+    ClassDef(identifier = "@" + srcName, srcCodeIdentifier = srcName, packageName = pkg,
+      isClass = true)
 
   private def funcType(params: Seq[Type], ret: Type): FuncType =
     FuncType(false, false, ArrayBuffer(params :+ ret*))
 
   private def mkFunc(name: String, paramTys: Seq[Type], retTy: Type): (Func, Block) = {
-    val f = Func(ArrayBuffer(), None, 0L, Some(funcType(paramTys, retTy)), "@" + name, name,
-      "@" + name, "default", None, ArrayBuffer(), Some(AnnoInfo("", ArrayBuffer())), None,
-      FuncKind.Default, false, false, None, ArrayBuffer(), None, None, ArrayBuffer(), None,
-      None, 10L, 10L, 10L)
-    val bg = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), Some(f), None)
-    val b0 = Block(ArrayBuffer(), None, 0L, None, "#0", Some(bg), ArrayBuffer(), ArrayBuffer(),
-      false, ArrayBuffer())
+    val f = Func(tpe = Some(funcType(paramTys, retTy)), identifier = "@" + name,
+      srcCodeIdentifier = name, rawMangledName = "@" + name, packageName = "default",
+      annoInfo = Some(AnnoInfo("", ArrayBuffer())), localId = 10L, blockId = 10L, blockGroupId = 10L)
+    val bg = BlockGroup(identifier = "0", ownedFunc = Some(f))
+    val b0 = Block(identifier = "#0", parentGroup = Some(bg))
     bg.blocks += b0
     bg.entryBlock = Some(b0)
     f.body = Some(bg)
     for (t <- paramTys) {
-      f.params += Parameter(ArrayBuffer(), None, 0L, Some(t), "%p" + f.params.size, Some(f), None,
-        "", None)
+      f.params += Parameter(tpe = Some(t), identifier = "%p" + f.params.size,
+        ownedFunc = Some(f))
     }
     (f, b0)
   }
@@ -84,13 +81,13 @@ class EqualitySpec extends AnyFunSuite {
   }
 
   test("global var equality: identifier/srcCodeIdentifier/package") {
-    val v1 = GlobalVar(ArrayBuffer(), None, 0L, Some(tI64), "@gv", "gv", "@gv", "default", None,
-      ArrayBuffer(), Some(AnnoInfo("", ArrayBuffer())), None)
-    val v2 = GlobalVar(ArrayBuffer(), None, 0L, Some(tI64), "@gv", "gv", "@gv", "default", None,
-      ArrayBuffer(), Some(AnnoInfo("", ArrayBuffer())), None)
+    val v1 = GlobalVar(tpe = Some(tI64), identifier = "@gv", srcCodeIdentifier = "gv",
+      rawMangledName = "@gv", packageName = "default", annoInfo = Some(AnnoInfo("", ArrayBuffer())))
+    val v2 = GlobalVar(tpe = Some(tI64), identifier = "@gv", srcCodeIdentifier = "gv",
+      rawMangledName = "@gv", packageName = "default", annoInfo = Some(AnnoInfo("", ArrayBuffer())))
     assert(Equality.areEqual(v1, v2))
-    val v3 = GlobalVar(ArrayBuffer(), None, 0L, Some(tI64), "@gv", "gv", "@gv", "other", None,
-      ArrayBuffer(), Some(AnnoInfo("", ArrayBuffer())), None)
+    val v3 = GlobalVar(tpe = Some(tI64), identifier = "@gv", srcCodeIdentifier = "gv",
+      rawMangledName = "@gv", packageName = "other", annoInfo = Some(AnnoInfo("", ArrayBuffer())))
     assert(!Equality.areEqual(v1, v3))
   }
 
@@ -164,17 +161,14 @@ class EqualitySpec extends AnyFunSuite {
     val (f2, b2) = mkFunc("f", Seq.empty, tUnit)
     val (callee, _) = mkFunc("g", Seq.empty, tUnit)
     for ((b, rvName) <- Seq((b1, "%1"), (b2, "%1"))) {
-      val lit = IntLiteral(ArrayBuffer(), None, 0L, Some(tI64), rvName, 42L)
-      val konst = ConstantExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None, lit)
-      konst.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(tI64), "%0", Some(konst),
-        isRetVal = false, ""))
+      val lit = IntLiteral(tpe = Some(tI64), identifier = rvName, value = 42L)
+      val konst = ConstantExpr(owner = Some(b), literal0 = lit)
+      konst.resultVar = Some(LocalVar(tpe = Some(tI64), identifier = "%0", associatedExpr = Some(konst)))
       append(b, konst)
-      val ap = ApplyExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None, ArrayBuffer(),
-        None, callee, ArrayBuffer(konst.resultVar.get), isSuperCall = false, isTry = false)
-      ap.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(tUnit), "%2", Some(ap),
-        isRetVal = false, ""))
+      val ap = ApplyExpr(owner = Some(b), callee0 = callee, args0 = ArrayBuffer(konst.resultVar.get))
+      ap.resultVar = Some(LocalVar(tpe = Some(tUnit), identifier = "%2", associatedExpr = Some(ap)))
       append(b, ap)
-      append(b, ExitExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None))
+      append(b, ExitExpr(owner = Some(b)))
     }
     assert(new Equality.FuncCodeEquality().areEqual(f1.body.get, f2.body.get))
   }
@@ -183,12 +177,11 @@ class EqualitySpec extends AnyFunSuite {
     val (f1, b1) = mkFunc("f", Seq.empty, tUnit)
     val (f2, b2) = mkFunc("f", Seq.empty, tUnit)
     for ((b, v) <- Seq((b1, 42L), (b2, 43L))) {
-      val lit = IntLiteral(ArrayBuffer(), None, 0L, Some(tI64), "%0", v)
-      val konst = ConstantExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None, lit)
-      konst.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(tI64), "%1", Some(konst),
-        isRetVal = false, ""))
+      val lit = IntLiteral(tpe = Some(tI64), identifier = "%0", value = v)
+      val konst = ConstantExpr(owner = Some(b), literal0 = lit)
+      konst.resultVar = Some(LocalVar(tpe = Some(tI64), identifier = "%1", associatedExpr = Some(konst)))
       append(b, konst)
-      append(b, ExitExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None))
+      append(b, ExitExpr(owner = Some(b)))
     }
     assert(!new Equality.FuncCodeEquality().areEqual(f1.body.get, f2.body.get))
   }
@@ -204,10 +197,10 @@ class EqualitySpec extends AnyFunSuite {
     m2.srcCodeIdentifier = "m"
     for ((b, callee, recv, strat) <- Seq(
         (b1, m1, recv1, OverflowStrategy.Na), (b2, m2, recv2, OverflowStrategy.Na))) {
-      val inv = InvokeExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None, ArrayBuffer(),
-        Some(CustomType(Some(recv))), callee, callee, ArrayBuffer(), strat, isTry = false)
+      val inv = InvokeExpr(owner = Some(b), objType = Some(CustomType(Some(recv))),
+        callee0 = callee, caller0 = callee, overflowStrategy = strat)
       append(b, inv)
-      append(b, ExitExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None))
+      append(b, ExitExpr(owner = Some(b)))
     }
     assert(new Equality.FuncCodeEquality().areEqual(caller1.body.get, caller2.body.get))
 
@@ -227,10 +220,9 @@ class EqualitySpec extends AnyFunSuite {
     val (f2, b2) = mkFunc("f", Seq.empty, tUnit)
     val (callee, _) = mkFunc("g", Seq.empty, tUnit)
     for ((b, superCall) <- Seq((b1, false), (b2, false))) {
-      val ap = ApplyExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None, ArrayBuffer(),
-        None, callee, ArrayBuffer(), superCall, isTry = false)
+      val ap = ApplyExpr(owner = Some(b), callee0 = callee, isSuperCall = superCall)
       append(b, ap)
-      append(b, ExitExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None))
+      append(b, ExitExpr(owner = Some(b)))
     }
     def fresh = new Equality.FuncCodeEquality()
     assert(fresh.areEqual(f1.body.get, f2.body.get))
@@ -247,19 +239,19 @@ class EqualitySpec extends AnyFunSuite {
     val (f1, b1) = mkFunc("f", Seq.empty, tUnit)
     val (f2, b2) = mkFunc("f", Seq.empty, tUnit)
     for (b <- Seq(b1, b2)) {
-      val load = LoadExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None,
-        GlobalVar(ArrayBuffer(), None, 0L, Some(TypeImpl(TypeKind.Ref, ArrayBuffer(tI64))),
-          "@gv", "gv", "@gv", "default", None, ArrayBuffer(), Some(AnnoInfo("", ArrayBuffer())),
-          None))
-      val rv = LocalVar(ArrayBuffer(), None, 0L, Some(tI64), "%0", Some(load), isRetVal = false, "")
+      val load = LoadExpr(owner = Some(b),
+        location0 = GlobalVar(tpe = Some(TypeImpl(TypeKind.Ref, ArrayBuffer(tI64))),
+          identifier = "@gv", srcCodeIdentifier = "gv", rawMangledName = "@gv",
+          packageName = "default", annoInfo = Some(AnnoInfo("", ArrayBuffer()))))
+      val rv = LocalVar(tpe = Some(tI64), identifier = "%0", associatedExpr = Some(load))
       load.resultVar = Some(rv)
       append(b, load)
       // artificial cycle: the load's own result feeds a binary op that feeds itself
-      val bin = BinaryExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None, BinaryOp.Add,
-        OverflowStrategy.Na, rv, rv, isTry = false)
+      val bin = BinaryExpr(owner = Some(b), op = BinaryOp.Add, overflowStrategy = OverflowStrategy.Na,
+        leftOperand0 = rv, rightOperand0 = rv)
       bin.resultVar = Some(rv) // result var is also an operand (cycle)
       append(b, bin)
-      append(b, ExitExpr(ArrayBuffer(), None, 0L, Some(b), ArrayBuffer(), None))
+      append(b, ExitExpr(owner = Some(b)))
     }
     assert(new Equality.FuncCodeEquality().areEqual(f1.body.get, f2.body.get))
   }
@@ -267,8 +259,8 @@ class EqualitySpec extends AnyFunSuite {
   test("different expr kinds are not equal") {
     val (f1, b1) = mkFunc("f", Seq.empty, tUnit)
     val (f2, b2) = mkFunc("f", Seq.empty, tUnit)
-    append(b1, ExitExpr(ArrayBuffer(), None, 0L, Some(b1), ArrayBuffer(), None))
-    append(b2, GotoExpr(ArrayBuffer(), None, 0L, Some(b2), ArrayBuffer(), None, b2))
+    append(b1, ExitExpr(owner = Some(b1)))
+    append(b2, GotoExpr(owner = Some(b2), destination0 = b2))
     assert(!new Equality.FuncCodeEquality().areEqual(f1.body.get, f2.body.get))
   }
 }
