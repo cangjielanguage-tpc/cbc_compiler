@@ -550,7 +550,7 @@ final class ApplyExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation]
 final class InvokeExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                        owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                        resultVar: Option[LocalVar], instantiatedTypeArgs: ArrayBuffer[Type],
-                       objType: Option[Type], var callee: Func, var args: ArrayBuffer[Value],
+                       objType: Option[Type], var callee: Func, var caller: Value, var args: ArrayBuffer[Value],
                        var overflowStrategy: OverflowStrategy, var isTry: Boolean,
                        var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
   extends FuncCallExpr(annos, loc, attributes, owner, blockGroups, resultVar, instantiatedTypeArgs, objType) {
@@ -646,7 +646,7 @@ final class GetRTTIStaticExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugL
 final class GetInstantiateValueExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
                                     attributes: Long, owner: Option[Block],
                                     blockGroups: ArrayBuffer[BlockGroup], resultVar: Option[LocalVar],
-                                    var instantiateTypes: ArrayBuffer[Type])
+                                    var instVal: Value, var instantiateTypes: ArrayBuffer[Type])
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
 
 final class DebugExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
