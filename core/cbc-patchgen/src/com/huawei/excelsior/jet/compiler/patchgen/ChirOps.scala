@@ -50,48 +50,10 @@ object ChirOps {
   // operands (flat, in C++ Expression::GetOperands() order)
   // =================================================================================
 
-  def operandsOf(e: Expression): ArrayBuffer[Value] = {
-    val ops = ArrayBuffer[Value]()
-    e match {
-      case e: GotoExpr            => ops += e.destination
-      case e: BranchExpr          => ops ++= Seq(e.condition, e.trueBlock, e.falseBlock)
-      case e: MultiBranchExpr     => ops ++= e.condition +: e.defaultBlock +: e.normalBlocks
-      case e: RaiseExceptionExpr  => ops += e.exceptionValue; e.exceptionBlock.foreach(ops += _)
-      case e: AllocateExpr        => if (e.isTry) ops ++= e.handlerBlocks
-      case e: ApplyExpr           => ops += e.callee; ops ++= e.args; if (e.isTry) ops ++= e.handlerBlocks
-      case e: InvokeExpr          => ops ++= Seq(e.callee, e.caller); ops ++= e.args; if (e.isTry) ops ++= e.handlerBlocks
-      case e: IntrinsicExpr       => ops ++= e.args; if (e.isTry) ops ++= e.handlerBlocks
-      case e: UnaryExpr           => ops += e.operand
-      case e: BinaryExpr          => ops ++= Seq(e.leftOperand, e.rightOperand)
-      case e: NumericCastExpr     => ops += e.value
-      case e: CastExpr            => ops += e.value
-      case e: LoadExpr            => ops += e.location
-      case e: StoreExpr           => ops ++= Seq(e.value, e.location)
-      case e: GetElementRefExpr   => ops += e.base
-      case e: GetElementByNameExpr => ops += e.base
-      case e: StoreElementRefExpr => ops ++= Seq(e.value, e.location)
-      case e: StoreElementByNameExpr => ops ++= Seq(e.value, e.location)
-      case e: FieldExpr           => ops += e.base
-      case e: FieldByNameExpr     => ops += e.base
-      case e: InstanceOfExpr      => ops += e.obj
-      case e: GetRTTIExpr         => ops += e.obj
-      case e: ConstantExpr        => ops += e.literal
-      case e: DebugExpr           => ops += e.value
-      case e: TupleExpr           => ops ++= e.elementValues
-      case e: RawArrayAllocateExpr => ops += e.size
-      case e: RawArrayLiteralInitExpr => ops += e.array; ops ++= e.elementValues
-      case e: RawArrayInitByValueExpr => ops ++= Seq(e.array, e.size, e.initValue)
-      case e: VArrayExpr          => ops ++= e.elementValues
-      case e: VArrayBuilderExpr   => ops ++= Seq(e.size, e.initValue, e.initializer)
-      case e: GetInstantiateValueExpr => ops += e.instVal
-      case e: SpawnExpr           => ops += e.obj; e.spawnArg.foreach(ops += _)
-      case _: ExitExpr            => ()
-      case _: GetRTTIStaticExpr   => ()
-      case _: LambdaExpr          => ()
-      case _: GetExceptionExpr    => ()
-    }
-    ops
-  }
+  /** All value operands of an expression, in C++ `Expression::GetOperands()`
+    * order — the model's canonical `operands` slot itself.
+    */
+  def operandsOf(e: Expression): ArrayBuffer[Value] = e.operands
 
   /** Users of a value: live expressions whose operands reference it, found by
     * scanning all function bodies of the package (C++ maintains use-lists instead).
@@ -117,50 +79,12 @@ object ChirOps {
     users
   }
 
-  /** Port of `Expression::ReplaceOperand`. */
+  /** Port of `Expression::ReplaceOperand` — in-place rewrite of the operand slot
+    * (plus CFG predecessor bookkeeping for block operands).
+    */
   def replaceOperand(e: Expression, oldV: Value, newV: Value): Unit =
-    if ((oldV ne newV) && operandsOf(e).exists(_ eq oldV)) {
-      def rep(v: Value): Value = if (v eq oldV) newV else v
-      def repBuf[T <: Value](buf: ArrayBuffer[T]): Unit =
-        for (i <- buf.indices) if (buf(i) eq oldV) buf(i) = newV.asInstanceOf[T]
-      e match {
-        case e: GotoExpr            => e.destination = rep(e.destination).asInstanceOf[Block]
-        case e: BranchExpr          => e.condition = rep(e.condition); e.trueBlock = rep(e.trueBlock).asInstanceOf[Block]; e.falseBlock = rep(e.falseBlock).asInstanceOf[Block]
-        case e: MultiBranchExpr     => e.condition = rep(e.condition); if (e.defaultBlock eq oldV) e.defaultBlock = newV.asInstanceOf[Block]; repBuf(e.normalBlocks)
-        case e: RaiseExceptionExpr  => e.exceptionValue = rep(e.exceptionValue); e.exceptionBlock.foreach(b => if (b eq oldV) e.exceptionBlock = Some(newV.asInstanceOf[Block]))
-        case e: AllocateExpr        => if (e.isTry) repBuf(e.handlerBlocks)
-        case e: ApplyExpr           => if (e.callee eq oldV) e.callee = newV; repBuf(e.args); if (e.isTry) repBuf(e.handlerBlocks)
-        case e: InvokeExpr          => if (e.callee eq oldV) e.callee = newV.asInstanceOf[Func]; if (e.caller eq oldV) e.caller = newV; repBuf(e.args); if (e.isTry) repBuf(e.handlerBlocks)
-        case e: IntrinsicExpr       => repBuf(e.args); if (e.isTry) repBuf(e.handlerBlocks)
-        case e: UnaryExpr           => e.operand = rep(e.operand)
-        case e: BinaryExpr          => e.leftOperand = rep(e.leftOperand); e.rightOperand = rep(e.rightOperand)
-        case e: NumericCastExpr     => e.value = rep(e.value)
-        case e: CastExpr            => e.value = rep(e.value)
-        case e: LoadExpr            => e.location = rep(e.location)
-        case e: StoreExpr           => e.value = rep(e.value); e.location = rep(e.location)
-        case e: GetElementRefExpr   => e.base = rep(e.base)
-        case e: GetElementByNameExpr => e.base = rep(e.base)
-        case e: StoreElementRefExpr => e.value = rep(e.value); e.location = rep(e.location)
-        case e: StoreElementByNameExpr => e.value = rep(e.value); e.location = rep(e.location)
-        case e: FieldExpr           => e.base = rep(e.base)
-        case e: FieldByNameExpr     => e.base = rep(e.base)
-        case e: InstanceOfExpr      => e.obj = rep(e.obj)
-        case e: GetRTTIExpr         => e.obj = rep(e.obj)
-        case e: ConstantExpr        => e.literal = rep(e.literal)
-        case e: DebugExpr           => e.value = rep(e.value)
-        case e: TupleExpr           => repBuf(e.elementValues)
-        case e: RawArrayAllocateExpr => e.size = rep(e.size)
-        case e: RawArrayLiteralInitExpr => e.array = rep(e.array); repBuf(e.elementValues)
-        case e: RawArrayInitByValueExpr => e.array = rep(e.array); e.size = rep(e.size); e.initValue = rep(e.initValue)
-        case e: VArrayExpr          => repBuf(e.elementValues)
-        case e: VArrayBuilderExpr   => e.size = rep(e.size); e.initValue = rep(e.initValue); e.initializer = rep(e.initializer)
-        case e: GetInstantiateValueExpr => e.instVal = rep(e.instVal)
-        case e: SpawnExpr           => e.obj = rep(e.obj); e.spawnArg.foreach(a => if (a eq oldV) e.spawnArg = Some(newV))
-        case _: ExitExpr            => ()
-        case _: GetRTTIStaticExpr   => ()
-        case _: LambdaExpr          => ()
-        case _: GetExceptionExpr    => ()
-      }
+    if ((oldV ne newV) && e.operands.exists(_ eq oldV)) {
+      for (i <- e.operands.indices) if (e.operands(i) eq oldV) e.operands(i) = newV
       // block operands update CFG edges (port of the C++ predecessor bookkeeping)
       oldV match {
         case b: Block => e.owner.foreach(o => removePredecessor(b, o))
@@ -169,7 +93,6 @@ object ChirOps {
       newV match {
         case n: Block => e.owner.foreach(o => addPredecessor(n, o))
         case _         =>
-
       }
     }
   // =================================================================================
