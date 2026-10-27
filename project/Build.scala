@@ -241,7 +241,7 @@ object Build {
             IO.delete(generated / "PackageFormat")
 
             Seq(env.flatc,
-              "--no-warnings", "--java",
+              "--no-warnings", "--java", "--gen-object-api",
               "-o", generatedRoot.toString,
               "--java-package-prefix", chirPackage,
               schema.toString
