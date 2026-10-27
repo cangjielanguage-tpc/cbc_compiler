@@ -222,7 +222,7 @@ object Build {
   lazy val chirLib = (project in file("core/chir-lib"))
     .dependsOn(commonJavaLib)
     .settings(flatbuffersSettings)
-    .settings(commonSourceLayout)
+    .settings(commonSourceLayout, commonTestLayout, commonTestSettings)
     .settings(
       Compile / sourceGenerators += Def.task {
         val versionsDirs: Seq[File] = (file("core/chir-lib/schema") * DirectoryFilter).get()
@@ -280,8 +280,8 @@ object Build {
     .disablePlugins(JUnitXmlReportPlugin)
 
   lazy val chirTestkit = (project in file("core/chir-testkit"))
-    .dependsOn(chirLib)
-    .settings(commonSourceLayout)
+    .dependsOn(chirLib % "compile->compile;test->test")
+    .settings(commonSourceTestLayout, commonTestSettings)
     .disablePlugins(JUnitXmlReportPlugin)
 
   lazy val cbcPatchgen = (project in file("core/cbc-patchgen"))
