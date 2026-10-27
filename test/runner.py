@@ -499,15 +499,18 @@ class HotfixTestSuite(StandaloneTestSuite):
             # Standalone writes extensionless archives; cjc accepts .a inputs.
             shutil.copy2(archive, f"{archive}.a")
             link_args.append(f"{archive}.a")
-        common_args = import_args + link_args + ["--emit-chir", "--link-options=--export-dynamic"]
+        common_args = import_args + link_args + ["--link-options=--export-dynamic"]
         stub_env = self.cjc_env()
         stub_env['HOTFIX_GEN_THROW_STUBS'] = 'true'
+        # --save-temps keeps the package-named CHIR and lets compilation finish
+        # (replaces the old --emit-chir + --continue pair; the directory must exist).
         res = await self.run_cjc(os.path.abspath(dotcj(test_name)), output_file=executable,
-                                 additional_args=common_args + ["--plugin", self.plugin, "--continue"],
+                                 additional_args=common_args + ["--plugin", self.plugin,
+                                                                "--save-temps", mode_work_dir],
                                  cwd=mode_work_dir, log=log, env=stub_env)
         if res != 0:
             return res
-        # --continue names CHIR after the package rather than the executable.
+        # --save-temps names CHIR after the package rather than the executable.
         chir_files = glob.glob(os.path.join(mode_work_dir, "*.chir"))
         if len(chir_files) != 1:
             log.write(f"Expected one original CHIR file, found: {chir_files}\n")
@@ -516,7 +519,6 @@ class HotfixTestSuite(StandaloneTestSuite):
         os.replace(chir_files[0], chir)
         env = self.hotfix_env.copy()
         env['LD_LIBRARY_PATH'] = os.pathsep.join(filter(None, [test_work_dir, env.get('LD_LIBRARY_PATH')]))
-        env.pop('ENABLE_INTERPRETER', None)
         env.pop('CBCOPT', None)
         res = await self.disassemble_chir(chir, mode_work_dir, env, log)
         if res != 0:
@@ -531,7 +533,7 @@ class HotfixTestSuite(StandaloneTestSuite):
             return 1
         patched_chir = dotchir(f"{executable}_patched")
         res = await self.run_cjc(os.path.abspath(dotcj(test_name)), output_file=patched_chir,
-                                 additional_args=common_args + ["--plugin", self.plugin],
+                                 additional_args=common_args + ["--emit-chir", "--plugin", self.plugin],
                                  cwd=mode_work_dir, log=log)
         if res == 0:
             res = await self.disassemble_chir(patched_chir, mode_work_dir, env, log)
@@ -548,7 +550,9 @@ class HotfixTestSuite(StandaloneTestSuite):
         env['CANGJIE_STDX_PATH'] = self.hotfix_env['CANGJIE_STDX_PATH']
         env['LD_LIBRARY_PATH'] = os.pathsep.join(filter(None, [env.get('LD_LIBRARY_PATH'), mode_work_dir]))
         env['CBCOPT'] = f"cbc.path={mode_work_dir}"
-        env['ENABLE_INTERPRETER'] = 'true'
+        # Main-branch runtime initializes the interpreter only via the launcher;
+        # the preload library restores in-process initialization for AOT binaries.
+        env['LD_PRELOAD'] = os.path.join(self.toolchain_path, 'tools/lib/libcbc-preload.so')
         return [os.path.join(mode_work_dir, name)]
 
 
