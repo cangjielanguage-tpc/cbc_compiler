@@ -310,6 +310,20 @@ object ChirOps {
   def setEntryBlock(bg: BlockGroup, block: Block): Unit =
     bg.entryBlock = Some(block)
 
+  /** Port of `Block::MoveTo` (removes from the old group, clears its entry, appends
+    * to the new group; entry of the new group is not set).
+    */
+  def moveBlockTo(block: Block, newGroup: BlockGroup): Unit = {
+    block.parentGroup.foreach { old =>
+      old.blocks -= block
+      if (old.entryBlock.exists(_ eq block)) {
+        old.entryBlock = None
+      }
+    }
+    newGroup.blocks += block
+    block.parentGroup = Some(newGroup)
+  }
+
   // =================================================================================
   // identifier minting (port of CHIRBuilder value creation)
   // =================================================================================
