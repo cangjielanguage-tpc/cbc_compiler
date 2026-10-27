@@ -284,7 +284,7 @@ object ChirOps {
     */
   def mintResult(topLevel: Func, tpe: Type, expr: Expression): LocalVar = {
     val id = topLevel.generateLocalId()
-    val lv = LocalVar(ArrayBuffer(), None, 0L, Some(tpe), "%" + id, Some(expr), isRetVal = false, "")
+    val lv = LocalVar(tpe = Some(tpe), identifier = "%" + id, associatedExpr = Some(expr))
     lv.id = id.toInt // transient; the serializer renumbers
     lv
   }

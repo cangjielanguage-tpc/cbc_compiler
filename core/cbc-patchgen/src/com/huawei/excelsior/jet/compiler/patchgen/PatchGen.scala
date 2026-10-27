@@ -367,8 +367,8 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
       throw new IllegalStateException("package init has no entry block"))
     val retTy = callee.tpe.map(_.asInstanceOf[FuncType].returnType)
       .getOrElse(throw new IllegalStateException("callee without func type"))
-    val replacement = ApplyExpr(ArrayBuffer(), None, 0L, Some(block), ArrayBuffer(), None,
-      ArrayBuffer(), None, callee, ArrayBuffer(args.toSeq*), isSuperCall = false, isTry = false)
+    val replacement = ApplyExpr(owner = Some(block), callee0 = callee,
+      args0 = ArrayBuffer.from(args))
     replacement.resultVar = Some(ChirOps.mintResult(topLevel, retTy, replacement))
     replacement
   }
@@ -568,8 +568,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
 
           val topLevel = ChirOps.topLevelFunc(patchEntryBlock.parentGroup.get).get
           val refTy = TypeImpl(TypeKind.Ref, ArrayBuffer(returnType))
-          val allocStruct = AllocateExpr(ArrayBuffer(), None, 0L, Some(patchEntryBlock),
-            ArrayBuffer(), None, returnType, isTry = false)
+          val allocStruct = AllocateExpr(owner = Some(patchEntryBlock), allocatedType = returnType)
           allocStruct.resultVar = Some(ChirOps.mintResult(topLevel, refTy, allocStruct))
           ChirOps.moveBefore(allocStruct, patchEntryBlock.exprs.head)
           val allocatedRetVal = allocStruct.resultVar.get
@@ -589,8 +588,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
             val topLevel = ChirOps.topLevelFunc(patchEntryBlock.parentGroup.get).get
             val unitTy = TypeImpl(TypeKind.Unit)
             val refTy = TypeImpl(TypeKind.Ref, ArrayBuffer(unitTy))
-            val allocUnit = AllocateExpr(ArrayBuffer(), None, 0L, Some(patchEntryBlock),
-              ArrayBuffer(), None, unitTy, isTry = false)
+            val allocUnit = AllocateExpr(owner = Some(patchEntryBlock), allocatedType = unitTy)
             allocUnit.resultVar = Some(ChirOps.mintResult(topLevel, refTy, allocUnit))
             terminatorOf(patchEntryBlock).foreach(t => ChirOps.moveBefore(allocUnit, t))
             patchMethod.get.retVal = Some(allocUnit.resultVar.get)
@@ -617,8 +615,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
 
     val patchClassType = patchClass.get.tpe.get
     val patchClassRefTy = TypeImpl(TypeKind.Ref, ArrayBuffer(patchClassType))
-    val alloc = AllocateExpr(ArrayBuffer(), None, 0L, Some(guardVarsInitFuncBody),
-      ArrayBuffer(), None, patchClassType, isTry = false)
+    val alloc = AllocateExpr(owner = Some(guardVarsInitFuncBody), allocatedType = patchClassType)
     alloc.resultVar = Some(ChirOps.mintResult(topLevel, patchClassRefTy, alloc))
     ChirOps.moveBefore(alloc, guardVarsInitFuncTerminator)
 
@@ -626,14 +623,14 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
     val guardClassRefTy = TypeImpl(TypeKind.Ref, ArrayBuffer(guardClassType))
     // CastOp.StaticCast round-trips as C++ ClassStaticCast (the serializer writes
     // CHIRExprKind_StaticCast and the deserializer reads it back as ClassStaticCast)
-    val typeCast = CastExpr(ArrayBuffer(), None, 0L, Some(guardVarsInitFuncBody),
-      ArrayBuffer(), None, CastOp.StaticCast, alloc.resultVar.get)
+    val typeCast = CastExpr(owner = Some(guardVarsInitFuncBody), op = CastOp.StaticCast,
+      value0 = alloc.resultVar.get)
     typeCast.resultVar = Some(ChirOps.mintResult(topLevel, guardClassRefTy, typeCast))
     ChirOps.moveAfter(typeCast, alloc)
 
     val boolTy = TypeImpl(TypeKind.Boolean)
-    val falseExpr = ConstantExpr(ArrayBuffer(), None, 0L, Some(guardVarsInitFuncBody),
-      ArrayBuffer(), None, BoolLiteral(ArrayBuffer(), None, 0L, Some(boolTy), "", value = false))
+    val falseExpr = ConstantExpr(owner = Some(guardVarsInitFuncBody),
+      literal0 = BoolLiteral(tpe = Some(boolTy), value = false))
     falseExpr.resultVar = Some(ChirOps.mintResult(topLevel, boolTy, falseExpr))
     ChirOps.moveAfter(falseExpr, typeCast)
 
@@ -641,14 +638,14 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
       case t: TypeImpl if t.kind == TypeKind.Ref => t.argTys.head
       case t => t
     }
-    val tuple = TupleExpr(ArrayBuffer(), None, 0L, Some(guardVarsInitFuncBody),
-      ArrayBuffer(), None, ArrayBuffer[Value](falseExpr.resultVar.get, typeCast.resultVar.get))
+    val tuple = TupleExpr(owner = Some(guardVarsInitFuncBody),
+      elementValues0 = ArrayBuffer[Value](falseExpr.resultVar.get, typeCast.resultVar.get))
     tuple.resultVar = Some(ChirOps.mintResult(topLevel, guardVarType, tuple))
     ChirOps.moveAfter(tuple, falseExpr)
 
     val unitTy = TypeImpl(TypeKind.Unit)
-    val storeGuardVar = StoreExpr(ArrayBuffer(), None, 0L, Some(guardVarsInitFuncBody),
-      ArrayBuffer(), None, tuple.resultVar.get, guardVar.get)
+    val storeGuardVar = StoreExpr(owner = Some(guardVarsInitFuncBody),
+      value0 = tuple.resultVar.get, location0 = guardVar.get)
     storeGuardVar.resultVar = Some(ChirOps.mintResult(topLevel, unitTy, storeGuardVar))
     ChirOps.moveAfter(storeGuardVar, tuple)
   }
@@ -665,14 +662,14 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
     val topLevel = ChirOps.topLevelFunc(guardVarsInitFuncBody.parentGroup.get).get
 
     val boolTy = TypeImpl(TypeKind.Boolean)
-    val trueExpr = ConstantExpr(ArrayBuffer(), None, 0L, Some(guardVarsInitFuncBody),
-      ArrayBuffer(), None, BoolLiteral(ArrayBuffer(), None, 0L, Some(boolTy), "", value = true))
+    val trueExpr = ConstantExpr(owner = Some(guardVarsInitFuncBody),
+      literal0 = BoolLiteral(tpe = Some(boolTy), value = true))
     trueExpr.resultVar = Some(ChirOps.mintResult(topLevel, boolTy, trueExpr))
     ChirOps.moveBefore(trueExpr, guardVarsInitFuncTerminator)
 
     val unitTy = TypeImpl(TypeKind.Unit)
-    val storeToGuardVarFlag = StoreExpr(ArrayBuffer(), None, 0L, Some(guardVarsInitFuncBody),
-      ArrayBuffer(), None, trueExpr.resultVar.get, guardVarFlag.get)
+    val storeToGuardVarFlag = StoreExpr(owner = Some(guardVarsInitFuncBody),
+      value0 = trueExpr.resultVar.get, location0 = guardVarFlag.get)
     storeToGuardVarFlag.resultVar = Some(ChirOps.mintResult(topLevel, unitTy, storeToGuardVarFlag))
     ChirOps.moveAfter(storeToGuardVarFlag, trueExpr)
   }

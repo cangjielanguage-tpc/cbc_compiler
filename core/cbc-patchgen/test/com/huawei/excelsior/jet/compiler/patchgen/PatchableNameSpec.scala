@@ -20,9 +20,8 @@ class PatchableNameSpec extends AnyFunSuite {
   private val tRefI64: Type = TypeImpl(TypeKind.Ref, ArrayBuffer(tI64))
 
   private def structDef(pkg: String, srcName: String): ClassDef = {
-    val d = ClassDef(ArrayBuffer(), None, 0L, srcName, "@" + srcName, pkg, None, None,
-      ArrayBuffer(), ArrayBuffer(), ArrayBuffer(), ArrayBuffer(), None, ArrayBuffer(), None,
-      true, false, ArrayBuffer(), None)
+    val d = ClassDef(identifier = "@" + srcName, srcCodeIdentifier = srcName, packageName = pkg,
+      isClass = true)
     CustomType(Some(d))
     d
   }
@@ -32,10 +31,10 @@ class PatchableNameSpec extends AnyFunSuite {
 
   private def func(pkg: String, srcName: String, parent: Option[CustomTypeDef],
                    params: Seq[Type]): Func = {
-    val f = Func(ArrayBuffer(), None, 0L, Some(funcType(params, TypeImpl(TypeKind.Unit))),
-      "@" + pkg + "." + srcName, srcName, "@mangled", pkg, parent,
-      ArrayBuffer(), Some(AnnoInfo("", ArrayBuffer())), None, FuncKind.Default, false, false,
-      None, ArrayBuffer(), None, None, ArrayBuffer(), None, None, 1L, 1L, 1L)
+    val f = Func(tpe = Some(funcType(params, TypeImpl(TypeKind.Unit))),
+      identifier = "@" + pkg + "." + srcName, srcCodeIdentifier = srcName,
+      rawMangledName = "@mangled", packageName = pkg, declaredParent = parent,
+      annoInfo = Some(AnnoInfo("", ArrayBuffer())), localId = 1L, blockId = 1L, blockGroupId = 1L)
     f
   }
 

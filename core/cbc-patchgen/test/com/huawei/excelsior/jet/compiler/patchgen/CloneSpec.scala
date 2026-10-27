@@ -26,11 +26,10 @@ class CloneSpec extends AnyFunSuite {
 
   /** A function `@T.f` with one empty entry block, localId = 10. */
   private def mkFunc(): (Func, BlockGroup, Block) = {
-    val f = Func(ArrayBuffer(), None, 0L, Some(funcType), "@T.f", "f", "@T.f", "T",
-      None, ArrayBuffer(), None, None, FuncKind.Default, false, false, None,
-      ArrayBuffer(), None, None, ArrayBuffer(), None, None, 11L, 1L, 1L)
-    val bg = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), Some(f), None)
-    val b0 = Block(ArrayBuffer(), None, 0L, None, "0", Some(bg), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val f = Func(tpe = Some(funcType), identifier = "@T.f", srcCodeIdentifier = "f",
+      rawMangledName = "@T.f", packageName = "T", localId = 11L, blockId = 1L, blockGroupId = 1L)
+    val bg = BlockGroup(identifier = "0", ownedFunc = Some(f))
+    val b0 = Block(identifier = "0", parentGroup = Some(bg))
     bg.entryBlock = Some(b0)
     bg.blocks += b0
     f.body = Some(bg)
@@ -38,17 +37,16 @@ class CloneSpec extends AnyFunSuite {
   }
 
   private def alloc(tpe: Type, owner: Block): AllocateExpr = {
-    val e = AllocateExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, tpe,
-      isTry = false, ArrayBuffer())
-    e.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(ExprBuilder.refTy(tpe)),
-      "%1", Some(e), isRetVal = false, ""))
+    val e = AllocateExpr(allocatedType = tpe)
+    e.resultVar = Some(LocalVar(tpe = Some(ExprBuilder.refTy(tpe)), identifier = "%1",
+      associatedExpr = Some(e)))
     ChirOps.appendExpression(owner, e)
     e
   }
 
   test("cloneExpr mints a fresh result and shares operands") {
     val (f, _, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(f.body.get), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(f.body.get))
     f.body.get.blocks += b1
 
     val orig = alloc(tI32, b0)
@@ -72,7 +70,7 @@ class CloneSpec extends AnyFunSuite {
 
   test("cloneExpr copies annos and loc via copyBaseInfoFrom") {
     val (f, _, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(f.body.get), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(f.body.get))
     f.body.get.blocks += b1
 
     val orig = alloc(tI32, b0)
@@ -86,19 +84,19 @@ class CloneSpec extends AnyFunSuite {
 
   test("cloneExpr of a Constant shares literals but mints a fresh NullLiteral") {
     val (f, _, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(f.body.get), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(f.body.get))
     f.body.get.blocks += b1
 
-    val intLit = IntLiteral(ArrayBuffer(), None, 0L, Some(tI32), "", 7L)
-    val c1 = ConstantExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, intLit)
-    c1.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(tI32), "%5", Some(c1), isRetVal = false, ""))
+    val intLit = IntLiteral(tpe = Some(tI32), value = 7L)
+    val c1 = ConstantExpr(literal0 = intLit)
+    c1.resultVar = Some(LocalVar(tpe = Some(tI32), identifier = "%5", associatedExpr = Some(c1)))
     ChirOps.appendExpression(b0, c1)
     val clone1 = ExprBuilder.cloneExpr(c1, b1).asInstanceOf[ConstantExpr]
     assert(clone1.literal eq intLit)
 
-    val nullLit = NullLiteral(ArrayBuffer(), None, 0L, Some(ExprBuilder.refTy(tI32)), "")
-    val c2 = ConstantExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None, nullLit)
-    c2.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(ExprBuilder.refTy(tI32)), "%6", Some(c2), isRetVal = false, ""))
+    val nullLit = NullLiteral(tpe = Some(ExprBuilder.refTy(tI32)))
+    val c2 = ConstantExpr(literal0 = nullLit)
+    c2.resultVar = Some(LocalVar(tpe = Some(ExprBuilder.refTy(tI32)), identifier = "%6", associatedExpr = Some(c2)))
     ChirOps.appendExpression(b0, c2)
     val clone2 = ExprBuilder.cloneExpr(c2, b1).asInstanceOf[ConstantExpr]
     assert(clone2.literal ne nullLit)
@@ -108,12 +106,12 @@ class CloneSpec extends AnyFunSuite {
 
   test("cloneExpr of terminators without results yields no result var") {
     val (f, _, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(f.body.get), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
-    val b2 = Block(ArrayBuffer(), None, 0L, None, "2", Some(f.body.get), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(f.body.get))
+    val b2 = Block(identifier = "2", parentGroup = Some(f.body.get))
     f.body.get.blocks ++= ArrayBuffer(b1, b2)
 
-    val branch = BranchExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None,
-      alloc(tI32, b0).resultVar.get, b1, b2, SourceExprTag.IfExpr)
+    val branch = BranchExpr(condition0 = alloc(tI32, b0).resultVar.get, trueBlock0 = b1,
+      falseBlock0 = b2, sourceExpr = SourceExprTag.IfExpr)
     val clone = ExprBuilder.cloneExpr(branch, b1).asInstanceOf[BranchExpr]
     assert(clone.resultVar.isEmpty)
     assert(clone.trueBlock eq b1)
@@ -122,14 +120,13 @@ class CloneSpec extends AnyFunSuite {
 
   test("cloneExpr of NumericCast copies NeedCheckCast and the result EnumCaseIndex") {
     val (f, _, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(f.body.get), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(f.body.get))
     f.body.get.blocks += b1
 
     val lv = alloc(tI32, b0).resultVar.get
-    val orig = NumericCastExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(), None,
-      OverflowStrategy.Throwing, lv, isTry = false, ArrayBuffer())
-    orig.resultVar = Some(LocalVar(ArrayBuffer(EnumCaseIndex(5L)), None, 0L, Some(TypeImpl(TypeKind.Int64)),
-      "%7", Some(orig), isRetVal = false, ""))
+    val orig = NumericCastExpr(overflowStrategy = OverflowStrategy.Throwing, value0 = lv)
+    orig.resultVar = Some(LocalVar(annos = ArrayBuffer(EnumCaseIndex(5L)),
+      tpe = Some(TypeImpl(TypeKind.Int64)), identifier = "%7", associatedExpr = Some(orig)))
     orig.annos += NeedCheckCast(true)
     ChirOps.appendExpression(b0, orig)
 
@@ -141,23 +138,21 @@ class CloneSpec extends AnyFunSuite {
 
   test("cloneExpr of a StaticCast: base info (annos) copies for all casts; EnumCaseIndex only for casts") {
     val (f, _, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(f.body.get), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(f.body.get))
     f.body.get.blocks += b1
     val lv = alloc(tI32, b0).resultVar.get
 
-    val staticCast = CastExpr(ArrayBuffer(NeedCheckCast(true)), None, 0L, None, ArrayBuffer(),
-      None, CastOp.StaticCast, lv)
-    staticCast.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(ExprBuilder.refTy(tI32)),
-      "%8", Some(staticCast), isRetVal = false, ""))
+    val staticCast = CastExpr(annos = ArrayBuffer(NeedCheckCast(true)), op = CastOp.StaticCast, value0 = lv)
+    staticCast.resultVar = Some(LocalVar(tpe = Some(ExprBuilder.refTy(tI32)), identifier = "%8",
+      associatedExpr = Some(staticCast)))
     ChirOps.appendExpression(b0, staticCast)
     val sc = ExprBuilder.cloneExpr(staticCast, b1).asInstanceOf[CastExpr]
     assert(ExprBuilder.getAnno(sc, classOf[NeedCheckCast]).exists(_.need))
 
     // UnboxToValue clone: the wholesale anno copy (C++ CopyBaseInfoFrom, done by
     // genPatches/Block::Clone after Clone) carries orig annos incl. NeedCheckCast
-    val unbox = CastExpr(ArrayBuffer(NeedCheckCast(true)), None, 0L, None, ArrayBuffer(),
-      None, CastOp.UnboxToValue, lv)
-    unbox.resultVar = Some(LocalVar(ArrayBuffer(), None, 0L, Some(tI32), "%9", Some(unbox), isRetVal = false, ""))
+    val unbox = CastExpr(annos = ArrayBuffer(NeedCheckCast(true)), op = CastOp.UnboxToValue, value0 = lv)
+    unbox.resultVar = Some(LocalVar(tpe = Some(tI32), identifier = "%9", associatedExpr = Some(unbox)))
     ChirOps.appendExpression(b0, unbox)
     val ub = ExprBuilder.cloneExpr(unbox, b1).asInstanceOf[CastExpr]
     assert(ExprBuilder.getAnno(ub, classOf[NeedCheckCast]).exists(_.need))
@@ -165,17 +160,15 @@ class CloneSpec extends AnyFunSuite {
 
   test("cloneExpr of a Lambda mints a fresh identifier, params, body and retVal") {
     val (f, _, b0) = mkFunc()
-    val b1 = Block(ArrayBuffer(), None, 0L, None, "1", Some(f.body.get), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val b1 = Block(identifier = "1", parentGroup = Some(f.body.get))
     f.body.get.blocks += b1
 
-    val orig = LambdaExpr(ArrayBuffer(), None, 0L, None, ArrayBuffer(),
-      Some(LocalVar(ArrayBuffer(), None, 0L, Some(funcType), "%10", None, isRetVal = false, "")),
-      funcType, isLocalFunc = true, "@T.f.lam.3", "<closure>",
-      ArrayBuffer(), ArrayBuffer(), None, None, isCompileTimeValue = false)
-    val p = Parameter(ArrayBuffer(), None, 0L, Some(tI32), "%11", None, Some(orig), "x", None)
+    val orig = LambdaExpr(resultVar = Some(LocalVar(tpe = Some(funcType), identifier = "%10")),
+      funcTy = funcType, isLocalFunc = true, identifier = "@T.f.lam.3", srcCodeName = "<closure>")
+    val p = Parameter(tpe = Some(tI32), identifier = "%11", ownedLambda = Some(orig), srcCodeIdentifier = "x")
     orig.params += p
-    val origBody = BlockGroup(ArrayBuffer(), None, 0L, None, "0", None, ArrayBuffer(), None, Some(orig))
-    val ob0 = Block(ArrayBuffer(), None, 0L, None, "0", Some(origBody), ArrayBuffer(), ArrayBuffer(), false, ArrayBuffer())
+    val origBody = BlockGroup(identifier = "0", ownedExpression = Some(orig))
+    val ob0 = Block(identifier = "0", parentGroup = Some(origBody))
     origBody.entryBlock = Some(ob0)
     origBody.blocks += ob0
     val origAlloc = alloc(tI32, ob0)
@@ -242,9 +235,8 @@ class CloneSpec extends AnyFunSuite {
     val tup = ExprBuilder.newTuple(f, tI32, Seq(lv, lv), b0)
     assert(tup.elementValues.toSeq == Seq[Value](lv, lv))
 
-    val callee = Func(ArrayBuffer(), None, 0L, None, "@T.g", "g", "@T.g", "T", None,
-      ArrayBuffer(), None, None, FuncKind.Default, false, false, None, ArrayBuffer(), None,
-      None, ArrayBuffer(), None, None, 1L, 1L, 1L)
+    val callee = Func(identifier = "@T.g", srcCodeIdentifier = "g", rawMangledName = "@T.g",
+      packageName = "T", localId = 1L, blockId = 1L, blockGroupId = 1L)
     val ap = ExprBuilder.newApply(f, tI32, callee, Seq(lv), parent = b0)
     assert(ap.callee eq callee)
     assert(ap.args.toSeq == Seq[Value](lv))

@@ -174,7 +174,7 @@ final class CustomType(var customTypeDef: Option[CustomTypeDef] = None) extends 
   val argTys: ArrayBuffer[Type] = ArrayBuffer()
 }
 
-final class GenericType(var identifier: String, var srcCodeIdentifier: String,
+final class GenericType(var identifier: String, var srcCodeIdentifier: String = "",
                         val upperBounds: ArrayBuffer[Type] = ArrayBuffer()) extends Type
 
 // =====================================================================================
@@ -213,23 +213,23 @@ final class FuncSigInfo(var funcName: String, var funcType: Type,
                         var genericTypeParams: ArrayBuffer[Type] = ArrayBuffer())
 
 final class CustomAnnoInstance(var annoClassName: String, var argValues: ArrayBuffer[String],
-                               var loc: Option[DebugLocation])
+                               var loc: Option[DebugLocation] = None)
 
 final class AnnoInfo(var mangledName: String, var annoInstances: ArrayBuffer[CustomAnnoInstance] = ArrayBuffer())
 
-final class MemberVarInfo(var name: String, var rawMangledName: String, var tpe: Type, var attributes: Long,
-                          var loc: Option[DebugLocation], var annoInfo: Option[AnnoInfo],
-                          var initializerFunc: Option[Func], var outerDef: Option[CustomTypeDef])
+final class MemberVarInfo(var name: String, var rawMangledName: String = "", var tpe: Type, var attributes: Long = 0L,
+                          var loc: Option[DebugLocation] = None, var annoInfo: Option[AnnoInfo] = None,
+                          var initializerFunc: Option[Func] = None, var outerDef: Option[CustomTypeDef] = None)
 
 final class VirtualMethodInfo(var funcName: String, var sigType: Type,
                               var methodGenericTypeParams: ArrayBuffer[Type], var instance: Option[Func],
-                              var attributes: Long, var originalType: Type, var parentType: Type,
+                              var attributes: Long = 0L, var originalType: Type, var parentType: Type,
                               var returnType: Type)
 
 final class VTableInType(var srcParentType: Type, var virtualMethods: ArrayBuffer[VirtualMethodInfo])
 
-final class EnumCtorInfo(var srcCodeName: String, var mangledName: String, var funcType: Type,
-                         var annoInfo: Option[AnnoInfo])
+final class EnumCtorInfo(var srcCodeName: String = "", var mangledName: String, var funcType: Type,
+                         var annoInfo: Option[AnnoInfo] = None)
 
 /** Attribute bit positions (mirror the C++ `Attribute` enum with STATIC = 0).
   * Verified empirically against real .chir files: imported+internal global var
@@ -289,91 +289,91 @@ sealed trait Value {
 }
 
 /** Common part of every flatbuffer `Value` table entry (base: Base, type, identifier, kind). */
-sealed abstract class ValueBase(var annos: ArrayBuffer[Annotation], var loc: Option[DebugLocation],
-                                var attributes: Long, var tpe: Option[Type], var identifier: String)
+sealed abstract class ValueBase(var annos: ArrayBuffer[Annotation] = ArrayBuffer(), var loc: Option[DebugLocation] = None,
+                                var attributes: Long = 0L, var tpe: Option[Type] = None, var identifier: String)
   extends Value {
   def kind: ValueKind
 }
 
-sealed abstract class Literal(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
-                              attributes: Long, tpe: Option[Type], identifier: String)
+sealed abstract class Literal(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None,
+                              attributes: Long = 0L, tpe: Option[Type] = None, identifier: String = "")
   extends ValueBase(annos, loc, attributes, tpe, identifier) {
   def kind: ValueKind = ValueKind.Literal
 }
 
-final class BoolLiteral(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                        tpe: Option[Type], identifier: String, var value: Boolean)
+final class BoolLiteral(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                        tpe: Option[Type] = None, identifier: String = "", var value: Boolean)
   extends Literal(annos, loc, attributes, tpe, identifier)
 
-final class RuneLiteral(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                        tpe: Option[Type], identifier: String, var value: Long)
+final class RuneLiteral(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                        tpe: Option[Type] = None, identifier: String = "", var value: Long)
   extends Literal(annos, loc, attributes, tpe, identifier)
 
-final class StringLiteral(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                          tpe: Option[Type], identifier: String, var value: String)
+final class StringLiteral(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                          tpe: Option[Type] = None, identifier: String = "", var value: String)
   extends Literal(annos, loc, attributes, tpe, identifier)
 
-final class IntLiteral(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                       tpe: Option[Type], identifier: String, var value: Long)
+final class IntLiteral(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                       tpe: Option[Type] = None, identifier: String = "", var value: Long)
   extends Literal(annos, loc, attributes, tpe, identifier)
 
-final class FloatLiteral(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                         tpe: Option[Type], identifier: String, var value: Double)
+final class FloatLiteral(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                         tpe: Option[Type] = None, identifier: String = "", var value: Double)
   extends Literal(annos, loc, attributes, tpe, identifier)
 
-final class UnitLiteral(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                        tpe: Option[Type], identifier: String)
+final class UnitLiteral(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                        tpe: Option[Type] = None, identifier: String = "")
   extends Literal(annos, loc, attributes, tpe, identifier)
 
-final class NullLiteral(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                        tpe: Option[Type], identifier: String)
+final class NullLiteral(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                        tpe: Option[Type] = None, identifier: String = "")
   extends Literal(annos, loc, attributes, tpe, identifier)
 
-final class Parameter(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      tpe: Option[Type], identifier: String,
-                      var ownedFunc: Option[Func], var ownedLambda: Option[LambdaExpr],
-                      var srcCodeIdentifier: String, var annoInfo: Option[AnnoInfo])
+final class Parameter(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      tpe: Option[Type] = None, identifier: String,
+                      var ownedFunc: Option[Func] = None, var ownedLambda: Option[LambdaExpr] = None,
+                      var srcCodeIdentifier: String = "", var annoInfo: Option[AnnoInfo] = None)
   extends ValueBase(annos, loc, attributes, tpe, identifier) {
   def kind: ValueKind = ValueKind.Parameter
 }
 
-final class LocalVar(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                     tpe: Option[Type], identifier: String,
-                     var associatedExpr: Option[Expression], var isRetVal: Boolean,
-                     var srcCodeIdentifier: String)
+final class LocalVar(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                     tpe: Option[Type] = None, identifier: String,
+                     var associatedExpr: Option[Expression] = None, var isRetVal: Boolean = false,
+                     var srcCodeIdentifier: String = "")
   extends ValueBase(annos, loc, attributes, tpe, identifier) {
   def kind: ValueKind = ValueKind.LocalVar
 }
 
 /** Common part of GlobalVar/Func (flatbuffer GlobalValue table). */
-sealed abstract class GlobalValueBase(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
-                                      attributes: Long, tpe: Option[Type], identifier: String,
-                                      var srcCodeIdentifier: String, var rawMangledName: String,
-                                      var packageName: String, var declaredParent: Option[CustomTypeDef],
-                                      var features: ArrayBuffer[String], var annoInfo: Option[AnnoInfo])
+sealed abstract class GlobalValueBase(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None,
+                                      attributes: Long = 0L, tpe: Option[Type] = None, identifier: String,
+                                      var srcCodeIdentifier: String = "", var rawMangledName: String = "",
+                                      var packageName: String = "", var declaredParent: Option[CustomTypeDef] = None,
+                                      var features: ArrayBuffer[String] = ArrayBuffer(), var annoInfo: Option[AnnoInfo] = None)
   extends ValueBase(annos, loc, attributes, tpe, identifier)
 
-final class GlobalVar(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      tpe: Option[Type], identifier: String, srcCodeIdentifier: String,
-                      rawMangledName: String, packageName: String, declaredParent: Option[CustomTypeDef],
-                      features: ArrayBuffer[String], annoInfo: Option[AnnoInfo],
-                      var initializer: Option[Value])
+final class GlobalVar(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      tpe: Option[Type] = None, identifier: String, srcCodeIdentifier: String = "",
+                      rawMangledName: String = "", packageName: String = "", declaredParent: Option[CustomTypeDef] = None,
+                      features: ArrayBuffer[String] = ArrayBuffer(), annoInfo: Option[AnnoInfo] = None,
+                      var initializer: Option[Value] = None)
   extends GlobalValueBase(annos, loc, attributes, tpe, identifier, srcCodeIdentifier, rawMangledName,
     packageName, declaredParent, features, annoInfo) {
   def kind: ValueKind = ValueKind.GlobalVar
 }
 
-final class Func(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                 tpe: Option[Type], identifier: String, srcCodeIdentifier: String,
-                 rawMangledName: String, packageName: String, declaredParent: Option[CustomTypeDef],
-                 features: ArrayBuffer[String], annoInfo: Option[AnnoInfo],
-                 var genericDecl: Option[Value], var funcKind: FuncKind,
-                 var isFastNative: Boolean, var isCFFIWrapper: Boolean,
-                 var originalLambdaInfo: Option[FuncSigInfo],
-                 var genericTypeParams: ArrayBuffer[GenericType],
-                 var paramDftValHostFunc: Option[Func],
-                 var body: Option[BlockGroup], var params: ArrayBuffer[Parameter],
-                 var retVal: Option[LocalVar], var propLoc: Option[DebugLocation],
+final class Func(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                 tpe: Option[Type] = None, identifier: String, srcCodeIdentifier: String = "",
+                 rawMangledName: String = "", packageName: String = "", declaredParent: Option[CustomTypeDef] = None,
+                 features: ArrayBuffer[String] = ArrayBuffer(), annoInfo: Option[AnnoInfo] = None,
+                 var genericDecl: Option[Value] = None, var funcKind: FuncKind = FuncKind.Default,
+                 var isFastNative: Boolean = false, var isCFFIWrapper: Boolean = false,
+                 var originalLambdaInfo: Option[FuncSigInfo] = None,
+                 var genericTypeParams: ArrayBuffer[GenericType] = ArrayBuffer(),
+                 var paramDftValHostFunc: Option[Func] = None,
+                 var body: Option[BlockGroup] = None, var params: ArrayBuffer[Parameter] = ArrayBuffer(),
+                 var retVal: Option[LocalVar] = None, var propLoc: Option[DebugLocation] = None,
                  var localId: Long, var blockId: Long, var blockGroupId: Long)
   extends GlobalValueBase(annos, loc, attributes, tpe, identifier, srcCodeIdentifier, rawMangledName,
     packageName, declaredParent, features, annoInfo) {
@@ -392,19 +392,19 @@ final class Func(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], att
   def generateBlockGroupId(): Long = { val r = blockGroupId; blockGroupId += 1; r }
 }
 
-final class Block(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                  tpe: Option[Type], identifier: String,
-                  var parentGroup: Option[BlockGroup], var exprs: ArrayBuffer[Expression],
-                  var predecessors: ArrayBuffer[Block], var isLandingPadBlock: Boolean,
-                  var exceptionCatchList: ArrayBuffer[Type])
+final class Block(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                  tpe: Option[Type] = None, identifier: String,
+                  var parentGroup: Option[BlockGroup] = None, var exprs: ArrayBuffer[Expression] = ArrayBuffer(),
+                  var predecessors: ArrayBuffer[Block] = ArrayBuffer(), var isLandingPadBlock: Boolean = false,
+                  var exceptionCatchList: ArrayBuffer[Type] = ArrayBuffer())
   extends ValueBase(annos, loc, attributes, tpe, identifier) {
   def kind: ValueKind = ValueKind.Block
 }
 
-final class BlockGroup(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                       tpe: Option[Type], identifier: String,
-                       var entryBlock: Option[Block], var blocks: ArrayBuffer[Block],
-                       var ownedFunc: Option[Func], var ownedExpression: Option[LambdaExpr])
+final class BlockGroup(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                       tpe: Option[Type] = None, identifier: String,
+                       var entryBlock: Option[Block] = None, var blocks: ArrayBuffer[Block] = ArrayBuffer(),
+                       var ownedFunc: Option[Func] = None, var ownedExpression: Option[LambdaExpr] = None)
   extends ValueBase(annos, loc, attributes, tpe, identifier) {
   def kind: ValueKind = ValueKind.BlockGroup
 }
@@ -472,10 +472,10 @@ sealed trait Expression {
   * (sizes are tiny; nothing holds them across operand-slot mutations, so live
   * views are not needed).
   */
-sealed abstract class ExprBase(var annos: ArrayBuffer[Annotation], var loc: Option[DebugLocation],
-                               var attributes: Long, var owner: Option[Block],
-                               var blockGroups: ArrayBuffer[BlockGroup],
-                               var resultVar: Option[LocalVar],
+sealed abstract class ExprBase(var annos: ArrayBuffer[Annotation] = ArrayBuffer(), var loc: Option[DebugLocation] = None,
+                               var attributes: Long = 0L, var owner: Option[Block] = None,
+                               var blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                               var resultVar: Option[LocalVar] = None,
                                val operands: ArrayBuffer[Value] = ArrayBuffer()) extends Expression {
   protected final def op(i: Int): Value = operands(i)
   protected final def setOp(i: Int, v: Value): Unit = operands(i) = v
@@ -487,23 +487,23 @@ sealed abstract class ExprBase(var annos: ArrayBuffer[Annotation], var loc: Opti
 
 // --- wildcard Expression table entries (raw kind picks the concrete class) ---
 
-final class GotoExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                     owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                     resultVar: Option[LocalVar], destination0: Block)
+final class GotoExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                     owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                     resultVar: Option[LocalVar] = None, destination0: Block)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(destination0)) {
   def destination: Block = op(0).asInstanceOf[Block]
   def destination_=(v: Value): Unit = setOp(0, v)
 }
 
-final class ExitExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                     owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                     resultVar: Option[LocalVar])
+final class ExitExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                     owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                     resultVar: Option[LocalVar] = None)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
 
-final class RaiseExceptionExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                               owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                               resultVar: Option[LocalVar], exceptionValue0: Value,
-                               exceptionBlock0: Option[Block])
+final class RaiseExceptionExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                               owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                               resultVar: Option[LocalVar] = None, exceptionValue0: Value,
+                               exceptionBlock0: Option[Block] = None)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar,
     ArrayBuffer(exceptionValue0) ++ exceptionBlock0) {
   def exceptionValue: Value = op(0)
@@ -515,17 +515,17 @@ final class RaiseExceptionExpr(annos: ArrayBuffer[Annotation], loc: Option[Debug
   def exceptionBlock_=(v: Value): Unit = setOp(1, v)
 }
 
-final class LoadExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                     owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                     resultVar: Option[LocalVar], location0: Value)
+final class LoadExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                     owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                     resultVar: Option[LocalVar] = None, location0: Value)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(location0)) {
   def location: Value = op(0)
   def location_=(v: Value): Unit = setOp(0, v)
 }
 
-final class StoreExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], value0: Value, location0: Value)
+final class StoreExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                      resultVar: Option[LocalVar] = None, value0: Value, location0: Value)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0, location0)) {
   def value: Value = op(0)
   def value_=(v: Value): Unit = setOp(0, v)
@@ -533,44 +533,44 @@ final class StoreExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation]
   def location_=(v: Value): Unit = setOp(1, v)
 }
 
-final class ConstantExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                         owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                         resultVar: Option[LocalVar], literal0: Value)
+final class ConstantExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                         owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                         resultVar: Option[LocalVar] = None, literal0: Value)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(literal0)) {
   def literal: Value = op(0)
   def literal_=(v: Value): Unit = setOp(0, v)
 }
 
-final class TupleExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], elementValues0: ArrayBuffer[Value])
+final class TupleExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                      resultVar: Option[LocalVar] = None, elementValues0: ArrayBuffer[Value] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, elementValues0) {
   def elementValues: scala.collection.Seq[Value] = dataTail(0)
 }
 
-final class GetExceptionExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                             owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                             resultVar: Option[LocalVar])
+final class GetExceptionExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                             owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                             resultVar: Option[LocalVar] = None)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
 
-final class GetRTTIExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                        owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                        resultVar: Option[LocalVar], obj0: Value)
+final class GetRTTIExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                        owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                        resultVar: Option[LocalVar] = None, obj0: Value)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(obj0)) {
   def obj: Value = op(0)
   def obj_=(v: Value): Unit = setOp(0, v)
 }
 
-final class VArrayExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                       resultVar: Option[LocalVar], elementValues0: ArrayBuffer[Value])
+final class VArrayExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                       owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                       resultVar: Option[LocalVar] = None, elementValues0: ArrayBuffer[Value] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, elementValues0) {
   def elementValues: scala.collection.Seq[Value] = dataTail(0)
 }
 
-final class VArrayBuilderExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                              owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                              resultVar: Option[LocalVar], size0: Value, initValue0: Value,
+final class VArrayBuilderExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                              owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                              resultVar: Option[LocalVar] = None, size0: Value, initValue0: Value,
                               initializer0: Value)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(size0, initValue0, initializer0)) {
   def size: Value = op(0)
@@ -581,19 +581,19 @@ final class VArrayBuilderExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugL
   def initializer_=(v: Value): Unit = setOp(2, v)
 }
 
-final class RawArrayLiteralInitExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
-                                    attributes: Long, owner: Option[Block],
-                                    blockGroups: ArrayBuffer[BlockGroup], resultVar: Option[LocalVar],
-                                    array0: Value, elementValues0: ArrayBuffer[Value])
+final class RawArrayLiteralInitExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None,
+                                    attributes: Long = 0L, owner: Option[Block] = None,
+                                    blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(), resultVar: Option[LocalVar] = None,
+                                    array0: Value, elementValues0: ArrayBuffer[Value] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(array0) ++ elementValues0) {
   def array: Value = op(0)
   def array_=(v: Value): Unit = setOp(0, v)
   def elementValues: scala.collection.Seq[Value] = dataTail(1)
 }
 
-final class RawArrayInitByValueExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
-                                    attributes: Long, owner: Option[Block],
-                                    blockGroups: ArrayBuffer[BlockGroup], resultVar: Option[LocalVar],
+final class RawArrayInitByValueExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None,
+                                    attributes: Long = 0L, owner: Option[Block] = None,
+                                    blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(), resultVar: Option[LocalVar] = None,
                                     array0: Value, size0: Value, initValue0: Value)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(array0, size0, initValue0)) {
   def array: Value = op(0)
@@ -606,9 +606,9 @@ final class RawArrayInitByValueExpr(annos: ArrayBuffer[Annotation], loc: Option[
 
 // --- cast kinds stored in the wildcard Expression table kind ---
 
-final class CastExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                     owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                     resultVar: Option[LocalVar], val op: CastOp, value0: Value)
+final class CastExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                     owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                     resultVar: Option[LocalVar] = None, val op: CastOp, value0: Value)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0)) {
   /** For casts, the target type is the result var's type (as in chir-lib CastImpl). */
   def targetTpe: Option[Type] = resultVar.flatMap(_.tpe)
@@ -618,19 +618,19 @@ final class CastExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
 
 // --- dedicated tables ---
 
-final class AllocateExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                         owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                         resultVar: Option[LocalVar], var allocatedType: Type, var isTry: Boolean,
+final class AllocateExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                         owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                         resultVar: Option[LocalVar] = None, var allocatedType: Type, var isTry: Boolean = false,
                          handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer[Value]() ++ handlerBlocks0) {
   private val nHandlers: Int = handlerBlocks0.size
   def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
-final class UnaryExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], val op: UnaryOp,
-                      var overflowStrategy: OverflowStrategy, operand0: Value, var isTry: Boolean,
+final class UnaryExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                      resultVar: Option[LocalVar] = None, val op: UnaryOp,
+                      var overflowStrategy: OverflowStrategy, operand0: Value, var isTry: Boolean = false,
                       handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(operand0) ++ handlerBlocks0) {
   private val nHandlers: Int = handlerBlocks0.size
@@ -639,11 +639,11 @@ final class UnaryExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation]
   def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
-final class BinaryExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                       resultVar: Option[LocalVar], val op: BinaryOp,
+final class BinaryExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                       owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                       resultVar: Option[LocalVar] = None, val op: BinaryOp,
                        var overflowStrategy: OverflowStrategy,
-                       leftOperand0: Value, rightOperand0: Value, var isTry: Boolean,
+                       leftOperand0: Value, rightOperand0: Value, var isTry: Boolean = false,
                        handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(leftOperand0, rightOperand0) ++ handlerBlocks0) {
   private val nHandlers: Int = handlerBlocks0.size
@@ -655,18 +655,18 @@ final class BinaryExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation
 }
 
 /** Common part of Apply/Invoke/Intrinsic (flatbuffer FuncCall table). */
-sealed abstract class FuncCallExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
-                                   attributes: Long, owner: Option[Block],
-                                   blockGroups: ArrayBuffer[BlockGroup], resultVar: Option[LocalVar],
-                                   var instantiatedTypeArgs: ArrayBuffer[Type],
+sealed abstract class FuncCallExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None,
+                                   attributes: Long = 0L, owner: Option[Block] = None,
+                                   blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(), resultVar: Option[LocalVar] = None,
+                                   var instantiatedTypeArgs: ArrayBuffer[Type] = ArrayBuffer(),
                                    var objType: Option[Type])
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
 
-final class ApplyExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], instantiatedTypeArgs: ArrayBuffer[Type],
-                      objType: Option[Type], callee0: Value, args0: ArrayBuffer[Value],
-                      var isSuperCall: Boolean, var isTry: Boolean,
+final class ApplyExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                      resultVar: Option[LocalVar] = None, instantiatedTypeArgs: ArrayBuffer[Type] = ArrayBuffer(),
+                      objType: Option[Type] = None, callee0: Value, args0: ArrayBuffer[Value] = ArrayBuffer(),
+                      var isSuperCall: Boolean = false, var isTry: Boolean = false,
                       handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends FuncCallExpr(annos, loc, attributes, owner, blockGroups, resultVar, instantiatedTypeArgs, objType) {
   private val nHandlers: Int = handlerBlocks0.size
@@ -678,11 +678,11 @@ final class ApplyExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation]
   def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
-final class InvokeExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                       resultVar: Option[LocalVar], instantiatedTypeArgs: ArrayBuffer[Type],
-                       objType: Option[Type], callee0: Func, caller0: Value, args0: ArrayBuffer[Value],
-                       var overflowStrategy: OverflowStrategy, var isTry: Boolean,
+final class InvokeExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                       owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                       resultVar: Option[LocalVar] = None, instantiatedTypeArgs: ArrayBuffer[Type] = ArrayBuffer(),
+                       objType: Option[Type] = None, callee0: Func, caller0: Value, args0: ArrayBuffer[Value] = ArrayBuffer(),
+                       var overflowStrategy: OverflowStrategy, var isTry: Boolean = false,
                        handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer(),
                        /** v1203 only: virtual-method signature context (replaced by overflowStrategy in v13002). */
                        var virMethodCtx: Option[FuncSigInfo] = None)
@@ -698,11 +698,11 @@ final class InvokeExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation
   def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
-final class IntrinsicExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                          owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                          resultVar: Option[LocalVar], instantiatedTypeArgs: ArrayBuffer[Type],
-                          objType: Option[Type], var intrinsicKind: Int, args0: ArrayBuffer[Value],
-                          var isTry: Boolean, handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+final class IntrinsicExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                          owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                          resultVar: Option[LocalVar] = None, instantiatedTypeArgs: ArrayBuffer[Type] = ArrayBuffer(),
+                          objType: Option[Type] = None, var intrinsicKind: Int, args0: ArrayBuffer[Value] = ArrayBuffer(),
+                          var isTry: Boolean = false, handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends FuncCallExpr(annos, loc, attributes, owner, blockGroups, resultVar, instantiatedTypeArgs, objType) {
   private val nHandlers: Int = handlerBlocks0.size
   operands ++= args0 ++ handlerBlocks0
@@ -710,10 +710,10 @@ final class IntrinsicExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocat
   def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
-final class NumericCastExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                            owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                            resultVar: Option[LocalVar], var overflowStrategy: OverflowStrategy,
-                            value0: Value, var isTry: Boolean,
+final class NumericCastExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                            owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                            resultVar: Option[LocalVar] = None, var overflowStrategy: OverflowStrategy,
+                            value0: Value, var isTry: Boolean = false,
                             handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0) ++ handlerBlocks0) {
   private val nHandlers: Int = handlerBlocks0.size
@@ -723,10 +723,10 @@ final class NumericCastExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLoc
   def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
-final class RawArrayAllocateExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                                 owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                                 resultVar: Option[LocalVar], var elementType: Type, size0: Value,
-                                 var isTry: Boolean, handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+final class RawArrayAllocateExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                                 owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                                 resultVar: Option[LocalVar] = None, var elementType: Type, size0: Value,
+                                 var isTry: Boolean = false, handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(size0) ++ handlerBlocks0) {
   private val nHandlers: Int = handlerBlocks0.size
   def size: Value = operands(0)
@@ -734,10 +734,10 @@ final class RawArrayAllocateExpr(annos: ArrayBuffer[Annotation], loc: Option[Deb
   def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
-final class SpawnExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], obj0: Value,
-                      spawnArg0: Option[Value], var executeClosure: Option[Func], var isTry: Boolean,
+final class SpawnExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                      resultVar: Option[LocalVar] = None, obj0: Value,
+                      spawnArg0: Option[Value] = None, var executeClosure: Option[Func] = None, var isTry: Boolean = false,
                       handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar,
     ArrayBuffer(obj0) ++ spawnArg0 ++ handlerBlocks0) {
@@ -751,10 +751,10 @@ final class SpawnExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation]
   def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
-final class BranchExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                       resultVar: Option[LocalVar], condition0: Value, trueBlock0: Block,
-                       falseBlock0: Block, var sourceExpr: Int)
+final class BranchExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                       owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                       resultVar: Option[LocalVar] = None, condition0: Value, trueBlock0: Block,
+                       falseBlock0: Block, var sourceExpr: Int = 0)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(condition0, trueBlock0, falseBlock0)) {
   def condition: Value = operands(0)
   def condition_=(v: Value): Unit = operands(0) = v
@@ -764,11 +764,11 @@ final class BranchExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation
   def falseBlock_=(v: Value): Unit = operands(2) = v
 }
 
-final class MultiBranchExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                            owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                            resultVar: Option[LocalVar], condition0: Value,
-                            var caseValues: ArrayBuffer[Long], defaultBlock0: Block,
-                            normalBlocks0: ArrayBuffer[Block])
+final class MultiBranchExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                            owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                            resultVar: Option[LocalVar] = None, condition0: Value,
+                            var caseValues: ArrayBuffer[Long] = ArrayBuffer(), defaultBlock0: Block,
+                            normalBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar,
     ArrayBuffer[Value](condition0, defaultBlock0) ++ normalBlocks0) {
   def condition: Value = operands(0)
@@ -778,18 +778,18 @@ final class MultiBranchExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLoc
   def normalBlocks: scala.collection.Seq[Block] = dataTail(2).map(_.asInstanceOf[Block])
 }
 
-final class GetElementRefExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                              owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                              resultVar: Option[LocalVar], base0: Value, var path: ArrayBuffer[Long])
+final class GetElementRefExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                              owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                              resultVar: Option[LocalVar] = None, base0: Value, var path: ArrayBuffer[Long] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(base0)) {
   def base: Value = operands(0)
   def base_=(v: Value): Unit = operands(0) = v
 }
 
-final class StoreElementRefExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                                owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                                resultVar: Option[LocalVar], value0: Value, location0: Value,
-                                var path: ArrayBuffer[Long])
+final class StoreElementRefExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                                owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                                resultVar: Option[LocalVar] = None, value0: Value, location0: Value,
+                                var path: ArrayBuffer[Long] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0, location0)) {
   def value: Value = operands(0)
   def value_=(v: Value): Unit = operands(0) = v
@@ -797,19 +797,19 @@ final class StoreElementRefExpr(annos: ArrayBuffer[Annotation], loc: Option[Debu
   def location_=(v: Value): Unit = operands(1) = v
 }
 
-final class GetElementByNameExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                                 owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                                 resultVar: Option[LocalVar], base0: Value,
-                                 var fieldNames: ArrayBuffer[String])
+final class GetElementByNameExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                                 owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                                 resultVar: Option[LocalVar] = None, base0: Value,
+                                 var fieldNames: ArrayBuffer[String] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(base0)) {
   def base: Value = operands(0)
   def base_=(v: Value): Unit = operands(0) = v
 }
 
-final class StoreElementByNameExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                                   owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                                   resultVar: Option[LocalVar], value0: Value, location0: Value,
-                                   var fieldNames: ArrayBuffer[String])
+final class StoreElementByNameExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                                   owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                                   resultVar: Option[LocalVar] = None, value0: Value, location0: Value,
+                                   var fieldNames: ArrayBuffer[String] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0, location0)) {
   def value: Value = operands(0)
   def value_=(v: Value): Unit = operands(0) = v
@@ -817,60 +817,60 @@ final class StoreElementByNameExpr(annos: ArrayBuffer[Annotation], loc: Option[D
   def location_=(v: Value): Unit = operands(1) = v
 }
 
-final class FieldExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], base0: Value, var path: ArrayBuffer[Long])
+final class FieldExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                      resultVar: Option[LocalVar] = None, base0: Value, var path: ArrayBuffer[Long] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(base0)) {
   def base: Value = operands(0)
   def base_=(v: Value): Unit = operands(0) = v
 }
 
-final class FieldByNameExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                            owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                            resultVar: Option[LocalVar], base0: Value,
-                            var fieldNames: ArrayBuffer[String])
+final class FieldByNameExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                            owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                            resultVar: Option[LocalVar] = None, base0: Value,
+                            var fieldNames: ArrayBuffer[String] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(base0)) {
   def base: Value = operands(0)
   def base_=(v: Value): Unit = operands(0) = v
 }
 
-final class InstanceOfExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                           owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                           resultVar: Option[LocalVar], obj0: Value, var targetType: Type)
+final class InstanceOfExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                           owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                           resultVar: Option[LocalVar] = None, obj0: Value, var targetType: Type)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(obj0)) {
   def obj: Value = operands(0)
   def obj_=(v: Value): Unit = operands(0) = v
 }
 
-final class GetRTTIStaticExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                              owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                              resultVar: Option[LocalVar], var rttiType: Type)
+final class GetRTTIStaticExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                              owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                              resultVar: Option[LocalVar] = None, var rttiType: Type)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
 
-final class GetInstantiateValueExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
-                                    attributes: Long, owner: Option[Block],
-                                    blockGroups: ArrayBuffer[BlockGroup], resultVar: Option[LocalVar],
-                                    instVal0: Value, var instantiateTypes: ArrayBuffer[Type])
+final class GetInstantiateValueExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None,
+                                    attributes: Long = 0L, owner: Option[Block] = None,
+                                    blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(), resultVar: Option[LocalVar] = None,
+                                    instVal0: Value, var instantiateTypes: ArrayBuffer[Type] = ArrayBuffer())
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(instVal0)) {
   def instVal: Value = operands(0)
   def instVal_=(v: Value): Unit = operands(0) = v
 }
 
-final class DebugExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], var srcCodeName: String, value0: Value)
+final class DebugExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                      resultVar: Option[LocalVar] = None, var srcCodeName: String = "", value0: Value)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0)) {
   def value: Value = operands(0)
   def value_=(v: Value): Unit = operands(0) = v
 }
 
-final class LambdaExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                       resultVar: Option[LocalVar], var funcTy: FuncType, var isLocalFunc: Boolean,
-                       var identifier: String, var srcCodeName: String,
-                       var params: ArrayBuffer[Parameter], var genericTypeParams: ArrayBuffer[Type],
-                       var body: Option[BlockGroup], var retVal: Option[LocalVar],
-                       var isCompileTimeValue: Boolean)
+final class LambdaExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                       owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
+                       resultVar: Option[LocalVar] = None, var funcTy: FuncType, var isLocalFunc: Boolean = false,
+                       var identifier: String, var srcCodeName: String = "",
+                       var params: ArrayBuffer[Parameter] = ArrayBuffer(), var genericTypeParams: ArrayBuffer[Type] = ArrayBuffer(),
+                       var body: Option[BlockGroup] = None, var retVal: Option[LocalVar] = None,
+                       var isCompileTimeValue: Boolean = false)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
 
 // =====================================================================================
@@ -901,64 +901,64 @@ sealed trait CustomTypeDef {
 }
 
 /** Common flatbuffer CustomTypeDef table part. */
-sealed abstract class DefBase(var annos: ArrayBuffer[Annotation], var loc: Option[DebugLocation],
-                              var attributes: Long, val kind: CustomDefKind,
-                              var srcCodeIdentifier: String, var identifier: String,
-                              var packageName: String, var tpe: Option[Type],
-                              var genericDecl: Option[CustomTypeDef],
-                              var methods: ArrayBuffer[Func],
-                              var implementedInterfaces: ArrayBuffer[Type],
-                              var instanceMemberVars: ArrayBuffer[MemberVarInfo],
-                              var staticMemberVars: ArrayBuffer[GlobalVar],
-                              var annoInfo: Option[AnnoInfo],
-                              var vtable: ArrayBuffer[VTableInType],
+sealed abstract class DefBase(var annos: ArrayBuffer[Annotation] = ArrayBuffer(), var loc: Option[DebugLocation] = None,
+                              var attributes: Long = 0L, val kind: CustomDefKind,
+                              var srcCodeIdentifier: String = "", var identifier: String,
+                              var packageName: String = "", var tpe: Option[Type] = None,
+                              var genericDecl: Option[CustomTypeDef] = None,
+                              var methods: ArrayBuffer[Func] = ArrayBuffer(),
+                              var implementedInterfaces: ArrayBuffer[Type] = ArrayBuffer(),
+                              var instanceMemberVars: ArrayBuffer[MemberVarInfo] = ArrayBuffer(),
+                              var staticMemberVars: ArrayBuffer[GlobalVar] = ArrayBuffer(),
+                              var annoInfo: Option[AnnoInfo] = None,
+                              var vtable: ArrayBuffer[VTableInType] = ArrayBuffer(),
                               var instanceVarInitFunc: Option[Func]) extends CustomTypeDef
 
-final class EnumDef(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                    srcCodeIdentifier: String, identifier: String, packageName: String,
-                    tpe: Option[Type], genericDecl: Option[CustomTypeDef], methods: ArrayBuffer[Func],
-                    implementedInterfaces: ArrayBuffer[Type],
-                    instanceMemberVars: ArrayBuffer[MemberVarInfo],
-                    staticMemberVars: ArrayBuffer[GlobalVar], annoInfo: Option[AnnoInfo],
-                    vtable: ArrayBuffer[VTableInType], instanceVarInitFunc: Option[Func],
-                    var ctors: ArrayBuffer[EnumCtorInfo], var nonExhaustive: Boolean)
+final class EnumDef(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                    srcCodeIdentifier: String = "", identifier: String, packageName: String = "",
+                    tpe: Option[Type] = None, genericDecl: Option[CustomTypeDef] = None, methods: ArrayBuffer[Func] = ArrayBuffer(),
+                    implementedInterfaces: ArrayBuffer[Type] = ArrayBuffer(),
+                    instanceMemberVars: ArrayBuffer[MemberVarInfo] = ArrayBuffer(),
+                    staticMemberVars: ArrayBuffer[GlobalVar] = ArrayBuffer(), annoInfo: Option[AnnoInfo] = None,
+                    vtable: ArrayBuffer[VTableInType] = ArrayBuffer(), instanceVarInitFunc: Option[Func] = None,
+                    var ctors: ArrayBuffer[EnumCtorInfo] = ArrayBuffer(), var nonExhaustive: Boolean = false)
   extends DefBase(annos, loc, attributes, CustomDefKind.Enum, srcCodeIdentifier, identifier, packageName,
     tpe, genericDecl, methods, implementedInterfaces, instanceMemberVars, staticMemberVars,
     annoInfo, vtable, instanceVarInitFunc)
 
-final class StructDef(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      srcCodeIdentifier: String, identifier: String, packageName: String,
-                      tpe: Option[Type], genericDecl: Option[CustomTypeDef], methods: ArrayBuffer[Func],
-                      implementedInterfaces: ArrayBuffer[Type],
-                      instanceMemberVars: ArrayBuffer[MemberVarInfo],
-                      staticMemberVars: ArrayBuffer[GlobalVar], annoInfo: Option[AnnoInfo],
-                      vtable: ArrayBuffer[VTableInType], instanceVarInitFunc: Option[Func],
-                      var isCStruct: Boolean)
+final class StructDef(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      srcCodeIdentifier: String = "", identifier: String, packageName: String = "",
+                      tpe: Option[Type] = None, genericDecl: Option[CustomTypeDef] = None, methods: ArrayBuffer[Func] = ArrayBuffer(),
+                      implementedInterfaces: ArrayBuffer[Type] = ArrayBuffer(),
+                      instanceMemberVars: ArrayBuffer[MemberVarInfo] = ArrayBuffer(),
+                      staticMemberVars: ArrayBuffer[GlobalVar] = ArrayBuffer(), annoInfo: Option[AnnoInfo] = None,
+                      vtable: ArrayBuffer[VTableInType] = ArrayBuffer(), instanceVarInitFunc: Option[Func] = None,
+                      var isCStruct: Boolean = false)
   extends DefBase(annos, loc, attributes, CustomDefKind.Struct, srcCodeIdentifier, identifier, packageName,
     tpe, genericDecl, methods, implementedInterfaces, instanceMemberVars, staticMemberVars,
     annoInfo, vtable, instanceVarInitFunc)
 
-final class ClassDef(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                     srcCodeIdentifier: String, identifier: String, packageName: String,
-                     tpe: Option[Type], genericDecl: Option[CustomTypeDef], methods: ArrayBuffer[Func],
-                     implementedInterfaces: ArrayBuffer[Type],
-                     instanceMemberVars: ArrayBuffer[MemberVarInfo],
-                     staticMemberVars: ArrayBuffer[GlobalVar], annoInfo: Option[AnnoInfo],
-                     vtable: ArrayBuffer[VTableInType], instanceVarInitFunc: Option[Func],
-                     var isClass: Boolean, var isAnnotation: Boolean,
-                     var annotationTargets: ArrayBuffer[GlobalVar], var superClass: Option[Type])
+final class ClassDef(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                     srcCodeIdentifier: String = "", identifier: String, packageName: String = "",
+                     tpe: Option[Type] = None, genericDecl: Option[CustomTypeDef] = None, methods: ArrayBuffer[Func] = ArrayBuffer(),
+                     implementedInterfaces: ArrayBuffer[Type] = ArrayBuffer(),
+                     instanceMemberVars: ArrayBuffer[MemberVarInfo] = ArrayBuffer(),
+                     staticMemberVars: ArrayBuffer[GlobalVar] = ArrayBuffer(), annoInfo: Option[AnnoInfo] = None,
+                     vtable: ArrayBuffer[VTableInType] = ArrayBuffer(), instanceVarInitFunc: Option[Func] = None,
+                     var isClass: Boolean = false, var isAnnotation: Boolean = false,
+                     var annotationTargets: ArrayBuffer[GlobalVar] = ArrayBuffer(), var superClass: Option[Type] = None)
   extends DefBase(annos, loc, attributes, CustomDefKind.Class, srcCodeIdentifier, identifier, packageName,
     tpe, genericDecl, methods, implementedInterfaces, instanceMemberVars, staticMemberVars,
     annoInfo, vtable, instanceVarInitFunc)
 
-final class ExtendDef(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
-                      srcCodeIdentifier: String, identifier: String, packageName: String,
-                      tpe: Option[Type], genericDecl: Option[CustomTypeDef], methods: ArrayBuffer[Func],
-                      implementedInterfaces: ArrayBuffer[Type],
-                      instanceMemberVars: ArrayBuffer[MemberVarInfo],
-                      staticMemberVars: ArrayBuffer[GlobalVar], annoInfo: Option[AnnoInfo],
-                      vtable: ArrayBuffer[VTableInType], instanceVarInitFunc: Option[Func],
-                      var extendedType: Option[Type], var genericParams: ArrayBuffer[Type])
+final class ExtendDef(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[DebugLocation] = None, attributes: Long = 0L,
+                      srcCodeIdentifier: String = "", identifier: String, packageName: String = "",
+                      tpe: Option[Type] = None, genericDecl: Option[CustomTypeDef] = None, methods: ArrayBuffer[Func] = ArrayBuffer(),
+                      implementedInterfaces: ArrayBuffer[Type] = ArrayBuffer(),
+                      instanceMemberVars: ArrayBuffer[MemberVarInfo] = ArrayBuffer(),
+                      staticMemberVars: ArrayBuffer[GlobalVar] = ArrayBuffer(), annoInfo: Option[AnnoInfo] = None,
+                      vtable: ArrayBuffer[VTableInType] = ArrayBuffer(), instanceVarInitFunc: Option[Func] = None,
+                      var extendedType: Option[Type] = None, var genericParams: ArrayBuffer[Type] = ArrayBuffer())
   extends DefBase(annos, loc, attributes, CustomDefKind.Extend, srcCodeIdentifier, identifier, packageName,
     tpe, genericDecl, methods, implementedInterfaces, instanceMemberVars, staticMemberVars,
     annoInfo, vtable, instanceVarInitFunc) {
