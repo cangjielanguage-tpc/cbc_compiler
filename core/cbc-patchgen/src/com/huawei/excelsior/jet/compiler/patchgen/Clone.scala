@@ -65,7 +65,11 @@ object ExprBuilder {
       .getOrElse(throw new IllegalStateException("no top-level function for block"))
     e match {
       case eb: ExprBase =>
-        eb.resultVar = Some(ChirOps.mintResult(topLevel, orig.resultVar.get.tpe.get, e))
+        // terminators without results (Goto/Branch/MultiBranch/Exit/RaiseException)
+        // are cloned without minting (C++ asserts result == nullptr)
+        orig.resultVar.foreach { res =>
+          eb.resultVar = Some(ChirOps.mintResult(topLevel, res.tpe.get, e))
+        }
     }
     ChirOps.appendExpression(parent, e)
     copyBaseInfoFrom(e, orig)
@@ -239,10 +243,10 @@ object ExprBuilder {
       ne.params += np
 
     }
-    // fresh return value: the result of the alloc expr of the ret in the new body
-    getAllocExprOfRetVal(newBody).foreach { res =>
-      ne.retVal = Some(res)
-      res.isRetVal = true
+    // fresh return value: C++ finds the orig body's ret alloc by index and takes the
+    // same position in the new body (the clone's result is fresh, no IsRetVal flag set)
+    getAllocExprOfRetVal(x.body.get).foreach { (bi, ei) =>
+      ne.retVal = Some(newBody.blocks(bi).exprs(ei).resultVar.get)
     }
     ne
   }
@@ -261,10 +265,11 @@ object ExprBuilder {
     bg
   }
 
-  /** Port of `Block::Clone`. */
+  /** Port of `Block::Clone` (C++ `CreateBlock` adds the block to the group). */
   private def cloneBlock(orig: Block, newGroup: BlockGroup, topLevel: Func): Block = {
     val id = topLevel.generateBlockId()
     val nb = Block(ArrayBuffer(), None, 0L, None, "#" + id, Some(newGroup), ArrayBuffer(), ArrayBuffer(), orig.isLandingPadBlock, ArrayBuffer(orig.exceptionCatchList.toSeq*))
+    newGroup.blocks += nb
     nb.id = id.toInt
     nb.attributes |= orig.attributes
     for (expr <- orig.exprs.toList) {
@@ -273,10 +278,12 @@ object ExprBuilder {
     nb
   }
 
-  /** Port of `GetAllocExprOfRetVal`. */
-  private def getAllocExprOfRetVal(body: BlockGroup): Option[LocalVar] = {
-    for (block <- body.blocks; expr <- block.exprs; res <- expr.resultVar if res.isRetVal) {
-      return Some(res)
+  /** Port of `GetAllocExprOfRetVal` (returns block/expr indexes, like C++). */
+  private def getAllocExprOfRetVal(body: BlockGroup): Option[(Int, Int)] = {
+    for (bi <- 0 until body.blocks.size; ei <- 0 until body.blocks(bi).exprs.size) {
+      if (body.blocks(bi).exprs(ei).resultVar.exists(_.isRetVal)) {
+        return Some((bi, ei))
+      }
     }
     None
   }
@@ -285,43 +292,44 @@ object ExprBuilder {
   // expression factories (port of CHIRBuilder::CreateExpression / CreateConstantExpression)
   // =================================================================================
 
-  private def minted(topLevel: Func, resultTy: Type, e: Expression): Expression = {
+  private def minted(topLevel: Func, resultTy: Type, e: Expression, parent: Block): Expression = {
     e match {
       case e: ExprBase =>
         e.resultVar = Some(ChirOps.mintResult(topLevel, resultTy, e))
     }
+    ChirOps.appendExpression(parent, e)
     e
   }
 
   /** Allocate(resultTy = RefType(allocatedTy), allocatedTy) — C++ `Allocate(ty, allocatedTy, parent)`. */
   def newAllocate(topLevel: Func, allocatedTy: Type, parent: Block): AllocateExpr = {
     val e = AllocateExpr(empty, None, 0L, None, ArrayBuffer(), None, allocatedTy, isTry = false, ArrayBuffer())
-    minted(topLevel, refTy(allocatedTy), e).asInstanceOf[AllocateExpr]
+    minted(topLevel, refTy(allocatedTy), e, parent).asInstanceOf[AllocateExpr]
   }
 
   /** C++ `CreateExpression<ClassStaticCast>(RefType(ty), operand, parent)`. */
   def newClassStaticCast(topLevel: Func, baseTy: Type, operand: Value, parent: Block): CastExpr = {
     val e = CastExpr(empty, None, 0L, None, ArrayBuffer(), None, CastOp.StaticCast, operand)
-    minted(topLevel, refTy(baseTy), e).asInstanceOf[CastExpr]
+    minted(topLevel, refTy(baseTy), e, parent).asInstanceOf[CastExpr]
   }
 
   /** C++ `CreateConstantExpression<BoolLiteral>(boolTy, parent, v)`. */
   def newBoolConstant(topLevel: Func, v: Boolean, parent: Block): ConstantExpr = {
     val lit = BoolLiteral(ArrayBuffer(), None, 0L, Some(boolTy), "", v)
     val e = ConstantExpr(empty, None, 0L, None, ArrayBuffer(), None, lit)
-    minted(topLevel, boolTy, e).asInstanceOf[ConstantExpr]
+    minted(topLevel, boolTy, e, parent).asInstanceOf[ConstantExpr]
   }
 
   /** C++ `CreateExpression<Tuple>(ty, values, parent)`. */
   def newTuple(topLevel: Func, resultTy: Type, values: Seq[Value], parent: Block): TupleExpr = {
     val e = TupleExpr(empty, None, 0L, None, ArrayBuffer(), None, ArrayBuffer(values*))
-    minted(topLevel, resultTy, e).asInstanceOf[TupleExpr]
+    minted(topLevel, resultTy, e, parent).asInstanceOf[TupleExpr]
   }
 
   /** C++ `CreateExpression<Store>(unitTy, value, location, parent)`. */
   def newStore(topLevel: Func, value: Value, location: Value, parent: Block): StoreExpr = {
     val e = StoreExpr(empty, None, 0L, None, ArrayBuffer(), None, value, location)
-    minted(topLevel, unitTy, e).asInstanceOf[StoreExpr]
+    minted(topLevel, unitTy, e, parent).asInstanceOf[StoreExpr]
   }
 
   /** C++ `CreateExpression<Apply>(retTy, callee, FuncCallContext{...}, parent)`. */
@@ -329,5 +337,5 @@ object ExprBuilder {
                instTypeArgs: ArrayBuffer[Type] = ArrayBuffer(), thisType: Option[Type] = None,
                parent: Block): ApplyExpr =
     val e = ApplyExpr(empty, None, 0L, None, ArrayBuffer(), None, instTypeArgs, thisType, callee, ArrayBuffer(args*), isSuperCall = false, isTry = false, ArrayBuffer())
-    minted(topLevel, resultTy, e).asInstanceOf[ApplyExpr]
+    minted(topLevel, resultTy, e, parent).asInstanceOf[ApplyExpr]
 }
