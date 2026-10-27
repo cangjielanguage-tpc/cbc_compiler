@@ -423,6 +423,16 @@ sealed trait Expression {
   def blockGroups: ArrayBuffer[BlockGroup]
   def resultVar: Option[LocalVar]
 
+  /** The canonical operand storage, in flatbuffer `Expression.operands` order
+    * (== C++ `Expression::GetOperands()`): data operands first, then the handler
+    * blocks of try-variants last. Concrete classes expose typed accessors over
+    * fixed slots of this buffer; the buffer is assembled once at construction and
+    * its length never changes afterwards (replacements are in-place). Constructor
+    * parameters carrying operands use the `0` suffix (they are consumed by the
+    * body, not stored).
+    */
+  def operands: ArrayBuffer[Value]
+
   def isTerminator: Boolean = this match {
     case _: GotoExpr | _: BranchExpr | _: MultiBranchExpr | _: RaiseExceptionExpr | _: ExitExpr => true
     case e: AllocateExpr => e.isTry
@@ -455,18 +465,35 @@ sealed trait Expression {
   }
 }
 
-/** Common flatbuffer `Expression` table part (base: Base, owner, resultLocalVar). */
+/** Common flatbuffer `Expression` table part (base: Base, owner, resultLocalVar).
+  *
+  * Concrete classes assemble `operands` once in their body and expose typed
+  * accessors over fixed slots; multi-value zones are element-aliased slices
+  * (sizes are tiny; nothing holds them across operand-slot mutations, so live
+  * views are not needed).
+  */
 sealed abstract class ExprBase(var annos: ArrayBuffer[Annotation], var loc: Option[DebugLocation],
                                var attributes: Long, var owner: Option[Block],
                                var blockGroups: ArrayBuffer[BlockGroup],
-                               var resultVar: Option[LocalVar]) extends Expression
+                               var resultVar: Option[LocalVar],
+                               val operands: ArrayBuffer[Value] = ArrayBuffer()) extends Expression {
+  protected final def op(i: Int): Value = operands(i)
+  protected final def setOp(i: Int, v: Value): Unit = operands(i) = v
+  protected final def dataView(from: Int, until: Int): scala.collection.Seq[Value] = operands.slice(from, until)
+  protected final def dataTail(from: Int): scala.collection.Seq[Value] = operands.slice(from, operands.length)
+  protected final def handlerSeq(n: Int): scala.collection.Seq[Block] =
+    dataView(operands.length - n, operands.length).map(_.asInstanceOf[Block])
+}
 
 // --- wildcard Expression table entries (raw kind picks the concrete class) ---
 
 final class GotoExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                     resultVar: Option[LocalVar], var destination: Block)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                     resultVar: Option[LocalVar], destination0: Block)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(destination0)) {
+  def destination: Block = op(0).asInstanceOf[Block]
+  def destination_=(v: Value): Unit = setOp(0, v)
+}
 
 final class ExitExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
@@ -475,29 +502,51 @@ final class ExitExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
 
 final class RaiseExceptionExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                                owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                               resultVar: Option[LocalVar], var exceptionValue: Value,
-                               var exceptionBlock: Option[Block])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                               resultVar: Option[LocalVar], exceptionValue0: Value,
+                               exceptionBlock0: Option[Block])
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar,
+    ArrayBuffer(exceptionValue0) ++ exceptionBlock0) {
+  def exceptionValue: Value = op(0)
+  def exceptionValue_=(v: Value): Unit = setOp(0, v)
+  /** Only valid to assign while the block operand is present (presence is fixed
+    * at construction, mirroring the flatbuffer layout). */
+  def exceptionBlock: Option[Block] =
+    if (operands.length > 1) Some(op(1).asInstanceOf[Block]) else None
+  def exceptionBlock_=(v: Value): Unit = setOp(1, v)
+}
 
 final class LoadExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                     resultVar: Option[LocalVar], var location: Value)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                     resultVar: Option[LocalVar], location0: Value)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(location0)) {
+  def location: Value = op(0)
+  def location_=(v: Value): Unit = setOp(0, v)
+}
 
 final class StoreExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], var value: Value, var location: Value)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                      resultVar: Option[LocalVar], value0: Value, location0: Value)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0, location0)) {
+  def value: Value = op(0)
+  def value_=(v: Value): Unit = setOp(0, v)
+  def location: Value = op(1)
+  def location_=(v: Value): Unit = setOp(1, v)
+}
 
 final class ConstantExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                          owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                         resultVar: Option[LocalVar], var literal: Value)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                         resultVar: Option[LocalVar], literal0: Value)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(literal0)) {
+  def literal: Value = op(0)
+  def literal_=(v: Value): Unit = setOp(0, v)
+}
 
 final class TupleExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], var elementValues: ArrayBuffer[Value])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                      resultVar: Option[LocalVar], elementValues0: ArrayBuffer[Value])
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, elementValues0) {
+  def elementValues: scala.collection.Seq[Value] = dataTail(0)
+}
 
 final class GetExceptionExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                              owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
@@ -506,40 +555,65 @@ final class GetExceptionExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLo
 
 final class GetRTTIExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                         owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                        resultVar: Option[LocalVar], var obj: Value)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                        resultVar: Option[LocalVar], obj0: Value)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(obj0)) {
+  def obj: Value = op(0)
+  def obj_=(v: Value): Unit = setOp(0, v)
+}
 
 final class VArrayExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                        owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                       resultVar: Option[LocalVar], var elementValues: ArrayBuffer[Value])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                       resultVar: Option[LocalVar], elementValues0: ArrayBuffer[Value])
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, elementValues0) {
+  def elementValues: scala.collection.Seq[Value] = dataTail(0)
+}
 
 final class VArrayBuilderExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                               owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                              resultVar: Option[LocalVar], var size: Value, var initValue: Value,
-                              var initializer: Value)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                              resultVar: Option[LocalVar], size0: Value, initValue0: Value,
+                              initializer0: Value)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(size0, initValue0, initializer0)) {
+  def size: Value = op(0)
+  def size_=(v: Value): Unit = setOp(0, v)
+  def initValue: Value = op(1)
+  def initValue_=(v: Value): Unit = setOp(1, v)
+  def initializer: Value = op(2)
+  def initializer_=(v: Value): Unit = setOp(2, v)
+}
 
 final class RawArrayLiteralInitExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
                                     attributes: Long, owner: Option[Block],
                                     blockGroups: ArrayBuffer[BlockGroup], resultVar: Option[LocalVar],
-                                    var array: Value, var elementValues: ArrayBuffer[Value])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                                    array0: Value, elementValues0: ArrayBuffer[Value])
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(array0) ++ elementValues0) {
+  def array: Value = op(0)
+  def array_=(v: Value): Unit = setOp(0, v)
+  def elementValues: scala.collection.Seq[Value] = dataTail(1)
+}
 
 final class RawArrayInitByValueExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
                                     attributes: Long, owner: Option[Block],
                                     blockGroups: ArrayBuffer[BlockGroup], resultVar: Option[LocalVar],
-                                    var array: Value, var size: Value, var initValue: Value)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                                    array0: Value, size0: Value, initValue0: Value)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(array0, size0, initValue0)) {
+  def array: Value = op(0)
+  def array_=(v: Value): Unit = setOp(0, v)
+  def size: Value = op(1)
+  def size_=(v: Value): Unit = setOp(1, v)
+  def initValue: Value = op(2)
+  def initValue_=(v: Value): Unit = setOp(2, v)
+}
 
 // --- cast kinds stored in the wildcard Expression table kind ---
 
 final class CastExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                      owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                     resultVar: Option[LocalVar], val op: CastOp, var value: Value)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar) {
+                     resultVar: Option[LocalVar], val op: CastOp, value0: Value)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0)) {
   /** For casts, the target type is the result var's type (as in chir-lib CastImpl). */
   def targetTpe: Option[Type] = resultVar.flatMap(_.tpe)
+  def value: Value = operands(0)
+  def value_=(v: Value): Unit = operands(0) = v
 }
 
 // --- dedicated tables ---
@@ -547,23 +621,38 @@ final class CastExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
 final class AllocateExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                          owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                          resultVar: Option[LocalVar], var allocatedType: Type, var isTry: Boolean,
-                         var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                         handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer[Value]() ++ handlerBlocks0) {
+  private val nHandlers: Int = handlerBlocks0.size
+  def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
+}
 
 final class UnaryExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                       resultVar: Option[LocalVar], val op: UnaryOp,
-                      var overflowStrategy: OverflowStrategy, var operand: Value, var isTry: Boolean,
-                      var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                      var overflowStrategy: OverflowStrategy, operand0: Value, var isTry: Boolean,
+                      handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(operand0) ++ handlerBlocks0) {
+  private val nHandlers: Int = handlerBlocks0.size
+  def operand: Value = operands(0)
+  def operand_=(v: Value): Unit = operands(0) = v
+  def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
+}
 
 final class BinaryExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                        owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                        resultVar: Option[LocalVar], val op: BinaryOp,
                        var overflowStrategy: OverflowStrategy,
-                       var leftOperand: Value, var rightOperand: Value, var isTry: Boolean,
-                       var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                       leftOperand0: Value, rightOperand0: Value, var isTry: Boolean,
+                       handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(leftOperand0, rightOperand0) ++ handlerBlocks0) {
+  private val nHandlers: Int = handlerBlocks0.size
+  def leftOperand: Value = operands(0)
+  def leftOperand_=(v: Value): Unit = operands(0) = v
+  def rightOperand: Value = operands(1)
+  def rightOperand_=(v: Value): Unit = operands(1) = v
+  def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
+}
 
 /** Common part of Apply/Invoke/Intrinsic (flatbuffer FuncCall table). */
 sealed abstract class FuncCallExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
@@ -576,105 +665,182 @@ sealed abstract class FuncCallExpr(annos: ArrayBuffer[Annotation], loc: Option[D
 final class ApplyExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                       resultVar: Option[LocalVar], instantiatedTypeArgs: ArrayBuffer[Type],
-                      objType: Option[Type], var callee: Value, var args: ArrayBuffer[Value],
+                      objType: Option[Type], callee0: Value, args0: ArrayBuffer[Value],
                       var isSuperCall: Boolean, var isTry: Boolean,
-                      var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
+                      handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
   extends FuncCallExpr(annos, loc, attributes, owner, blockGroups, resultVar, instantiatedTypeArgs, objType) {
+  private val nHandlers: Int = handlerBlocks0.size
+  operands ++= ArrayBuffer[Value](callee0) ++ args0 ++ handlerBlocks0
+  def callee: Value = operands(0)
+  def callee_=(v: Value): Unit = operands(0) = v
+  def args: scala.collection.Seq[Value] = dataView(1, operands.length - nHandlers)
   def thisArg: Option[Value] = args.headOption
+  def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
 final class InvokeExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                        owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                        resultVar: Option[LocalVar], instantiatedTypeArgs: ArrayBuffer[Type],
-                       objType: Option[Type], var callee: Func, var caller: Value, var args: ArrayBuffer[Value],
+                       objType: Option[Type], callee0: Func, caller0: Value, args0: ArrayBuffer[Value],
                        var overflowStrategy: OverflowStrategy, var isTry: Boolean,
-                       var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer(),
+                       handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer(),
                        /** v1203 only: virtual-method signature context (replaced by overflowStrategy in v13002). */
                        var virMethodCtx: Option[FuncSigInfo] = None)
   extends FuncCallExpr(annos, loc, attributes, owner, blockGroups, resultVar, instantiatedTypeArgs, objType) {
+  private val nHandlers: Int = handlerBlocks0.size
+  operands ++= ArrayBuffer[Value](callee0, caller0) ++ args0 ++ handlerBlocks0
+  def callee: Func = operands(0).asInstanceOf[Func]
+  def callee_=(v: Value): Unit = operands(0) = v
+  def caller: Value = operands(1)
+  def caller_=(v: Value): Unit = operands(1) = v
+  def args: scala.collection.Seq[Value] = dataView(2, operands.length - nHandlers)
   def thisArg: Option[Value] = args.headOption
+  def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
 final class IntrinsicExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                           owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                           resultVar: Option[LocalVar], instantiatedTypeArgs: ArrayBuffer[Type],
-                          objType: Option[Type], var intrinsicKind: Int, var args: ArrayBuffer[Value],
-                          var isTry: Boolean, var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
-  extends FuncCallExpr(annos, loc, attributes, owner, blockGroups, resultVar, instantiatedTypeArgs, objType)
+                          objType: Option[Type], var intrinsicKind: Int, args0: ArrayBuffer[Value],
+                          var isTry: Boolean, handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+  extends FuncCallExpr(annos, loc, attributes, owner, blockGroups, resultVar, instantiatedTypeArgs, objType) {
+  private val nHandlers: Int = handlerBlocks0.size
+  operands ++= args0 ++ handlerBlocks0
+  def args: scala.collection.Seq[Value] = dataView(0, operands.length - nHandlers)
+  def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
+}
 
 final class NumericCastExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                             owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
                             resultVar: Option[LocalVar], var overflowStrategy: OverflowStrategy,
-                            var value: Value, var isTry: Boolean,
-                            var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar) {
+                            value0: Value, var isTry: Boolean,
+                            handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0) ++ handlerBlocks0) {
+  private val nHandlers: Int = handlerBlocks0.size
   def targetTpe: Option[Type] = resultVar.flatMap(_.tpe)
+  def value: Value = operands(0)
+  def value_=(v: Value): Unit = operands(0) = v
+  def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
 }
 
 final class RawArrayAllocateExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                                  owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                                 resultVar: Option[LocalVar], var elementType: Type, var size: Value,
-                                 var isTry: Boolean, var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                                 resultVar: Option[LocalVar], var elementType: Type, size0: Value,
+                                 var isTry: Boolean, handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(size0) ++ handlerBlocks0) {
+  private val nHandlers: Int = handlerBlocks0.size
+  def size: Value = operands(0)
+  def size_=(v: Value): Unit = operands(0) = v
+  def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
+}
 
 final class SpawnExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], var obj: Value,
-                      var spawnArg: Option[Value], var executeClosure: Option[Func], var isTry: Boolean,
-                      var handlerBlocks: ArrayBuffer[Block] = ArrayBuffer())
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                      resultVar: Option[LocalVar], obj0: Value,
+                      spawnArg0: Option[Value], var executeClosure: Option[Func], var isTry: Boolean,
+                      handlerBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar,
+    ArrayBuffer(obj0) ++ spawnArg0 ++ handlerBlocks0) {
+  private val nHandlers: Int = handlerBlocks0.size
+  def obj: Value = operands(0)
+  def obj_=(v: Value): Unit = operands(0) = v
+  /** Only valid to assign while the arg operand is present (presence is fixed
+    * at construction, mirroring the flatbuffer layout). */
+  def spawnArg: Option[Value] = if (operands.length - nHandlers > 1) Some(operands(1)) else None
+  def spawnArg_=(v: Value): Unit = operands(1) = v
+  def handlerBlocks: scala.collection.Seq[Block] = handlerSeq(nHandlers)
+}
 
 final class BranchExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                        owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                       resultVar: Option[LocalVar], var condition: Value, var trueBlock: Block,
-                       var falseBlock: Block, var sourceExpr: Int)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                       resultVar: Option[LocalVar], condition0: Value, trueBlock0: Block,
+                       falseBlock0: Block, var sourceExpr: Int)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(condition0, trueBlock0, falseBlock0)) {
+  def condition: Value = operands(0)
+  def condition_=(v: Value): Unit = operands(0) = v
+  def trueBlock: Block = operands(1).asInstanceOf[Block]
+  def trueBlock_=(v: Value): Unit = operands(1) = v
+  def falseBlock: Block = operands(2).asInstanceOf[Block]
+  def falseBlock_=(v: Value): Unit = operands(2) = v
+}
 
 final class MultiBranchExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                             owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                            resultVar: Option[LocalVar], var condition: Value,
-                            var caseValues: ArrayBuffer[Long], var defaultBlock: Block,
-                            var normalBlocks: ArrayBuffer[Block])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                            resultVar: Option[LocalVar], condition0: Value,
+                            var caseValues: ArrayBuffer[Long], defaultBlock0: Block,
+                            normalBlocks0: ArrayBuffer[Block])
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar,
+    ArrayBuffer[Value](condition0, defaultBlock0) ++ normalBlocks0) {
+  def condition: Value = operands(0)
+  def condition_=(v: Value): Unit = operands(0) = v
+  def defaultBlock: Block = operands(1).asInstanceOf[Block]
+  def defaultBlock_=(v: Value): Unit = operands(1) = v
+  def normalBlocks: scala.collection.Seq[Block] = dataTail(2).map(_.asInstanceOf[Block])
+}
 
 final class GetElementRefExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                               owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                              resultVar: Option[LocalVar], var base: Value, var path: ArrayBuffer[Long])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                              resultVar: Option[LocalVar], base0: Value, var path: ArrayBuffer[Long])
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(base0)) {
+  def base: Value = operands(0)
+  def base_=(v: Value): Unit = operands(0) = v
+}
 
 final class StoreElementRefExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                                 owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                                resultVar: Option[LocalVar], var value: Value, var location: Value,
+                                resultVar: Option[LocalVar], value0: Value, location0: Value,
                                 var path: ArrayBuffer[Long])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0, location0)) {
+  def value: Value = operands(0)
+  def value_=(v: Value): Unit = operands(0) = v
+  def location: Value = operands(1)
+  def location_=(v: Value): Unit = operands(1) = v
+}
 
 final class GetElementByNameExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                                  owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                                 resultVar: Option[LocalVar], var base: Value,
+                                 resultVar: Option[LocalVar], base0: Value,
                                  var fieldNames: ArrayBuffer[String])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(base0)) {
+  def base: Value = operands(0)
+  def base_=(v: Value): Unit = operands(0) = v
+}
 
 final class StoreElementByNameExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                                    owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                                   resultVar: Option[LocalVar], var value: Value, var location: Value,
+                                   resultVar: Option[LocalVar], value0: Value, location0: Value,
                                    var fieldNames: ArrayBuffer[String])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0, location0)) {
+  def value: Value = operands(0)
+  def value_=(v: Value): Unit = operands(0) = v
+  def location: Value = operands(1)
+  def location_=(v: Value): Unit = operands(1) = v
+}
 
 final class FieldExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], var base: Value, var path: ArrayBuffer[Long])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                      resultVar: Option[LocalVar], base0: Value, var path: ArrayBuffer[Long])
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(base0)) {
+  def base: Value = operands(0)
+  def base_=(v: Value): Unit = operands(0) = v
+}
 
 final class FieldByNameExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                             owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                            resultVar: Option[LocalVar], var base: Value,
+                            resultVar: Option[LocalVar], base0: Value,
                             var fieldNames: ArrayBuffer[String])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(base0)) {
+  def base: Value = operands(0)
+  def base_=(v: Value): Unit = operands(0) = v
+}
 
 final class InstanceOfExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                            owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                           resultVar: Option[LocalVar], var obj: Value, var targetType: Type)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                           resultVar: Option[LocalVar], obj0: Value, var targetType: Type)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(obj0)) {
+  def obj: Value = operands(0)
+  def obj_=(v: Value): Unit = operands(0) = v
+}
 
 final class GetRTTIStaticExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                               owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
@@ -684,13 +850,19 @@ final class GetRTTIStaticExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugL
 final class GetInstantiateValueExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation],
                                     attributes: Long, owner: Option[Block],
                                     blockGroups: ArrayBuffer[BlockGroup], resultVar: Option[LocalVar],
-                                    var instVal: Value, var instantiateTypes: ArrayBuffer[Type])
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                                    instVal0: Value, var instantiateTypes: ArrayBuffer[Type])
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(instVal0)) {
+  def instVal: Value = operands(0)
+  def instVal_=(v: Value): Unit = operands(0) = v
+}
 
 final class DebugExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                       owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
-                      resultVar: Option[LocalVar], var srcCodeName: String, var value: Value)
-  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar)
+                      resultVar: Option[LocalVar], var srcCodeName: String, value0: Value)
+  extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar, ArrayBuffer(value0)) {
+  def value: Value = operands(0)
+  def value_=(v: Value): Unit = operands(0) = v
+}
 
 final class LambdaExpr(annos: ArrayBuffer[Annotation], loc: Option[DebugLocation], attributes: Long,
                        owner: Option[Block], blockGroups: ArrayBuffer[BlockGroup],
