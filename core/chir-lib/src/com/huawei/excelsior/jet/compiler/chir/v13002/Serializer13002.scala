@@ -46,6 +46,9 @@ import scala.collection.mutable.ArrayBuffer
   *    assigning 1-based ids on first encounter and recursively enqueueing referenced
   *    entities — mirroring the C++ BFS worklist exactly, including the drain order.
   *  - The root `CHIRPackage` is written with `path = ""` and the `phase` field.
+  *
+  * NOTE: keep structurally in sync with the other version's serializer and
+  * Materializer13002 (schema deltas: see the model PackageFormat.fbs files).
   */
 object Serializer13002 {
 
@@ -121,8 +124,8 @@ object Serializer13002 {
         defCount += 1
         def2Id.put(d, Integer.valueOf(defCount))
         allCustomTypeDef += null
-      }
 
+      }
       // allocate value ids earlier
       for (v <- valueQueue.toList) {
         valueCount += 1
@@ -134,7 +137,7 @@ object Serializer13002 {
     /** C++ `CHIRSerializerImpl::Dispatch` (the drain loop). */
     private def dispatch(): Unit = {
       while (typeHead < typeQueue.length || valueHead < valueQueue.length ||
-          exprHead < exprQueue.length || defHead < defQueue.length) do {
+          exprHead < exprQueue.length || defHead < defQueue.length) {
         while (typeHead < typeQueue.length) {
           val t = typeQueue(typeHead)
           typeHead += 1
@@ -217,34 +220,34 @@ object Serializer13002 {
 
     private def dispatchType(t: model.Type): TypeElemUnion = {
       val (tag, obj) = t match {
-        case ft: FuncType =>
+        case t: FuncType =>
           val base = new TypeT()
           base.setKind(CHIRTypeKind.FUNC)
-          base.setArgTys(typeIds(ft.argTys))
+          base.setArgTys(typeIds(t.argTys))
           val u = new FuncTypeT()
           u.setBase(base)
-          u.setIsCfuncType(ft.isCFuncType)
-          u.setHasVarArg(ft.hasVarArg)
+          u.setIsCfuncType(t.isCFuncType)
+          u.setHasVarArg(t.hasVarArg)
           (TypeElem.FuncType, u)
-        case rat: RawArrayType =>
+        case t: RawArrayType =>
           val base = new TypeT()
           base.setKind(CHIRTypeKind.RAWARRAY)
-          base.setArgTys(Array(typeId(rat.elementType)))
+          base.setArgTys(Array(typeId(t.elementType)))
           val u = new RawArrayTypeT()
           u.setBase(base)
-          u.setDims(rat.dims)
+          u.setDims(t.dims)
           (TypeElem.RawArrayType, u)
-        case vat: VArrayType =>
+        case t: VArrayType =>
           val base = new TypeT()
           base.setKind(CHIRTypeKind.VARRAY)
-          base.setArgTys(Array(typeId(vat.elementType)))
+          base.setArgTys(Array(typeId(t.elementType)))
           val u = new VArrayTypeT()
           u.setBase(base)
-          u.setSize(vat.size)
+          u.setSize(t.size)
           (TypeElem.VArrayType, u)
-        case ct: CustomType =>
+        case t: CustomType =>
           val base = new TypeT()
-          base.setKind(ct.customTypeDef match {
+          base.setKind(t.customTypeDef match {
             case Some(d) => d.kind match {
               case CustomDefKind.Struct => CHIRTypeKind.STRUCT
               case CustomDefKind.Enum   => CHIRTypeKind.ENUM
@@ -253,24 +256,24 @@ object Serializer13002 {
             }
             case None => sys.error("CustomType without custom type def cannot be serialized")
           })
-          base.setArgTys(typeIds(ct.argTys))
+          base.setArgTys(typeIds(t.argTys))
           val u = new CustomTypeT()
           u.setBase(base)
-          u.setCustomTypeDef(ct.customTypeDef.map(defId).getOrElse(0L))
+          u.setCustomTypeDef(t.customTypeDef.map(defId).getOrElse(0L))
           (TypeElem.CustomType, u)
-        case gt: GenericType =>
+        case t: GenericType =>
           val base = new TypeT()
           base.setKind(CHIRTypeKind.GENERIC)
           val u = new GenericTypeT()
           u.setBase(base)
-          u.setIdentifier(gt.identifier)
-          u.setSrcCodeIdentifier(gt.srcCodeIdentifier)
-          u.setUpperBounds(typeIds(gt.upperBounds))
+          u.setIdentifier(t.identifier)
+          u.setSrcCodeIdentifier(t.srcCodeIdentifier)
+          u.setUpperBounds(typeIds(t.upperBounds))
           (TypeElem.GenericType, u)
-        case ti: TypeImpl =>
+        case t: TypeImpl =>
           val u = new TypeT()
-          u.setKind(ti.kind.ordinal)
-          u.setArgTys(typeIds(ti.argTys))
+          u.setKind(t.kind.ordinal)
+          u.setArgTys(typeIds(t.argTys))
           (TypeElem.Type, u)
       }
       typeUnion(tag, obj)
@@ -323,17 +326,17 @@ object Serializer13002 {
           u.setSrcCodeIdentifier(p.srcCodeIdentifier)
           u.setAnnoInfo(annoInfoT(p.annoInfo))
           (ValueElem.Parameter, u)
-        case lv: LocalVar =>
+        case v: LocalVar =>
           val u = new LocalVarT()
-          u.setBase(valueT(lv))
-          u.setAssociatedExpr(lv.associatedExpr.map(exprId).getOrElse(0L))
-          u.setIsRetVal(lv.isRetVal)
-          u.setSrcCodeIdentifier(lv.srcCodeIdentifier)
+          u.setBase(valueT(v))
+          u.setAssociatedExpr(v.associatedExpr.map(exprId).getOrElse(0L))
+          u.setIsRetVal(v.isRetVal)
+          u.setSrcCodeIdentifier(v.srcCodeIdentifier)
           (ValueElem.LocalVar, u)
-        case gv: GlobalVar =>
+        case v: GlobalVar =>
           val u = new GlobalVarT()
-          u.setBase(globalValueT(gv))
-          u.setInitializer(gv.initializer.map(valueId).getOrElse(0L))
+          u.setBase(globalValueT(v))
+          u.setInitializer(v.initializer.map(valueId).getOrElse(0L))
           (ValueElem.GlobalVar, u)
         case f: Func =>
           (ValueElem.Function, functionT(f))
@@ -347,13 +350,13 @@ object Serializer13002 {
           u.setExceptionCatchList(
             if (b.isLandingPadBlock) typeIds(b.exceptionCatchList) else null)
           (ValueElem.Block, u)
-        case bg: BlockGroup =>
+        case v: BlockGroup =>
           val u = new BlockGroupT()
-          u.setBase(valueT(bg))
-          u.setEntryBlock(bg.entryBlock.map(valueId).getOrElse(0L))
-          u.setBlocks(valueIds(bg.blocks))
-          u.setOwnedFunc(bg.ownedFunc.map(valueId).getOrElse(0L))
-          u.setOwnedExpression(bg.ownedExpression.map(exprId).getOrElse(0L))
+          u.setBase(valueT(v))
+          u.setEntryBlock(v.entryBlock.map(valueId).getOrElse(0L))
+          u.setBlocks(valueIds(v.blocks))
+          u.setOwnedFunc(v.ownedFunc.map(valueId).getOrElse(0L))
+          u.setOwnedExpression(v.ownedExpression.map(exprId).getOrElse(0L))
           (ValueElem.BlockGroup, u)
       }
       valueUnion(tag, obj)
@@ -484,7 +487,7 @@ object Serializer13002 {
           val ops = Seq(valueId(e.operand)) ++ (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
           val u = new UnaryExpressionBaseT()
           u.setBase(exprT(e, kind, ops))
-          u.setOverflowStrategy(e.overflowStrategy.ordinal)
+          u.setOverflowStrategy(ofsWire(e.overflowStrategy))
           (ExpressionElem.UnaryExpressionBase, u)
         case e: BinaryExpr =>
           val kind = e.op match {
@@ -510,7 +513,7 @@ object Serializer13002 {
             (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
           val u = new BinaryExpressionBaseT()
           u.setBase(exprT(e, kind, ops))
-          u.setOverflowStrategy(e.overflowStrategy.ordinal)
+          u.setOverflowStrategy(ofsWire(e.overflowStrategy))
           (ExpressionElem.BinaryExpressionBase, u)
         case e: ApplyExpr =>
           val ops = Seq(valueId(e.callee)) ++ e.args.map(valueId) ++
@@ -526,7 +529,7 @@ object Serializer13002 {
           val fc = funcCallT(e, tryKind(e.isTry, CHIRExprKind.Invoke, CHIRExprKind.TryInvoke), ops)
           val u = new InvokeBaseT()
           u.setBase(fc)
-          u.setOverflowStrategy(e.overflowStrategy.ordinal)
+          u.setOverflowStrategy(ofsWire(e.overflowStrategy))
           (ExpressionElem.InvokeBase, u)
         case e: IntrinsicExpr =>
           // IntrinsicBase writes funcCall with thisType = 0 (mirrors the C++ serializer)
@@ -544,7 +547,7 @@ object Serializer13002 {
           val ops = Seq(valueId(e.value)) ++ (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
           val u = new NumericCastBaseT()
           u.setBase(exprT(e, tryKind(e.isTry, CHIRExprKind.NumericCast, CHIRExprKind.TryNumericCast), ops))
-          u.setOverflowStrategy(e.overflowStrategy.ordinal)
+          u.setOverflowStrategy(ofsWire(e.overflowStrategy))
           (ExpressionElem.NumericCastBase, u)
         case e: RawArrayAllocateExpr =>
           val ops = Seq(valueId(e.size)) ++ (if (e.isTry) e.handlerBlocks.map(valueId) else Seq.empty)
@@ -661,6 +664,15 @@ object Serializer13002 {
 
     private def tryKind(isTry: Boolean, normal: Int, tryKind: Int): Int =
       if (isTry) tryKind else normal
+
+    /** model OverflowStrategy -> v13002 wire ordinal (no CHECKED in v13002) */
+    private def ofsWire(o: OverflowStrategy): Int = o match {
+      case OverflowStrategy.Na        => 0
+      case OverflowStrategy.Wrapping  => 1
+      case OverflowStrategy.Throwing  => 2
+      case OverflowStrategy.Saturating => 3
+      case other => sys.error(s"OverflowStrategy $other not representable in v13002")
+    }
 
     // =================================================================================
     // def dispatch / serialization
