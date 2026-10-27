@@ -299,11 +299,28 @@ object ChirOps {
     func.body = None
   }
 
+  /** Port of `BlockGroup::SetOwnerFunc`: detaches the previous owner (nulls its
+    * body pointer via `RemoveBody`, and for a lambda owner its body), clears a
+    * lambda-owner expression, then takes ownership.
+    */
+  def setOwnerFunc(bg: BlockGroup, func: Func): Unit = {
+    bg.ownedFunc.foreach(_.body = None)
+    bg.ownedExpression.foreach { l =>
+      if (l.body.exists(_ eq bg)) {
+        l.body = None
+      }
+    }
+    bg.ownedExpression = None
+    bg.ownedFunc = Some(func)
+  }
+
   /** Port of `Function::ReplaceBody`. */
   def replaceBody(func: Func, newBody: BlockGroup): Unit = {
     destroyFuncBody(func)
+    if (!newBody.ownedFunc.contains(func)) {
+      setOwnerFunc(newBody, func)
+    }
     func.body = Some(newBody)
-    newBody.ownedFunc = Some(func)
   }
 
   /** Port of `BlockGroup::SetEntryBlock`. */
