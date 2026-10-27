@@ -1,5 +1,5 @@
 
-func div(x: Int64, y: Int64): Int64 {
+private func div(x: Int64, y: Int64): Int64 {
   x / y
 }
 
