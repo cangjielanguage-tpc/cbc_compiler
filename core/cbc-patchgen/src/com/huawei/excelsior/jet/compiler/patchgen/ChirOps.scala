@@ -31,7 +31,7 @@ object ChirOps {
     * so expressions appended during the walk are not revisited.
     */
   def visitFuncExprs(func: Func)(pre: Expression => Unit): Unit =
-    func.body.foreach(visitBlockGroupExprs)
+    func.body.foreach(bg => visitBlockGroupExprs(bg)(pre))
 
   def visitBlockGroupExprs(bg: BlockGroup)(pre: Expression => Unit): Unit =
     for (block <- bg.blocks.toList) visitBlockExprs(block)(pre)
