@@ -163,7 +163,7 @@ object Build {
     )
 
   lazy val tests = (project in (projectRoot / "target/tests"))
-    .aggregate(assembler, commonJavaLib, commonRtCompiler, compilerCommon, opt, cbcAsm, cbcPatchgen, chirTestkit)
+    .aggregate(assembler, commonJavaLib, commonRtCompiler, compilerCommon, opt, cbcAsm, cbcPatchgen, chirTestkit, chirLib)
 
   private def compilerAssemblySettings(alwaysExcludeScalaStdLib: Boolean = false, keepTasty: Boolean = false) =
     Def.settings(
