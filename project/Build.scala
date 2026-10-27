@@ -163,7 +163,7 @@ object Build {
     )
 
   lazy val tests = (project in (projectRoot / "target/tests"))
-    .aggregate(assembler, commonJavaLib, commonRtCompiler, compilerCommon, opt, cbcAsm)
+    .aggregate(assembler, commonJavaLib, commonRtCompiler, compilerCommon, opt, cbcAsm, cbcPatchgen, chirTestkit)
 
   private def compilerAssemblySettings(alwaysExcludeScalaStdLib: Boolean = false, keepTasty: Boolean = false) =
     Def.settings(
@@ -276,6 +276,21 @@ object Build {
         jar
       },
       nativeImageSettings("cbc-asm-native", copyAsmWrapper),
+    )
+    .disablePlugins(JUnitXmlReportPlugin)
+
+  lazy val chirTestkit = (project in file("core/chir-testkit"))
+    .dependsOn(chirLib)
+    .settings(commonSourceLayout)
+    .disablePlugins(JUnitXmlReportPlugin)
+
+  lazy val cbcPatchgen = (project in file("core/cbc-patchgen"))
+    .dependsOn(chirLib % "test->test;compile->compile", commonJavaLib % "test->test;compile->compile", xscalaVMDependent)
+    .settings(commonSourceTestLayout, commonTestSettings, javaTestSettings)
+    .settings(
+      compilerAssemblySettings(),
+      assembly / mainClass := Some("com.huawei.excelsior.jet.compiler.patchgen.Main"),
+      assembly / assemblyOutputPath := target.value / "patch-gen.jar",
     )
     .disablePlugins(JUnitXmlReportPlugin)
 
