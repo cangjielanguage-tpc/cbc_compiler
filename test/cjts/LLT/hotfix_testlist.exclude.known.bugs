@@ -25,6 +25,7 @@ compiler/CodegenCommon/typecast/nan2integer.cj
 
 # bug 140 (not implemented: throwing binary expression)
 compiler/CodegenCommon/overflow/overshift1.cj
+compiler/CodegenCommon/overflow/overshift2.cj
 compiler/Sema/Extend/generic/primitive_00/ok.cj
 
 # bug 141 (not implemented: floating point binary expression: Exp)
@@ -347,6 +348,8 @@ compiler/CHIR/SplitOperator/ovf_div.cj
 compiler/CHIR/SplitOperator/ovf_divu.cj
 compiler/CHIR/SplitOperator/ovf_mul.cj
 compiler/CHIR/SplitOperator/ovf_sub.cj
+compiler/CHIR/UG/ClosureConversion/staticFunc01.cj
+compiler/CHIR/UG/ClosureConversion/staticFunc03.cj
 
 # bug 120 (cbc_engine: Conflict found for reference)
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
@@ -634,6 +637,8 @@ compiler/Sema/Extend/interface_default_implement/static_default_impl_04.cj
 compiler/Sema/Extend/visibility_between_extend/call_other_extend_interface.cj
 compiler/Sema/interface/interface_default_impl/static_defaule_impl_class.cj
 compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
+compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
+compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
 
 # bug 202 (some complicated foreign funcs build patterns in LLT testsuite)
 API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_interface.cj
@@ -669,6 +674,8 @@ API/std/unittest/mock/examples/repo_1.cj
 API/std/unittest/mock/framework/generic.cj
 API/std/unittest/mock/integration/wrong_type_args.cj
 compiler/CodegenCJNative/reflect/reflect_08.cj
+compiler/CHIR/UG/ClosureConversion/importedFunc03/main.cj
+compiler/CHIR/UG/ClosureConversion/importedFunc04/main.cj
 
 # bug 205 (`$withoutTI` appended to AOT function that has no such suffix in compiled code)
 API/std/unittest/new_bench/bench_measure_cycles.cj
@@ -709,3 +716,84 @@ compiler/FFI/CFFI/inout/inout_7.cj
 API/std/unittest/mock/framework/spy_test.cj
 API/std/unittest/mock/framework/verification_failed_report_test.cj
 API/std/unittest/mock/framework/verify_misconfiguration_test.cj
+API/std/unittest/mock/framework/expectation_failed_test.cj
+API/std/unittest/mock/framework/runtime_failure_report_test.cj
+
+# bug 212 (UNEXPECTED: no cbc for launcher)
+Runtime/CJNative/DFX/heap_snapshot_coverage.cj
+Runtime/CJNative/GC/gc_async_allocation_finalizer.cj
+Runtime/CJNative/GC/gc_region_pressure.cj
+Runtime/CJNative/RuntimeApi/runtime_api_followup.cj
+Runtime/CJNative/RuntimeApi/runtime_api_task_loader.cj
+Runtime/CJNative/RuntimeApi/runtime_api_validation.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda01.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda02.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda03.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda04.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda05.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda06.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda07.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda08.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda09.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda10.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda11.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda12.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda13.cj
+compiler/CHIROpt/ArrayLambda/testArrayLambda14.cj
+compiler/CHIROpt/ArrayLambda/testZeroValue01.cj
+compiler/CHIROpt/ArrayLambda/testZeroValue02.cj
+compiler/CHIROpt/ArrayLambda/testZeroValue03.cj
+compiler/CHIROpt/ArrayLambda/testZeroValue04.cj
+compiler/CHIROpt/ArrayListConstStartOpt/testArrayListEq.cj
+compiler/CHIROpt/ArrayListConstStartOpt/testArrayListEqFloat.cj
+compiler/CHIROpt/ArrayListConstStartOpt/testArrayListEqNotEqual.cj
+compiler/CHIROpt/ArrayListConstStartOpt/testArrayListEqSizeInit.cj
+compiler/CHIROpt/ArrayListConstStartOpt/testArrayListForIn.cj
+compiler/CHIROpt/ArrayListConstStartOpt/testArrayListGet.cj
+compiler/CHIROpt/ArrayListConstStartOpt/testArrayListGetSet.cj
+compiler/CHIROpt/ArrayListConstStartOpt/testArrayListSet.cj
+compiler/CHIROpt/ArrayListConstStartOpt/testArrayNotOptimized.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global01.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global01_tuple.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global02.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global02_varLoad.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global03.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global04.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global04_main.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global05.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global05_main.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global06.cj
+compiler/CHIROpt/ConstPropagation/globalvar/global07.cj
+compiler/CHIROpt/ConstPropagation/globalvar/inout01.cj
+compiler/CHIROpt/ConstPropagation/globalvar/static.init01.cj
+compiler/CHIROpt/ConstPropagation/globalvar/static.init02.cj
+compiler/CHIROpt/ConstPropagation/globalvar/struct01.cj
+compiler/CHIROpt/ConstPropagation/globalvar/tuple01.cj
+compiler/CHIROpt/ConstPropagation/globalvar/tuple02.cj
+compiler/CHIROpt/ConstPropagation/simplifyBinary/add_1.cj
+compiler/CHIROpt/ConstPropagation/simplifyBinary/add_2.cj
+compiler/CHIROpt/ConstPropagation/simplifyBinary/div.cj
+compiler/CHIROpt/ConstPropagation/simplifyBinary/exp.cj
+compiler/CHIROpt/ConstPropagation/simplifyBinary/lshift.cj
+compiler/CHIROpt/ConstPropagation/simplifyBinary/mul_1.cj
+compiler/CHIROpt/ConstPropagation/simplifyBinary/mul_2.cj
+compiler/CHIROpt/ConstPropagation/simplifyBinary/rshift.cj
+compiler/CHIROpt/ConstPropagation/simplifyBinary/sub.cj
+compiler/CHIROpt/ConstPropagation/simplifyUnary/bitnot.cj
+compiler/CHIROpt/ConstPropagation/simplifyUnary/not.cj
+compiler/CHIROpt/ConstPropagation/terminator/branch.cj
+compiler/CHIROpt/ConstPropagation/terminator/int_op_with_excep1.cj
+compiler/CHIROpt/ConstPropagation/terminator/multi_branch.cj
+compiler/CHIROpt/ConstPropagation/terminator/typecast_with_excep1.cj
+compiler/CodegenCommon/bug4/default.cj
+compiler/Driver/options/obfuscation/test_seed/test_default.cj
+compiler/Driver/options/obfuscation/test_seed/test_diff.cj
+compiler/Driver/options/trim_path/trim_path4.cj
+compiler/Driver/options/trim_path/trim_path5.cj
+compiler/Modules/ambiguous_import/pe/e.cj
+compiler/Modules/arithmetic/src/main.cj
+compiler/Modules/cj-cache-master/src/main.cj
+
+# bug 213 (generic default interface method call through an interface-typed reference -- `could not find VTable slot for`)
+compiler/CHIR/UG/ClosureConversion/instanceOf03.cj
+compiler/CHIR/UG/ClosureConversion/instanceOf04.cj
