@@ -3,6 +3,15 @@ struct S0 {
 }
 
 @C
+struct S4f1 {
+    var a: Float32
+
+    init(a: Float32) {
+        this.a = a
+    }
+}
+
+@C
 struct S8i {
     var a: Int64
 
@@ -39,6 +48,19 @@ struct S8f2 {
     init(a: Float32, b: Float32) {
         this.a = a
         this.b = b
+    }
+}
+
+@C
+struct S12f3 {
+    var a: Float32
+    var b: Float32
+    var c: Float32
+
+    init(a: Float32, b: Float32, c: Float32) {
+        this.a = a
+        this.b = b
+        this.c = c
     }
 }
 
@@ -156,6 +178,21 @@ struct S32 {
 }
 
 @C
+struct S32f {
+    var a: Float64
+    var b: Float64
+    var c: Float64
+    var d: Float64
+
+    init(a: Float64, b: Float64, c: Float64, d: Float64) {
+        this.a = a
+        this.b = b
+        this.c = c
+        this.d = d
+    }
+}
+
+@C
 struct S48m {
     var a: Int64
     var b: Float64
@@ -252,11 +289,64 @@ struct N40 {
     }
 }
 
+// Float16 is not supported by the cbc toolchain yet.
+/*
+@C
+struct S2f16 {
+    var a: Float16
+
+    init(a: Float16) {
+        this.a = a
+    }
+}
+
+@C
+struct S4f16 {
+    var a: Float16
+    var b: Float16
+
+    init(a: Float16, b: Float16) {
+        this.a = a
+        this.b = b
+    }
+}
+
+@C
+struct S6f16 {
+    var a: Float16
+    var b: Float16
+    var c: Float16
+
+    init(a: Float16, b: Float16, c: Float16) {
+        this.a = a
+        this.b = b
+        this.c = c
+    }
+}
+
+@C
+struct S8f16 {
+    var a: Float16
+    var b: Float16
+    var c: Float16
+    var d: Float16
+
+    init(a: Float16, b: Float16, c: Float16, d: Float16) {
+        this.a = a
+        this.b = b
+        this.c = c
+        this.d = d
+    }
+}
+*/
+
 foreign func pbvS0(x: Int64, s: S0, y: Int64): Int64
+foreign func pbvS4f1(s: S4f1): Float64
 foreign func pbvS8i(s: S8i): Int64
 foreign func pbvS8i2(s: S8i2): Int64
 foreign func pbvS8f(s: S8f): Float64
 foreign func pbvS8f2(s: S8f2): Float64
+foreign func pbvS12f3(s: S12f3): Float64
 foreign func pbvS16i(s: S16i): Int64
 foreign func pbvS16f(s: S16f): Float64
 foreign func pbvS16m(s: S16m): Float64
@@ -266,6 +356,7 @@ foreign func pbvS24i(s: S24i): Int64
 foreign func pbvS24f(s: S24f): Float64
 foreign func pbvS24m(s: S24m): Float64
 foreign func pbvS32(s: S32): Int64
+foreign func pbvS32f(s: S32f): Float64
 foreign func pbvS48m(s: S48m): Float64
 foreign func pbvS64(s: S64): Int64
 foreign func pbvN16(n: N16): Float64
@@ -279,14 +370,27 @@ foreign func pbvMixC(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64,
 foreign func pbvMixD(a: Int64, b: Int64, c: Int64, d: Int64, e: Int64, s: S16i): Int64
 foreign func pbvMixG(a: Int64, b: Int64, c: Int64, d: Int64, e: Int64, f: Int64, s: S16m): Float64
 
+/* Float16 is not supported by the cbc toolchain yet.
+foreign func pbvS2f16(s: S2f16): Float64
+foreign func pbvS4f16(s: S4f16): Float64
+foreign func pbvS6f16(s: S6f16): Float64
+foreign func pbvS8f16(s: S8f16): Float64
+*/
+
 main(): Int64 {
     var passed = 0
 
-    // --- small structs: 0/8/16/24 bytes, int-only / fp-only / mixed ---
+    // --- small structs: 0/4/8/12/16/24 bytes, int-only / fp-only / mixed ---
     if (unsafe { pbvS0(11, S0(), 22) } == 55) {
         passed += 1
     } else {
         println("pbvS0 failed")
+    }
+
+    if (unsafe { pbvS4f1(S4f1(2.5f32)) } == 2.5) {
+        passed += 1
+    } else {
+        println("pbvS4f1 failed")
     }
 
     if (unsafe { pbvS8i(S8i(1234567890123)) } == 1234567890123) {
@@ -311,6 +415,12 @@ main(): Int64 {
         passed += 1
     } else {
         println("pbvS8f2 failed")
+    }
+
+    if (unsafe { pbvS12f3(S12f3(1.0f32, 2.0f32, 3.0f32)) } == 14.0) {
+        passed += 1
+    } else {
+        println("pbvS12f3 failed")
     }
 
     if (unsafe { pbvS16i(S16i(11, 22)) } == 55) {
@@ -366,6 +476,12 @@ main(): Int64 {
         passed += 1
     } else {
         println("pbvS32 failed")
+    }
+
+    if (unsafe { pbvS32f(S32f(1.5, 2.5, 3.5, 4.5)) } == 35.0) {
+        passed += 1
+    } else {
+        println("pbvS32f failed")
     }
 
     if (unsafe { pbvS48m(S48m(1, 2.0, 3, 4.0, 5, 6.0)) } == 91.0) {
@@ -442,8 +558,35 @@ main(): Int64 {
         println("pbvMixG failed")
     }
 
+    // Float16 is not supported by the cbc toolchain yet.
+    /*
+    if (unsafe { pbvS2f16(S2f16(1.5f16)) } == 1.5) {
+        passed += 1
+    } else {
+        println("pbvS2f16 failed")
+    }
+
+    if (unsafe { pbvS4f16(S4f16(1.5f16, 2.5f16)) } == 6.5) {
+        passed += 1
+    } else {
+        println("pbvS4f16 failed")
+    }
+
+    if (unsafe { pbvS6f16(S6f16(1.0f16, 2.0f16, 3.0f16)) } == 14.0) {
+        passed += 1
+    } else {
+        println("pbvS6f16 failed")
+    }
+
+    if (unsafe { pbvS8f16(S8f16(1.0f16, 2.0f16, 3.0f16, 4.0f16)) } == 30.0) {
+        passed += 1
+    } else {
+        println("pbvS8f16 failed")
+    }
+    */
+
     println("passed ${passed}")
-    if (passed == 26) {
+    if (passed == 29) {
         return 0
     }
     return 1
