@@ -1939,27 +1939,22 @@ trait CHIRParser
         e.location match {
           case loc: (CHIR.LocalVar | CHIR.Parameter) =>
             val ValueSig(sig) = loc
-            if (sig.isZST) {
+            val mem = state(loc)
+            val n = if (sig.isZST) {
               // nothing to do
-              state(e) = Void()
+              Void()
+            } else if (needsCopy(sig) && !sig.isVariableSizeType) {
+              val res = StackAlloc.Local(sig)
+              copy(sig, res, mem)
+              res
             } else {
-              val n = state(loc) match {
+              mem match {
                 case mem @ GetFieldSeqRef(fields, _, base) =>
-                  if (!mem.resType.isVariableSizeType && needsCopy(mem.resType)) {
-                    val res = StackAlloc.Local(mem.resType)
-                    copy(mem.resType, res, mem)
-                    res
-                  } else {
-                    LoadFieldSeq(maybeDerivedPtrBase(mem), base, fields*)
-                  }
+                  assert(sig == mem.resType, s"$sig != ${mem.resType} in $mem")
+                  LoadFieldSeq(maybeDerivedPtrBase(mem), base, fields*)
                 case mem @ GetStaticFieldSeqRef(fields) =>
-                  if (!mem.resType.isVariableSizeType && needsCopy(mem.resType)) {
-                    val res = StackAlloc.Local(mem.resType)
-                    copy(mem.resType, res, mem)
-                    res
-                  } else {
-                    LoadStaticFieldSeq(DerivedPtr.Global(), fields*)
-                  }
+                  assert(sig == mem.resType, s"$sig != ${mem.resType} in $mem")
+                  LoadStaticFieldSeq(DerivedPtr.Global(), fields*)
                 case mem =>
                   if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive || sig.isTypeVariable) {
                     mem
@@ -1967,8 +1962,8 @@ trait CHIRParser
                     LoadMemory(sig.toAsm, sig, atomic = false)(mem)
                   }
               }
-              state(e) = n
             }
+            state(e) = n
           case loc: CHIR.GlobalVar =>
             val field = staticFieldRef(loc)
             val n = if (field.fieldType.isZST) {
