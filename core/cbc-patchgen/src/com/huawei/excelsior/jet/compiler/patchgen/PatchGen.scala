@@ -633,7 +633,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
 
     val boolTy = TypeImpl(TypeKind.Boolean)
     val falseExpr = ConstantExpr(ArrayBuffer(), None, 0L, Some(guardVarsInitFuncBody),
-      ArrayBuffer(), None, BoolLiteral(ArrayBuffer(), None, 0L, Some(boolTy), "%false", value = false))
+      ArrayBuffer(), None, BoolLiteral(ArrayBuffer(), None, 0L, Some(boolTy), "", value = false))
     falseExpr.resultVar = Some(ChirOps.mintResult(topLevel, boolTy, falseExpr))
     ChirOps.moveAfter(falseExpr, typeCast)
 
@@ -666,7 +666,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
 
     val boolTy = TypeImpl(TypeKind.Boolean)
     val trueExpr = ConstantExpr(ArrayBuffer(), None, 0L, Some(guardVarsInitFuncBody),
-      ArrayBuffer(), None, BoolLiteral(ArrayBuffer(), None, 0L, Some(boolTy), "%true", value = true))
+      ArrayBuffer(), None, BoolLiteral(ArrayBuffer(), None, 0L, Some(boolTy), "", value = true))
     trueExpr.resultVar = Some(ChirOps.mintResult(topLevel, boolTy, trueExpr))
     ChirOps.moveBefore(trueExpr, guardVarsInitFuncTerminator)
 
