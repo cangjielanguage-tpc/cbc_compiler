@@ -27,6 +27,7 @@ compiler/Sema/operator_overload/timeout_06.cj
 API/std/sort/test_stableSort.cj
 API/std/sort/test_arraySort.cj
 API/std/sort/test_sort_stable.cj
+compiler/ConditionalCompilation/node/finalizer_on.cj
 
 # environment: SocketException: Socket is not connected
 API/std/socket/redesign/props/udp_props_readonly.cj
@@ -197,6 +198,7 @@ API/std/reflect/static_prop_test.cj
 API/std/reflect/typeInfo_findInstanceMemberFunction_test_cjnative.cj
 API/std/reflect/typeInfo_staticMemberFunctionInfo_apply_struct.cj
 API/std/reflect/classTypeInfo_test.cj
+API/std/reflect/annotation_cjnative.cj
 
 
 # ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
