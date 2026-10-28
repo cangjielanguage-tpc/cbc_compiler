@@ -36,8 +36,13 @@ compiler/Sema/type_infer/lambda_param_01.cj
 compiler/Sema/const_evaluation/ok_class_ctor.cj
 API/std/core/test_mathextension.cj
 compiler/Mangle/MangledName/new_mangle_fuzz_01.cj
+API/std/unittest/delta_comparison/assert/user_defined_types/comparison_fail.cj
+API/std/unittest/delta_comparison/assert/user_defined_types/comparison_success.cj
+API/std/unittest/delta_comparison/expect/user_defined_types/comparison_fail.cj
+API/std/unittest/delta_comparison/expect/user_defined_types/comparison_success.cj
 
 # bug 135 (not implemented: FLOAT16)
+compiler/ConstEval/testFloat.cj
 compiler/CodegenCJNative/LegacyTests/typesFp16.cj
 compiler/CHIR/CHIR2HLIR/array/array_09.cj
 compiler/CHIR/NoSideEffectMark/noSideEffect01.cj
@@ -157,6 +162,7 @@ API/std/unittest/diff/floats/zero_and_inf.cj
 API/std/math/test_hyperbolic_nan.cj
 API/std/math/test_math_funcs.cj
 API/std/unittest/prop_test/arbitrary_range/arbitrary_range_float.cj
+compiler/Parser/expr/quote/quoteDollarInterpolation/quoteDollarInterpolation3.cj
 
 # bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
@@ -371,6 +377,9 @@ API/std/unittest/mock/framework/verification_failed_reason_test.cj
 # bug 124: not implemented: cast from Option<Array<Int64>>.None to Option<Int64>
 compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
 compiler/CodegenCommon/overflow/cmpfuzz/test_4_main.cj
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix25.cj
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix32.cj
+compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
 
 # bug 125: storeFieldSeq for tuple with Varray
 compiler/CodegenCJNative/reflect/reflect_09.cj
@@ -488,6 +497,14 @@ compiler/Sema/Extend/interface_default_implement/other_pkg_prop_virtual/main.cj
 compiler/Sema/Extend/interface_default_implement/prop_call_virtual.cj
 compiler/Sema/box/call_boxed_super_01.cj
 compiler/Sema/box/call_boxed_super_02.cj
+API/std/unittest/new_bench/bench_baseline_self.cj
+API/std/unittest/new_bench/bench_finalizers.cj
+API/std/unittest/new_bench/bench_grouping.cj
+API/std/unittest/new_bench/bench_input2.cj
+API/std/unittest/new_bench/bench_long_args.cj
+API/std/unittest/report_bench_csv/report_csv_failed.cj
+compiler/Sema/enum/enum32_1.cj
+compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic07.cj
 
 # bug 161 (io/fs related bugs (environment or miscompilation of foreigns, need investigation))
 API/std/io/ByteBuffer/test_setLength.cj
@@ -522,9 +539,11 @@ compiler/CodegenCJNative/generic/generic_struct2.cj
 compiler/CodegenCJNative/generic/generic_struct4.cj
 
 # bug 174 (assertion failed: !Engine::Term(term).IsGeneric())
+compiler/FFI/CFFI/cpointer/extend_interfaces.cj
 compiler/Modules/Package/extend/extend_multiple_exportID/main.cj
 
 # bug 175 (CHIRParser.genericTypeInfoParam(CHIRParser.scala:2770))
+compiler/CHIR/UG/ClosureConversion/extendFunc01.cj
 compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
 
 # bug 177 (unexpected runSingleCase.lambda in stacktrace)
@@ -541,6 +560,7 @@ compiler/Sema/class/class_inheritance_9.cj
 
 # bug 184 (StackOverflowError in CangjieNodes$StoreFieldSeq.blockRef)
 API/std/collection/test_Concurrent.cj
+compiler/Macro/basic_expansion/main_in_macro_call.cj
 
 # bug 187 (exception at creation of empty HashMap<int32, CString>)
 compiler/CodegenCommon/lambda/lambda_cstring.cj
@@ -641,6 +661,8 @@ compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
 compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
 
 # bug 202 (some complicated foreign funcs build patterns in LLT testsuite)
+API/std/unittest/mock/framework/listeners_test.cj
+API/std/unittest/mock/framework/stub_base_test.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_interface.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package_separate.cj
@@ -688,6 +710,7 @@ API/std/unittest/report_bench_html/report_html_colon_name.cj
 API/std/unittest/report_bench_html/report_html_no_gnuplot.cj
 
 # bug 206 (mut generic struct interface -- could not find VTable slot for bar(BOXi32)BOXi32)
+API/std/unittest/mock/compiler/ensurePreparedToMock/generics_with_O2.cj
 compiler/CHIR/UG/OpenGeneric/extend.cj
 compiler/CHIR/UG/OpenGeneric/inter.cj
 compiler/CHIR/UG/OpenGeneric/mut.cj
@@ -702,17 +725,21 @@ compiler/Macro/inout/inout_m2.cj
 compiler/Macro/inout/inout_m5.cj
 
 # bug 209 (package recompilation test: new version of package ignored)
+compiler/CodegenCJNative/compitability/class_add_interface_concrete/main.cj
+compiler/CodegenCJNative/compitability/class_add_interface_concrete2/main.cj
 compiler/CodegenCJNative/compitability/0_class_add_open_method/main.cj
 compiler/CodegenCJNative/compitability/class_add_open_method/main.cj
 compiler/CodegenCJNative/compitability/class_add_open_method2/main.cj
 compiler/CodegenCJNative/compitability/org_name/main.cj
 
 # bug 210 (inout tests: key not found compiler.chir.v13002.GlobalVarImpl)
+API/std/unittest/mock/compiler/misc/foreign_inout_param_struct.cj
 compiler/FFI/CFFI/inout/inout_13.cj
 compiler/FFI/CFFI/inout/inout_14.cj
 compiler/FFI/CFFI/inout/inout_7.cj
 
 # bug 211 (cjc --mock=on: could not find VTable slot for %+(Sstd.core:String;)Sstd.core:String;)
+API/std/unittest/mock/framework/operator_stub_test.cj
 API/std/unittest/mock/framework/spy_test.cj
 API/std/unittest/mock/framework/verification_failed_report_test.cj
 API/std/unittest/mock/framework/verify_misconfiguration_test.cj
@@ -720,6 +747,10 @@ API/std/unittest/mock/framework/expectation_failed_test.cj
 API/std/unittest/mock/framework/runtime_failure_report_test.cj
 
 # bug 212 (UNEXPECTED: no cbc for launcher)
+compiler/Driver/options/optional_space/output.cj
+compiler/Driver/options/output_dir/test_o_output_dir.cj
+compiler/Driver/options/output_file/test_file.cj
+compiler/Driver/options/output_file/test_package.cj
 Runtime/CJNative/DFX/heap_snapshot_coverage.cj
 Runtime/CJNative/GC/gc_async_allocation_finalizer.cj
 Runtime/CJNative/GC/gc_region_pressure.cj
@@ -795,5 +826,20 @@ compiler/Modules/arithmetic/src/main.cj
 compiler/Modules/cj-cache-master/src/main.cj
 
 # bug 213 (generic default interface method call through an interface-typed reference -- `could not find VTable slot for`)
+API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
 compiler/CHIR/UG/ClosureConversion/instanceOf03.cj
 compiler/CHIR/UG/ClosureConversion/instanceOf04.cj
+
+# bug 195 (Support pass-by-value in foreign function calls)
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_7.cj
+compiler/FFI/CFFI/record/small_17.cj
+compiler/FFI/CFFI/record/small_18.cj
+
+# bug 215 (not implemented: intrinsic CPOINTER_ADD)
+compiler/CHIROptTest/SancovPass/traceMemCmpArray3.cj
+compiler/CHIROptTest/SancovPass/traceStringCmpIndexOf.cj
+
+# bug 216 (not implemented: cast from Pi* to AV*)
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/varray.cj
+compiler/Sema/varray/varray_cffi/varray_inout.cj
+compiler/Sema/varray/varray_cffi/varray_inout05.cj
