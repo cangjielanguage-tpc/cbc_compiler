@@ -1253,12 +1253,16 @@ private object InstructionParser {
   instr("throw")        { (a, s) => a.throwEx(s.ireg) }
   instr("catch")        { (a, s) => a.catchEx(s.ireg) }
   instr("div.check")    { (a, s) => a.divisorCheck(s.ireg) }
+  instr("nullcheck")    { (a, s) => a.nullcheck(s.ireg) }
+  instr("movbp.local")  { (a, s) => a.movbp(s.ireg, local = true) }
+  instr("movbp.global") { (a, s) => a.movbp(s.ireg, local = false) }
   instr("arr.len")      { (a, s) => a.lenarr(s.ireg, s.ireg) }
   instr("arr.ic")       { (a, s) => a.arrIC(s.ireg, s.ireg) }
   instr("gcpoint")      { (a, s) => a.gcpoint() }
   instr("iof")          { (a, s) => a.isInstanceOf(s.ireg, s.ireg, s.tpe) }
   instr("prepare.rec")  { (a, s) => a.prepareRecord(s.ts) }
   instr("zero.refs")    { (a, s) => a.prepareRecord(s.ts) }
+  instr("initobj")      { (a, s) => a.initobj(s.ts) }
   instr("ld.stack.rec") { (a, s) => a.ldstackrec(s.ireg, s.ts) }
   instr("nop")          { (a, s) => a.nop() }
   instr("const.string") { (a, s) => a.initConstString(s.ts, StringLiteral(s.str)) }
@@ -1266,6 +1270,7 @@ private object InstructionParser {
   instr("payload.g")    { (a, s) => a.payloadGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
   instr("new.none.g")   { (a, s) => a.newNoneGeneric(s.ireg, s.ireg, s.ireg, s.tpe) }
   instr("new.some.g")   { (a, s) => a.newSomeGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("zeroval.g")    { (a, s) => a.zeroval(s.ireg, s.ireg) }
 
   private def fieldPath(s: ArgStream): FieldReference = s.fields match {
     case Seq(fr) => fr
