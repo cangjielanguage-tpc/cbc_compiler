@@ -1317,6 +1317,10 @@ private object InstructionParser {
   instr("st.uslot.f64") { (a, s) => a.storeUntyped(s.freg, ST_F64, s.us) }
   instr("st.uslot.imm") { (a, s) => a.storeUntypedImm(s.int, s.us) }
 
+  // arrays
+  instr("ld.arr.64") { (a, s) => a.loadArray(s.ireg, LD_64, s.ireg, s.ireg) }
+  instr("st.arr.64") { (a, s) => a.storeArray(s.ireg, ST_64, s.ireg, s.ireg) }
+
   // memory access - raw
   instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, number = s.int) }
 
