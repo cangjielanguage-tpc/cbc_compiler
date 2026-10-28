@@ -211,13 +211,19 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
   }
 
   private def markInternalFuncsAsNonImportedAreReachableFromPatchable(): Unit = {
+    val patchableSet = markContext.patchables.toSet
     val visited = LinkedHashSet[Func]()
     for (patchable <- markContext.patchables) {
-      markInternalFuncAsNonImportedAreReachableFromPatchable(patchable, visited)
+      markInternalFuncAsNonImportedAreReachableFromPatchable(patchable, patchableSet, visited)
     }
   }
 
+  /** The goal of the function is to save the code of some internal functions (e.g. generic
+    * instantiated functions) reachable from patchable functions in .chir file.
+    * Those functions should be unmarked as imported/deleted.
+    */
   private def markInternalFuncAsNonImportedAreReachableFromPatchable(func: Func,
+                                                                     patchableSet: Set[Func],
                                                                      visited: LinkedHashSet[Func]): Unit = {
     ChirOps.visitFuncExprs(func) { e =>
       e match {
@@ -226,11 +232,16 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
             case callee: Func if linkageOf(callee).contains(Linkage.Internal) =>
               if (callee.isLambda) {
                 markContext.unmarkFuncAsDeleted(callee)
-              } else {
+                // Patchable functions should be imported anyway, otherwise an inconsistency
+                // happens, when some patchable function F is unmarked as imported, but during
+                // patch generation the F body moved to the corresponding patch function in the
+                // PatchImpl class, making the F body empty. Finally, we would have unimported F
+                // without body, so we want to avoid such situations.
+              } else if (!patchableSet.contains(callee)) {
                 markContext.unmarkFuncAsImported(callee)
               }
               if (visited.add(callee)) {
-                markInternalFuncAsNonImportedAreReachableFromPatchable(callee, visited)
+                markInternalFuncAsNonImportedAreReachableFromPatchable(callee, patchableSet, visited)
               }
             case _ => ()
           }
