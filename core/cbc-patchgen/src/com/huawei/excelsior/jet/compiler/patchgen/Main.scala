@@ -31,8 +31,12 @@ object Main {
 
   private def usage(): Unit = {
     System.err.println("Usage:")
-    System.err.println("  patch-gen [--chir-version <v>] <patched_chir_path>")
-    System.err.println("  patch-gen [--chir-version <v>] <source_chir_path> <patched_chir_path>")
+    System.err.println("  patch-gen [--chir-version <v>] [--test] [--debug] <patched_chir_path>")
+    System.err.println("  patch-gen [--chir-version <v>] [--test] [--debug] <source_chir_path> <patched_chir_path>")
+    System.err.println("  --test: after generating the patch, re-deserialize it and dump the identifiers of")
+    System.err.println("          non-imported global vars, functions with body and custom type defs to stdout")
+    System.err.println("          (equivalent of the C++ #if TEST build; compared by the patch-gen test suite)")
+    System.err.println("  --debug: print the C++ #if DEBUG phase banners, marking traces and IR dumps")
     System.err.println("Supported versions: " + SupportedChirVersions.mkString(", ") +
       " (default " + DefaultChirVersion + ")")
   }
@@ -55,11 +59,11 @@ object Main {
     Files.write(Paths.get(outPath), bytes)
   }
 
-  /** Port of `genPatch` (returns false on error, mirroring nullopt). */
-  private def genPatch(sourcePackage: Option[Package], patchedChirPath: String, chirVersion: Int): Boolean = {
+  /** Port of `genPatch`; returns the patch file name on success (None mirrors nullopt). */
+  private def genPatch(sourcePackage: Option[Package], patchedChirPath: String, chirVersion: Int): Option[String] = {
     if (!Files.isReadable(Paths.get(patchedChirPath))) {
       System.err.println("Error: CHIR file does not exist: " + patchedChirPath)
-      return false
+      return None
     }
     val patchedPackage = try {
       load(patchedChirPath, chirVersion)
@@ -67,7 +71,7 @@ object Main {
       case e: RuntimeException =>
         System.err.println("Error: Couldn't deserialize: " + patchedChirPath)
         System.err.println(e.getMessage)
-        return false
+        return None
     }
 
     // TODO rename to patch everywhere
@@ -78,16 +82,18 @@ object Main {
       // C++ serializes inside PatchGen::genPatch; it always runs last there, so
       // serializing here (only on success) is observably equivalent
       serialize(patchedPackage, chirVersion, patchFileName)
-      true
+      Some(patchFileName)
     } catch {
       case e: PatchGenException =>
         System.err.println(e.getMessage)
-        false
+        None
     }
   }
 
   def main(args: Array[String]): Unit = {
     var chirVersion = DefaultChirVersion
+    var testMode = false
+    var debugMode = false
     val rest = ArrayBuffer[String]()
     var i = 0
     var bad = false
@@ -109,6 +115,12 @@ object Main {
           }
           i += 2
         }
+      } else if (args(i) == "--test") {
+        testMode = true
+        i += 1
+      } else if (args(i) == "--debug") {
+        debugMode = true
+        i += 1
       } else {
         rest += args(i)
         i += 1
@@ -141,8 +153,28 @@ object Main {
       case None => None
     }
 
-    if (!genPatch(sourcePackage, patchedPath, chirVersion)) {
-      sys.exit(1)
+    if (debugMode) {
+      Debug.setEnabled(true)
+    }
+
+    genPatch(sourcePackage, patchedPath, chirVersion) match {
+      case None =>
+        sys.exit(1)
+      case Some(patchFileName) =>
+        // C++ main(): #if DEBUG success line, then #if TEST re-deserialize + dump
+        if (debugMode) {
+          println("Patch was successfully generated in " + patchFileName)
+        }
+        if (testMode) {
+          try {
+            DebugDump.dumpTestInfo(load(patchFileName, chirVersion))
+          } catch {
+            case e: RuntimeException =>
+              System.err.println("Error: Couldn't deserialize: " + patchFileName)
+              System.err.println(e.getMessage)
+              sys.exit(1)
+          }
+        }
     }
   }
 }
