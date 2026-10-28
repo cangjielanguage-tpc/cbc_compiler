@@ -54,7 +54,7 @@ object Equality {
     if (l eq r) {
       return true
     }
-    (l, r) match {
+    val res = (l, r) match {
       case (l: CustomType, r: CustomType) =>
         // C++: kind equal + customDef equal + generic args equal
         defKindOf(l) == defKindOf(r) && areEqualOptDef(l.customTypeDef, r.customTypeDef) &&
@@ -75,6 +75,14 @@ object Equality {
         areEqual(l.elementType, r.elementType)
       case _ => false // variant index mismatch
     }
+    if (Debug.enabled && !res) {
+      Debug.log("Types differ")
+      Debug.log("first ")
+      Debug.log(DebugDump.ty(l))
+      Debug.log("second ")
+      Debug.log(DebugDump.ty(r))
+    }
+    res
   }
 
   private def defKindOf(t: CustomType): Option[CustomDefKind] = t.customTypeDef.map(_.kind)
@@ -106,6 +114,18 @@ object Equality {
       java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Value, java.lang.Boolean]())
 
     def areEqual(first: Value, second: Value): Boolean = {
+      val res = areEqualValueImpl(first, second)
+      if (Debug.enabled && !res) {
+        Debug.log("Values differ")
+        Debug.log("first ")
+        Debug.log(DebugDump.value(first))
+        Debug.log("second ")
+        Debug.log(DebugDump.value(second))
+      }
+      res
+    }
+
+    private def areEqualValueImpl(first: Value, second: Value): Boolean = {
       if (first eq second) {
         return true
       }
@@ -169,6 +189,18 @@ object Equality {
       }
 
     def areEqual(first: Expression, second: Expression): Boolean = {
+      val res = areEqualExprImpl(first, second)
+      if (Debug.enabled && !res) {
+        Debug.log("Exprs differ")
+        Debug.log("first ")
+        Debug.log(DebugDump.expr(first))
+        Debug.log("second ")
+        Debug.log(DebugDump.expr(second))
+      }
+      res
+    }
+
+    private def areEqualExprImpl(first: Expression, second: Expression): Boolean = {
       if (first eq second) {
         return true
       }
