@@ -291,10 +291,21 @@ object Build {
       compilerAssemblySettings(),
       assembly / mainClass := Some("com.huawei.excelsior.jet.compiler.patchgen.Main"),
       assembly / assemblyOutputPath := target.value / "patch-gen.jar",
+      copyPatchgenWrapper := {
+        val jar = assembly.value
+        val script = (ThisBuild / baseDirectory).value / "scripts" / "patch-gen"
+        val launcher = target.value / script.getName
+        IO.copyFile(script, launcher)
+        streams.value.log.info(s"Copied $script to $launcher")
+        jar
+      },
+      nativeImageSettings("patch-gen-native", copyPatchgenWrapper),
     )
     .disablePlugins(JUnitXmlReportPlugin)
 
   lazy val copyAsmWrapper = taskKey[File]("Copies the cbc-asm wrapper script next to the assembled cbc-asm.jar")
+
+  lazy val copyPatchgenWrapper = taskKey[File]("Copies the patch-gen wrapper script next to the assembled patch-gen.jar")
 
   lazy val commonJavaLib = (project in file("core/common-java-lib"))
     .dependsOn(xscalaVMDependent)
