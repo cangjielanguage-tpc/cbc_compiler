@@ -173,17 +173,8 @@ class StandaloneTestSuite(TestSuite):
 
     def __init__(self, toolchain_path: str):
         super().__init__(toolchain_path)
-        self.asm_jar = self.toolchain_path + "/tools/bin/cbc-asm.jar"
-        self.asm_jar_cds = dotjsa(self.asm_jar)
-        self.compiler_jar = self.toolchain_path + "/tools/bin/cbc-compiler.jar"
-        self.compiler_jar_cds = dotjsa(self.compiler_jar)
         self.compilation_failures = []
         self.built_modes = set()
-        # Reset cds cache if it exists
-        if os.path.isfile(self.asm_jar_cds):
-            os.remove(self.asm_jar_cds)
-        if os.path.isfile(self.compiler_jar_cds):
-            os.remove(self.compiler_jar_cds)
 
     def mode_work_dir(self, test_work_dir, mode, name):
         return f"{test_work_dir}/{mode}"
@@ -255,7 +246,7 @@ class StandaloneTestSuite(TestSuite):
 
         match in_mode:
             case "asm":
-                compile_asm_to_obj = java_cmd(self.asm_jar_cds) + ['-jar', self.asm_jar, dotasm(test_name)]
+                compile_asm_to_obj = ['cbc-asm', dotasm(test_name)]
 
                 with open(f"{test_work_dir}/asm.out", "w+") as asm_log:
                     asm_err = io.StringIO()
@@ -328,7 +319,7 @@ class StandaloneTestSuite(TestSuite):
                     aot_deps_args = [f"-cbcaotdeps={':'.join(aot_so_names)}"] if aot_so_names else []
                     foreign_libs_args = [f"-foreignlibs={':'.join(native_lib_names)}"] if native_lib_names else []
                     jc_options = f"+IgnoreSourceFileNameForCbc {self.jc_options}"
-                    chir_to_cbc = java_cmd(self.compiler_jar_cds) + ['-jar', self.compiler_jar, f"-outputname={cbc_name}", f"{cbc_name}.chir", jc_options] + aot_deps_args + foreign_libs_args + int_chir_files
+                    chir_to_cbc =['cbc-compiler', f"-outputname={cbc_name}", f"{cbc_name}.chir", jc_options] + aot_deps_args + foreign_libs_args + int_chir_files
                     cbc_log = io.StringIO()
                     cbc_err = io.StringIO()
                     res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)
