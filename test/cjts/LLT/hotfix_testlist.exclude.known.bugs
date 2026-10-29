@@ -402,10 +402,6 @@ Runtime/CJNative/barrier/static.agg/write/GlobalSSC-writeS.cj
 # bug 148 (LLT/compiler/ConstEval/Overflow: error: expected at least one source code file when compiling source code)
 compiler/ConstEval/Overflow
 
-# bug 150 (SIGABRT in the GC write barrier)
-API/std/deriving/arbitrary_t_test.cj
-API/std/unittest/examples/advance1.cj
-
 # bug 155 ([resolution] [FATAL] not found function: _CGP3pkgiiHv)
 compiler/Macro/import/import05/call.cj
 compiler/Modules/Package/alias/import_alias_14/default.cj
@@ -955,3 +951,7 @@ API/std/deriving/shrink_test.cj
 API/std/unittest/new_bench/bench_disable_gc.cj
 API/std/unittest/new_bench/bench_explicit_gc.cj
 Runtime/CJNative/Exception/Expection42_NewObject.cj
+
+# bug 219: Unsupported C2I static virtual call
+API/std/deriving/arbitrary_t_test.cj
+API/std/unittest/examples/advance1.cj
