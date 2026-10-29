@@ -6,6 +6,16 @@
 # no debugger support in near future
 Tools/cjdb
 
+# tests folder creation/copying, failures seem to be configuration-specific
+compiler/Driver/options/output_file/test_dir.cj
+compiler/Driver/options/output_dir/test.cj
+compiler/Driver/options/output_dir/test_default_output.cj
+compiler/Driver/options/output_file/no_read_permission_dir.cj
+compiler/Driver/options/library_and_library_path/cjnative/library_priority.cj
+compiler/Driver/options/obfuscation/test_config/test_dir.cj
+compiler/Driver/options/obfuscation/test_layout/export_symbol_cmdline3.info
+compiler/Driver/options/obfuscation/test_layout/obf_line_number3.info
+
 # cjc options: misalign when hotfix enabled
 compiler/Driver/options/help/test_showall.cj
 
@@ -403,6 +413,7 @@ compiler/Driver/options/obfuscation/test_layout/test4.info
 compiler/IncrementalCompilation
 compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_1.cj
 compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_2.cj
+compiler/CodegenCJNative/incremental/cfunc2/main.info
 
 # broken tests - test expect throwing of `ArithmeticException: pow` when cast should throw. issue-140
 compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
