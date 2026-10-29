@@ -127,6 +127,10 @@ object Build {
             binary,
             "-J-Xmx5g",
             "-O3",
+            // JEP 498 (JDK 24+): scala.runtime.LazyVals$ (scala3-library <= 3.3.x)
+            // calls sun.misc.Unsafe::objectFieldOffset, which warns at image runtime.
+            // Remove together with the scala 3.8 upgrade (https://github.com/scala/scala3/pull/24109).
+            "--sun-misc-unsafe-memory-access=allow",
           ) ++ staticFlags ++ Seq(
             s"-J-XX:ActiveProcessorCount=${env.graalvmParallelism}",
             "-jar", jar.absolutePath,
