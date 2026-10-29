@@ -356,6 +356,17 @@ compiler/CHIR/SplitOperator/ovf_mul.cj
 compiler/CHIR/SplitOperator/ovf_sub.cj
 compiler/CHIR/UG/ClosureConversion/staticFunc01.cj
 compiler/CHIR/UG/ClosureConversion/staticFunc03.cj
+API/std/unittest/new_bench/bench_strategy_3.cj
+API/std/unittest/new_bench/bench_strategy_config.cj
+API/std/unittest/prop_test/arbitrary/arbitrary_integer.cj
+compiler/CHIR/ClosureConversion/testClosureConversion10.cj
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix4/use_interface_def_imple_094.cj
+compiler/CHIR/SplitOperator/ovf_mulnative.cj
+compiler/CHIR/SplitOperator/ovf_unative.cj
+compiler/CHIR/StaticAbstractMark/import1/main.cj
+compiler/Sema/Extend/default_implement/default_implement_01.cj
+compiler/Sema/Extend_import/import10/main.cj
+compiler/Sema/generics/generic_constraint/generic_constraint10.cj
 
 # bug 120 (cbc_engine: Conflict found for reference)
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
@@ -473,6 +484,9 @@ compiler/Modules/case_sensitive/main.cj
 compiler/Modules/cross_package/cross_package_01/main.cj
 compiler/Modules/cross_package/cross_package_02/main.cj
 compiler/Modules/Package/reexportMacroPkg/case05/main.cj
+compiler/CHIROpt/ConstPropagation/incremental/effect_map_single.cj
+compiler/Driver/options/import_path/test_order_correct.cj
+compiler/Driver/options/input/bc/test_bc_1.cj
 
 # bug 156 ([resolution] [ERROR] Failed to parse method reference <0, 0>)
 compiler/Sema/generics/generic_member07/main.cj
@@ -505,6 +519,7 @@ API/std/unittest/new_bench/bench_long_args.cj
 API/std/unittest/report_bench_csv/report_csv_failed.cj
 compiler/Sema/enum/enum32_1.cj
 compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic07.cj
+API/std/libast/tokens/toTokens/test_primitive_totokens_001.cj
 
 # bug 161 (io/fs related bugs (environment or miscompilation of foreigns, need investigation))
 API/std/io/ByteBuffer/test_setLength.cj
@@ -557,6 +572,7 @@ compiler/CodegenCJNative/ExtensionDef/extensiondef_07.cj
 
 # bug 183 (Resolved method is abi incompatible)
 compiler/Sema/class/class_inheritance_9.cj
+compiler/CHIR/UG/VTable/generic/non_static/return_class01.cj
 
 # bug 184 (StackOverflowError in CangjieNodes$StoreFieldSeq.blockRef)
 API/std/collection/test_Concurrent.cj
@@ -698,6 +714,13 @@ API/std/unittest/mock/integration/wrong_type_args.cj
 compiler/CodegenCJNative/reflect/reflect_08.cj
 compiler/CHIR/UG/ClosureConversion/importedFunc03/main.cj
 compiler/CHIR/UG/ClosureConversion/importedFunc04/main.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods_interface.cj
+compiler/CHIR/AST2CHIR/Apply/staticfuncaccess.cj
+compiler/CHIR/StaticAbstractMark/import/main.cj
+compiler/CHIR/StaticAbstractMark/import2/main.cj
+compiler/CHIR/UG/ClosureConversion/staticFunc05.cj
+compiler/CHIR/UG/ClosureConversion/staticFunc06.cj
+compiler/Sema/function/interface_def_val.cj
 
 # bug 205 (`$withoutTI` appended to AOT function that has no such suffix in compiled code)
 API/std/unittest/new_bench/bench_measure_cycles.cj
@@ -708,6 +731,7 @@ API/std/unittest/report_bench_csv/report_csv_raw_class_multiple_measurements.cj
 API/std/unittest/report_bench_csv/report_csv_raw_class_structure.cj
 API/std/unittest/report_bench_html/report_html_colon_name.cj
 API/std/unittest/report_bench_html/report_html_no_gnuplot.cj
+API/std/unittest/report_bench_html/report_html_failure.cj
 
 # bug 206 (mut generic struct interface -- could not find VTable slot for bar(BOXi32)BOXi32)
 API/std/unittest/mock/compiler/ensurePreparedToMock/generics_with_O2.cj
@@ -731,6 +755,9 @@ compiler/CodegenCJNative/compitability/0_class_add_open_method/main.cj
 compiler/CodegenCJNative/compitability/class_add_open_method/main.cj
 compiler/CodegenCJNative/compitability/class_add_open_method2/main.cj
 compiler/CodegenCJNative/compitability/org_name/main.cj
+compiler/CodegenCJNative/compitability/class_add_open_method3/main.cj
+compiler/CodegenCJNative/compitability/class_add_open_method4/main.cj
+compiler/CodegenCJNative/compitability/non_open_generic_class/main.cj
 
 # bug 210 (inout tests: key not found compiler.chir.v13002.GlobalVarImpl)
 API/std/unittest/mock/compiler/misc/foreign_inout_param_struct.cj
@@ -824,6 +851,9 @@ compiler/Driver/options/trim_path/trim_path5.cj
 compiler/Modules/ambiguous_import/pe/e.cj
 compiler/Modules/arithmetic/src/main.cj
 compiler/Modules/cj-cache-master/src/main.cj
+compiler/CodegenCommon/recursive_enum/multi-pkg1/main.cj
+compiler/Modules/Package/ImportUserDefinedCorePkg/main.cj
+compiler/Sema/class/interface_static_member_func_inheritance_1.cj
 
 # bug 213 (generic default interface method call through an interface-typed reference -- `could not find VTable slot for`)
 API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
@@ -843,3 +873,34 @@ compiler/CHIROptTest/SancovPass/traceStringCmpIndexOf.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/varray.cj
 compiler/Sema/varray/varray_cffi/varray_inout.cj
 compiler/Sema/varray/varray_cffi/varray_inout05.cj
+
+# bug 181 (Support reflection)
+compiler/CodegenCJNative/compitability/non_open_generic_class_reflection/main.cj
+compiler/CodegenCJNative/reflect/reflect_01.cj
+
+# bug 214 (inout receives value instead of address -- SIGSEGV)
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/return.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/staticWithForeign.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/topLvlWithForeign.cj
+compiler/FFI/CFFI/inout/inout_1.cj
+
+# bug 218 (umbrella issue: `could not find VTable slot for *`)
+API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
+compiler/CHIR/CHIR2HLIR/operator_overload/all_assign.cj
+compiler/CHIR/UG/CallExpr/invoke_like_03.cj
+compiler/CHIR/UG/CallExpr/invoke_like_05.cj
+compiler/CHIR/UG/OpenGeneric/basic.cj
+compiler/CodegenCJNative/record/override_cpointer_generic_return_with_concrete_type.cj
+compiler/CodegenCJNative/vfe/vfe_01.cj
+compiler/Macro/basic_expansion/interface_operator.cj
+compiler/Modules/Package/operator/main.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00012.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00035.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00051.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00065.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00100.cj
+compiler/Sema/call/call19.cj
+compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_4.cj
+compiler/Sema/generics/generic_upperbound_reference_09.cj
+compiler/Sema/generics/operatorOverload/operatorOverload.cj
+compiler/Sema/generics/operatorOverload/operatorOverloadinInterface.cj
