@@ -896,7 +896,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.LoadUntyped)
       .bits(_.w4(IR_ACC_IDX).w4(ldk))
-      .write16(src.slot)
+      .uleb(src.slot)
   }
 
   def loadUntyped(dst: Rg, ldk: LoadAccessKind, src: StackSlot.Untyped): Unit = instr {
@@ -904,7 +904,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.LoadUntyped)
       .bits(_.w4(dst).w4(ldk))
-      .write16(src.slot)
+      .uleb(src.slot)
   }
 
   def storeUntyped(src: Rg, stk: StoreAccessKind, dst: StackSlot.Untyped): Unit = instr {
@@ -912,7 +912,7 @@ trait ForkedAssembler {
     stream
       .opc8(Opcode.StoreUntyped)
       .bits(_.w4(src).w4(stk))
-      .write16(dst.slot)
+      .uleb(dst.slot)
   }
 
   def loadUntyped(dst: Rg, tk: CbcTypeKind, src: StackSlot.Untyped): Unit = loadUntyped(dst, LoadAccessKind.from(tk), src)
@@ -922,7 +922,7 @@ trait ForkedAssembler {
   def storeUntypedImm(src: Long, dst: StackSlot.Untyped): Unit = {
     stream
       .opc8(Opcode.StoreUntypedImm)
-      .write16(analyzer.prim(dst).slot)
+      .uleb(analyzer.prim(dst).slot)
       .sleb(src)
   }
 
@@ -1112,10 +1112,99 @@ trait ForkedAssembler {
       .sym16(sig)
   }
 
+  def copyLocal(dst: IR, src: IR, sig: Signature): Unit = instr {
+    stream
+      .opc8(Opcode.CopyLocal)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .sym16(sig)
+  }
+
+  def copyFromLocal(dstBase: IR, dst: IR, src: IR, sig: Signature): Unit = instr {
+    stream
+      .opc8(Opcode.CopyFromLocal)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(0).w4(analyzer.useRec(src)))
+      .sym16(sig)
+  }
+
+  def copyToLocal(dst: IR, srcBase: IR, src: IR, sig: Signature): Unit = instr {
+    stream
+      .opc8(Opcode.CopyToLocal)
+      .bits(_.w4(0).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .sym16(sig)
+  }
+
+  def copyTypeSlot(dst: StackSlot.Typed, src: StackSlot.Typed): Unit = instr {
+    stream
+      .opc8(Opcode.CopyTypeSlot)
+      .ts16(dst)
+      .ts16(src)
+  }
+
+  def copyFromTypeSlot(dstBase: IR, dst: IR, src: StackSlot.Typed): Unit = instr {
+    stream
+      .opc8(Opcode.CopyFromTypeSlot)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .ts16(src)
+  }
+
+  def copyToTypeSlot(dst: StackSlot.Typed, srcBase: IR, src: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyToTypeSlot)
+      .ts16(dst)
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+  }
+
   def copy(dstBase: IR, dst: IR, srcBase: IR, src: IR, ti: IR): Unit = instr {
     stream
       .opc8(Opcode.CopyGeneric)
       .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
+  def copyLocal(dst: IR, src: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyLocalGeneric)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRec(src)))
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
+  def copyFromLocal(dstBase: IR, dst: IR, src: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyFromLocalGeneric)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .bits(_.w4(analyzer.useRec(src)).w4(analyzer.usePrim(ti)))
+  }
+
+  def copyToLocal(dst: IR, srcBase: IR, src: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyToLocalGeneric)
+      .bits(_.w4(analyzer.useRec(dst)).w4(analyzer.useRef(srcBase)))
+      .bits(_.w4(analyzer.useRec(src)).w4(analyzer.usePrim(ti)))
+  }
+
+  def copyTypeSlot(dst: StackSlot.Typed, src: StackSlot.Typed, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyTypeSlotGeneric)
+      .ts16(dst)
+      .ts16(src)
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
+  def copyFromTypeSlot(dstBase: IR, dst: IR, src: StackSlot.Typed, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyFromTypeSlotGeneric)
+      .bits(_.w4(analyzer.useRef(dstBase)).w4(analyzer.useRec(dst)))
+      .ts16(src)
+      .bits(_.w4(analyzer.usePrim(ti)).w4(0))
+  }
+
+  def copyToTypeSlot(dst: StackSlot.Typed, srcBase: IR, src: IR, ti: IR): Unit = instr {
+    stream
+      .opc8(Opcode.CopyToTypeSlotGeneric)
+      .ts16(dst)
       .bits(_.w4(analyzer.useRef(srcBase)).w4(analyzer.useRec(src)))
       .bits(_.w4(analyzer.usePrim(ti)).w4(0))
   }
@@ -1423,6 +1512,18 @@ object Assembler {
     case CallClosureGeneric
     case LeaCForeign
     case CallCFunc
+    case CopyLocal
+    case CopyToLocal
+    case CopyFromLocal
+    case CopyLocalGeneric
+    case CopyToLocalGeneric
+    case CopyFromLocalGeneric
+    case CopyTypeSlot
+    case CopyToTypeSlot
+    case CopyFromTypeSlot
+    case CopyTypeSlotGeneric
+    case CopyToTypeSlotGeneric
+    case CopyFromTypeSlotGeneric
   }
 
   enum RegSymGroup extends Ordinal {

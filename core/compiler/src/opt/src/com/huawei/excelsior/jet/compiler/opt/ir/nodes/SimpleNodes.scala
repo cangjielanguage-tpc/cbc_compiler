@@ -1990,7 +1990,18 @@ trait SimpleNodes { self: Universe with Nodes =>
   //////////////////////////////////////////////////////////
   // High-level copying node
 
-  class CopyStructure private(proto: CopyStructure.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {
+  sealed trait CopyStructureOperation extends SpinalMemoryNode with CompositeNode with NotProducesValue {
+    def dstBaseRef: Node
+    def dst: Node
+    def srcBaseRef: Node
+    def src: Node
+    def srcBaseRef_=(x: Node): Unit
+    def src_=(x: Node): Unit
+    def structureType: SignatureType
+  }
+
+  class CopyStructure private(proto: CopyStructure.Proto)
+    extends NodeWithFixedArgs(proto) with CopyStructureOperation {
     def dstBaseRef = arg(2)
     def dst = arg(3)
     def srcBaseRef = arg(4)
@@ -2017,7 +2028,7 @@ trait SimpleNodes { self: Universe with Nodes =>
   }
 
   class CopyStructureGeneric private(proto: CopyStructureGeneric.Proto)
-    extends NodeWithFixedArgs(proto) with SpinalMemoryNode with CompositeNode with NotProducesValue {
+    extends NodeWithFixedArgs(proto) with CopyStructureOperation {
     def dstBaseRef = arg(2)
     def dst = arg(3)
     def srcBaseRef = arg(4)
