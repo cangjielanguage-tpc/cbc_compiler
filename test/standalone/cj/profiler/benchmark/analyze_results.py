@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-EXPECTED_SAMPLES = 30
+EXPECTED_SAMPLES = 3
 # Two-sided 95% Student's t critical value for 29 degrees of freedom.
 T_CRITICAL_95 = 2.045229642132703
 

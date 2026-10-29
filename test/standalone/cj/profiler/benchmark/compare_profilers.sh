@@ -3,10 +3,10 @@
 set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-readonly WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../../../.." && pwd)"
+readonly WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../../../../.." && pwd)"
 readonly ENGINE_DIR="${ENGINE_DIR:-${WORKSPACE_DIR}/cbc-engine-initial-stage}"
 readonly CANGJIE_SDK_DIR="${CANGJIE_SDK_DIR:-${WORKSPACE_DIR}/cangjie}"
-readonly BUILD_ROOT="${BUILD_ROOT:-${ENGINE_DIR}/output/profiler-benchmarks}"
+readonly BUILD_DIR="${BUILD_DIR:-${ENGINE_DIR}/output/profiler-benchmark}"
 readonly RESULTS_DIR="${RESULTS_DIR:-${SCRIPT_DIR}/profiler_results}"
 readonly JOBS="${JOBS:-$(nproc)}"
 readonly BUILD_TYPE="${BUILD_TYPE:-Release}"
@@ -17,7 +17,6 @@ readonly COMPILE_COMMANDS="${ENGINE_DIR}/compile_commands.json"
 readonly MEASUREMENT_SCRIPT="${SCRIPT_DIR}/run_measurements.sh"
 readonly ANALYZER="${SCRIPT_DIR}/analyze_results.py"
 readonly TEST_SOURCE="${TEST_SOURCE:-${SCRIPT_DIR}/main.cj}"
-readonly -a IMPLEMENTATIONS=(profiler double_buffer atomic)
 
 if [[ ! -f "${CANGJIE_SDK_DIR}/envsetup.sh" ]]; then
     echo "Cangjie envsetup.sh not found: ${CANGJIE_SDK_DIR}/envsetup.sh" >&2
@@ -76,7 +75,7 @@ trap restore_sdk_library EXIT
 # shellcheck source=/dev/null
 source "${CANGJIE_SDK_DIR}/envsetup.sh"
 
-mkdir -p -- "${BUILD_ROOT}" "${RESULTS_DIR}" "${TEST_BUILD_DIR}"
+mkdir -p -- "${BUILD_DIR}" "${RESULTS_DIR}" "${TEST_BUILD_DIR}"
 
 echo "=== Compiling ${TEST_SOURCE} ===" >&2
 cjc \
@@ -94,37 +93,28 @@ cjc \
         "+IgnoreSourceFileNameForCbc"
 )
 
-for implementation in "${IMPLEMENTATIONS[@]}"; do
-    build_dir="${BUILD_ROOT}/${implementation}"
+echo "=== Configuring profiler benchmark ===" >&2
+cmake \
+    -S "${ENGINE_DIR}" \
+    -B "${BUILD_DIR}" \
+    -DBUILD_TESTING=OFF \
+    -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+    -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN_FILE}"
 
-    echo "=== Configuring ${implementation} ===" >&2
-    cmake \
-        -S "${ENGINE_DIR}" \
-        -B "${build_dir}" \
-        -DBUILD_TESTING=OFF \
-        -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
-        -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN_FILE}" \
-        -DCBC_PROFILER_IMPLEMENTATION="${implementation}"
+echo "=== Building profiler benchmark ===" >&2
+cmake --build "${BUILD_DIR}" --target cbcengine --parallel "${JOBS}"
 
-    echo "=== Building ${implementation} ===" >&2
-    cmake --build "${build_dir}" --target cbcengine --parallel "${JOBS}"
+cp -- "${BUILD_DIR}/libcbcengine.so" "${SDK_LIBRARY}"
 
-    cp -- "${build_dir}/libcbcengine.so" "${SDK_LIBRARY}"
+echo "=== Measuring with and without profiler ===" >&2
+CBC_FILE="${TEST_CBC}" "${MEASUREMENT_SCRIPT}"
 
-    echo "=== Measuring ${implementation} ===" >&2
-    CBC_FILE="${TEST_CBC}" "${MEASUREMENT_SCRIPT}"
-
-    cp -- "${SCRIPT_DIR}/profiler_true.txt" "${RESULTS_DIR}/${implementation}_true.txt"
-    cp -- "${SCRIPT_DIR}/profiler_false.txt" "${RESULTS_DIR}/${implementation}_false.txt"
-done
+cp -- "${SCRIPT_DIR}/profiler_true.txt" "${RESULTS_DIR}/profiler_true.txt"
+cp -- "${SCRIPT_DIR}/profiler_false.txt" "${RESULTS_DIR}/profiler_false.txt"
 
 echo "=== Results ==="
 "${ANALYZER}" \
     "${RESULTS_DIR}/profiler_false.txt" \
-    "${RESULTS_DIR}/profiler_true.txt" \
-    "${RESULTS_DIR}/double_buffer_false.txt" \
-    "${RESULTS_DIR}/double_buffer_true.txt" \
-    "${RESULTS_DIR}/atomic_false.txt" \
-    "${RESULTS_DIR}/atomic_true.txt"
+    "${RESULTS_DIR}/profiler_true.txt"
 
 echo "Raw results: ${RESULTS_DIR}" >&2

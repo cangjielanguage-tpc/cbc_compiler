@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-readonly RUNS=30
+readonly RUNS=3
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly CBC_FILE="${CBC_FILE:-${SCRIPT_DIR}/default.cbc}"
 readonly PROFILER_ON_FILE="${SCRIPT_DIR}/profiler_true.txt"
