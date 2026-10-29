@@ -96,7 +96,7 @@ def genlibrary(out, names, lib_dirs, script_dir, temps):
     # Cangjie packages have lib<name>.so.cbc and run as bytecode: skip them.
     foreign = [n for n in names
                if not any(os.path.isfile(os.path.join(d, f"lib{n}.so.cbc")) for d in lib_dirs)]
-    cmd = ["java", "-jar", os.path.join(script_dir, os.pardir, "tools", "bin", "cbc-compiler.jar"),
+    cmd = ["cbc-compiler",
            *sorted(glob.glob(temps + "/*.chir")), "+genlibrary", f"-outputname={out}"]
     if foreign:
         cmd.append("-foreignlibs=" + ",".join(foreign))
