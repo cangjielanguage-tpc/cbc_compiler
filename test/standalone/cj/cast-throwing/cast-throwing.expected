@@ -1,0 +1,89 @@
+f64->i8 42.75: ok
+f64->i8 -42.75: ok
+f64->i8 127.9999: ok
+f64->i8 -128.9999: ok
+f64->i8 -0.5: ok
+f64->i8 min: ok
+f64->i8 max: ok
+f64->i16 min: ok
+f64->i16 max: ok
+f64->i32 min: ok
+f64->i32 max: ok
+f64->i64 min: ok
+f64->i64 near max: ok
+f64->i8 128.0: ok (OverflowException)
+f64->i8 -129.0: ok (OverflowException)
+f64->i16 32768.0: ok (OverflowException)
+f64->i16 -32769.0: ok (OverflowException)
+f64->i32 2^31: ok (OverflowException)
+f64->i64 2^63: ok (OverflowException)
+f64->i8 NaN: ok (OverflowException)
+f64->i8 +Inf: ok (OverflowException)
+f64->i8 -Inf: ok (OverflowException)
+f64->i64 NaN: ok (OverflowException)
+f64->i64 +Inf: ok (OverflowException)
+f64->i64 -Inf: ok (OverflowException)
+f64->u8 0.0: ok
+f64->u8 -0.5: ok
+f64->u8 255.9: ok
+f64->u8 255.0: ok
+f64->u16 max: ok
+f64->u32 max: ok
+f64->u64 2^63: ok
+f64->u8 -1.0: ok (OverflowException)
+f64->u8 256.0: ok (OverflowException)
+f64->u16 -1.5: ok (OverflowException)
+f64->u16 65536.0: ok (OverflowException)
+f64->u32 -1.0: ok (OverflowException)
+f64->u64 -1.0: ok (OverflowException)
+f64->u8 NaN: ok (OverflowException)
+f64->u8 +Inf: ok (OverflowException)
+f64->u8 -Inf: ok (OverflowException)
+f64->u64 +Inf: ok (OverflowException)
+f32->i8 42.75: ok
+f32->i8 min: ok
+f32->i8 max: ok
+f32->i32 max: ok
+f32->u16 max: ok
+f32->i8 128.0: ok (OverflowException)
+f32->i8 NaN: ok (OverflowException)
+f32->i8 +Inf: ok (OverflowException)
+f32->i8 -Inf: ok (OverflowException)
+f32->i32 2^31: ok (OverflowException)
+f32->u16 -1.0: ok (OverflowException)
+f32->u16 65536.0: ok (OverflowException)
+f32->u16 -Inf: ok (OverflowException)
+i64->i8 127: ok
+i64->i8 -128: ok
+i64->i8 0: ok
+i64->i8 128: ok (OverflowException)
+i64->i8 -129: ok (OverflowException)
+u64->u8 255: ok
+u64->u8 0: ok
+u64->u8 256: ok (OverflowException)
+u64->u8 max: ok (OverflowException)
+i64->u8 255: ok
+i64->u8 0: ok
+i64->u8 -1: ok (OverflowException)
+i64->u8 256: ok (OverflowException)
+i64->u16 65535: ok
+i64->u16 -1: ok (OverflowException)
+i64->u16 65536: ok (OverflowException)
+i32->u8 200: ok
+i32->u8 -1: ok (OverflowException)
+i32->u8 300: ok (OverflowException)
+u64->i8 127: ok
+u64->i8 0: ok
+u64->i8 128: ok (OverflowException)
+u64->i8 max: ok (OverflowException)
+i16->u16 32767: ok
+i16->u16 0: ok
+i16->u16 -1: ok (OverflowException)
+u16->i16 32767: ok
+u16->i16 32768: ok (OverflowException)
+u16->i16 max: ok (OverflowException)
+i8->i64 -128: ok
+i8->i64 127: ok
+u8->u64 255: ok
+u8->u64 0: ok
+0

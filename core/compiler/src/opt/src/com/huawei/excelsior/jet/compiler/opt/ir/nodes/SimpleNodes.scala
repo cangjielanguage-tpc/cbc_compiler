@@ -1016,6 +1016,26 @@ trait SimpleNodes { self: Universe with Nodes =>
     def unapply(cast: ValueConvert): Option[(AsmType, AsmType, Node)] = Some(cast.fromAsm, cast.toAsm, cast.arg)
   }
 
+  class CheckedValueConvert(proto: CheckedValueConvert.Proto)
+    extends NodeWithFixedArgs(proto) with SpinalNode with CanThrow with ProducesValue {
+    def throwProc: RTSProc = null // TODO: remove uses
+
+    def fromAsm = proto.fromType
+    def toAsm = proto.toType
+    def value = arg(2)
+  }
+
+  object CheckedValueConvert {
+    case class Proto private[CheckedValueConvert](fromType: AsmType, toType: AsmType)
+    extends FixedArgs[CheckedValueConvert](ControlType, MemoryType, ValueType(fromType))(ValueType(toType))
+      with SpinalNodePrototype[CheckedValueConvert] with ControlValueTagged[CheckedValueConvert] {
+
+      def newInstance() = new CheckedValueConvert(this)
+    }
+
+    def apply(from: AsmType, to: AsmType) = Prototype.intern(Proto(from, to))
+  }
+
   object JavaConvert {
     def apply(from: BytecodeTypeKind, to: BytecodeTypeKind)(arg: Node): Node = {
       require(from.isIntegral || from.isFloatingPoint)
