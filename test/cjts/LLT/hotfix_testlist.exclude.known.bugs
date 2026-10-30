@@ -163,6 +163,7 @@ API/std/math/test_hyperbolic_nan.cj
 API/std/math/test_math_funcs.cj
 API/std/unittest/prop_test/arbitrary_range/arbitrary_range_float.cj
 compiler/Parser/expr/quote/quoteDollarInterpolation/quoteDollarInterpolation3.cj
+API/std/core/test_float_NaN_comparable.cj
 
 # bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
@@ -520,6 +521,9 @@ API/std/unittest/report_bench_csv/report_csv_failed.cj
 compiler/Sema/enum/enum32_1.cj
 compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic07.cj
 API/std/libast/tokens/toTokens/test_primitive_totokens_001.cj
+compiler/CodegenCJNative/generic/generic_enum_in_class.cj
+compiler/Sema/enum/enum36.cj
+compiler/Sema/enum/enum_interface_box_01.cj
 
 # bug 161 (io/fs related bugs (environment or miscompilation of foreigns, need investigation))
 API/std/io/ByteBuffer/test_setLength.cj
@@ -583,6 +587,7 @@ compiler/CodegenCommon/lambda/lambda_cstring.cj
 
 # bug 188 (extend+is cornercase)
 compiler/CodegenCJNative/is/is_01.cj
+compiler/CodegenCJNative/is/is_02.cj
 
 # bug 189 (`launcher` segfaults (rc 139) whenever program argument contains invalid UTF-8 bytes)
 compiler/CodegenCommon/main/invalidUTF8/main.cj
@@ -732,6 +737,7 @@ API/std/unittest/report_bench_csv/report_csv_raw_class_structure.cj
 API/std/unittest/report_bench_html/report_html_colon_name.cj
 API/std/unittest/report_bench_html/report_html_no_gnuplot.cj
 API/std/unittest/report_bench_html/report_html_failure.cj
+API/std/unittest/new_bench/bench_input.cj
 
 # bug 206 (mut generic struct interface -- could not find VTable slot for bar(BOXi32)BOXi32)
 API/std/unittest/mock/compiler/ensurePreparedToMock/generics_with_O2.cj
@@ -854,6 +860,10 @@ compiler/Modules/cj-cache-master/src/main.cj
 compiler/CodegenCommon/recursive_enum/multi-pkg1/main.cj
 compiler/Modules/Package/ImportUserDefinedCorePkg/main.cj
 compiler/Sema/class/interface_static_member_func_inheritance_1.cj
+compiler/CHIR/CHIR2HLIR/generic/generic_external_use_internal/main.cj
+compiler/CodegenCommon/bug0307/default.cj
+compiler/Modules/defaultArg/default.cj
+compiler/Modules/multiple_module_01/main.cj
 
 # bug 213 (generic default interface method call through an interface-typed reference -- `could not find VTable slot for`)
 API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
@@ -904,3 +914,29 @@ compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_4.cj
 compiler/Sema/generics/generic_upperbound_reference_09.cj
 compiler/Sema/generics/operatorOverload/operatorOverload.cj
 compiler/Sema/generics/operatorOverload/operatorOverloadinInterface.cj
+
+# bug 220 (declarartion recursion (enum with struct that has the same enum as field) lead to compiler crash)
+compiler/CHIR/UG/RecursionEnum/recursionEnum05.cj
+
+# bug 221 (`I<Unit> = CPointer()` crashes with StoreStaticFieldSeq[Plain] ...  got arg LConst[0])
+compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
+compiler/CodegenCJNative/generic/generic_struct.cj
+compiler/CodegenCJNative/storeElementRef.cj
+compiler/Sema/ffi/cpointer_generic.cj
+
+# bug 222 (castIdentity: F16/F32/F64)
+API/std/libast/tokens/toString/test_004.cj
+compiler/CHIR/AST2CHIR/bugfix/bugfix4/test.cj
+compiler/CHIR/package/package01/test1.cj
+
+# bug 223 (pass by value struct with varray payload)
+compiler/Sema/varray/varray_cffi/varray_cstruct04.cj
+
+# bug 224 (`CPointer<T>` : Failed to resolve method)
+compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
+
+# bug 226 (sizeOf<CString>() == 0)
+compiler/FFI/CFFI/type_size/sizeOf.cj
+
+# bug 227 (HashMap stdlib behaviour differs from test expectancy)
+API/std/collection/test_HashMap.cj
