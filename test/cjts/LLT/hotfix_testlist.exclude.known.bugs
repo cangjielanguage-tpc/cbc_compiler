@@ -545,10 +545,6 @@ API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/basic.cj
 Runtime/CJNative/DFX/hidumper_cjheap_and_GC.cj
 compiler/CHIR/CHIR2HLIR/time/native3.cj
 
-# bug 172 (some overflow exception missing add suffix)
-compiler/CodegenCommon/overflow/case_6.cj
-compiler/CodegenCommon/overflow/case_7.cj
-
 # bug 173 (mut interface function does not change struct fields)
 compiler/CodegenCJNative/generic/generic_struct2.cj
 compiler/CodegenCJNative/generic/generic_struct4.cj
