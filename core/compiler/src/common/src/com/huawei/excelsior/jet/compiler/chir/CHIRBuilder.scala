@@ -279,7 +279,7 @@ object CHIRBuilder {
         val vtableNames = (name +: resolver.findVTableMethods(m).map(_.name)).distinct
 
         // TODO: explain
-        val symMethods = if (rcvSig.isVariableSizeType && !modifiers.contains(STATIC)) {
+        val symMethods = if (rcvSig.isVariableSizeType && !modifiers.contains(STATIC) && !name.startsWith("_CM")) {
 
           // TODO: move wrapper generation and VST receiver adjustment to CHIR level
 

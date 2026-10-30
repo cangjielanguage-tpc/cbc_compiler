@@ -2378,7 +2378,7 @@ trait CHIRParser
 
       // TODO: explain
       val isMut = func.attributes.contains(Attribute.Mut) || func.kind == CHIR.Func.Kind.StructCtor || func.kind == CHIR.Func.Kind.PrimalStructCtor
-      val name = if (!isStatic && declType.isVariableSizeType && isMut) {
+      val name = if (!isStatic && declType.isVariableSizeType && isMut && !_name.startsWith("_CM")) {
         resolver.mutWithoutTI(_name)
       } else {
         _name

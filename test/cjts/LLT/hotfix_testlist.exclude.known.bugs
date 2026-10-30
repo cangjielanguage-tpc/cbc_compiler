@@ -651,18 +651,6 @@ compiler/CHIR/UG/ClosureConversion/staticFunc05.cj
 compiler/CHIR/UG/ClosureConversion/staticFunc06.cj
 compiler/Sema/function/interface_def_val.cj
 
-# bug 205 (`$withoutTI` appended to AOT function that has no such suffix in compiled code)
-API/std/unittest/new_bench/bench_measure_cycles.cj
-API/std/unittest/report_bench_csv/report_csv_class.cj
-API/std/unittest/report_bench_csv/report_csv_class_multiple_measurements.cj
-API/std/unittest/report_bench_csv/report_csv_raw_class.cj
-API/std/unittest/report_bench_csv/report_csv_raw_class_multiple_measurements.cj
-API/std/unittest/report_bench_csv/report_csv_raw_class_structure.cj
-API/std/unittest/report_bench_html/report_html_colon_name.cj
-API/std/unittest/report_bench_html/report_html_no_gnuplot.cj
-API/std/unittest/report_bench_html/report_html_failure.cj
-API/std/unittest/new_bench/bench_input.cj
-
 # bug 206 (mut generic struct interface -- could not find VTable slot for bar(BOXi32)BOXi32)
 API/std/unittest/mock/compiler/ensurePreparedToMock/generics_with_O2.cj
 compiler/CHIR/UG/OpenGeneric/extend.cj
