@@ -1297,7 +1297,8 @@ private object InstructionParser {
   instr("catch")        { (a, s) => a.catchEx(s.ireg) }
   instr("div.check")    { (a, s) => a.divisorCheck(s.ireg) }
   instr("nullcheck")    { (a, s) => a.nullcheck(s.ireg) }
-  instr("movbp")        { (a, s) => a.movbp(s.ireg, s.int != 0) }
+  instr("movbp.local")  { (a, s) => a.movbp(s.ireg, local = true) }
+  instr("movbp.global") { (a, s) => a.movbp(s.ireg, local = false) }
   instr("arr.len")      { (a, s) => a.lenarr(s.ireg, s.ireg) }
   instr("arr.ic")       { (a, s) => a.arrIC(s.ireg, s.ireg) }
   instr("gcpoint")      { (a, s) => a.gcpoint() }
