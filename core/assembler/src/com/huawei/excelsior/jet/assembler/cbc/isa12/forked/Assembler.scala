@@ -392,6 +392,15 @@ trait ForkedAssembler {
       .bits(_.w4(to).w4(from))
   }
 
+  def checkedConvert(toType: AsmType, fromType: AsmType, to: Rg, from: Rg): Unit = instr {
+    if (!fromType.isFloatingPoint) analyzer.usePrim(from.asInstanceOf[IR])
+    if (!toType.isFloatingPoint) analyzer.prim(to.asInstanceOf[IR])
+    stream
+      .opc8(Opcode.CheckedCast)
+      .bits(_.w4(toType).w4(fromType))
+      .bits(_.w4(to).w4(from))
+  }
+
   private def regGroup(opc: RegGroup, r: IR | FR): Unit = {
     stream
       .opc8(Opcode.RegGroup)
@@ -1411,6 +1420,7 @@ object Assembler {
     case BinaryImm32
     case BinaryImm64
     case Cast
+    case CheckedCast
     case NewArr
     case NewArrGeneric
     case GcPoint

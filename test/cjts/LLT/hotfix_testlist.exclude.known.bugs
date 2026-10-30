@@ -24,7 +24,6 @@ compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_01.cj
 compiler/CodegenCommon/typecast/nan2integer.cj
 
 # bug 140 (not implemented: throwing binary expression)
-compiler/CodegenCommon/overflow/overshift1.cj
 compiler/CodegenCommon/overflow/overshift2.cj
 compiler/Sema/Extend/generic/primitive_00/ok.cj
 

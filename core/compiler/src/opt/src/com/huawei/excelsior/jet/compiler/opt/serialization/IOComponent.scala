@@ -69,7 +69,7 @@ trait IOComponent extends BinaryIO { self: Universe =>
     Phi.Proto, Cmp.Proto, InvokeTarget.Proto, Call.Proto, PutField.Proto, GetField.Proto, PutStatic.Proto, GetStatic.Proto,
     ArrayGet.Proto, ArrayPut.Proto, ThreeCmp.Proto, LoadMemory.Normal.Proto, LoadMemory.Soft.Proto, StoreMemory.Proto,
     UArrayGet.Proto, UArrayPut.Proto, InvokeInterfaceTarget.Proto,
-    ArrayFill.Proto, ReinterpretCast.Proto, ValueConvert.Proto, BitFieldExtract.Proto,
+    ArrayFill.Proto, ReinterpretCast.Proto, ValueConvert.Proto, CheckedValueConvert.Proto, BitFieldExtract.Proto,
     StrConcat.Proto, MulH.Proto, UMulH.Proto, ErrorRTSCall.Proto,
     CAS.Proto, BitCount.Proto, AnyNull,
     Deferred.New.Proto, Deferred.NewArray.Proto, Deferred.InstanceOf.Proto, Deferred.CheckCast.Proto,

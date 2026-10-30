@@ -669,6 +669,9 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case ValueConvert.Proto =>
           ValueConvert(read.asmType(), read.asmType())
 
+        case CheckedValueConvert.Proto =>
+          CheckedValueConvert(read.asmType(), read.asmType())
+
         case BitFieldExtract.Proto =>
           BitFieldExtract.raw(read.tpe(), read.tpe(), read.number(), read.number(), read.bool())
 
