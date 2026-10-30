@@ -383,6 +383,8 @@ trait ForkedAssembler {
 
   def convertFromTo(fromType: AsmType, toType: AsmType, from: Rg, to: Rg): Unit = convert(toType, fromType, to, from)
 
+  def checkedConvertFromTo(fromType: AsmType, toType: AsmType, from: Rg, to: Rg): Unit = checkedConvert(toType, fromType, to, from)
+
   def convert(toType: AsmType, fromType: AsmType, to: Rg, from: Rg): Unit = instr {
     if (!fromType.isFloatingPoint) analyzer.usePrim(from.asInstanceOf[IR])
     if (!toType.isFloatingPoint) analyzer.prim(to.asInstanceOf[IR])
@@ -719,7 +721,7 @@ trait ForkedAssembler {
       .uleb(number)
   }
 
-  def loadRawMemory(dst: Rg, base: IR, ldk: LoadAccessKind, offset: Long) = {
+  def loadRawMemory(dst: Rg, base: IR, ldk: LoadAccessKind, offset: Long) = instr {
     analyzeLoadDstUse(dst, ldk)
     // TODO: optimize VLE encoding, so next `sleb` will be present only if low4 `offset` is too big.
     stream
@@ -729,7 +731,7 @@ trait ForkedAssembler {
       .sleb(scut4(offset))
   }
 
-  def storeRawMemory(src: IR | FR, base: IR, stk: StoreAccessKind, offset: Long): Unit = {
+  def storeRawMemory(src: IR | FR, base: IR, stk: StoreAccessKind, offset: Long): Unit = instr {
     src match {
       case x: IR => analyzer.useAny(x)
       case _ =>
@@ -1031,7 +1033,7 @@ trait ForkedAssembler {
     analyzer.prim(dst)
   }
 
-  def leaStatic(dst: IR, dstRefBase: IR, fr: FieldReference): Unit = {
+  def leaStatic(dst: IR, dstRefBase: IR, fr: FieldReference): Unit = instr {
     stream
       .opc8(Opcode.Lea_Static)
       .bits(_.w4(dst).w4(dstRefBase))
@@ -1051,7 +1053,7 @@ trait ForkedAssembler {
     analyzer.prim(dst)
   }
 
-  def leaBox(dst: IR, base: IR): Unit = {
+  def leaBox(dst: IR, base: IR): Unit = instr {
     stream
       .opc8(Opcode.LeaBox)
       .bits(_.w4(dst).w4(base))

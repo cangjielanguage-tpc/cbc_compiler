@@ -180,6 +180,16 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
           CbcFileFormat.Box(args.head)
         }
 
+      case Kw(KeywordKind.Arr) +: tail =>
+        tokens = tail
+        val args = parseTypeList(LBracket, RBracket)
+        if (args.length != 1) {
+          errors += newError("failed to parse array args", tail.head)
+          BuiltinSignature.Nothing
+        } else {
+          CbcFileFormat.CangjieArray(args.head)
+        }
+
       case Punct(LBracket) +: tail => Tuple(parseTypeList(LBracket, RBracket))
       case Punct(LParen) +: tail   => parseFunctional()
 
@@ -902,6 +912,11 @@ private object InstructionParser {
   instr("i2f")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.ireg, s.freg) }
   instr("f2i")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.freg, s.ireg) }
   instr("f2f")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.freg, s.freg) }
+  instr("ci2i")    { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.ireg, s.ireg) }
+  instr("ci2i.u")  { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.ireg, s.ireg) }
+  instr("ci2f")    { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.ireg, s.freg) }
+  instr("cf2i")    { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.freg, s.ireg) }
+  instr("cf2f")    { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.freg, s.freg) }
 
   // 32-bit integer arithmetic
   instr("add.32")  { (a, s) => a.add(Width.W32, s.ireg, s.ireg, s.ireg) }
@@ -1250,6 +1265,10 @@ private object InstructionParser {
   // misc
   instr("new.closure")  { (a, s) => a.newClosure(IR.IR1, s.tpe) }
   instr("newobj")       { (a, s) => a.newobj(s.tpe) }
+  instr("newclosure.g") { (a, s) => a.newClosureGeneric(s.ireg, s.tpe) }
+  instr("newobj.g")     { (a, s) => a.newobjGeneric(s.ireg, s.tpe) }
+  instr("newarr")       { (a, s) => a.newarr(s.tpe) }
+  instr("newarr.g")     { (a, s) => a.newarrGeneric(s.ireg) }
   instr("throw")        { (a, s) => a.throwEx(s.ireg) }
   instr("catch")        { (a, s) => a.catchEx(s.ireg) }
   instr("div.check")    { (a, s) => a.divisorCheck(s.ireg) }
@@ -1260,6 +1279,7 @@ private object InstructionParser {
   instr("arr.ic")       { (a, s) => a.arrIC(s.ireg, s.ireg) }
   instr("gcpoint")      { (a, s) => a.gcpoint() }
   instr("iof")          { (a, s) => a.isInstanceOf(s.ireg, s.ireg, s.tpe) }
+  instr("iof.g")        { (a, s) => a.instanceOfGeneric(s.ireg, s.ireg, s.ireg) }
   instr("prepare.rec")  { (a, s) => a.prepareRecord(s.ts) }
   instr("zero.refs")    { (a, s) => a.prepareRecord(s.ts) }
   instr("initobj")      { (a, s) => a.initobj(s.ts) }
@@ -1294,7 +1314,32 @@ private object InstructionParser {
   instr("st.g") { (a, s) => a.st(s.ireg, s.ireg, s.ireg, s.ireg, NoneFieldReference()) }
   instr("lea") { (a, s) => a.lea(s.ireg, s.ireg, fieldPath(s)) }
   instr("lea.g") { (a, s) => a.leaGeneric(s.ireg, s.ireg, s.ireg, s.field) }
+  instr("lea.static") { (a, s) => a.leaStatic(s.ireg, s.ireg, fieldPath(s)) }
+  instr("lea.box") { (a, s) => a.leaBox(s.ireg, s.ireg) }
+  instr("lea.cforeign") { (a, s) => a.lea_cforeign(s.ireg, s.method) }
   instr("copy") { (a, s) => a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("copy.g") { (a, s) => a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.ireg) }
+  instr("copy.local")      { (a, s) => a.copyLocal(s.ireg, s.ireg, s.tpe) }
+  instr("copy.to.local")   { (a, s) => a.copyToLocal(s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("copy.from.local") { (a, s) => a.copyFromLocal(s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("copy.local.g")      { (a, s) => a.copyLocal(s.ireg, s.ireg, s.ireg) }
+  instr("copy.to.local.g")   { (a, s) => a.copyToLocal(s.ireg, s.ireg, s.ireg, s.ireg) }
+  instr("copy.from.local.g") { (a, s) => a.copyFromLocal(s.ireg, s.ireg, s.ireg, s.ireg) }
+  instr("copy.typed")      { (a, s) => a.copyTypeSlot(s.ts, s.ts) }
+  instr("copy.to.typed")   { (a, s) => a.copyToTypeSlot(s.ts, s.ireg, s.ireg) }
+  instr("copy.from.typed") { (a, s) => a.copyFromTypeSlot(s.ireg, s.ireg, s.ts) }
+  instr("copy.typed.g")      { (a, s) => a.copyTypeSlot(s.ts, s.ts, s.ireg) }
+  instr("copy.to.typed.g")   { (a, s) => a.copyToTypeSlot(s.ts, s.ireg, s.ireg, s.ireg) }
+  instr("copy.from.typed.g") { (a, s) => a.copyFromTypeSlot(s.ireg, s.ireg, s.ts, s.ireg) }
+  instr("assign.g") { (a, s) => a.assignGeneric(s.ireg, s.ireg, s.ireg) }
+  instr("index") { (a, s) => a.index(s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("index.g") { (a, s) => a.index(s.ireg, s.ireg, s.ireg, s.ireg) }
+  instr("cindex.g") { (a, s) => a.index(s.ireg, s.ireg, s.int, s.ireg) }
+
+  instr("ld.derived")   { (a, s) => a.ld(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("ld.derived.f") { (a, s) => a.ld(s.freg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("st.derived")   { (a, s) => a.st(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("st.derived.f") { (a, s) => a.st(s.freg, s.ireg, s.ireg, fieldPath(s)) }
 
   instr("atomic.load")      { (a, s) => a.atomicLoad(s.ireg, s.ireg, fieldPath(s)) }
   instr("atomic.store")     { (a, s) => a.atomicStore(s.ireg, s.ireg, fieldPath(s)) }
@@ -1328,11 +1373,47 @@ private object InstructionParser {
   instr("st.uslot.imm") { (a, s) => a.storeUntypedImm(s.int, s.us) }
 
   // arrays
-  instr("ld.arr.64") { (a, s) => a.loadArray(s.ireg, LD_64, s.ireg, s.ireg) }
-  instr("st.arr.64") { (a, s) => a.storeArray(s.ireg, ST_64, s.ireg, s.ireg) }
+  instr("ld.arr.s8")  { (a, s) => a.loadArray(s.ireg, LD_S8, s.ireg, s.ireg) }
+  instr("ld.arr.s16") { (a, s) => a.loadArray(s.ireg, LD_S16, s.ireg, s.ireg) }
+  instr("ld.arr.u8")  { (a, s) => a.loadArray(s.ireg, LD_U8, s.ireg, s.ireg) }
+  instr("ld.arr.u16") { (a, s) => a.loadArray(s.ireg, LD_U16, s.ireg, s.ireg) }
+  instr("ld.arr.32")  { (a, s) => a.loadArray(s.ireg, LD_32, s.ireg, s.ireg) }
+  instr("ld.arr.u32") { (a, s) => a.loadArray(s.ireg, LD_U32, s.ireg, s.ireg) }
+  instr("ld.arr.s32") { (a, s) => a.loadArray(s.ireg, LD_S32, s.ireg, s.ireg) }
+  instr("ld.arr.64")  { (a, s) => a.loadArray(s.ireg, LD_64, s.ireg, s.ireg) }
+  instr("ld.arr.ref") { (a, s) => a.loadArray(s.ireg, LD_REF, s.ireg, s.ireg) }
+  instr("ld.arr.f32") { (a, s) => a.loadArray(s.freg, LD_F32, s.ireg, s.ireg) }
+  instr("ld.arr.f64") { (a, s) => a.loadArray(s.freg, LD_F64, s.ireg, s.ireg) }
+
+  instr("st.arr.8")   { (a, s) => a.storeArray(s.ireg, ST_8, s.ireg, s.ireg) }
+  instr("st.arr.16")  { (a, s) => a.storeArray(s.ireg, ST_16, s.ireg, s.ireg) }
+  instr("st.arr.32")  { (a, s) => a.storeArray(s.ireg, ST_32, s.ireg, s.ireg) }
+  instr("st.arr.64")  { (a, s) => a.storeArray(s.ireg, ST_64, s.ireg, s.ireg) }
+  instr("st.arr.ref") { (a, s) => a.storeArray(s.ireg, ST_REF, s.ireg, s.ireg) }
+  instr("st.arr.f32") { (a, s) => a.storeArray(s.freg, ST_F32, s.ireg, s.ireg) }
+  instr("st.arr.f64") { (a, s) => a.storeArray(s.freg, ST_F64, s.ireg, s.ireg) }
 
   // memory access - raw
   instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, number = s.int) }
+  instr("ld.raw.s8")  { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_S8, s.int) }
+  instr("ld.raw.s16") { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_S16, s.int) }
+  instr("ld.raw.u8")  { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_U8, s.int) }
+  instr("ld.raw.u16") { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_U16, s.int) }
+  instr("ld.raw.32")  { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_32, s.int) }
+  instr("ld.raw.u32") { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_U32, s.int) }
+  instr("ld.raw.s32") { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_S32, s.int) }
+  instr("ld.raw.64")  { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_64, s.int) }
+  instr("ld.raw.ref") { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_REF, s.int) }
+  instr("ld.raw.f32") { (a, s) => a.loadRawMemory(s.freg, s.ireg, LD_F32, s.int) }
+  instr("ld.raw.f64") { (a, s) => a.loadRawMemory(s.freg, s.ireg, LD_F64, s.int) }
+
+  instr("st.raw.8")   { (a, s) => a.storeRawMemory(s.ireg, s.ireg, ST_8, s.int) }
+  instr("st.raw.16")  { (a, s) => a.storeRawMemory(s.ireg, s.ireg, ST_16, s.int) }
+  instr("st.raw.32")  { (a, s) => a.storeRawMemory(s.ireg, s.ireg, ST_32, s.int) }
+  instr("st.raw.64")  { (a, s) => a.storeRawMemory(s.ireg, s.ireg, ST_64, s.int) }
+  instr("st.raw.ref") { (a, s) => a.storeRawMemory(s.ireg, s.ireg, ST_REF, s.int) }
+  instr("st.raw.f32") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F32, s.int) }
+  instr("st.raw.f64") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F64, s.int) }
 
   // calls
   instr("call.direct")    { (a, s) => a.callDirect(s.method, s.params) }
@@ -1340,6 +1421,7 @@ private object InstructionParser {
   instr("call.interf")    { (a, s) => a.callInterf(s.method, s.params) }
   instr("call.closure")   { (a, s) => a.callClosure(s.tpe, s.params) }
   instr("call.closure.g") { (a, s) => a.callClosureGeneric(s.tpe, s.params) }
+  instr("call.cfunc")     { (a, s) => a.callIndirect(s.ireg, s.method, s.params) }
 
   // bfx
   instr("bfxs.32.32")  { (a, s) => a.bfx(s.ireg, s.ireg, Width.W32, Width.W32, true,  s.int.toInt, s.int.toInt) }
@@ -1360,6 +1442,8 @@ private object InstructionParser {
   instr("load.type.info.g") { (a, s) => a.loadTypeInfoGeneric(s.ireg, s.tpe) }
   instr("box")              { (a, s) => a.box(s.ireg, s.ireg, s.tpe) }
   instr("box.ts")           { (a, s) => a.box(s.ts, s.ireg) }
+  instr("box.g")            { (a, s) => a.boxGeneric(s.ireg, s.ireg, s.ireg) }
+  instr("boxt.g")           { (a, s) => a.boxGeneric(s.ts, s.ireg, s.ireg) }
   instr("unbox")            { (a, s) => a.unbox(s.ireg, s.ireg, s.tpe) }
   instr("unbox.ts")         { (a, s) => a.unbox(s.ts, s.ireg) }
   instr("type.arg")         { (a, s) => a.typeArg(dst = s.ireg, idx = s.int.toInt, ti = s.ireg) }
