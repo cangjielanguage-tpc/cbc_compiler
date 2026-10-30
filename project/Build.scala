@@ -238,7 +238,9 @@ object Build {
         val generatedRoot = (Compile / sourceManaged).value
 
         versionsDirs.flatMap { versionDir =>
-          val schema = versionDir / "PackageFormat.fbs"
+          // v1203 / v13002 use the legacy name; v13008+ follows the upstream rename
+          val schema = versionDir / "StdxChirFormat.fbs"
+          val schemaFile = if (schema.exists()) schema else versionDir / "PackageFormat.fbs"
           val version = versionDir.getName
 
           val cached = FileFunction.cached(cache, FilesInfo.hash, FilesInfo.exists) { _ =>
@@ -246,18 +248,19 @@ object Build {
             val generated = generatedRoot / s"com/huawei/excelsior/jet/compiler/chir/$version"
 
             IO.delete(generated / "PackageFormat")
+            IO.delete(generated / "CHIRFormat")
 
             Seq(env.flatc,
               "--no-warnings", "--java",
               "-o", generatedRoot.toString,
               "--java-package-prefix", chirPackage,
-              schema.toString
+              schemaFile.toString
             ).!!
 
             showAllFiles(generated.toPath).toSet
           }
 
-          cached(Set(schema)).toSeq
+          cached(Set(schemaFile)).toSeq
         }
       }.taskValue,
     )
