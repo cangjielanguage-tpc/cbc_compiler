@@ -1339,10 +1339,15 @@ private object InstructionParser {
   instr("lea.g") { (a, s) => a.leaGeneric(s.ireg, s.ireg, s.ireg, s.field) }
   instr("copy") { (a, s) => a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
 
-  instr("atomic.ld.64")        { (a, s) => a.atomicLoad(s.ireg, s.ireg, fieldPath(s)) }
-  instr("atomic.st.64")        { (a, s) => a.atomicStore(s.ireg, s.ireg, fieldPath(s)) }
-  instr("cas.64")              { (a, s) => a.cas(s.ireg, s.ireg, s.ireg, s.ireg, fieldPath(s)) }
-  instr("atomic.fetch.add.64") { (a, s) => a.atomicFetchAdd(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.load")      { (a, s) => a.atomicLoad(s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.store")     { (a, s) => a.atomicStore(s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.cas")       { (a, s) => a.cas(s.ireg, s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.swap")      { (a, s) => a.atomicSwap(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.add") { (a, s) => a.atomicFetchAdd(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.sub") { (a, s) => a.atomicFetchSub(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.and") { (a, s) => a.atomicFetchAnd(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.or")  { (a, s) => a.atomicFetchOr(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.xor") { (a, s) => a.atomicFetchXor(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
 
   // memory access - uslot
   instr("ld.uslot.s8")  { (a, s) => a.loadUntyped(s.ireg, LD_S8, s.us) }
