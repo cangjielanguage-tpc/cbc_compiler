@@ -2462,7 +2462,10 @@ trait CHIRParser
         args
       }
 
-      lazy val abiRetValType = target.methodType.parameterType(target.methodType.getRetByValArgIdx)
+      lazy val abiRetValType = {
+        val mt = target.methodType
+        mt.parameterType(if (mt.hasCFuncRetByValParameter) mt.getCFuncRetByValArgIdx else mt.getRetByValArgIdx)
+      }
 
       var abiRetVal: Node = null
       val abiArgs = calcABIArgs(target, ugArgs) {
