@@ -1536,6 +1536,9 @@ trait CHIRParser
           case (UInt32, to: ZeroSizedEnum) =>
             self.Void()
 
+          case (_: CPointer, _: VArray) =>
+            ReinterpretCast(fromTpe, toTpe)(value)
+
           case _ => notImplemented(s"cast from ${from.toJETSignature} to ${to.toJETSignature}")
         }
 
