@@ -695,14 +695,6 @@ compiler/FFI/CFFI/inout/inout_13.cj
 compiler/FFI/CFFI/inout/inout_14.cj
 compiler/FFI/CFFI/inout/inout_7.cj
 
-# bug 211 (cjc --mock=on: could not find VTable slot for %+(Sstd.core:String;)Sstd.core:String;)
-API/std/unittest/mock/framework/operator_stub_test.cj
-API/std/unittest/mock/framework/spy_test.cj
-API/std/unittest/mock/framework/verification_failed_report_test.cj
-API/std/unittest/mock/framework/verify_misconfiguration_test.cj
-API/std/unittest/mock/framework/expectation_failed_test.cj
-API/std/unittest/mock/framework/runtime_failure_report_test.cj
-
 # bug 212 (UNEXPECTED: no cbc for launcher)
 compiler/Driver/options/optional_space/output.cj
 compiler/Driver/options/output_dir/test_o_output_dir.cj

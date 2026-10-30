@@ -1187,15 +1187,16 @@ trait CHIRParser
         }
 
         val symName = resolver.symName(methodArgVal)
-        val name = methodArgVal match {
+        val (name, altName) = methodArgVal match {
           case f: CHIR.Func if resolver.isOverflowOperator(f) =>
             // Mirrors logic for vtable names in cjc
-            e.overflowStrategy match {
+            val aname = e.overflowStrategy match {
               case CHIR.OverflowStrategy.Throwing => s"~$symName"
               case CHIR.OverflowStrategy.Wrapping => s"&$symName"
               case _ => s"%$symName"
             }
-          case _ => symName
+            (symName, Some(aname))
+          case _ => (symName, None)
         }
         val (gsig, _, _, _) = resolver.functionSig(methodArgVal.tpe, hasReceiver = !isStatic)
 
@@ -1241,7 +1242,8 @@ trait CHIRParser
             val extType = extDef.extType.instantiate(cparams, Seq.empty)
             val extcparams = genericParams(extType)
             val vnum = extDef.funcTable.indexWhere { method =>
-              method.name == name && method.originalSig.instantiate(extcparams, Seq.empty) == sig
+              (method.name == name || altName.contains(method.name)) &&
+                method.originalSig.instantiate(extcparams, Seq.empty) == sig
             }
             Option.when(vnum >= 0)(extDef.funcTable(vnum), extType, vnum)
           }
