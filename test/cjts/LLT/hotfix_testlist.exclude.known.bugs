@@ -485,11 +485,6 @@ compiler/CHIROpt/ConstPropagation/incremental/effect_map_single.cj
 compiler/Driver/options/import_path/test_order_correct.cj
 compiler/Driver/options/input/bc/test_bc_1.cj
 
-# bug 156 ([resolution] [ERROR] Failed to parse method reference <0, 0>)
-compiler/Sema/generics/generic_member07/main.cj
-compiler/Sema/generics/generic_member08/main.cj
-compiler/CodegenCJNative/enum/03_EXHAUSTIVE_UNASSOCIATED/main_00.cj
-
 # bug 157 (CBC internal error: symbol resolution error)
 compiler/Sema/enum/enum45_generic_extend_staticFunc.cj
 API/std/collection/test_TreeMap.cj
