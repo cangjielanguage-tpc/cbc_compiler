@@ -396,6 +396,7 @@ compiler/Sema/call/call_error_report_04.cj
 
 # bug 128: zero-sized struct assignment failed to compile
 compiler/CodegenCHIR/barrier/globalBarier5.cj
+Runtime/CJNative/barrier/static.agg/write/GlobalSSC-writeS.cj
 
 # bug 148 (LLT/compiler/ConstEval/Overflow: error: expected at least one source code file when compiling source code)
 compiler/ConstEval/Overflow
@@ -565,6 +566,7 @@ API/std/unittest/exception_rendering.cj
 
 # bug 178 (missing <> for instattiated generic class in stacktrace)
 compiler/CodegenCJNative/demangle/decl/nested_package/main.cj
+compiler/CodegenCJNative/demangle/type/cpointer_type1.cj
 
 # bug 179 (extra spaces in type printing via reflection)
 compiler/CodegenCJNative/ExtensionDef/extensiondef_07.cj
@@ -583,6 +585,8 @@ compiler/CodegenCommon/lambda/lambda_cstring.cj
 # bug 188 (extend+is cornercase)
 compiler/CodegenCJNative/is/is_01.cj
 compiler/CodegenCJNative/is/is_02.cj
+API/std/deriving/generics_test.cj
+compiler/Modules/Package/extend/extend_box_opt/main.cj
 
 # bug 189 (`launcher` segfaults (rc 139) whenever program argument contains invalid UTF-8 bytes)
 compiler/CodegenCommon/main/invalidUTF8/main.cj
@@ -888,6 +892,7 @@ API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/return.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/staticWithForeign.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/topLvlWithForeign.cj
 compiler/FFI/CFFI/inout/inout_1.cj
+compiler/CodegenCHIR/cptr_cstr/init_01.cj
 
 # bug 218 (umbrella issue: `could not find VTable slot for *`)
 API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
@@ -932,6 +937,19 @@ compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_t
 
 # bug 226 (sizeOf<CString>() == 0)
 compiler/FFI/CFFI/type_size/sizeOf.cj
+compiler/FFI/CFFI/ctype/ctype_2.cj
+compiler/FFI/CFFI/type_size/alignOf.cj
+compiler/Sema/array/array_builin_ctype.cj
 
 # bug 227 (HashMap stdlib behaviour differs from test expectancy)
 API/std/collection/test_HashMap.cj
+
+# bug 180 (Stack trace printing issues)
+compiler/CodegenCJNative/trycatch/unreachable.cj
+
+# bug 228 (container sandboxing fails some tests)
+API/std/posix/test_os_posix_processinfo.cj
+API/std/posix/test_os_posix_sysinfo_unix.cj
+
+# bug 229 (`--save-temps` while `--save-temps`)
+compiler/Driver/options/obfuscation/test_config/test_not_exist.cj
