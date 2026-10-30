@@ -24,6 +24,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, S
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, ForkedAssembler}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.FloatMathOperaions
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Segment, Width}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
 import xscala.io.*
@@ -906,6 +907,7 @@ private object InstructionParser {
   instr("add.32")  { (a, s) => a.add(Width.W32, s.ireg, s.ireg, s.ireg) }
   instr("sub.32")  { (a, s) => a.sub(Width.W32, s.ireg, s.ireg, s.ireg) }
   instr("mul.32")  { (a, s) => a.mul(Width.W32, s.ireg, s.ireg, s.ireg) }
+  instr("pow.32")  { (a, s) => a.pow(Width.W32, s.ireg, s.ireg, s.ireg) }
   instr("and.32")  { (a, s) => a.and(Width.W32, s.ireg, s.ireg, s.ireg) }
   instr("or.32")   { (a, s) => a.or(Width.W32, s.ireg, s.ireg, s.ireg) }
   instr("xor.32")  { (a, s) => a.xor(Width.W32, s.ireg, s.ireg, s.ireg) }
@@ -921,6 +923,7 @@ private object InstructionParser {
   instr("add.64")  { (a, s) => a.add(Width.W64, s.ireg, s.ireg, s.ireg) }
   instr("sub.64")  { (a, s) => a.sub(Width.W64, s.ireg, s.ireg, s.ireg) }
   instr("mul.64")  { (a, s) => a.mul(Width.W64, s.ireg, s.ireg, s.ireg) }
+  instr("pow.64")  { (a, s) => a.pow(Width.W64, s.ireg, s.ireg, s.ireg) }
   instr("and.64")  { (a, s) => a.and(Width.W64, s.ireg, s.ireg, s.ireg) }
   instr("or.64")   { (a, s) => a.or(Width.W64, s.ireg, s.ireg, s.ireg) }
   instr("xor.64")  { (a, s) => a.xor(Width.W64, s.ireg, s.ireg, s.ireg) }
@@ -940,6 +943,7 @@ private object InstructionParser {
   instr("addi.32")  { (a, s) => a.addi(Width.W32, s.ireg, s.ireg, s.int) }
   instr("subi.32")  { (a, s) => a.subi(Width.W32, s.ireg, s.ireg, s.int) }
   instr("muli.32")  { (a, s) => a.muli(Width.W32, s.ireg, s.ireg, s.int) }
+  instr("powi.32")  { (a, s) => a.powi(Width.W32, s.ireg, s.ireg, s.int) }
   instr("andi.32")  { (a, s) => a.andi(Width.W32, s.ireg, s.ireg, s.int) }
   instr("ori.32")   { (a, s) => a.ori(Width.W32, s.ireg, s.ireg, s.int) }
   instr("xori.32")  { (a, s) => a.xori(Width.W32, s.ireg, s.ireg, s.int) }
@@ -955,6 +959,7 @@ private object InstructionParser {
   instr("addi.64")  { (a, s) => a.addi(Width.W64, s.ireg, s.ireg, s.int) }
   instr("subi.64")  { (a, s) => a.subi(Width.W64, s.ireg, s.ireg, s.int) }
   instr("muli.64")  { (a, s) => a.muli(Width.W64, s.ireg, s.ireg, s.int) }
+  instr("powi.64")  { (a, s) => a.powi(Width.W64, s.ireg, s.ireg, s.int) }
   instr("andi.64")  { (a, s) => a.andi(Width.W64, s.ireg, s.ireg, s.int) }
   instr("ori.64")   { (a, s) => a.ori(Width.W64, s.ireg, s.ireg, s.int) }
   instr("xori.64")  { (a, s) => a.xori(Width.W64, s.ireg, s.ireg, s.int) }
@@ -1177,12 +1182,27 @@ private object InstructionParser {
   instr("fsub.32") { (a, s) => a.fsub(Width.W32, s.freg, s.freg, s.freg) }
   instr("fmul.32") { (a, s) => a.fmul(Width.W32, s.freg, s.freg, s.freg) }
   instr("fdiv.32") { (a, s) => a.fdiv(Width.W32, s.freg, s.freg, s.freg) }
+  instr("fpow.32") { (a, s) => a.fpow(Width.W32, s.freg, s.freg, s.freg) }
 
   // 64-bit float arithmetic
   instr("fadd.64") { (a, s) => a.fadd(Width.W64, s.freg, s.freg, s.freg) }
   instr("fsub.64") { (a, s) => a.fsub(Width.W64, s.freg, s.freg, s.freg) }
   instr("fmul.64") { (a, s) => a.fmul(Width.W64, s.freg, s.freg, s.freg) }
   instr("fdiv.64") { (a, s) => a.fdiv(Width.W64, s.freg, s.freg, s.freg) }
+  instr("fpow.64") { (a, s) => a.fpow(Width.W64, s.freg, s.freg, s.freg) }
+
+  // float unary math
+  instr("fsin.32")   { (a, s) => a.fmathunary(FloatMathOperaions.SIN, Width.W32, s.freg, s.freg) }
+  instr("fcos.32")   { (a, s) => a.fmathunary(FloatMathOperaions.COS, Width.W32, s.freg, s.freg) }
+  instr("flog.32")   { (a, s) => a.fmathunary(FloatMathOperaions.LOG, Width.W32, s.freg, s.freg) }
+  instr("fceil.32")  { (a, s) => a.fmathunary(FloatMathOperaions.CEIL, Width.W32, s.freg, s.freg) }
+  instr("ffloor.32") { (a, s) => a.fmathunary(FloatMathOperaions.FLOOR, Width.W32, s.freg, s.freg) }
+
+  instr("fsin.64")   { (a, s) => a.fmathunary(FloatMathOperaions.SIN, Width.W64, s.freg, s.freg) }
+  instr("fcos.64")   { (a, s) => a.fmathunary(FloatMathOperaions.COS, Width.W64, s.freg, s.freg) }
+  instr("flog.64")   { (a, s) => a.fmathunary(FloatMathOperaions.LOG, Width.W64, s.freg, s.freg) }
+  instr("fceil.64")  { (a, s) => a.fmathunary(FloatMathOperaions.CEIL, Width.W64, s.freg, s.freg) }
+  instr("ffloor.64") { (a, s) => a.fmathunary(FloatMathOperaions.FLOOR, Width.W64, s.freg, s.freg) }
 
   // float unary
   instr("fneg.32")  { (a, s) => a.fneg(s.freg, s.freg, Width.W32) }
@@ -1233,12 +1253,16 @@ private object InstructionParser {
   instr("throw")        { (a, s) => a.throwEx(s.ireg) }
   instr("catch")        { (a, s) => a.catchEx(s.ireg) }
   instr("div.check")    { (a, s) => a.divisorCheck(s.ireg) }
+  instr("nullcheck")    { (a, s) => a.nullcheck(s.ireg) }
+  instr("movbp.local")  { (a, s) => a.movbp(s.ireg, local = true) }
+  instr("movbp.global") { (a, s) => a.movbp(s.ireg, local = false) }
   instr("arr.len")      { (a, s) => a.lenarr(s.ireg, s.ireg) }
   instr("arr.ic")       { (a, s) => a.arrIC(s.ireg, s.ireg) }
   instr("gcpoint")      { (a, s) => a.gcpoint() }
   instr("iof")          { (a, s) => a.isInstanceOf(s.ireg, s.ireg, s.tpe) }
   instr("prepare.rec")  { (a, s) => a.prepareRecord(s.ts) }
   instr("zero.refs")    { (a, s) => a.prepareRecord(s.ts) }
+  instr("initobj")      { (a, s) => a.initobj(s.ts) }
   instr("ld.stack.rec") { (a, s) => a.ldstackrec(s.ireg, s.ts) }
   instr("nop")          { (a, s) => a.nop() }
   instr("const.string") { (a, s) => a.initConstString(s.ts, StringLiteral(s.str)) }
@@ -1246,6 +1270,7 @@ private object InstructionParser {
   instr("payload.g")    { (a, s) => a.payloadGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
   instr("new.none.g")   { (a, s) => a.newNoneGeneric(s.ireg, s.ireg, s.ireg, s.tpe) }
   instr("new.some.g")   { (a, s) => a.newSomeGeneric(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
+  instr("zeroval.g")    { (a, s) => a.zeroval(s.ireg, s.ireg) }
 
   private def fieldPath(s: ArgStream): FieldReference = s.fields match {
     case Seq(fr) => fr
@@ -1271,6 +1296,16 @@ private object InstructionParser {
   instr("lea.g") { (a, s) => a.leaGeneric(s.ireg, s.ireg, s.ireg, s.field) }
   instr("copy") { (a, s) => a.copy(s.ireg, s.ireg, s.ireg, s.ireg, s.tpe) }
 
+  instr("atomic.load")      { (a, s) => a.atomicLoad(s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.store")     { (a, s) => a.atomicStore(s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.cas")       { (a, s) => a.cas(s.ireg, s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.swap")      { (a, s) => a.atomicSwap(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.add") { (a, s) => a.atomicFetchAdd(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.sub") { (a, s) => a.atomicFetchSub(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.and") { (a, s) => a.atomicFetchAnd(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.or")  { (a, s) => a.atomicFetchOr(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+  instr("atomic.fetch.xor") { (a, s) => a.atomicFetchXor(s.ireg, s.ireg, s.ireg, fieldPath(s)) }
+
   // memory access - uslot
   instr("ld.uslot.s8")  { (a, s) => a.loadUntyped(s.ireg, LD_S8, s.us) }
   instr("ld.uslot.s16") { (a, s) => a.loadUntyped(s.ireg, LD_S16, s.us) }
@@ -1291,6 +1326,10 @@ private object InstructionParser {
   instr("st.uslot.f32") { (a, s) => a.storeUntyped(s.freg, ST_F32, s.us) }
   instr("st.uslot.f64") { (a, s) => a.storeUntyped(s.freg, ST_F64, s.us) }
   instr("st.uslot.imm") { (a, s) => a.storeUntypedImm(s.int, s.us) }
+
+  // arrays
+  instr("ld.arr.64") { (a, s) => a.loadArray(s.ireg, LD_64, s.ireg, s.ireg) }
+  instr("st.arr.64") { (a, s) => a.storeArray(s.ireg, ST_64, s.ireg, s.ireg) }
 
   // memory access - raw
   instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, number = s.int) }

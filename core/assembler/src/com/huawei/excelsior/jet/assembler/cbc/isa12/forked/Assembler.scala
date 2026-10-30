@@ -230,7 +230,7 @@ trait ForkedAssembler {
   def sasri(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Asr, w, d, l, imm)
   def sulsli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.ULsl, w, d, l, imm)
 
-  def atomicLoad(dst: IR, obj: IR, f: FieldReference): Unit = {
+  def atomicLoad(dst: IR, obj: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
     if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.ref(dst)
@@ -243,7 +243,7 @@ trait ForkedAssembler {
       .sym16(f)
   }
 
-  def atomicStore(src: IR, obj: IR, f: FieldReference): Unit = {
+  def atomicStore(src: IR, obj: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
     if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.useRef(src)
@@ -256,7 +256,7 @@ trait ForkedAssembler {
       .sym16(f)
   }
 
-  def cas(dst: IR, obj: IR, src1: IR, src2: IR, f: FieldReference): Unit = {
+  def cas(dst: IR, obj: IR, src1: IR, src2: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
     analyzer.prim(dst)
     if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
@@ -280,7 +280,7 @@ trait ForkedAssembler {
   def atomicFetchOr (dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicFetchOr,  dst, obj, src, f)
   def atomicFetchXor(dst: IR, obj: IR, src: IR, f: FieldReference): Unit = genAtomicOp(Opcode.AtomicFetchXor, dst, obj, src, f)
 
-  private def genAtomicOp(o: Opcode, dst: IR, obj: IR, src: IR, f: FieldReference): Unit = {
+  private def genAtomicOp(o: Opcode, dst: IR, obj: IR, src: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
     if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
       analyzer.ref(dst)
