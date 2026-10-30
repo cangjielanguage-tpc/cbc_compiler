@@ -217,7 +217,7 @@ object CbcSignatureAdapter {
     case sig: SignatureType.PackedTuple => CbcFileFormat.PackedTupleHack(sig.params.map(_.toCbc))
     case sig: SignatureType.Box => CbcFileFormat.Box(sig.base.toCbc)
 
-    case sig: SignatureType.ZeroSizedEnum => CbcFileFormat.PrimitiveEnum(sig.name, Seq.empty)
+    case sig: SignatureType.ZeroSizedEnum => CbcFileFormat.PrimitiveEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.PrimitiveBasedEnum => CbcFileFormat.PrimitiveEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.UnionBasedEnum => CbcFileFormat.UnionEnum(sig.name, sig.params.map(_.toCbc))
     case sig: SignatureType.ClassBasedEnum =>

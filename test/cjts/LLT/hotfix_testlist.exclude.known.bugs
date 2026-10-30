@@ -408,72 +408,6 @@ API/std/unittest/examples/advance1.cj
 API/std/unittest/api/serialization/test_datamodel_seq.cj
 compiler/Mangle/MangledName/new_mangle_fuzz_02.cj
 
-# bug 153 (scala.MatchError: of class scala.Tuple2 in ReferenceTypes$ReferenceType$.commonSuper)
-API/std/reflect/typeInfo_instanceMemberFunction_generic.cj
-API/std/unittest/mock/compiler/createMock/abstractClass.cj
-API/std/unittest/mock/compiler/createMock/accessingViaAbstractClass.cj
-API/std/unittest/mock/compiler/createMock/accessingViaInterface.cj
-API/std/unittest/mock/compiler/createMock/anotherPackageFinalClass.cj
-API/std/unittest/mock/compiler/createMock/anotherPackageFinalMethod.cj
-API/std/unittest/mock/compiler/createMock/anotherPackageInterface.cj
-API/std/unittest/mock/compiler/createMock/anotherPackageOpenAndAbstractClass.cj
-API/std/unittest/mock/compiler/createMock/argsWithValueTypes.cj
-API/std/unittest/mock/compiler/createMock/basic.cj
-API/std/unittest/mock/compiler/createMock/chainAccessorCalls.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/bool.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/collections.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/customExtension.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/defaultValueForStubSubtype.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/numbers.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/option.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/string.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/typealias.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/unit.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/withoutExtension.cj
-API/std/unittest/mock/compiler/createMock/defaultValues/wrongExtension.cj
-API/std/unittest/mock/compiler/createMock/dependantPackageWithEnableMock.cj
-API/std/unittest/mock/compiler/createMock/enabledMockingWithTest.cj
-API/std/unittest/mock/compiler/createMock/finalProperties.cj
-API/std/unittest/mock/compiler/createMock/generic.cj
-API/std/unittest/mock/compiler/createMock/genericMethods.cj
-API/std/unittest/mock/compiler/createMock/genericsAnotherPackage.cj
-API/std/unittest/mock/compiler/createMock/gettersAndSetters.cj
-API/std/unittest/mock/compiler/createMock/inaccessibleMembersAnotherPackage.cj
-API/std/unittest/mock/compiler/createMock/inaccessibleMembersCurrentPackage.cj
-API/std/unittest/mock/compiler/createMock/inferenceMockTypeArgument.cj
-API/std/unittest/mock/compiler/createMock/inheritedMethods.cj
-API/std/unittest/mock/compiler/createMock/interfaces.cj
-API/std/unittest/mock/compiler/createMock/mockFields.cj
-API/std/unittest/mock/compiler/createMock/myPackageFinalMethod.cj
-API/std/unittest/mock/compiler/createMock/notCompletedInstantiation.cj
-API/std/unittest/mock/compiler/createMock/nothingMethodAccessor.cj
-API/std/unittest/mock/compiler/createMock/packagePrivate.cj
-API/std/unittest/mock/compiler/createMock/passingZeroValue.cj
-API/std/unittest/mock/compiler/createMock/preAutoBoxing.cj
-API/std/unittest/mock/compiler/createMock/primaryConstructor.cj
-API/std/unittest/mock/compiler/createMock/properClassToMockInit.cj
-API/std/unittest/mock/compiler/createMock/propertyOverrides.cj
-API/std/unittest/mock/compiler/createMock/sameGenericInstanceInDifferentPackages.cj
-API/std/unittest/mock/compiler/createMock/topLevelCreateMock.cj
-API/std/unittest/mock/compiler/createMock/usePrivateTypes.cj
-API/std/unittest/mock/compiler/createMock/usePrivateTypesOtherPackage.cj
-API/std/unittest/mock/compiler/createMock/wrongReturnType.cj
-API/std/unittest/mock/compiler/createSpy/accessingToFields.cj
-API/std/unittest/mock/compiler/createSpy/accessingToNonPackagePrivateFieldsOfAnotherPackage.cj
-API/std/unittest/mock/compiler/createSpy/accessingToPackagePrivateFieldsOfAnotherPackage.cj
-API/std/unittest/mock/compiler/createSpy/basic.cj
-API/std/unittest/mock/compiler/createSpy/generic.cj
-API/std/unittest/mock/compiler/createSpy/indirectMockWithSpy.cj
-API/std/unittest/mock/compiler/createSpy/indirectSpying.cj
-API/std/unittest/mock/compiler/createSpy/indirectSpyingGeneric.cj
-API/std/unittest/mock/compiler/createSpy/properties.cj
-API/std/unittest/mock/compiler/createSpy/spyOnSuperType.cj
-API/std/unittest/mock/compiler/createSpy/spyWithStatic.cj
-API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
-API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
-API/std/deriving/shrink_t_test.cj
-API/std/deriving/shrink_test.cj
-
 # bug 155 ([resolution] [FATAL] not found function: _CGP3pkgiiHv)
 compiler/Macro/import/import05/call.cj
 compiler/Modules/Package/alias/import_alias_14/default.cj
@@ -484,11 +418,6 @@ compiler/Modules/Package/reexportMacroPkg/case05/main.cj
 compiler/CHIROpt/ConstPropagation/incremental/effect_map_single.cj
 compiler/Driver/options/import_path/test_order_correct.cj
 compiler/Driver/options/input/bc/test_bc_1.cj
-
-# bug 156 ([resolution] [ERROR] Failed to parse method reference <0, 0>)
-compiler/Sema/generics/generic_member07/main.cj
-compiler/Sema/generics/generic_member08/main.cj
-compiler/CodegenCJNative/enum/03_EXHAUSTIVE_UNASSOCIATED/main_00.cj
 
 # bug 157 (CBC internal error: symbol resolution error)
 compiler/Sema/enum/enum45_generic_extend_staticFunc.cj
@@ -722,18 +651,6 @@ compiler/CHIR/UG/ClosureConversion/staticFunc05.cj
 compiler/CHIR/UG/ClosureConversion/staticFunc06.cj
 compiler/Sema/function/interface_def_val.cj
 
-# bug 205 (`$withoutTI` appended to AOT function that has no such suffix in compiled code)
-API/std/unittest/new_bench/bench_measure_cycles.cj
-API/std/unittest/report_bench_csv/report_csv_class.cj
-API/std/unittest/report_bench_csv/report_csv_class_multiple_measurements.cj
-API/std/unittest/report_bench_csv/report_csv_raw_class.cj
-API/std/unittest/report_bench_csv/report_csv_raw_class_multiple_measurements.cj
-API/std/unittest/report_bench_csv/report_csv_raw_class_structure.cj
-API/std/unittest/report_bench_html/report_html_colon_name.cj
-API/std/unittest/report_bench_html/report_html_no_gnuplot.cj
-API/std/unittest/report_bench_html/report_html_failure.cj
-API/std/unittest/new_bench/bench_input.cj
-
 # bug 206 (mut generic struct interface -- could not find VTable slot for bar(BOXi32)BOXi32)
 API/std/unittest/mock/compiler/ensurePreparedToMock/generics_with_O2.cj
 compiler/CHIR/UG/OpenGeneric/extend.cj
@@ -765,14 +682,6 @@ API/std/unittest/mock/compiler/misc/foreign_inout_param_struct.cj
 compiler/FFI/CFFI/inout/inout_13.cj
 compiler/FFI/CFFI/inout/inout_14.cj
 compiler/FFI/CFFI/inout/inout_7.cj
-
-# bug 211 (cjc --mock=on: could not find VTable slot for %+(Sstd.core:String;)Sstd.core:String;)
-API/std/unittest/mock/framework/operator_stub_test.cj
-API/std/unittest/mock/framework/spy_test.cj
-API/std/unittest/mock/framework/verification_failed_report_test.cj
-API/std/unittest/mock/framework/verify_misconfiguration_test.cj
-API/std/unittest/mock/framework/expectation_failed_test.cj
-API/std/unittest/mock/framework/runtime_failure_report_test.cj
 
 # bug 212 (UNEXPECTED: no cbc for launcher)
 compiler/Driver/options/optional_space/output.cj
