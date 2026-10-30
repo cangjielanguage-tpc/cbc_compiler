@@ -188,11 +188,13 @@ async def build_and_test_patch(release_dir: Path, tag_dir: Path, log_prefix: str
         test_env = os.environ.copy()
         test_env["LD_LIBRARY_PATH"] = f"{release_dir}:{test_env.get('LD_LIBRARY_PATH', '')}"
         test_env["CBCOPT"] = f"cbc.path={tmp_path} {test_env.get('CBCOPT', '')}"
-        test_env["ENABLE_INTERPRETER"] = "true"
+        # Main-branch runtime initializes the interpreter only via the launcher;
+        # the preload library restores in-process initialization for AOT binaries.
+        test_env["LD_PRELOAD"] = str(Path(cangjie_home) / "tools" / "lib" / "libcbc-preload.so")
 
         async def execute_patch(binary_path: Path, tmp_path: Path, test_env: dict[str, str], log_prefix: str):
             async with SEMAPHORE:
-                print(f"{log_prefix} [RUN] LD_LIBRARY_PATH=\"{test_env['LD_LIBRARY_PATH']}\" CBCOPT=\"{test_env['CBCOPT']}\" ENABLE_INTERPRETER=\"{test_env['ENABLE_INTERPRETER']}\" {binary_path}")
+                print(f"{log_prefix} [RUN] LD_LIBRARY_PATH=\"{test_env['LD_LIBRARY_PATH']}\" CBCOPT=\"{test_env['CBCOPT']}\" LD_PRELOAD=\"{test_env['LD_PRELOAD']}\" {binary_path}")
                 proc = await asyncio.create_subprocess_exec(
                     binary_path,
                     cwd=str(tmp_path.resolve()),
