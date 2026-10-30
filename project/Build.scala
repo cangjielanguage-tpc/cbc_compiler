@@ -231,6 +231,22 @@ object Build {
     .settings(flatbuffersSettings)
     .settings(commonSourceLayout)
     .settings(
+      // Default CHIR version, configurable via `chir.defaultVersion` in env.properties
+      // or `-Dchir.defaultVersion=<n>` on the sbt command line.
+      Compile / sourceGenerators += Def.task {
+        val file = (Compile / sourceManaged).value / "com/huawei/excelsior/jet/compiler/chir/CHIRConfig.scala"
+        val content =
+          s"""package com.huawei.excelsior.jet.compiler.chir
+             |
+             |private[chir] object CHIRConfig {
+             |  val defaultVersion = ${env.chirDefaultVersion}
+             |}
+             |""".stripMargin
+        if (!(file.exists() && IO.read(file) == content)) {
+          IO.write(file, content)
+        }
+        Seq(file)
+      }.taskValue,
       Compile / sourceGenerators += Def.task {
         val versionsDirs: Seq[File] = (file("core/chir-lib/schema") * DirectoryFilter).get()
 

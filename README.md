@@ -158,10 +158,23 @@ MD5 hashes of the source jar and of the binary itself.
 
 ### Supported CHIR versions
 
-| CHIR version | CBC option          | Notes                    |
-|--------------|---------------------|--------------------------|
-| `13002`      | None                | Cangjie `1.3.0-alpha.02` |
-| `1203`       | `-CHIRVersion=1203` | Cangjie `1.2.0-beta.rc3` |
+Version numbers follow the corresponding Cangjie compiler version:
+`<major><minor><patch><alpha/rc counter>`, e.g. `13008` = Cangjie `1.3.0-alpha.08`.
+
+| CHIR version | Cangjie tag           | CBC option          | Notes                                    |
+|--------------|-----------------------|---------------------|------------------------------------------|
+| `13008`      | `v1.3.0-alpha.08`     | `-CHIRVersion=13008`| Schema `StdxChirFormat.fbs`              |
+| `13002`      | `v1.3.0-alpha.02`     | `-CHIRVersion=13002`| Schema `PackageFormat.fbs`, default      |
+| `1203`       | `v1.2.0-beta.rc3`     | `-CHIRVersion=1203` | Schema `PackageFormat.fbs`               |
+
+"CBC option" is a cbc-compiler command line option that allows to compile a CHIR file
+of the given version into CBC.
+The default version is fixed at compiler build time, either via the `chir.defaultVersion`
+entry in `env.properties` or via an explicit `-D` argument:
+
+```bash
+$ sbt -Dchir.defaultVersion=13008 jar
+```
 
 ### Test
 

@@ -7,7 +7,7 @@ object CHIR {
   val releaseBeta120Rc3Version = 1203
   val v13002Version = 13002
   val v13008Version = 13008
-  val defaultVersion = v13002Version
+  val defaultVersion = CHIRConfig.defaultVersion
 
   def newPackage(source: String, version: Int): Package = AugmentedPackage(version match {
     case CHIR.releaseBeta120Rc3Version => new v1203.PackageImpl(source)
