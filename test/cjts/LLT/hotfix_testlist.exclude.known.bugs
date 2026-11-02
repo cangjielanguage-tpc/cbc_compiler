@@ -786,19 +786,9 @@ API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
 compiler/CHIR/UG/ClosureConversion/instanceOf03.cj
 compiler/CHIR/UG/ClosureConversion/instanceOf04.cj
 
-# bug 195 (Support pass-by-value in foreign function calls)
-compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_7.cj
-compiler/FFI/CFFI/record/small_17.cj
-compiler/FFI/CFFI/record/small_18.cj
-
 # bug 215 (not implemented: intrinsic CPOINTER_ADD)
 compiler/CHIROptTest/SancovPass/traceMemCmpArray3.cj
 compiler/CHIROptTest/SancovPass/traceStringCmpIndexOf.cj
-
-# bug 216 (not implemented: cast from Pi* to AV*)
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/varray.cj
-compiler/Sema/varray/varray_cffi/varray_inout.cj
-compiler/Sema/varray/varray_cffi/varray_inout05.cj
 
 # bug 181 (Support reflection)
 compiler/CodegenCJNative/compitability/non_open_generic_class_reflection/main.cj
@@ -865,9 +855,6 @@ compiler/Sema/ffi/cpointer_generic.cj
 API/std/libast/tokens/toString/test_004.cj
 compiler/CHIR/AST2CHIR/bugfix/bugfix4/test.cj
 compiler/CHIR/package/package01/test1.cj
-
-# bug 223 (pass by value struct with varray payload)
-compiler/Sema/varray/varray_cffi/varray_cstruct04.cj
 
 # bug 224 (`CPointer<T>` : Failed to resolve method)
 compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
