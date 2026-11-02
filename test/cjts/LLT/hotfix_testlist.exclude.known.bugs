@@ -159,6 +159,7 @@ API/std/math/test_math_funcs.cj
 API/std/unittest/prop_test/arbitrary_range/arbitrary_range_float.cj
 compiler/Parser/expr/quote/quoteDollarInterpolation/quoteDollarInterpolation3.cj
 API/std/core/test_float_NaN_comparable.cj
+API/std/unittest/mock/compiler/createMock/defaultValues/numbers.cj
 
 # bug 133 (not implemented: FuncType)
 compiler/CHIR/CHIR-DIS/deserializeRaw.info
@@ -528,6 +529,8 @@ API/std/unittest/mock/integration/stub_in_before_each.cj
 API/std/unittest/mock/integration/unnecessary_stubbing.cj
 API/std/unittest/rendering/rendering_main.cj
 API/std/unittest/rendering/rendering_worker.cj
+API/std/unittest/mock/framework/spy_test.cj
+API/std/unittest/mock/integration/parametrized.cj
 
 # bug 200 (CHIRParser.valueOfFunc crash for CFunc)
 Runtime/CJNative/debuginfo_ffic_expr.cj
@@ -622,6 +625,13 @@ compiler/FFI/CFFI/foreign/foreign006/foreign006.cj
 compiler/FFI/CFFI/foreign/foreign007/foreign007.cj
 compiler/FFI/CFFI/foreign/foreign01.cj
 compiler/Sema/concurrency/spawn10.cj
+API/std/unittest/mock/compiler/createMock/usePrivateTypesOtherPackage.cj
+API/std/unittest/mock/compiler/createSpy/indirectSpying.cj
+API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
+API/std/unittest/mock/framework/expectation_failed_test.cj
+API/std/unittest/mock/framework/runtime_failure_report_test.cj
+API/std/unittest/mock/framework/verification_failed_report_test.cj
+API/std/unittest/mock/framework/verify_misconfiguration_test.cj
 
 # bug 203 (sigsegv on partially constructed TypeInfo: class with functional type field that references same class in signature)
 API/std/unittest/custom_assertions/nested_expect_inside_assert.cj
@@ -650,6 +660,10 @@ compiler/CHIR/StaticAbstractMark/import2/main.cj
 compiler/CHIR/UG/ClosureConversion/staticFunc05.cj
 compiler/CHIR/UG/ClosureConversion/staticFunc06.cj
 compiler/Sema/function/interface_def_val.cj
+API/std/unittest/mock/compiler/createMock/generic.cj
+API/std/unittest/mock/compiler/createMock/usePrivateTypes.cj
+API/std/unittest/mock/compiler/createSpy/generic.cj
+API/std/unittest/mock/compiler/createSpy/indirectSpyingGeneric.cj
 
 # bug 206 (mut generic struct interface -- could not find VTable slot for bar(BOXi32)BOXi32)
 API/std/unittest/mock/compiler/ensurePreparedToMock/generics_with_O2.cj
@@ -791,6 +805,7 @@ compiler/Sema/varray/varray_cffi/varray_inout05.cj
 # bug 181 (Support reflection)
 compiler/CodegenCJNative/compitability/non_open_generic_class_reflection/main.cj
 compiler/CodegenCJNative/reflect/reflect_01.cj
+API/std/reflect/typeInfo_instanceMemberFunction_generic.cj
 
 # bug 214 (inout receives value instead of address -- SIGSEGV)
 API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/return.cj
@@ -819,6 +834,24 @@ compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_4.cj
 compiler/Sema/generics/generic_upperbound_reference_09.cj
 compiler/Sema/generics/operatorOverload/operatorOverload.cj
 compiler/Sema/generics/operatorOverload/operatorOverloadinInterface.cj
+API/std/unittest/mock/compiler/createMock/accessingViaAbstractClass.cj
+API/std/unittest/mock/compiler/createMock/accessingViaInterface.cj
+API/std/unittest/mock/compiler/createMock/anotherPackageFinalClass.cj
+API/std/unittest/mock/compiler/createMock/anotherPackageFinalMethod.cj
+API/std/unittest/mock/compiler/createMock/anotherPackageInterface.cj
+API/std/unittest/mock/compiler/createMock/anotherPackageOpenAndAbstractClass.cj
+API/std/unittest/mock/compiler/createMock/defaultValues/collections.cj
+API/std/unittest/mock/compiler/createMock/defaultValues/typealias.cj
+API/std/unittest/mock/compiler/createMock/dependantPackageWithEnableMock.cj
+API/std/unittest/mock/compiler/createMock/finalProperties.cj
+API/std/unittest/mock/compiler/createMock/genericMethods.cj
+API/std/unittest/mock/compiler/createMock/genericsAnotherPackage.cj
+API/std/unittest/mock/compiler/createMock/inaccessibleMembersAnotherPackage.cj
+API/std/unittest/mock/compiler/createMock/sameGenericInstanceInDifferentPackages.cj
+API/std/unittest/mock/compiler/createMock/wrongReturnType.cj
+API/std/unittest/mock/compiler/createSpy/accessingToNonPackagePrivateFieldsOfAnotherPackage.cj
+API/std/unittest/mock/compiler/createSpy/accessingToPackagePrivateFieldsOfAnotherPackage.cj
+API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
 
 # bug 220 (declarartion recursion (enum with struct that has the same enum as field) lead to compiler crash)
 compiler/CHIR/UG/RecursionEnum/recursionEnum05.cj
@@ -858,3 +891,25 @@ API/std/posix/test_os_posix_sysinfo_unix.cj
 
 # bug 229 (`--save-temps` while `--save-temps`)
 compiler/Driver/options/obfuscation/test_config/test_not_exist.cj
+
+# bug 140 (not implemented: throwing binary expression)
+compiler/CodegenCommon/overflow/overshift1.cj
+
+# bug 234 (incorrrect overflow exception message suffixes)
+compiler/CodegenCommon/overflow/case_6.cj
+compiler/CodegenCommon/overflow/case_7.cj
+
+# bug 235 (SIGABRT for decimal tests)
+API/std/math/numeric/decimal/test_arithmetic_operation.cj
+API/std/math/numeric/decimal/test_compare.cj
+API/std/math/numeric/decimal/test_property.cj
+
+# bug 236 (missing software in llt container)
+API/std/core/exclusiveScope/c_interop.cj
+API/std/unittest/report_bench_html/report_html_no_gnuplot.cj
+
+# bug 237 (unexpected cast base: 13:UnboxLea)
+compiler/CodegenCJNative/record/record_5.cj
+
+# bug 238 (Resources.scala: equirement failed: InstantiatedRecord)
+API/std/unittest/mock/compiler/createMock/mutableStruct.cj
