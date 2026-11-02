@@ -3,7 +3,22 @@
 Guidance for AI coding agents working in this repository.
 
 For repository layout, build instructions and configuration, see [README.md](README.md)
-— this file does not repeat it.
+- this file does not repeat it.
+For the end-to-end test suites (standalone / hotfix) - toolchain setup and how
+to run them - see [test/README.md](test/README.md).
+
+## Verifying changes
+
+Besides `sbt test`, changes to compiler behavior should be verified with the
+end-to-end standalone suite (at least the tests related to the change),
+especially when CHIR parsing, lowering or ABI conventions are touched:
+
+```bash
+$ python3 test/runner.py test --filter standalone/cj/bugs
+```
+
+Toolchain setup, suite descriptions and more `runner.py` options are described
+in [test/README.md](test/README.md).
 
 ## Scala 3 style
 
@@ -37,9 +52,14 @@ These conventions apply to all new code and are enforced by review.
    braces: `if (cond) x else y`. Multi-line bodies get braces; else chains
    close on the same line: `} else if (...) {`.
 
-6. **`override` only when overriding a concrete implementation** — never on a
+6. **`override` only when overriding a concrete implementation** - never on a
    method that merely implements an abstract member.
 
 7. **Typed case bindings don't invent names.** In `case <binding>: <Type>`,
    the binding is a single letter or shadows the matched variable; avoid
    arbitrary short invented names.
+
+8. **No em/en dashes or unicode symbols in comments and documentation.**
+   In comments and docs use plain ASCII punctuation: use `-` instead of em
+   or en dashes, write out arrows in words ("to", "->"), and avoid other
+   decorative unicode characters.

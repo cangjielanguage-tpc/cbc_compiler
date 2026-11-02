@@ -50,7 +50,8 @@ cbc_compiler/
 │   │       └── xpackii                       # Rsulting binary artifact management module
 │   └── xscala-vm-dependent                   # Internal library for support of different compiler VM
 ├── figures                                   # Documentation images
-└── project                                   # SBT buildsystem configuration
+├── project                                   # SBT buildsystem configuration
+└── test                                      # End-to-end test suites (standalone, hotfix)
 ```
 
 ## Constraints
@@ -133,6 +134,31 @@ $ sbt jar
 ```
 
 The resulting compiler jar will be located at [core/compiler/target/aot/aot.jar](core/compiler/target/aot/aot.jar).
+`sbt jar` also produces a copy under the name `cbc-compiler.jar` together with
+the [wrapper script](scripts/cbc-compiler) next to it - this is the naming
+expected by Cangjie toolchains.
+
+### Toolchain
+
+The compiler consumes CHIR produced by `cjc` and produces CBC bytecode
+executed by the `launcher` of a Cangjie toolchain (SDK distribution), which
+also provides `cjc`, `chir-dis`, `cbc-asm` and the `cbc-compiler` wrapper.
+To make the toolchain tools available in a shell, source its `envsetup.sh`
+(it must be sourced, not executed - it sets `CANGJIE_HOME`, `PATH` and
+`LD_LIBRARY_PATH`):
+
+```bash
+$ source <toolchain>/envsetup.sh
+```
+
+To use a locally built compiler with the toolchain (e.g. when verifying it
+with the end-to-end test suites), replace the jar in the toolchain with the
+freshly built one (the `cbc-compiler` wrapper executes `cbc-compiler.jar`
+from its own directory):
+
+```bash
+$ cp core/compiler/target/aot/cbc-compiler.jar <toolchain>/tools/bin/
+```
 
 ### Native Image Builds
 
@@ -174,21 +200,39 @@ $ sbt test
 [success] Total time: 76 s (0:01:16.0), completed Jun 22, 2026 11:32:22 AM
 ```
 
+End-to-end suites (standalone / hotfix) that compile and execute test
+programs against a Cangjie toolchain are described in
+[test/README.md](test/README.md).
+
 ### Run
 
-In order to produce CBC from CHIR file, it is enough to pass `.chir` file directly to compiler:
+A complete pipeline from Cangjie sources to an executed CBC file (assuming the
+toolchain is activated as shown above):
 
 ```bash
-$ java -jar core/compiler/target/aot/aot.jar test.chir
+$ cjc lib.cj --output-type=dylib -o liblib.so   # dependency packages: AOT dylibs
+$ cjc main.cj --emit-chir --import-path .       # main package: CHIR for CBC
+$ java -jar core/compiler/target/aot/aot.jar default.chir
+$ LD_LIBRARY_PATH=. launcher default.cbc
 ```
 
-The resulting CBC file will have name `test.cbc`, but can be changed with option `-outputname=<name>`.
-Then the resulting CBC file will have name `<name>.cbc`.
+`cjc --emit-chir` names the produced CHIR file after the source package
+(`default.chir` for package `default`); `-o` overrides the name.
+Dependency packages are compiled to AOT dylibs (`--output-type=dylib`) and
+made visible to the main package compilation via `--import-path`.
 
-The input CHIR file is expected to be produced from cjc compilation with option `--emit-chir`:
+The compiler can also be invoked on any CHIR file directly; the resulting CBC
+file is named after the input (`test.chir` -> `test.cbc`), and
+`-outputname=<name>` overrides the name.
+
+The interpreter engine (`<toolchain>/tools/lib/libcbcengine.so`) also expects
+`<toolchain>/tools/lib/cbc-intrinsics.cbc` to be present. It can be generated
+with the compiler itself (run without input files; the file is written to the
+working directory) and then installed into the toolchain:
 
 ```bash
-$ cjc --emit-chir test.cj
+$ java -jar core/compiler/target/aot/aot.jar +GenCbcIntrinsics
+$ cp cbc-intrinsics.cbc <toolchain>/tools/lib/
 ```
 
 ### Development Container
