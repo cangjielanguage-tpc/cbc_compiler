@@ -675,10 +675,6 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
 
     def freg: Register.FR = comma(stream.parseFReg())
     def ireg: Register.IR = comma(stream.parseIReg())
-    def rg: Register.IR | Register.FR = comma(stream.current match {
-      case Kw(k) if Conversion.fregs.contains(k) => stream.parseFReg()
-      case _                                     => stream.parseIReg()
-    })
     def method: MethodReference = comma(methodRefs.getOrElse(stream.parseRef(), fakeMethodRef))
     def field: FieldReference = comma(fieldRefs.getOrElse(stream.parseRef(), fakeFieldRef))
     def tpe: Signature = comma(stream.parseType())
@@ -863,7 +859,6 @@ private object Conversion {
 private trait ArgStream {
   def freg: Register.FR
   def ireg: Register.IR
-  def rg: Register.IR | Register.FR
   def method: MethodReference
   def field: FieldReference
   def fields: Seq[FieldReference]
@@ -917,7 +912,11 @@ private object InstructionParser {
   instr("i2f")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.ireg, s.freg) }
   instr("f2i")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.freg, s.ireg) }
   instr("f2f")     { (a, s) => a.convertFromTo(s.asmType, s.asmType, s.freg, s.freg) }
-  instr("checked.convert") { (a, s) => a.checkedConvert(s.asmType, s.asmType, s.rg, s.rg) }
+  instr("ci2i")    { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.ireg, s.ireg) }
+  instr("ci2i.u")  { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.ireg, s.ireg) }
+  instr("ci2f")    { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.ireg, s.freg) }
+  instr("cf2i")    { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.freg, s.ireg) }
+  instr("cf2f")    { (a, s) => a.checkedConvertFromTo(s.asmType, s.asmType, s.freg, s.freg) }
 
   // 32-bit integer arithmetic
   instr("add.32")  { (a, s) => a.add(Width.W32, s.ireg, s.ireg, s.ireg) }

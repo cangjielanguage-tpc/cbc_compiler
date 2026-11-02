@@ -383,6 +383,8 @@ trait ForkedAssembler {
 
   def convertFromTo(fromType: AsmType, toType: AsmType, from: Rg, to: Rg): Unit = convert(toType, fromType, to, from)
 
+  def checkedConvertFromTo(fromType: AsmType, toType: AsmType, from: Rg, to: Rg): Unit = checkedConvert(toType, fromType, to, from)
+
   def convert(toType: AsmType, fromType: AsmType, to: Rg, from: Rg): Unit = instr {
     if (!fromType.isFloatingPoint) analyzer.usePrim(from.asInstanceOf[IR])
     if (!toType.isFloatingPoint) analyzer.prim(to.asInstanceOf[IR])
