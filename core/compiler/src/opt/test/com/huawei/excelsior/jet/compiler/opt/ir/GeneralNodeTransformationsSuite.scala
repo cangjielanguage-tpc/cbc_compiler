@@ -1046,4 +1046,18 @@ class GeneralNodeTransformationsSuite extends CompilerSuite with GlobalNodesBuil
       checkIRConsistency(CheckLevels.Optional)
     }
   }
+
+  test("block reference in a long spinal node sequence") {
+    makeCFG(0)
+    val block = b(0)
+    var last: SpinalNode = null
+
+    insertCodeBefore(block.blockEnd) {
+      for (_ <- 0 until 100000) {
+        last = ColdCodeMarker()
+      }
+    }
+
+    last.blockRef should be (block.blockRef)
+  }
 }

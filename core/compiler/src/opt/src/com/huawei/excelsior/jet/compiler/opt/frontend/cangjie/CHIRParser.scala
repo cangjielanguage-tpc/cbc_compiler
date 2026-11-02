@@ -2219,7 +2219,7 @@ trait CHIRParser
 
             ensurePrepared(PreparationRequired.forInvoke(target))
             packageInitCheck(target.refClass)
-            VArrayFillByLambda(arrayType, target, lambdaType)(maybeDerivedPtrBase(mem), mem, initializer)
+            VArrayFillByLambda(arrayType, target)(maybeDerivedPtrBase(mem), mem, initializer)
         }
         state(e) = mem
 
