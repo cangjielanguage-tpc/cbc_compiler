@@ -246,10 +246,10 @@ object Build {
              |private[chir] object CHIRConfig {
              |  val defaultVersion = ${env.chirDefaultVersion}
              |
-             |  def newPackage(source: String, version: Int): CHIR.Package = AugmentedPackage(version match {
+             |  def newPackage(source: String, version: Int): CHIR.Package = version match {
              |$matchCases
              |    case _ => notImplemented("unsupported CHIR version", version)
-             |  })
+             |  }
              |}
              |""".stripMargin
         if (!(file.exists() && IO.read(file) == content)) {

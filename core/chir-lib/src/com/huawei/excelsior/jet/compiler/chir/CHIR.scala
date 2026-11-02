@@ -6,7 +6,7 @@ object CHIR {
 
   val defaultVersion = CHIRConfig.defaultVersion
 
-  def newPackage(source: String, version: Int): Package = CHIRConfig.newPackage(source, version)
+  def newPackage(source: String, version: Int): Package = AugmentedPackage(CHIRConfig.newPackage(source, version))
 
   def newIntrinsicsPackage: Package = new IntrinsicsPackage
 
