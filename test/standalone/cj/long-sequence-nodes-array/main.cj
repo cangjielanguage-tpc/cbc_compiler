@@ -1,8 +1,7 @@
-import std.sync.SyncCounter
+class Empty {}
 
 class LongArrayLiteralTest {
     func testLongArrayLiteral() {
-        let threadNum = 200
         let _: Array<Int64> = [
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -505,7 +504,7 @@ class LongArrayLiteralTest {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
         ]
-        let sc = SyncCounter(threadNum)
+        let _ = Empty()
     }
 }
 
