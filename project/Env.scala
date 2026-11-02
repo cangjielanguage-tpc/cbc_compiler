@@ -12,9 +12,9 @@ import sbt.SettingKey
 
 import java.io.File
 import java.util.Properties
-import scala.util.Using
+import scala.util.{Try, Using}
 
-class Env(props: Properties) {
+class Env(props: Properties, val chirVersions: Seq[Int]) {
   private var errors = false
 
   val os                 = apply("os",                  Some("linux"),       "linux", "windows")
@@ -24,7 +24,7 @@ class Env(props: Properties) {
   val flatc              = apply("flatc",               Some("flatc"))
   val graalvm            = apply("graalvm",             Some(""))
   val graalvmParallelism = apply("graalvmParallelism",  Some("2"))
-  val chirDefaultVersion = apply("chir.defaultVersion", Some("13002"), "1203", "13002", "13008")
+  val chirDefaultVersion = apply("chir.defaultVersion", Some("13002"), chirVersions.map(_.toString)*)
 
   def apply(name: String, default: Option[String], variants: String*): String = {
     sys.props.get(name)
@@ -51,15 +51,29 @@ class Env(props: Properties) {
 }
 
 object Env {
+  /** Collect supported CHIR format versions from schema dirs (core/chir-lib/schema/v<n>). */
+  private def chirSchemaVersions(schemaDir: File): Seq[Int] = {
+    val versions = Option(schemaDir.listFiles()).toSeq.flatten
+      .filter(_.isDirectory)
+      .flatMap(dir => Try(dir.getName.stripPrefix("v").toInt).toOption)
+      .distinct
+      .sorted
+    if (versions.isEmpty) {
+      println(s"No CHIR schema versions found in $schemaDir")
+      sys.exit(1)
+    }
+    versions
+  }
+
   /** Load environment values from system properties file. */
-  def load(file: File): Env = {
+  def load(file: File, chirSchemaDir: File): Env = {
     val props = new Properties()
     if (file.exists()) {
       Using.resource(scala.io.Source.fromFile(file)) { source =>
         props.load(source.bufferedReader())
       }
     }
-    new Env(props)
+    new Env(props, chirSchemaVersions(chirSchemaDir))
   }
 
   val settingKey = SettingKey[Env]("env", "Environment values loaded from env.xml and/or system properties.")
