@@ -2477,15 +2477,14 @@ trait CHIRParser
 
       lazy val abiRetValType = {
         val mt = target.methodType
-        mt.parameterType(if (mt.hasCFuncRetByValParameter) mt.getCFuncRetByValArgIdx else mt.getRetByValArgIdx)
+        mt.parameterType(mt.getRetByValArgIdx)
       }
 
       var abiRetVal: Node = null
       val abiArgs = calcABIArgs(target, ugArgs) {
-        case RetByVal | CFuncRetByVal =>
+        case RetByVal =>
           abiRetVal = abiRetValType match {
             case _ if abiRetValType.isZST =>
-              assert(!target.methodType.hasCFuncRetByValParameter)
               Void()
 
             case t: SignatureType.Box =>

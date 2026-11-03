@@ -1223,7 +1223,6 @@ class LegacyCBCFileGenerator(env: Environment, outputName: String, segment: Segm
     if (shouldNotReachHere("ugdesc")) mask |= UG_DESC_PARAM_FLAG.intValue
     if (mt.hasThisTypeInfoParameter) mask |= THIS_TYPE_INFO_PARAM_FLAG.intValue
     if (mt.hasRetByValParameter) mask |= RET_BY_VAL_PARAM_FLAG.intValue
-    if (mt.hasCFuncRetByValParameter) mask |= C_FUNC_RET_BY_VAL_PARAM_FLAG.intValue
     mask
   }
 

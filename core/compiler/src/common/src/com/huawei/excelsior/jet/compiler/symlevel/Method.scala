@@ -256,8 +256,6 @@ abstract class Method extends Symbol with Member with ConstantPoolObject with Fr
 
   def getRetByValArgIdx: Int = getMethodType.getRetByValArgIdx
 
-  def hasCFuncRetByValParameter: Boolean = getMethodType.hasCFuncRetByValParameter
-  
   /** Returns array of param indices if the method is annotated with `@InlineIfConstParams`.
     * Otherwise returns `null`.
     */
