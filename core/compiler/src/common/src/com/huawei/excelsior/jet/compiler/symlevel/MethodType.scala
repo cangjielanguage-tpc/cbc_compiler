@@ -152,7 +152,6 @@ object MethodType {
     case GenericFuncParams extends SpecialParameter(Custom)
     case OuterTypeInfo extends SpecialParameter(End)
     case ThisTypeInfo extends SpecialParameter(End)
-    case CFuncRetByVal extends SpecialParameter(End)
   }
 
   trait SpecialParamSet {
@@ -264,8 +263,6 @@ case class MethodType (signature: MethodSignature, callConv: CallConv,
 
   def getRetByValArgIdx: Int = getSpecialArgIdx(RetByVal)
 
-  def getCFuncRetByValArgIdx: Int = getSpecialArgIdx(CFuncRetByVal)
-
   /** Returns true iff MethodType has information about receiver arg. */
   def hasReceiverParameter: Boolean = hasSpecialArg(Receiver)
 
@@ -288,9 +285,6 @@ case class MethodType (signature: MethodSignature, callConv: CallConv,
 
   /** Returns true iff MethodType has information about ret_by_val arg. */
   def hasRetByValParameter: Boolean = hasSpecialArg(RetByVal)
-
-  /** Returns true iff MethodType has information about c_func_ret_by_val arg. */
-  def hasCFuncRetByValParameter: Boolean = hasSpecialArg(CFuncRetByVal)
 
   /** Creates a method type with a different state of varArgs flag. */
   def changeVarArgsFlag(isVarArgs: Boolean) = copy(isVarArgs = isVarArgs)
