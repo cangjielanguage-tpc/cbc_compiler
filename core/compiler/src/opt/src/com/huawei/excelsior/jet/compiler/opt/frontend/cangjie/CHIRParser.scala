@@ -2330,8 +2330,13 @@ trait CHIRParser
         val arrayType = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.VArray]
         val mem = StackAlloc.Local(arrayType)
         val initializer = state(e.initializer)
-        val init: Node => Node = initializer match {
-          case _: AnyNull => _ => state(e.initValue)
+        initializer match {
+          case _: AnyNull =>
+            if (!arrayType.elemType.isZST) {
+              val value = state(e.initValue)
+              VArrayFill(arrayType)(maybeDerivedPtrBase(mem), mem, maybeDerivedPtrBase(value), value)
+            }
+
           case _ =>
             val ValueSig(lambdaType) = e.initializer
             val vtable = asClassType(lambdaType).getCHIRVTable
@@ -2346,11 +2351,17 @@ trait CHIRParser
             val target = new MethodReference(method, MAK.VIRTUAL, CompiledType(lambdaType), vnum)
             val retType = arrayType.elemType
 
-            index =>
-              callMethod(target, Some(lambdaType), Some(lambdaType), retType, Seq(lambdaType, SignatureType.Int64), Seq(initializer, index), None)
-        }
-        for (index <- 0L until arrayType.length) {
-          varrayPut(arrayType, mem, LConst(index), init(LConst(index)))
+            import SpecialParameter.*
+            target.methodType.specialParameters.elements.foreach {
+              case RetByVal if retType.isRecord || retType.isZST =>
+              case Receiver | OuterTypeInfo | SpecialParameter.ThisTypeInfo =>
+              case special =>
+                shouldNotReachHere(s"Unsupported VArray lambda special parameter $special in $target")
+            }
+
+            ensurePrepared(PreparationRequired.forInvoke(target))
+            packageInitCheck(target.refClass)
+            VArrayFillByLambda(arrayType, target)(maybeDerivedPtrBase(mem), mem, initializer)
         }
         state(e) = mem
 
