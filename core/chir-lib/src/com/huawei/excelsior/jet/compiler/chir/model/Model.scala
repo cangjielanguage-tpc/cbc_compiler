@@ -387,6 +387,12 @@ final class Func(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Option[Deb
   def isImported: Boolean = (attributes & Attribute.Imported) != 0L
   def isLambda: Boolean = funcKind == FuncKind.Lambda
 
+  /** C++ `Function::IsConstructor()`: ctor kinds, excluding static methods. */
+  def isConstructor: Boolean =
+    (funcKind == FuncKind.ClassCtor || funcKind == FuncKind.StructCtor ||
+      funcKind == FuncKind.PrimalClassCtor || funcKind == FuncKind.PrimalStructCtor) &&
+      (attributes & Attribute.Static) == 0L
+
   /** Mints a fresh local var id, like C++ `Function::GenerateLocalId`
     * (`return localId++` — the counter holds the NEXT id to mint).
     */

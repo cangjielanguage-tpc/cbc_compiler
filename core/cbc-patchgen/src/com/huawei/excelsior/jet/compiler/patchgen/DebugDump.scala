@@ -37,7 +37,9 @@ object DebugDump {
     }
     println("global funcs")
     for (f <- pkg.globalFuncs if f.body.isDefined) {
-      println(withoutPrefix(f.identifier))
+      // C++ prints an "[unreachable] " prefix for functions marked unreachable
+      val unreachable = if ((f.attributes & Attribute.Unreachable) != 0L) "[unreachable] " else ""
+      println(unreachable + withoutPrefix(f.identifier))
     }
     println("types")
     for (d <- pkg.curPkgCustomTypeDefs) {

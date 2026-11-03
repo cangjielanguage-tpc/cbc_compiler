@@ -515,13 +515,16 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
       patchedPackage.globalVars ++= newGlobalVars
 
       val guardMethodName = patchableName.genGuardMethodName(GuardMethodKind.Plain)
+      val synthCtorName = if (func.isConstructor) Some(patchableName.genSyntheticCtorName) else None
 
       guardClass.get.methods = guardClass.get.methods.filter(_.srcCodeIdentifier != guardMethodName)
       patchClass.get.methods = patchClass.get.methods.filter(_.srcCodeIdentifier != guardMethodName)
 
       // Here we can't remove redundant global functions, as their references exist in vtable.
       // So marking these functions as unreachable lets cbc-compiler recognize and remove them.
-      for (globalFunc <- patchedPackage.globalFuncs if globalFunc.srcCodeIdentifier == guardMethodName) {
+      for (globalFunc <- patchedPackage.globalFuncs
+          if globalFunc.srcCodeIdentifier == guardMethodName ||
+            synthCtorName.contains(globalFunc.srcCodeIdentifier)) {
         globalFunc.attributes = globalFunc.attributes | Attribute.Unreachable
       }
     }
