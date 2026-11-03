@@ -67,6 +67,36 @@ def expected_file(test_data: Path, name: str, level: str):
     return None
 
 
+def canonicalize_dump(text: str) -> str:
+    '''
+    Canonical form of the patch-gen `--test` info dump for comparison.
+
+    The dump is a sequence of sections ("global vars", "global funcs",
+    "types"), each a flat list of names printed in the patch file's
+    package-list order. That order is inherited from the input CHIRs, whose
+    internal ordering is nondeterministic in cjc (varies run to run), so it
+    cannot be pinned by expected files. Sort the lines within each section;
+    keep the section order and each line's content (e.g. the `[unreachable] `
+    prefix) intact. Any text before the first section header is kept as-is.
+    '''
+    sections = []
+    current = []
+    for line in text.split("\n"):
+        if line in ("global vars", "global funcs", "types"):
+            if current:
+                sections.append(current)
+            current = [line]
+        elif current:
+            current.append(line)
+        else:
+            sections.append([line])
+    if current:
+        sections.append(current)
+    return "\n".join(
+        "\n".join(s[:1] + sorted(s[1:])) for s in sections
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -173,7 +203,8 @@ def main() -> int:
                     print("    " + (dis.stdout or "").strip().replace("\n", "\n    "))
                     failed.append(f"{level}:{name}")
                     continue
-            if result.stdout == exp.read_text():
+
+            if canonicalize_dump(result.stdout) == canonicalize_dump(exp.read_text()):
                 print("    Passed")
             else:
                 print("    Fail. Output differs\n    --- expected ---\n    "
