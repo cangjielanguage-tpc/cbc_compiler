@@ -1592,10 +1592,10 @@ trait CHIRParser
                     // nothing to do
                   case StackAlloc.Local(allocType) =>
                     // string
-                    val mem = GetStaticFieldSeqRef(DerivedPtr.Global(), createFieldReferenceNode(field, SignatureType.fromSymType(declType), field.getType, Some(field.getFieldIndex)))
+                    val mem = GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(g))
                     copy(allocType, mem, value)
                   case _ =>
-                    StoreStaticFieldSeq(DerivedPtr.Global(), value, createFieldReferenceNode(field, SignatureType.fromSymType(declType), field.getType, Some(field.getFieldIndex)))
+                    StoreStaticFieldSeq(DerivedPtr.Global(), value, staticFieldRef(g))
                 }
               case _ =>
             }
