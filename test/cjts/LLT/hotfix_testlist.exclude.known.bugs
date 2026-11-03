@@ -18,10 +18,7 @@ compiler/CodegenCommon/typecast/integer2char_invalid4.cj
 # bug 139 (not implemented: saturating float-to-int type cast)
 compiler/CHIR/CHIR2HLIR/typeCast/float2uintExceed.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642Int8_2.cj
-compiler/CodegenCommon/typecast/FPToSI/fp642Int8_3.cj
-compiler/CodegenCommon/typecast/FPToSI/fp642Int8_4.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_01.cj
-compiler/CodegenCommon/typecast/nan2integer.cj
 
 # bug 141 (not implemented: floating point binary expression: Exp)
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix6/test.cj
@@ -253,24 +250,8 @@ compiler/FFI/CFFI/import/import004/import004.cj
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
 
-# bug 79 (Cast Float32 -> Int32 does not throw on overflow)
-compiler/CHIR/CHIR2HLIR/overflow_typecast/inf2i
+# bug 79 (try86.cj: expects "OverflowException: sub", engine reports "usub")
 compiler/CHIR/CHIR2HLIR/exception/try86.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int16/inttoint16.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int16/uinttoint16.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int32/inttoint32.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int32/uinttoint32.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int64/uinttoint64.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int8/inttoint8.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/int8/uinttoint8.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint16/inttouint16.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint16/uinttouint16.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint32/inttouint32.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint32/uinttouint32.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint64/inttouint64.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/inttouint8.cj
-compiler/CHIR/CHIR2HLIR/overflow_typecast/uint8/uinttouint8.cj
-compiler/CodegenCommon/overflow/overflow_01.cj
 
 # bug 84 (ZeroSizedEnum in match expression)
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
