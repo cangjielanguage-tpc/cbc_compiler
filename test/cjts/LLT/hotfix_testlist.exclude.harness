@@ -434,3 +434,12 @@ compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
 # @C functions in cbc code
 compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_7.cj
 compiler/Sema/varray/varray_cffi/varray_inout05.cj
+compiler/CodegenCJNative/incremental/cfunc1/main.cj
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_1.cj
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_2.cj
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_6.cj
+compiler/FFI/CFFI/cfunc/empty_type/empty_type.cj
+compiler/FFI/CFFI/dock/cfunc_record/main.cj
+compiler/FFI/CFFI/import/import002/import002.cj
+compiler/FFI/CFFI/import/import003/import003.cj
+compiler/FFI/CFFI/import/import004/import004.cj
