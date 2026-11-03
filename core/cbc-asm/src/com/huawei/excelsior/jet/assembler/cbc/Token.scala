@@ -105,6 +105,7 @@ object Token {
     case Rec extends KeywordKind("@rec")
     case AotRef extends KeywordKind("@aref")
     case AotRec extends KeywordKind("@arec")
+    case Arr extends KeywordKind("@arr")
     case NullableOption extends KeywordKind("@nopt")
     case UnionOption extends KeywordKind("@uopt")
     case LiveRef extends KeywordKind("@live.ref")
