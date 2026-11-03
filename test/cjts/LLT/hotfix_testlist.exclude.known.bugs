@@ -221,32 +221,6 @@ compiler/CodegenCommon/overflow/cmpfuzz/test_3_main.cj
 compiler/CodegenCJNative/demangle/decl/exception_throw2.cj
 compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
 
-# bug 67 (C-struct getRetByValArgIdx crash)
-compiler/FFI/CFFI/record/small_0.cj
-compiler/FFI/CFFI/record/small_1.cj
-compiler/FFI/CFFI/record/small_2.cj
-compiler/FFI/CFFI/record/small_3.cj
-compiler/FFI/CFFI/record/small_4.cj
-compiler/FFI/CFFI/record/small_5.cj
-compiler/FFI/CFFI/record/small_6.cj
-compiler/FFI/CFFI/record/small_19.cj
-compiler/FFI/CFFI/record/small_20.cj
-compiler/Sema/call/call21.cj
-compiler/CodegenCJNative/incremental/cfunc1/main.cj
-compiler/FFI/CFFI/c_ffi_00102/c_ffi_00102.cj
-compiler/FFI/CFFI/case7-struct/c_ffi_00101.cj
-compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_1.cj
-compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_2.cj
-compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_6.cj
-compiler/FFI/CFFI/cfunc/empty_type/empty_type.cj
-compiler/FFI/CFFI/dock/cfunc_record/main.cj
-compiler/FFI/CFFI/foreign/foreign002/foreign002.cj
-compiler/FFI/CFFI/foreign/foreign003/foreign003.cj
-compiler/FFI/CFFI/foreign/foreign004/foreign004.cj
-compiler/FFI/CFFI/import/import002/import002.cj
-compiler/FFI/CFFI/import/import003/import003.cj
-compiler/FFI/CFFI/import/import004/import004.cj
-
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
 
