@@ -3,11 +3,18 @@ set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 
-# Fallback to python script if there are (-l / -L) arguments.
+# Fallback to python script if there are (-l / -L) arguments or C inputs (*.o, *.a).
+# The -o operand is an output name, not an input: skip it.
+prev=""
 for arg in "$@"; do
-    if [[ "$arg" == "-l" || "$arg" == "-L" || "$arg" == -l?* || "$arg" == -L?* ]]; then
+    if [[ "$prev" == "-o" ]]; then
+        prev=""
+        continue
+    fi
+    if [[ "$arg" == "-l" || "$arg" == "-L" || "$arg" == -l?* || "$arg" == -L?* || "$arg" == *.o || "$arg" == *.a ]]; then
         exec "$SCRIPT_DIR/cjc-wrapper.py" "$@"
     fi
+    prev="$arg"
 done
 
 # Find cjc output: -o <out>
