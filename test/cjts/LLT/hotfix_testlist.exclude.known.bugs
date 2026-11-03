@@ -421,10 +421,6 @@ compiler/CHIR/CHIR2HLIR/time/native3.cj
 compiler/CodegenCJNative/generic/generic_struct2.cj
 compiler/CodegenCJNative/generic/generic_struct4.cj
 
-# bug 174 (assertion failed: !Engine::Term(term).IsGeneric())
-compiler/FFI/CFFI/cpointer/extend_interfaces.cj
-compiler/Modules/Package/extend/extend_multiple_exportID/main.cj
-
 # bug 175 (CHIRParser.genericTypeInfoParam(CHIRParser.scala:2770))
 compiler/CHIR/UG/ClosureConversion/extendFunc01.cj
 compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj

@@ -475,7 +475,7 @@ trait CangjieNodes { self: Universe =>
         case sig: InstantiatedType  => sig.instantiatedTypeParameters.size
         case sig: Tuple             => sig.params.size
         case sig: CangjieEnum       => sig.params.size
-        case _: ArraySlice | _: CangjieArray | _: VArray => 1
+        case _: ArraySlice | _: CangjieArray | _: VArray | _: CPointer => 1
       }
     }
 

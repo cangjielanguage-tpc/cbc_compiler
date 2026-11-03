@@ -2967,6 +2967,7 @@ trait CHIRParser
         case t: Tuple             => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
         case t: CangjieEnum       => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
         case t: SignatureType.Box => loadTypeInfo(t.base)
+        case t: CPointer          => LoadTypeInfoGeneric(t)(loadTypeInfo(t.pointee.asInstanceOf[SignatureType]))
         case t => shouldNotReachHere(t)
       }
     } else {
