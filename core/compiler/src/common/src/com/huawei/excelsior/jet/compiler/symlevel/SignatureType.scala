@@ -350,7 +350,14 @@ sealed abstract class SignatureType extends Signature {
     case sig: Tuple => sig.params exists (_.containsTypeVariables)
     case sig: SignatureType.Box => sig.base.containsTypeVariables
     case sig: CangjieEnum       => sig.params exists (_.containsTypeVariables)
-    case _: Primitive | ThisTypeInfo | BString | _: CPointer | _: JavaArray | _: JBCReference | _: CangjieReference | _: Record => false
+    case _: Primitive | ThisTypeInfo | BString | _: JavaArray | _: JBCReference | _: CangjieReference | _: Record => false
+    case sig: CPointer          => sig.pointee match {
+      case p: MethodSignature =>
+        assert(p.parameterTypes.forall(a => !a.containsTypeVariables) && !p.returnType.containsTypeVariables, sig)
+        false
+      case p: SignatureType =>
+        p.containsTypeVariables
+    }
   }
 
   def instantiate(cparams: Seq[SignatureType], lparams: Seq[SignatureType]): SignatureType = {
@@ -382,7 +389,7 @@ sealed abstract class SignatureType extends Signature {
   }
 
   def uninstantiated: SignatureType = this match {
-    case _: Primitive | BString | _: CPointer | _: Record | _: JBCReference | _: CangjieReference | _: JavaArray | ThisTypeInfo => this
+    case _: Primitive | BString | _: Record | _: JBCReference | _: CangjieReference | _: JavaArray | ThisTypeInfo => this
     case t: InstantiatedRecord    => InstantiatedRecord(t.name, eraseParams(t.instantiatedTypeParameters))
     case t: InstantiatedReference => InstantiatedReference(t.name, eraseParams(t.instantiatedTypeParameters))
     case t: Tuple                 => Tuple(eraseParams(t.params))
@@ -392,6 +399,7 @@ sealed abstract class SignatureType extends Signature {
     case t: CangjieArray          => CangjieArray(ClassTypeVariable(0))
     case t: CangjieEnumWrapper    => CangjieEnumWrapper(t.baseType.uninstantiated.asInstanceOf[CangjieEnumWrapper.Base], t.name)
     case t: VArray                => VArray(ClassTypeVariable(0), t.length)
+    case t: CPointer              => CPointer(ClassTypeVariable(0))
     case t: LocalTypeVariable     => this
     case t: ClassTypeVariable     => this
     case t: NullableWrapper       => NullableWrapper(t.baseType.uninstantiated.asInstanceOf[NullableWrapper.Base])
