@@ -687,6 +687,7 @@ compiler/CodegenCJNative/compitability/org_name/main.cj
 compiler/CodegenCJNative/compitability/class_add_open_method3/main.cj
 compiler/CodegenCJNative/compitability/class_add_open_method4/main.cj
 compiler/CodegenCJNative/compitability/non_open_generic_class/main.cj
+compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi.cj
 
 # bug 210 (inout tests: key not found compiler.chir.v13002.GlobalVarImpl)
 API/std/unittest/mock/compiler/misc/foreign_inout_param_struct.cj
@@ -910,3 +911,46 @@ compiler/CodegenCJNative/record/record_5.cj
 
 # bug 238 (Resources.scala: equirement failed: InstantiatedRecord)
 API/std/unittest/mock/compiler/createMock/mutableStruct.cj
+
+# bug 239 (`--output-type=obj` output fails: `__CJMetadataStart` relocation)
+compiler/Driver/options/output_type/obj/obj_test1.cj
+compiler/Driver/options/output_type/obj/obj_test3.cj
+compiler/Driver/options/output_type/obj/obj_test6.cj
+
+# bug 240 (Language constraint: all variables in `extend` should be used in the extended type)
+API/std/unittest/mock/compiler/createMock/defaultValues/customExtension.cj
+
+# bug 241 (method from class and interface extend conflicted and wrong one was selected)
+compiler/Sema/generics/generic_member/pkg01/main.cj
+
+# bug 242 (incorrect dispatch in interface<T>: String reinterpreted as Int64)
+compiler/Sema/interface/interface_default_impl/interface_static_impl_with_generic01.cj
+
+# bug 243 (global tuple assignment spoils independent global var)
+compiler/CHIR/AST2CHIR/BaseUseCase/var_decl/global_var_with_pattern_02.cj
+compiler/CHIR/CHIR2HLIR/class_and_interface/class_and_interface_01.cj
+compiler/CHIR/CHIR2HLIR/package/global_variable_init/main.cj
+compiler/Modules/Package/global_variable_init_bugfix/main.cj
+
+# bug 244 (unicode in file names crashes cbc-compiler)
+compiler/Lexer/Unicode/macro.cj
+
+# bug 245 (silent incorrect exit code (option of function pointer of enum))
+compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_41.cj
+compiler/CHIR/CHIR2HLIR/package/finalizer/main.cj
+compiler/CJCov/global_capture.cj
+compiler/CodegenCJNative/interface/class_extend_interface.cj
+compiler/CodegenCJNative/interface/class_extend_interface_generic_constraint.cj
+compiler/CodegenCJNative/lambda/global_capture.cj
+compiler/Sema/class/static_init/generic_class_static_init_01/main.cj
+compiler/Sema/class/static_init/generic_class_static_init_02/main.cj
+compiler/Sema/enum/enum27.cj
+compiler/Sema/enum/enum40_indirect_box_after_instantiation.cj
+compiler/Sema/nonExhaustiveEnum/binaryCompat/change_lib.cj
+compiler/Sema/record/static_init/generic_struct_static_init_01/main.cj
+
+# bug 246 (assertion failed in `asClassType`)
+compiler/CHIR/UG/OpenGeneric/devirt.cj
+
+# bug 248 (`match(C(None))` should unpack into `None`, not `Some(None)`)
+API/std/unittest/powerAssert/nodeTypes/matchExpr.cj

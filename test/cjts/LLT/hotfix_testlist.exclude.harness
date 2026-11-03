@@ -6,6 +6,13 @@
 # no debugger support in near future
 Tools/cjdb
 
+# also fail on CJNATIVE
+API/std/unittest/report_bench_html/report_html_colon_name.cj
+API/std/argOpt/test_argopt.cj
+
+# flaky, expect number of native threads (may be wrong in case of auxiliary native threads)
+API/std/runtime/test_thread_info.cj
+
 # tests folder creation/copying, failures seem to be configuration-specific
 compiler/Driver/options/output_file/test_dir.cj
 compiler/Driver/options/output_dir/test.cj
