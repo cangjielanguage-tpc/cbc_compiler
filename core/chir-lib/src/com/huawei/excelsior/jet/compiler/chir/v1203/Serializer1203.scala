@@ -811,6 +811,9 @@ object Serializer1203 {
         case a: OverrideSrcFuncType =>
           val u = new OverrideSrcFuncTypeT(); u.setType(typeId(a.tpe))
           (FAnnotation.overrideSrcFuncType, u)
+        case a: MatchCaseId =>
+          // v13008-only annotation; never produced for v1203
+          throw new IllegalArgumentException("MatchCaseId annotation is not representable in CHIR v1203")
       }
       Some(annoUnionOf(tag, value))
     }

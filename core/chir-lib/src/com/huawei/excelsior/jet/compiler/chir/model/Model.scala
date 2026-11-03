@@ -81,8 +81,8 @@ enum Phase {
 /** SourceExpr — raw values mirror the C++ enum (which has MATCH_CASE=8, OTHER=9;
   * the chir-lib schema enum stops at OTHER=8, so raw ints are used).
   * Branch.sourceExpr defaults to 0 (IF_EXPR) when absent; MultiBranch.sourceExpr
-  * (not covered by the chir-lib schema) is treated as OTHER(9) — the C++ toolchain
-  * never emits MultiBranch in OPT-phase .chir files.
+  * (added in the v13008 schema, default OTHER) defaults to 0 in v1203/v13002
+  * where the field does not exist, and to OTHER(9) when absent in a v13008 file.
   */
 object SourceExprTag {
   val IfExpr: Int = 0
@@ -196,6 +196,11 @@ final class EnumCaseIndex(var index: Long) extends Annotation
 final class VirMethodOffset(var offset: Long) extends Annotation
 final class WrappedRawMethod(var rawMethod: Value) extends Annotation
 final class OverrideSrcFuncType(var tpe: Type) extends Annotation
+
+/** v13008+ only: identifies a vtable entry group generated from one source
+  * match case (Annotation union element 13 in the v13008 schema).
+  */
+final class MatchCaseId(var id: Long) extends Annotation
 
 // =====================================================================================
 // Misc structures
@@ -768,7 +773,8 @@ final class MultiBranchExpr(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc:
                             owner: Option[Block] = None, blockGroups: ArrayBuffer[BlockGroup] = ArrayBuffer(),
                             resultVar: Option[LocalVar] = None, condition0: Value,
                             var caseValues: ArrayBuffer[Long] = ArrayBuffer(), defaultBlock0: Block,
-                            normalBlocks0: ArrayBuffer[Block] = ArrayBuffer())
+                            normalBlocks0: ArrayBuffer[Block] = ArrayBuffer(),
+                            var sourceExpr: Int = 0)
   extends ExprBase(annos, loc, attributes, owner, blockGroups, resultVar,
     ArrayBuffer[Value](condition0, defaultBlock0) ++ normalBlocks0) {
   def condition: Value = operands(0)

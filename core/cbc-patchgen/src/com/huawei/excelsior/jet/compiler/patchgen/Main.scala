@@ -9,9 +9,11 @@
 package com.huawei.excelsior.jet.compiler.patchgen
 
 import java.nio.file.{Files, Paths}
+import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.model.{Package, Phase}
 import com.huawei.excelsior.jet.compiler.chir.v1203.{Materializer1203, Serializer1203}
 import com.huawei.excelsior.jet.compiler.chir.v13002.{Materializer13002, Serializer13002}
+import com.huawei.excelsior.jet.compiler.chir.v13008.{Materializer13008, Serializer13008}
 import scala.collection.mutable.ArrayBuffer
 
 /** Port of C++ `main.cpp` (namespace PatchGen).
@@ -26,8 +28,7 @@ import scala.collection.mutable.ArrayBuffer
   * `"diff" + <patched basename>` in the current working directory, phase OPT.
   */
 object Main {
-  private val DefaultChirVersion = 13002
-  private val SupportedChirVersions = Seq(13002, 1203)
+  private val SupportedChirVersions = Seq(13008, 13002, 1203)
 
   private def usage(): Unit = {
     System.err.println("Usage:")
@@ -38,7 +39,7 @@ object Main {
     System.err.println("          (equivalent of the C++ #if TEST build; compared by the patch-gen test suite)")
     System.err.println("  --debug: print the C++ #if DEBUG phase banners, marking traces and IR dumps")
     System.err.println("Supported versions: " + SupportedChirVersions.mkString(", ") +
-      " (default " + DefaultChirVersion + ")")
+      " (default " + CHIR.defaultVersion + ")")
   }
 
   private def load(chirPath: String, chirVersion: Int): Package = {
@@ -91,7 +92,7 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    var chirVersion = DefaultChirVersion
+    var chirVersion = CHIR.defaultVersion
     var testMode = false
     var debugMode = false
     val rest = ArrayBuffer[String]()
@@ -107,7 +108,7 @@ object Main {
           chirVersion = args(i + 1).toIntOption.getOrElse {
             System.err.println("invalid --chir-version value: " + args(i + 1))
             bad = true
-            DefaultChirVersion
+            CHIR.defaultVersion
           }
           if (!SupportedChirVersions.contains(chirVersion)) {
             System.err.println("unsupported CHIR version: " + chirVersion)
