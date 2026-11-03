@@ -263,4 +263,55 @@ class EqualitySpec extends AnyFunSuite {
     append(b2, GotoExpr(owner = Some(b2), destination0 = b2))
     assert(!new Equality.FuncCodeEquality().areEqual(f1.body.get, f2.body.get))
   }
+
+  // Distinct C++ ExprKinds folded into one model class must compare their op field.
+  test("differing binary ops are not equal (Equal vs NotEqual, port of ExprKind check)") {
+    val (f1, b1) = mkFunc("f", Seq(tI64), tUnit)
+    val (f2, b2) = mkFunc("f", Seq(tI64), tUnit)
+    for ((b, op) <- Seq((b1, BinaryOp.Eq), (b2, BinaryOp.NotEq))) {
+      val p = b.parentGroup.get.ownedFunc.get.params.head
+      val bin = BinaryExpr(owner = Some(b), op = op, overflowStrategy = OverflowStrategy.Throwing,
+        leftOperand0 = p, rightOperand0 = p)
+      bin.resultVar = Some(LocalVar(tpe = Some(tBool), identifier = "%9", associatedExpr = Some(bin)))
+      append(b, bin)
+      append(b, ExitExpr(owner = Some(b)))
+    }
+    assert(!new Equality.FuncCodeEquality().areEqual(f1.body.get, f2.body.get))
+    val (f3, b3) = mkFunc("f", Seq(tI64), tUnit)
+    val (f4, b4) = mkFunc("f", Seq(tI64), tUnit)
+    for (b <- Seq(b3, b4)) {
+      val p = b.parentGroup.get.ownedFunc.get.params.head
+      val bin = BinaryExpr(owner = Some(b), op = BinaryOp.NotEq, overflowStrategy = OverflowStrategy.Throwing,
+        leftOperand0 = p, rightOperand0 = p)
+      bin.resultVar = Some(LocalVar(tpe = Some(tBool), identifier = "%9", associatedExpr = Some(bin)))
+      append(b, bin)
+      append(b, ExitExpr(owner = Some(b)))
+    }
+    assert(new Equality.FuncCodeEquality().areEqual(f3.body.get, f4.body.get))
+  }
+
+  test("differing unary ops are not equal (Neg vs Not)") {
+    val (f1, b1) = mkFunc("f", Seq(tI64), tUnit)
+    val (f2, b2) = mkFunc("f", Seq(tI64), tUnit)
+    for ((b, op) <- Seq((b1, UnaryOp.Neg), (b2, UnaryOp.Not))) {
+      val un = UnaryExpr(owner = Some(b), op = op, overflowStrategy = OverflowStrategy.Na,
+        operand0 = b.parentGroup.get.ownedFunc.get.params.head)
+      un.resultVar = Some(LocalVar(tpe = Some(tI64), identifier = "%9", associatedExpr = Some(un)))
+      append(b, un)
+      append(b, ExitExpr(owner = Some(b)))
+    }
+    assert(!new Equality.FuncCodeEquality().areEqual(f1.body.get, f2.body.get))
+  }
+
+  test("differing cast ops are not equal (Box vs UnboxToRef)") {
+    val (f1, b1) = mkFunc("f", Seq(tI64), tUnit)
+    val (f2, b2) = mkFunc("f", Seq(tI64), tUnit)
+    for ((b, op) <- Seq((b1, CastOp.Box), (b2, CastOp.UnboxToRef))) {
+      val cast = CastExpr(owner = Some(b), op = op, value0 = b.parentGroup.get.ownedFunc.get.params.head)
+      cast.resultVar = Some(LocalVar(tpe = Some(tI64), identifier = "%9", associatedExpr = Some(cast)))
+      append(b, cast)
+      append(b, ExitExpr(owner = Some(b)))
+    }
+    assert(!new Equality.FuncCodeEquality().areEqual(f1.body.get, f2.body.get))
+  }
 }

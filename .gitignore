@@ -19,3 +19,6 @@ target/
 junit*.properties
 
 /env.properties
+
+# patchgen functional test work dir
+test/patchgen/work/

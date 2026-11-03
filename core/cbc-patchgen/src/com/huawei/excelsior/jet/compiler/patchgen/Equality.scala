@@ -218,7 +218,7 @@ object Equality {
           // C++ quirk: the Apply branch calls areEqualsDynamicDispatches(l, l) — it compares
           // the left side with itself, so effectively only IsSuperCall is compared
           l.isSuperCall == r.isSuperCall
-        case (l: BinaryExpr, r: BinaryExpr) => l.overflowStrategy == r.overflowStrategy
+        case (l: BinaryExpr, r: BinaryExpr) => l.op == r.op && l.overflowStrategy == r.overflowStrategy
         case (l: BranchExpr, r: BranchExpr) => l.sourceExpr == r.sourceExpr
         case (l: DebugExpr, r: DebugExpr) => l.srcCodeName == r.srcCodeName
         case (l: InvokeExpr, r: InvokeExpr) =>
@@ -245,11 +245,12 @@ object Equality {
             areEqualTypes(l.genericTypeParams.toSeq, r.genericTypeParams.toSeq)
         case (l: MultiBranchExpr, r: MultiBranchExpr) => l.caseValues == r.caseValues
         case (l: NumericCastExpr, r: NumericCastExpr) => l.overflowStrategy == r.overflowStrategy
+        case (l: CastExpr, r: CastExpr) => l.op == r.op
         case (l: RawArrayAllocateExpr, r: RawArrayAllocateExpr) => Equality.areEqual(l.elementType, r.elementType)
         case (l: SpawnExpr, r: SpawnExpr) => areEqualOptFunc(l.executeClosure, r.executeClosure)
         case (l: StoreElementByNameExpr, r: StoreElementByNameExpr) => l.fieldNames == r.fieldNames
         case (l: StoreElementRefExpr, r: StoreElementRefExpr) => l.path == r.path
-        case (l: UnaryExpr, r: UnaryExpr) => l.overflowStrategy == r.overflowStrategy
+        case (l: UnaryExpr, r: UnaryExpr) => l.op == r.op && l.overflowStrategy == r.overflowStrategy
         case _ => true // C++ default Expression branch
       }
     }

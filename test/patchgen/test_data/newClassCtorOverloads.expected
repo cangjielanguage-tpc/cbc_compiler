@@ -1,0 +1,30 @@
+global vars
+_CAO7default9makeValueHvK_E
+_CAO7default5Added6<init>HlK_E
+_CAO7default5Added6<init>HllK_E
+global funcs
+_CN7default5Added6<init>Hl
+_CN7default5Added6<init>Hll
+_CN7default9makeValueHv
+_CAF7default9makeValueHv
+_CAO7default9makeValueHvK_iiHv
+_CAF7default5valueHv
+_CAO7default5valueHvK_iiHv
+_CAF7default5Added6<init>Hl
+_CAO7default5Added6<init>HlK_iiHv
+_CAF7default5Added6<init>Hll
+_CAO7default5Added6<init>HllK_iiHv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+$default$GVI
+[unreachable] $default$Added$$init$$default.Added$_Int64$CTOR
+[unreachable] $default$Added$$init$$default.Added$_Int64$_Int64$CTOR
+[unreachable] $default$Patch$GC$Added$GC$init$$default.Added$_Int64$GF
+[unreachable] $default$Patch$GC$Added$GC$init$$default.Added$_Int64$_Int64$GF
+[unreachable] $default$Patch$GC$makeValue$GF
+$default$Patch$GC$value$GF
+types
+_CN7default5AddedE
+$default$PatchImpl$GC

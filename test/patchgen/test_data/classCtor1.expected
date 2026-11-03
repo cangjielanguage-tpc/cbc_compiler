@@ -1,0 +1,18 @@
+global vars
+global funcs
+_CAF7default5Super6<init>HRNat6StringE
+_CAO7default5Super6<init>HRNat6StringEK_iiHv
+_CAF7default3Foo6<init>Hl
+_CAO7default3Foo6<init>HlK_iiHv
+_CAF7default3Foo6<init>Hll
+_CAO7default3Foo6<init>HllK_iiHv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+$default$GVI
+$default$Patch$GC$Super$GC$init$$default.Super$_std.core.String$GF
+$default$Patch$GC$Foo$GC$init$$default.Foo$_Int64$GF
+$default$Patch$GC$Foo$GC$init$$default.Foo$_Int64$_Int64$GF
+types
+$default$PatchImpl$GC

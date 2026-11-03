@@ -45,6 +45,7 @@ object Main {
   private def load(chirPath: String, chirVersion: Int): Package = {
     val bytes = Files.readAllBytes(Paths.get(chirPath))
     chirVersion match {
+      case 13008 => Materializer13008.load(bytes)
       case 13002 => Materializer13002.load(bytes)
       case 1203  => Materializer1203.load(bytes)
       case v     => throw new IllegalArgumentException("unsupported CHIR version: " + v)
@@ -53,6 +54,7 @@ object Main {
 
   private def serialize(pkg: Package, chirVersion: Int, outPath: String): Unit = {
     val bytes = chirVersion match {
+      case 13008 => Serializer13008.toBytes(pkg, Phase.Opt)
       case 13002 => Serializer13002.toBytes(pkg, Phase.Opt)
       case 1203  => Serializer1203.toBytes(pkg, Phase.Opt)
       case v     => throw new IllegalArgumentException("unsupported CHIR version: " + v)

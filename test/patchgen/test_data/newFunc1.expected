@@ -1,0 +1,60 @@
+global vars
+_CAO7default4foo1HvK_E
+_CAO7default4foo2HvK_E
+_CAO7default4foo3HvK_E
+$has_applied_pkg_init_func
+has_invoked_pkg_init_literal
+$default$packageInit$GV
+$default$packageInit$GVF
+$default$GV
+global funcs
+_CNat5ArrayICNat6ObjectEE6<init>Hv
+_CNat5ArrayICNat6ObjectEE7isLegalHll
+_CNat5ArrayICNat6ObjectEE9normalizeHRNat5RangeIlE
+_CNat5RangeIlE6<init>Hlllbbb
+_CNat5RangeIlE7isEmptyHv
+_CNat5RangeIlE4lastHv
+_CN7default4foo1Hv
+_CAF7default4foo1Hv
+_CAO7default4foo1HvK_iiHv
+_CN7default4foo2Hv
+_CAF7default4foo2Hv
+_CAO7default4foo2HvK_iiHv
+_CN7default4foo3Hv
+_CAF7default4foo3Hv
+_CAO7default4foo3HvK_iiHv
+_CN7default1S6<init>Hv
+_CN7default1C6<init>Hv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGFatU00000003HBDsXiiHv
+_CGFatU00000004oVJx9iiHv
+_CGFatUstring$iiHv
+_CGFatUduration$iiHv
+_CGFatU000000017ij8giiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+$default$PackageInitPatch$GC$packageInit$GF
+$default$PackageInitPatch$GC$packageLiteralInit$GF
+$default$PackageInitPatch$GC$<init>$GF
+$defaultpackageInitGetter$GF
+$defaultpackageInitSetter$GF
+$defaultpackageLiteralInitGetter$GF
+$defaultpackageLiteralInitSetter$GF
+$default$GVI
+[unreachable] $default$Patch$GC$foo1$GF
+[unreachable] $default$Patch$GC$foo2$GF
+[unreachable] $default$Patch$GC$foo3$GF
+types
+_CN7default1SE
+_CNat5ArrayICNat6ObjectEE
+_CNat5RangeIlE
+_CN7default1CE
+$default$PackageInitPatch$GC
+$default$Patch$GC
+$default$PatchImpl$GC
+$Cg1_
+$Cg2_
+$Cg0_
+$CiF0CNat9ExceptionEvE
+$CiF0bcE

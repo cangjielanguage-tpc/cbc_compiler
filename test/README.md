@@ -16,6 +16,24 @@ a Cangjie toolchain (SDK distribution):
   `cbc-compiler` compiles into `diff<name>_patched.cbc`. At run time the stub
   binary is executed with the patch loaded via `libcbc-preload.so` and
   `CBCOPT=cbc.path=...`. Tests run in `default` mode only.
+- `patchgen` (`patchgen/run_tests.py`, driven by its own script, not by
+  `runner.py`) - the patch-gen functional tests (migrated from
+  `hotfix_tools/patch-gen/test`). Each test compiles a base (and a patched)
+  `.cj` with the hotfix plugin at -O0/-O1, runs the toolchain's
+  `tools/bin/patch-gen --test`, validates the generated patch with
+  `chir-dis`, and compares the combined output against `test_data/<name>.expected`.
+  patch-gen's exit code is not checked: tests whose expected outcome is an
+  error compare the error message.
+
+```bash
+$ python3 test/patchgen/run_tests.py --cangjie-home <toolchain>
+$ python3 test/patchgen/run_tests.py --cangjie-home <toolchain> --filter func1 class1
+```
+
+The suite needs a patch-gen that supports `--test`, i.e. the Scala patch-gen
+from this repository deployed as `<toolchain>/tools/bin/patch-gen`
+(+ `patch-gen.jar`; see scripts/patch-gen). `--patch-gen` can point at
+another binary for experiments.
 
 The `cjts/` directory holds the Cangjie LLT suite; it is run by CI with its
 own wrappers (`cjts/cjc-wrapper`, `cjts/launcher-wrapper`) and per-suite
