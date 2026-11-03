@@ -3,7 +3,7 @@
 
 Recognised on the cjc command line:
   -o <out>              output name
-  <NAME>.o              C object: build lib<NAME>.so from it
+  <NAME>.o / <NAME>.a  C object/archive: build lib<NAME>.so from it
   -l <NAME> / -l<NAME>  link against lib<NAME>.so
   -L <PATH> / -L<PATH>  library search path
 """
@@ -58,10 +58,13 @@ def parse_args(args):
         elif arg.startswith("-l") and len(arg) > 2:
             native_names.append(arg[2:])
             i += 1
-        elif arg.endswith(".o"):
-            # Static object: instead build a shared lib and register it.
+        elif arg.endswith(".o") or arg.endswith(".a"):
+            # Static object/archive: instead build a shared lib and register it.
+            # --whole-archive matters for archives: members are referenced only
+            # via dlsym at runtime, so the linker would otherwise drop them all.
             name = arg[:-2]
-            run(["cc", "-shared", "-Wl,-Bsymbolic", "-o", f"lib{name}.so", arg])
+            run(["cc", "-shared", "-Wl,-Bsymbolic", "-Wl,--whole-archive", arg,
+                 "-Wl,--no-whole-archive", "-o", f"lib{name}.so"])
             native_names.append(name)
             i += 1
         else:
