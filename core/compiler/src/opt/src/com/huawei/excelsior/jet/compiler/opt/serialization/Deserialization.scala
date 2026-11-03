@@ -660,6 +660,12 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case AJArrayFill.Proto =>
           AJArrayFill(read.sigType(), read.sigType())
 
+        case VArrayFill.Proto =>
+          VArrayFill(read.sigType())
+
+        case VArrayFillByLambda.Proto =>
+          VArrayFillByLambda(read.sigType(), read.methodRef())
+
         case CangjieArrayFillGeneric.Proto =>
           CangjieArrayFillGeneric.proto(read.sigType())
 

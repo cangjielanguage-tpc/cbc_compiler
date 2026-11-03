@@ -978,7 +978,25 @@ trait NodeSpells { self: Universe with Nodes =>
 
     override final def blockRef: BlockRef = {
       if (_blockRef.invalidated && inCtrl != null) {
-        _blockRef = inCtrl.blockRef
+        var blockRefSource: UpperPoint = this
+        var sourceFound = false
+
+        while (!sourceFound) {
+          blockRefSource match {
+            case spinal: SpinalNode if spinal._blockRef.invalidated && spinal.inCtrl != null =>
+              blockRefSource = spinal.inCtrl
+            case _ =>
+              sourceFound = true
+          }
+        }
+
+        val resolvedBlockRef = blockRefSource.blockRef
+        var nodeToUpdate: UpperPoint = this
+        while (nodeToUpdate ne blockRefSource) {
+          val spinal = nodeToUpdate.asInstanceOf[SpinalNode]
+          spinal._blockRef = resolvedBlockRef
+          nodeToUpdate = spinal.inCtrl
+        }
       }
       _blockRef
     }
@@ -1017,6 +1035,10 @@ trait NodeSpells { self: Universe with Nodes =>
 
     private[ir] override def commitImpl(): Unit = {
       super.commitImpl()
+
+      if (inCtrl != null) {
+        _blockRef = inCtrl.blockRef
+      }
 
       if (canThrow) {
         XPoint(this)

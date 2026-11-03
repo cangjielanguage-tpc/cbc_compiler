@@ -243,6 +243,56 @@ trait CangjieNodes { self: Universe =>
     def unapply(x: StoreFieldSeq) = Some(x.fields, x.baseRef, x.base, x.inValue)
   }
 
+  /** Fills a fixed-size Cangjie VArray with a single value. */
+  class VArrayFill private(proto: VArrayFill.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode
+    with CompositeNode with NotProducesValue {
+
+    def arrayType: SignatureType.VArray = proto.arrayType.asInstanceOf[SignatureType.VArray]
+    def baseRef = arg(2)
+    def array = arg(3)
+    def valueBaseRef = arg(4)
+    def value = arg(5)
+  }
+
+  object VArrayFill {
+    case class Proto private[VArrayFill](arrayType: SignatureType)
+      extends FixedArgs[VArrayFill](ControlType, MemoryType, TRefType, ValueType.fromSig(arrayType),
+        TRefType, ValueType.fromSig(arrayType.getArrayElemType))(ControlType)
+        with ControlMemoryTagged[VArrayFill] {
+
+      assert(arrayType.isVArray)
+      assert(!arrayType.containsTypeVariables, arrayType)
+      def newInstance() = new VArrayFill(this)
+    }
+
+    def apply(arrayType: SignatureType): Proto = Prototype.intern(Proto(arrayType))
+  }
+
+  /** Initializes a fixed-size Cangjie VArray by invoking a lambda for every index. */
+  class VArrayFillByLambda private(proto: VArrayFillByLambda.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode
+    with CanThrow with CompositeNode with NotProducesValue {
+
+    def arrayType: SignatureType.VArray = proto.arrayType.asInstanceOf[SignatureType.VArray]
+    def target: MethodReference = proto.target
+    def lambdaType: SignatureType = target.refType.sigType
+    def baseRef = arg(2)
+    def array = arg(3)
+    def initializer = arg(4)
+  }
+
+  object VArrayFillByLambda {
+    case class Proto private[VArrayFillByLambda](arrayType: SignatureType, target: MethodReference)
+      extends FixedArgs[VArrayFillByLambda](ControlType, MemoryType, TRefType, ValueType.fromSig(arrayType),
+        ValueType.fromSig(target.refType.sigType))(ControlType) with ControlMemoryTagged[VArrayFillByLambda] {
+
+      assert(arrayType.isVArray)
+      assert(!arrayType.containsTypeVariables, arrayType)
+      def newInstance() = new VArrayFillByLambda(this)
+    }
+
+    def apply(arrayType: SignatureType, target: MethodReference): Proto = Prototype.intern(Proto(arrayType, target))
+  }
+
   class StoreStaticFieldSeq private(proto: StoreStaticFieldSeq.Proto)
     extends NodeWithVarArgs(proto) with FieldSeqOperation with SpinalMemoryNode with NotProducesValue {
 
