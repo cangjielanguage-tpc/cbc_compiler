@@ -1860,7 +1860,25 @@ trait CHIRParser
             state(e) = state(e.args.head)
 
           case CHIR.Intrinsic.Kind.InoutParam =>
-            state(e) = state(e.args.head)
+            e.args.head match {
+              case g: CHIR.GlobalVar =>
+                state(e) = GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(g))
+              case arg =>
+                val ValueSig(sig) = arg
+                state(arg) match {
+                  case _: NoValue =>
+                    assert(sig.isZST, sig)
+                    state(e) = LConst(0)
+                  case StackAlloc.Local(_) | GetFieldSeqRef(_, _, _) | GetStaticFieldSeqRef(_) =>
+                    state(e) = state(arg)
+                  case value =>
+                    // local primitives
+                    val mem = StackAlloc.Local(sig)
+                    StoreMemory(sig.toAsm, sig, atomic = false)(mem, value)
+                    state(arg) = mem
+                    state(e) = mem
+                }
+            }
 
           case CHIR.Intrinsic.Kind.BlackBox =>
             state(e) = state(e.args.head)
@@ -1985,6 +2003,8 @@ trait CHIRParser
                 case mem @ GetStaticFieldSeqRef(fields) =>
                   assert(sig == mem.resType, s"$sig != ${mem.resType} in $mem")
                   LoadStaticFieldSeq(DerivedPtr.Global(), fields*)
+                case StackAlloc.Local(_) if !sig.isRecord =>
+                  LoadMemory(sig.toAsm, sig, atomic = false)(mem)
                 case mem =>
                   if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive || sig.isTypeVariable) {
                     mem
@@ -2035,6 +2055,8 @@ trait CHIRParser
                     StoreFieldSeq(maybeDerivedPtrBase(mem), base, value, fields*)
                   case GetStaticFieldSeqRef(fields) =>
                     StoreStaticFieldSeq(DerivedPtr.Global(), value, fields*)
+                  case StackAlloc.Local(_) if !sig.isRecord =>
+                    StoreMemory(sig.toAsm, sig, atomic = false)(mem, value)
                   case mem =>
                     if (sig.isTraceableReference || sig.isPrimitive || sig.isVariableSizeType) {
                       state(loc) = value
