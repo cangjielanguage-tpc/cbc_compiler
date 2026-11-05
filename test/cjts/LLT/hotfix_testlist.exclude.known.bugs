@@ -802,9 +802,6 @@ API/std/unittest/mock/compiler/createSpy/accessingToNonPackagePrivateFieldsOfAno
 API/std/unittest/mock/compiler/createSpy/accessingToPackagePrivateFieldsOfAnotherPackage.cj
 API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
 
-# bug 220 (declarartion recursion (enum with struct that has the same enum as field) lead to compiler crash)
-compiler/CHIR/UG/RecursionEnum/recursionEnum05.cj
-
 # bug 221 (`I<Unit> = CPointer()` crashes with StoreStaticFieldSeq[Plain] ...  got arg LConst[0])
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
 compiler/CodegenCJNative/generic/generic_struct.cj

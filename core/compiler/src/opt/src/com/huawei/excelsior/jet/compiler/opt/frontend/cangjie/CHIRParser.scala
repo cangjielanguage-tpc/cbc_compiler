@@ -1502,9 +1502,9 @@ trait CHIRParser
               iparams = c.params.map(_.instantiate(from.params, Seq.empty))
               if iparams.size == targetCtor.size
               if iparams zip targetCtor forall {
-                case (x, y) if x == y => true
+                case (x, y) if resolver.subType(x, y) => true
                 // Ignore boxes that might have been inserted for recursive enums
-                case (SignatureType.Box(x), y) if x == y => true
+                case (SignatureType.Box(x), y) if resolver.subType(x, y) => true
                 case _ => false
               }
             } yield idx
