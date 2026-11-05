@@ -365,7 +365,7 @@ sealed abstract class SignatureType extends Signature {
   }
 
   private[symlevel] def instantiateImpl(cparams: Seq[SignatureType], lparams: Seq[SignatureType]): SignatureType = this match {
-    case _: Primitive | BString | _: CPointer | _: Record | _: JBCReference | _: CangjieReference | _: JavaArray | ThisTypeInfo => this
+    case _: Primitive | BString | _: Record | _: JBCReference | _: CangjieReference | _: JavaArray | ThisTypeInfo => this
     case t: InstantiatedRecord    => InstantiatedRecord(t.name, t.instantiatedTypeParameters.map(_.instantiateImpl(cparams, lparams)))
     case t: InstantiatedReference => InstantiatedReference(t.name, t.instantiatedTypeParameters.map(_.instantiateImpl(cparams, lparams)))
     case t: Tuple                 => Tuple(t.params.map(_.instantiateImpl(cparams, lparams)))
@@ -386,6 +386,13 @@ sealed abstract class SignatureType extends Signature {
     case t: Box                   =>
       val base = t.base.instantiateImpl(cparams, lparams)
       if (base.isReference && !base.isInstanceOf[OptionLikeEnum]) base else Box(base)
+    case t: CPointer => t.pointee match {
+      case p: MethodSignature =>
+        assert(p.parameterTypes.forall(a => !a.containsTypeVariables) && !p.returnType.containsTypeVariables, this)
+        this
+      case p: SignatureType =>
+        CPointer(p.instantiateImpl(cparams, lparams))
+    }
   }
 
   def uninstantiated: SignatureType = this match {
