@@ -31,7 +31,7 @@ object ChirOps {
     * so expressions appended during the walk are not revisited.
     */
   def visitFuncExprs(func: Func)(pre: Expression => Unit): Unit = {
-    func.body.foreach(bg => visitBlockGroupExprs(bg)(pre))
+    for (bg <- func.body) visitBlockGroupExprs(bg)(pre)
   }
 
   def visitBlockGroupExprs(bg: BlockGroup)(pre: Expression => Unit): Unit = {
@@ -44,6 +44,7 @@ object ChirOps {
       visitExprChildren(expr)(pre)
     }
   }
+
   /** Port of `Walk(expr, pre)`: descends into the expression's (live) block groups. */
   def visitExprChildren(expr: Expression)(pre: Expression => Unit): Unit = {
     for (bg <- expr.blockGroups.toList) visitBlockGroupExprs(bg)(pre)
@@ -64,16 +65,12 @@ object ChirOps {
   def usersOf(v: Value, pkg: Package): ArrayBuffer[Expression] = {
     val users = ArrayBuffer[Expression]()
     def scanFunc(f: Func): Unit = for (bg <- f.body; block <- bg.blocks; expr <- block.exprs) {
-      if (operandsOf(expr).exists(_ eq v)) users += expr
+      if (operandsOf(expr).contains(v)) users += expr
       for (lambdaBg <- expr.blockGroups) scanBlockGroup(lambdaBg)
     }
-    def scanBlockGroup(bg: BlockGroup): Unit = {
-      for (block <- bg.blocks) {
-        for (expr <- block.exprs) {
-          if (operandsOf(expr).exists(_ eq v)) users += expr
-          for (lambdaBg <- expr.blockGroups) scanBlockGroup(lambdaBg)
-        }
-      }
+    def scanBlockGroup(bg: BlockGroup): Unit = for (block <- bg.blocks; expr <- block.exprs) {
+      if (operandsOf(expr).contains(v)) users += expr
+      for (lambdaBg <- expr.blockGroups) scanBlockGroup(lambdaBg)
     }
     pkg.globalFuncs.foreach(scanFunc)
     users
@@ -87,11 +84,11 @@ object ChirOps {
       for (i <- e.operands.indices) if (e.operands(i) eq oldV) e.operands(i) = newV
       // block operands update CFG edges (port of the C++ predecessor bookkeeping)
       oldV match {
-        case b: Block => e.owner.foreach(o => removePredecessor(b, o))
+        case b: Block => e.owner.foreach(removePredecessor(b, _))
         case _ =>
       }
       newV match {
-        case n: Block => e.owner.foreach(o => addPredecessor(n, o))
+        case b: Block => e.owner.foreach(addPredecessor(b, _))
         case _ =>
       }
     }
@@ -116,18 +113,18 @@ object ChirOps {
   /** Port of `Block::AppendExpression`. */
   def appendExpression(block: Block, expr: Expression): Unit = {
     expr.owner.foreach(removeExprOnly(_, expr))
-    expr match {
-      case expr: ExprBase => expr.owner_=(Some(block))
-    }
+    expr.owner = Some(block)
     block.exprs += expr
     for (suc <- expr.successors) addPredecessor(suc, block)
   }
 
   /** Port of `Expression::RemoveSelfFromBlock`. */
   def removeSelfFromBlock(expr: Expression): Unit = {
-    for (suc <- expr.successors; o <- expr.owner) removePredecessor(suc, o)
-    expr.owner.foreach(removeExprOnly(_, expr))
-    setOwner(expr, None)
+    for (o <- expr.owner) {
+      for (suc <- expr.successors) removePredecessor(suc, o)
+      removeExprOnly(o, expr)
+    }
+    expr.owner = None
   }
 
   /** Port of `Block::RemoveSelfFromBlockGroup`. */
@@ -146,9 +143,6 @@ object ChirOps {
   // expression primitives
   // =================================================================================
 
-  private def setOwner(expr: Expression, owner: Option[Block]): Unit = expr match {
-    case expr: ExprBase => expr.owner_=(owner)
-  }
   /** Port of `Expression::ReplaceWith`: rewires all users of the result to the new
     * expression's result, removes self from its block (dropping predecessor edges
     * of the successors) and inserts the new expression at the same position.
@@ -162,11 +156,8 @@ object ChirOps {
     if (idx < 0) throw new IllegalStateException("expression not found in its parent block")
     removeSelfFromBlock(expr)
     // 4. detach the new expression from its old parent (no pred edge updates, like C++)
-    newExpr match {
-      case newExpr: ExprBase =>
-        newExpr.owner.foreach(removeExprOnly(_, newExpr))
-        newExpr.owner_=(Some(tempParent))
-    }
+    newExpr.owner.foreach(removeExprOnly(_, newExpr))
+    newExpr.owner = Some(tempParent)
     // 5-6. insert at the same position
     tempParent.exprs.insert(idx, newExpr)
     // 7. add the successors of the new expression to the parent block
@@ -180,7 +171,7 @@ object ChirOps {
     val targetParent = target.owner.getOrElse(throw new IllegalStateException("target has no parent block"))
     val idx = targetParent.exprs.indexWhere(_ eq target)
     targetParent.exprs.insert(idx, expr)
-    setOwner(expr, Some(targetParent))
+    expr.owner = Some(targetParent)
   }
 
   /** Port of `Expression::MoveAfter`. */
@@ -192,7 +183,7 @@ object ChirOps {
     val targetParent = target.owner.getOrElse(throw new IllegalStateException("target has no parent block"))
     val idx = targetParent.exprs.indexWhere(_ eq target)
     targetParent.exprs.insert(idx + 1, expr)
-    setOwner(expr, Some(targetParent))
+    expr.owner = Some(targetParent)
     for (suc <- expr.successors) addPredecessor(suc, targetParent)
   }
 
@@ -269,6 +260,7 @@ object ChirOps {
     case None =>
       bg.ownedExpression.flatMap(_.owner).flatMap(_.parentGroup).flatMap(topLevelFunc)
   }
+
   /** Mints a fresh result local var for an expression, like C++
     * `CHIRBuilder::CreateExpression` (identifier "%<n>" from the top-level
     * function's localId counter).

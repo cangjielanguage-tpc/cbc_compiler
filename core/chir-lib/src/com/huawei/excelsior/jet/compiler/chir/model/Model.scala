@@ -427,12 +427,12 @@ final class BlockGroup(annos: ArrayBuffer[Annotation] = ArrayBuffer(), loc: Opti
 sealed trait Expression {
   var id: Int = 0
 
-  def annos: ArrayBuffer[Annotation]
-  def loc: Option[DebugLocation]
-  def attributes: Long
-  def owner: Option[Block]
-  def blockGroups: ArrayBuffer[BlockGroup]
-  def resultVar: Option[LocalVar]
+  var annos: ArrayBuffer[Annotation]
+  var loc: Option[DebugLocation]
+  var attributes: Long
+  var owner: Option[Block]
+  var blockGroups: ArrayBuffer[BlockGroup]
+  var resultVar: Option[LocalVar]
 
   /** The canonical operand storage, in flatbuffer `Expression.operands` order
     * (== C++ `Expression::GetOperands()`): data operands first, then the handler

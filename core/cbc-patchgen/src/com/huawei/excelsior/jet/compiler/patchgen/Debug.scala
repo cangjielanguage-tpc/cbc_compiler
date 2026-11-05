@@ -8,22 +8,17 @@ import scala.collection.mutable.ArrayBuffer
   *
   * - `Debug.log` is the `#if DEBUG std::cout << ...` equivalent: a no-op unless
   *   `--debug` was given. The message is by-name, so disabled runs pay nothing.
-  * - `DebugDump.dumpTestInfo` reproduces the `#if TEST` block in C++ main()
+  * - `Debug.dumpTestInfo` reproduces the `#if TEST` block in C++ main()
   *   (byte-compatible stdout dump of the regenerated patch package).
   * - The value/expression/type renderers below are a compact stand-in for the
   *   C++ `ToString` IR dumps used by DEBUG logging; their text is NOT
   *   byte-compatible with C++ (debug output is never compared by tests).
   */
 object Debug {
-  private var on = false
-  def enabled: Boolean = on
-  def setEnabled(v: Boolean): Unit = on = v
+  var enabled: Boolean = false
 
   /** `#if DEBUG std::cout << msg << std::endl` equivalent. */
-  def log(msg: => String): Unit = if (on) println(msg)
-}
-
-object DebugDump {
+  def log(msg: => String): Unit = if (enabled) println(msg)
 
   /** The `#if TEST` dump from C++ main(): after the patch is generated, the patch
     * file is re-deserialized and the identifiers of its non-imported global vars,
@@ -82,15 +77,15 @@ object DebugDump {
 
   /** One-line rendering of a value; identifiers for locals/params/globals/funcs. */
   def valueLine(v: Value): String = v match {
-    case l: BoolLiteral   => "Bool(" + l.value + ")"
-    case l: RuneLiteral   => "Rune(" + l.value + ")"
-    case l: StringLiteral => "String(\"" + l.value + "\")"
-    case l: IntLiteral    => "Int(" + l.value + ")"
-    case l: FloatLiteral  => "Float(" + l.value + ")"
+    case v: BoolLiteral   => "Bool(" + v.value + ")"
+    case v: RuneLiteral   => "Rune(" + v.value + ")"
+    case v: StringLiteral => "String(\"" + v.value + "\")"
+    case v: IntLiteral    => "Int(" + v.value + ")"
+    case v: FloatLiteral  => "Float(" + v.value + ")"
     case _: UnitLiteral   => "Unit"
     case _: NullLiteral   => "Null"
-    case f: Func          => f.identifier
-    case v: ValueBase =>
+    case v: Func          => v.identifier
+    case v: ValueBase     =>
       val id = if (v.identifier.isEmpty) "<" + v.getClass.getSimpleName + ">" else v.identifier
       v.tpe.map(t => id + ": " + ty(t)).getOrElse(id)
   }

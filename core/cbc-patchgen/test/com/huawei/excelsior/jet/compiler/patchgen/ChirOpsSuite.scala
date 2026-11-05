@@ -45,7 +45,7 @@ class ChirOpsSuite extends AnyFunSuite with Matchers {
 
   private def alloc(tpe: Type, owner: Block): AllocateExpr = {
     val e = AllocateExpr(allocatedType = tpe)
-    e.resultVar = Some(LocalVar(tpe = Some(ExprBuilder.refTy(tpe)), identifier = "%1",
+    e.resultVar = Some(LocalVar(tpe = Some(Clone.refTy(tpe)), identifier = "%1",
       associatedExpr = Some(e)))
     ChirOps.appendExpression(owner, e)
     e
@@ -216,7 +216,7 @@ class ChirOpsSuite extends AnyFunSuite with Matchers {
     bg.blocks += b1
 
     val e = AllocateExpr(allocatedType = tI32)
-    e.resultVar = Some(LocalVar(tpe = Some(ExprBuilder.refTy(tI32)), identifier = "%1",
+    e.resultVar = Some(LocalVar(tpe = Some(Clone.refTy(tI32)), identifier = "%1",
       associatedExpr = Some(e)))
     ChirOps.appendExpression(b0, e)
     e.owner.contains(b0) shouldBe true
@@ -368,7 +368,7 @@ class ChirOpsSuite extends AnyFunSuite with Matchers {
   test("mintResult mints %<n> from the top-level localId counter") {
     val (f, _, b0) = mkFunc() // next id to mint = 11
     val e = AllocateExpr(allocatedType = tI32)
-    val lv = ChirOps.mintResult(f, ExprBuilder.refTy(tI32), e)
+    val lv = ChirOps.mintResult(f, Clone.refTy(tI32), e)
     val refTpe = lv.tpe.get.asInstanceOf[TypeImpl]
     refTpe.kind shouldBe TypeKind.Ref
     refTpe.argTys.head shouldBe tI32

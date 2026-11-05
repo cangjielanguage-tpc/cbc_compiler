@@ -82,7 +82,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
           if (customKind == CustomDefKind.Class || customKind == CustomDefKind.Struct) {
             val patchedTypeDef = patchedTypeDefsSet.get(Equality.customDefKey(sourceTypeDef))
             val typeKind = if (customKind == CustomDefKind.Struct) "struct" else "class"
-            Debug.log(typeKind + " " + DebugDump.withoutPrefix(sourceTypeDef.identifier))
+            Debug.log(typeKind + " " + Debug.withoutPrefix(sourceTypeDef.identifier))
             error(patchedTypeDef.isDefined,
               typeKind + " " + sourceTypeDef.srcCodeIdentifier + " was not found in patched version")
 
@@ -95,7 +95,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
             }
           } else {
             Debug.log("Only class or struct type def are supported now, but " +
-              DebugDump.withoutPrefix(sourceTypeDef.identifier) + " is not one of them")
+              Debug.withoutPrefix(sourceTypeDef.identifier) + " is not one of them")
           }
         }
 
@@ -115,7 +115,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
               case Some(_) => if ((sourceFunc.attributes & Attribute.Static) != 0L) "static " else ""
               case None    => "global "
             }
-            "source " + parentStr + "func " + DebugDump.withoutPrefix(sourceFunc.identifier)
+            "source " + parentStr + "func " + Debug.withoutPrefix(sourceFunc.identifier)
           }
           // All these functions are called in package inits, so no need to create diff for them.
           val funcKind = sourceFunc.funcKind
@@ -145,7 +145,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
         // class static vars are also included here
         for (sourceVar <- source.globalVars) {
           val varKind = if (sourceVar.declaredParent.isDefined) "static" else "global"
-          Debug.log(varKind + " var " + DebugDump.withoutPrefix(sourceVar.identifier))
+          Debug.log(varKind + " var " + Debug.withoutPrefix(sourceVar.identifier))
           val patchedGlobalVar = patchedGlobalVarsSet.get(Equality.globalVarKey(sourceVar))
           error(patchedGlobalVar.isDefined,
             varKind + " var " + sourceVar.identifier.drop(1) + " was not found in patched version")
@@ -203,7 +203,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
           case Some(_) => if ((patchedFunc.attributes & Attribute.Static) != 0L) "static " else ""
           case None    => "global "
         }
-        "patched " + parentStr + "func " + DebugDump.withoutPrefix(patchedFunc.identifier)
+        "patched " + parentStr + "func " + Debug.withoutPrefix(patchedFunc.identifier)
       }
       if (isPatchable(patchedFunc) && !sourceGlobalFuncs.contains(Equality.functionKey(patchedFunc))) {
         markContext.markFuncToMakeNonPatchable(patchedFunc)
@@ -406,7 +406,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
 
   private def removeGuardChecks(patchable: Func): Unit = {
     Debug.log("patchable before guard checks removal: ")
-    Debug.log(DebugDump.func(patchable))
+    Debug.log(Debug.func(patchable))
     val patchableBody = patchable.body.get.entryBlock.get
 
     val patchableBlockTerminator = terminatorOf(patchableBody)
@@ -455,10 +455,10 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
             case Some(notExpr) => ChirOps.removeSelfFromBlock(notExpr)
             case None =>
               error("expected to delete NOT(Load(guardVar)) expr, but '" +
-                DebugDump.expr(notExprCandidate) + "' was found")
+                Debug.expr(notExprCandidate) + "' was found")
           }
         case None =>
-          error("expected to delete Load(guardVar) expr, but '" + DebugDump.expr(loadGuardVarCandidate) +
+          error("expected to delete Load(guardVar) expr, but '" + Debug.expr(loadGuardVarCandidate) +
             "' was found")
       }
 
@@ -475,7 +475,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
     ChirOps.removeSelfFromBlockGroup(falseBlock)
 
     Debug.log("patchable after guard checks removal: ")
-    Debug.log(DebugDump.func(patchable))
+    Debug.log(Debug.func(patchable))
   }
 
   /**
@@ -498,7 +498,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
     patchClass = PatchGen.findPatchClass(patchedPackage, guardClass.get)
     error(patchClass.isDefined, "patch class is expected to be initialized")
     Debug.log("patch class:")
-    Debug.log(DebugDump.customDef(patchClass.get))
+    Debug.log(Debug.customDef(patchClass.get))
 
     for (func <- markContext.funcsToMakeNonPatchable.values) {
       removeGuardChecks(func)
@@ -529,7 +529,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
     val patches = mutable.LinkedHashSet[Func]()
     for (patchable <- markContext.patchables) {
       Debug.log("patchable before transformation: ")
-      Debug.log(DebugDump.func(patchable))
+      Debug.log(Debug.func(patchable))
       removeGuardChecks(patchable)
 
       if (isPackageInit(patchable)) {
@@ -541,7 +541,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
           error(patchClass.isDefined, "patch class is expected to be initialized")
         }
         Debug.log("patch class:")
-        Debug.log(DebugDump.customDef(patchClass.get))
+        Debug.log(Debug.customDef(patchClass.get))
 
         val patchableName = PatchableName(patchable)
 
@@ -549,7 +549,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
         val patchMethod = patchClass.get.methods.find(_.srcCodeIdentifier == patchMethodName)
         error(patchMethod.isDefined, "patch method is expected to be initialized")
         Debug.log("patch method before: ")
-        Debug.log(DebugDump.func(patchMethod.get))
+        Debug.log(Debug.func(patchMethod.get))
 
         val patchableBody = patchable.body.get.entryBlock.get
 
@@ -582,15 +582,15 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
             // operands in other expressions.
             e.resultVar match {
               case Some(result) =>
-                clonedExpr = ExprBuilder.cloneExpr(e, e.owner.get)
-                ExprBuilder.copyBaseInfoFrom(clonedExpr, e)
+                clonedExpr = Clone.cloneExpr(e, e.owner.get)
+                Clone.copyBaseInfoFrom(clonedExpr, e)
                 ChirOps.removeSelfFromBlock(e)
                 clonedTerminators.update(result, clonedExpr.resultVar.get)
               case None => ()
             }
           } else {
-            clonedExpr = ExprBuilder.cloneExpr(e, e.owner.get)
-            ExprBuilder.copyBaseInfoFrom(clonedExpr, e)
+            clonedExpr = Clone.cloneExpr(e, e.owner.get)
+            Clone.copyBaseInfoFrom(clonedExpr, e)
             ChirOps.replaceWith(e, clonedExpr, patchedPackage)
           }
           for (operand <- ChirOps.operandsOf(clonedExpr).toList) {
@@ -650,7 +650,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
         enableGuardVarFlag(patchableName)
 
         Debug.log("patch method after: ")
-        Debug.log(DebugDump.func(patchMethod.get))
+        Debug.log(Debug.func(patchMethod.get))
         patches += patchMethod.get
       }
     }
@@ -918,37 +918,37 @@ final class MarkContext {
   }
 
   def markFuncAsImported(funcToImport: Func): Unit = {
-    Debug.log("mark to import function" + DebugDump.withoutPrefix(funcToImport.identifier))
+    Debug.log("mark to import function" + Debug.withoutPrefix(funcToImport.identifier))
     funcsToImport.update(Equality.functionKey(funcToImport), funcToImport)
   }
 
   def unmarkFuncAsImported(func: Func): Unit = {
-    Debug.log("unmark to import function" + DebugDump.withoutPrefix(func.identifier))
+    Debug.log("unmark to import function" + Debug.withoutPrefix(func.identifier))
     funcsToImport.remove(Equality.functionKey(func))
   }
 
   def markFuncToMakeNonPatchable(funcToMakeNonPatchable: Func): Unit = {
-    Debug.log("mark function" + DebugDump.withoutPrefix(funcToMakeNonPatchable.identifier) + " as non-patchable")
+    Debug.log("mark function" + Debug.withoutPrefix(funcToMakeNonPatchable.identifier) + " as non-patchable")
     funcsToMakeNonPatchable.update(Equality.functionKey(funcToMakeNonPatchable), funcToMakeNonPatchable)
   }
 
   def markFuncAsDeleted(funcToDelete: Func): Unit = {
-    Debug.log("mark to delete function" + DebugDump.withoutPrefix(funcToDelete.identifier))
+    Debug.log("mark to delete function" + Debug.withoutPrefix(funcToDelete.identifier))
     funcsToDelete += funcToDelete.identifier.drop(1)
   }
 
   def unmarkFuncAsDeleted(func: Func): Unit = {
-    Debug.log("unmark to delete function" + DebugDump.withoutPrefix(func.identifier))
+    Debug.log("unmark to delete function" + Debug.withoutPrefix(func.identifier))
     funcsToDelete -= func.identifier.drop(1)
   }
 
   def markVarAsImported(varToImport: GlobalVar): Unit = {
-    Debug.log("mark to import variable" + DebugDump.withoutPrefix(varToImport.identifier))
+    Debug.log("mark to import variable" + Debug.withoutPrefix(varToImport.identifier))
     varsToImport.update(Equality.globalVarKey(varToImport), varToImport)
   }
 
   def markAsPatchable(patched: Func): Unit = {
-    Debug.log("mark as patchable function " + DebugDump.withoutPrefix(patched.identifier))
+    Debug.log("mark as patchable function " + Debug.withoutPrefix(patched.identifier))
     patchables += patched
   }
 

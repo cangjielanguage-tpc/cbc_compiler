@@ -11,26 +11,27 @@ package com.huawei.excelsior.jet.compiler.patchgen
 import com.huawei.excelsior.jet.compiler.chir.model.*
 
 import scala.collection.mutable.ArrayBuffer
+import scala.reflect.ClassTag
 
 /** Expression cloning and creation, ported from the C++ per-type `Expression::Clone`
   * implementations and `CHIRBuilder::CreateExpression`/`CreateConstantExpression`.
   *
   * Faithful-port notes:
   *  - A cloned expression gets a FRESH result local var (identifier minted from the
-    * top-level function's localId counter); operand references are shared with the
-    * original. The fresh result merges the original result's attribute bits.
+  * top-level function's localId counter); operand references are shared with the
+  * original. The fresh result merges the original result's attribute bits.
   *  - The cloned expression's own annos/loc are NOT set by Clone; callers copy them
-    * via `copyBaseInfoFrom` (C++ `Base::CopyBaseInfoFrom` copies anno+loc only, not
-    * attributes — a cloned expression loses its own attribute bits, like C++).
+  * via `copyBaseInfoFrom` (C++ `Base::CopyBaseInfoFrom` copies anno+loc only, not
+  * attributes — a cloned expression loses its own attribute bits, like C++).
   *  - Cloning a `Constant` mints a fresh literal value only for NullLiteral; other
-    * literals are shared.
+  * literals are shared.
   *  - Terminators without results (Branch/GoTo/Exit/MultiBranch/RaiseException) are
-    * cloned without a result; Try* forms carry results and are cloned like the rest.
+  * cloned without a result; Try* forms carry results and are cloned like the rest.
   *  - Cloning a Lambda mints a new identifier `<old>.<n>` (global counter), a fresh
-    * body (blocks/expressions cloned recursively), fresh parameters, and sets the
-    * fresh return value from the cloned body.
+  * body (blocks/expressions cloned recursively), fresh parameters, and sets the
+  * fresh return value from the cloned body.
   */
-object ExprBuilder {
+object Clone {
 
   /** Global counter used for cloned lambda identifiers (C++ g_lambdaClonedIdx). */
   private var lambdaClonedIdx: Int = 0
@@ -50,27 +51,20 @@ object ExprBuilder {
 
   /** Port of `CHIRBuilder::CreateExpression` + `parent.AppendExpression`. */
   private def finish(e: Expression, parent: Block): e.type = {
-    e match {
-      case e: ExprBase => e.owner_=(Some(parent))
-    }
+    e.owner = Some(parent)
     ChirOps.appendExpression(parent, e)
     e
   }
 
   /** Mint result + append + copy base info + merge result attrs — the common tail
-    * of every C++ Clone impl.
+  * of every C++ Clone impl.
     */
   private def finishCloned(e: Expression, orig: Expression, parent: Block): e.type = {
     val topLevel = ChirOps.topLevelFunc(parent.parentGroup.get)
       .getOrElse(throw new IllegalStateException("no top-level function for block"))
-    e match {
-      case eb: ExprBase =>
-        // terminators without results (Goto/Branch/MultiBranch/Exit/RaiseException)
-        // are cloned without minting (C++ asserts result == nullptr)
-        orig.resultVar.foreach { res =>
-          eb.resultVar = Some(ChirOps.mintResult(topLevel, res.tpe.get, e))
-        }
-    }
+    // terminators without results (Goto/Branch/MultiBranch/Exit/RaiseException)
+    // are cloned without minting (C++ asserts result == nullptr)
+    for (res <- orig.resultVar) e.resultVar = Some(ChirOps.mintResult(topLevel, res.tpe.get, e))
     ChirOps.appendExpression(parent, e)
     copyBaseInfoFrom(e, orig)
     for (origRes <- orig.resultVar; res <- e.resultVar) res.attributes |= origRes.attributes
@@ -78,20 +72,19 @@ object ExprBuilder {
   }
 
   /** Port of `Base::CopyBaseInfoFrom` (annos + loc, not attributes). */
-  def copyBaseInfoFrom(dst: Expression, src: Expression): Unit = dst match {
-    case dst: ExprBase =>
-      dst.annos = ArrayBuffer(src.annos.toSeq*)
-      dst.loc = src.loc
-  }
-  /** Reads an annotation of the given class from the model annos list
-    * (port of `Base::Get<T>()`).
-    */
-  def getAnno[T <: Annotation](e: Expression, cls: Class[T]): Option[T] = {
-    e.annos.collectFirst { case a if cls.isInstance(a) => a.asInstanceOf[T] }
+  def copyBaseInfoFrom(dst: Expression, src: Expression): Unit = {
+    dst.annos = ArrayBuffer(src.annos.toSeq*)
+    dst.loc = src.loc
   }
 
+  /** Reads an annotation of the given class from the model annos list
+  * (port of `Base::Get<T>()`).
+    */
+  def getAnno[T <: Annotation : ClassTag](e: Expression): Option[T] =
+    e.annos.collectFirst { case a: T => a }
+
   /** Port of `Base::Set<T>(anno)` — replaces the annotation of the given class. */
-  def setAnno[T <: Annotation](e: Expression, anno: T)(using reflectable: scala.reflect.ClassTag[T]): Unit = {
+  def setAnno[T <: Annotation : ClassTag](e: Expression, anno: T): Unit = {
     e.annos --= e.annos.collect { case a: T => a }
     e.annos += anno
   }
@@ -101,131 +94,131 @@ object ExprBuilder {
   // =================================================================================
 
   def cloneExpr(e: Expression, parent: Block): Expression = e match {
-    case x: GotoExpr => finishCloned(GotoExpr(destination0 = x.destination), x, parent)
+    case e: GotoExpr => finishCloned(GotoExpr(destination0 = e.destination), e, parent)
     case _: ExitExpr => finishCloned(ExitExpr(), e, parent)
-    case x: RaiseExceptionExpr =>
-      val ne = RaiseExceptionExpr(exceptionValue0 = x.exceptionValue, exceptionBlock0 = x.exceptionBlock)
-      finishCloned(ne, x, parent)
-    case x: LoadExpr =>
-      finishCloned(LoadExpr(location0 = x.location), x, parent)
-    case x: StoreExpr =>
-      finishCloned(StoreExpr(value0 = x.value, location0 = x.location), x, parent)
-    case x: ConstantExpr =>
+    case e: RaiseExceptionExpr =>
+      val ne = RaiseExceptionExpr(exceptionValue0 = e.exceptionValue, exceptionBlock0 = e.exceptionBlock)
+      finishCloned(ne, e, parent)
+    case e: LoadExpr =>
+      finishCloned(LoadExpr(location0 = e.location), e, parent)
+    case e: StoreExpr =>
+      finishCloned(StoreExpr(value0 = e.value, location0 = e.location), e, parent)
+    case e: ConstantExpr =>
       // C++ Constant::Clone: NullLiteral gets a fresh literal value, others shared
-      val lit = x.literal match {
+      val lit = e.literal match {
         case n: NullLiteral => NullLiteral(tpe = n.tpe)
         case other          => other
       }
-      finishCloned(ConstantExpr(literal0 = lit), x, parent)
-    case x: TupleExpr =>
-      finishCloned(TupleExpr(elementValues0 = ArrayBuffer.from(x.elementValues)), x, parent)
-    case x: GetExceptionExpr =>
-      finishCloned(GetExceptionExpr(), x, parent)
-    case x: GetRTTIExpr =>
-      finishCloned(GetRTTIExpr(obj0 = x.obj), x, parent)
-    case x: GetRTTIStaticExpr =>
-      finishCloned(GetRTTIStaticExpr(rttiType = x.rttiType), x, parent)
-    case x: VArrayExpr =>
-      finishCloned(VArrayExpr(elementValues0 = ArrayBuffer.from(x.elementValues)), x, parent)
-    case x: VArrayBuilderExpr =>
-      finishCloned(VArrayBuilderExpr(size0 = x.size, initValue0 = x.initValue, initializer0 = x.initializer), x, parent)
-    case x: RawArrayLiteralInitExpr =>
-      finishCloned(RawArrayLiteralInitExpr(array0 = x.array, elementValues0 = ArrayBuffer.from(x.elementValues)), x, parent)
-    case x: RawArrayInitByValueExpr =>
-      finishCloned(RawArrayInitByValueExpr(array0 = x.array, size0 = x.size, initValue0 = x.initValue), x, parent)
-    case x: AllocateExpr =>
-      val ne = AllocateExpr(allocatedType = x.allocatedType, isTry = x.isTry,
-        handlerBlocks0 = ArrayBuffer.from(x.handlerBlocks))
-      finishCloned(ne, x, parent)
-    case x: UnaryExpr =>
-      val ne = UnaryExpr(op = x.op, overflowStrategy = x.overflowStrategy, operand0 = x.operand,
-        isTry = x.isTry, handlerBlocks0 = ArrayBuffer.from(x.handlerBlocks))
-      finishCloned(ne, x, parent)
-    case x: BinaryExpr =>
-      val ne = BinaryExpr(op = x.op, overflowStrategy = x.overflowStrategy, leftOperand0 = x.leftOperand,
-        rightOperand0 = x.rightOperand, isTry = x.isTry, handlerBlocks0 = ArrayBuffer.from(x.handlerBlocks))
-      finishCloned(ne, x, parent)
-    case x: NumericCastExpr =>
-      val ne = NumericCastExpr(overflowStrategy = x.overflowStrategy, value0 = x.value, isTry = x.isTry,
-        handlerBlocks0 = ArrayBuffer.from(x.handlerBlocks))
-      finishCloned(ne, x, parent)
+      finishCloned(ConstantExpr(literal0 = lit), e, parent)
+    case e: TupleExpr =>
+      finishCloned(TupleExpr(elementValues0 = ArrayBuffer.from(e.elementValues)), e, parent)
+    case e: GetExceptionExpr =>
+      finishCloned(GetExceptionExpr(), e, parent)
+    case e: GetRTTIExpr =>
+      finishCloned(GetRTTIExpr(obj0 = e.obj), e, parent)
+    case e: GetRTTIStaticExpr =>
+      finishCloned(GetRTTIStaticExpr(rttiType = e.rttiType), e, parent)
+    case e: VArrayExpr =>
+      finishCloned(VArrayExpr(elementValues0 = ArrayBuffer.from(e.elementValues)), e, parent)
+    case e: VArrayBuilderExpr =>
+      finishCloned(VArrayBuilderExpr(size0 = e.size, initValue0 = e.initValue, initializer0 = e.initializer), e, parent)
+    case e: RawArrayLiteralInitExpr =>
+      finishCloned(RawArrayLiteralInitExpr(array0 = e.array, elementValues0 = ArrayBuffer.from(e.elementValues)), e, parent)
+    case e: RawArrayInitByValueExpr =>
+      finishCloned(RawArrayInitByValueExpr(array0 = e.array, size0 = e.size, initValue0 = e.initValue), e, parent)
+    case e: AllocateExpr =>
+      val ne = AllocateExpr(allocatedType = e.allocatedType, isTry = e.isTry,
+        handlerBlocks0 = ArrayBuffer.from(e.handlerBlocks))
+      finishCloned(ne, e, parent)
+    case e: UnaryExpr =>
+      val ne = UnaryExpr(op = e.op, overflowStrategy = e.overflowStrategy, operand0 = e.operand,
+        isTry = e.isTry, handlerBlocks0 = ArrayBuffer.from(e.handlerBlocks))
+      finishCloned(ne, e, parent)
+    case e: BinaryExpr =>
+      val ne = BinaryExpr(op = e.op, overflowStrategy = e.overflowStrategy, leftOperand0 = e.leftOperand,
+        rightOperand0 = e.rightOperand, isTry = e.isTry, handlerBlocks0 = ArrayBuffer.from(e.handlerBlocks))
+      finishCloned(ne, e, parent)
+    case e: NumericCastExpr =>
+      val ne = NumericCastExpr(overflowStrategy = e.overflowStrategy, value0 = e.value, isTry = e.isTry,
+        handlerBlocks0 = ArrayBuffer.from(e.handlerBlocks))
+      finishCloned(ne, e, parent)
       // C++ NumericCast::Clone also copies NeedCheckCast / EnumCaseIndex
-      getAnno(x, classOf[NeedCheckCast]).foreach(a => ne.annos += NeedCheckCast(a.need))
-      (x.resultVar, ne.resultVar) match {
+      getAnno[NeedCheckCast](e).foreach(a => ne.annos += NeedCheckCast(a.need))
+      (e.resultVar, ne.resultVar) match {
         case (Some(o), Some(n)) =>
           o.annos.collectFirst { case a: EnumCaseIndex => n.annos += EnumCaseIndex(a.index) }
         case _ => ()
       }
       ne
-    case x: CastExpr =>
-      val ne = CastExpr(op = x.op, value0 = x.value)
-      finishCloned(ne, x, parent)
-      if (x.op == CastOp.StaticCast) {
+    case e: CastExpr =>
+      val ne = CastExpr(op = e.op, value0 = e.value)
+      finishCloned(ne, e, parent)
+      if (e.op == CastOp.StaticCast) {
         // C++ ClassStaticCast::Clone also copies NeedCheckCast / EnumCaseIndex
-        getAnno(x, classOf[NeedCheckCast]).foreach(a => ne.annos += NeedCheckCast(a.need))
-        (x.resultVar, ne.resultVar) match {
+        getAnno[NeedCheckCast](e).foreach(a => ne.annos += NeedCheckCast(a.need))
+        (e.resultVar, ne.resultVar) match {
           case (Some(o), Some(n)) =>
             o.annos.collectFirst { case a: EnumCaseIndex => n.annos += EnumCaseIndex(a.index) }
           case _ => ()
         }
       }
       ne
-    case x: ApplyExpr =>
-      val ne = ApplyExpr(instantiatedTypeArgs = ArrayBuffer.from(x.instantiatedTypeArgs), objType = x.objType,
-        callee0 = x.callee, args0 = ArrayBuffer.from(x.args), isSuperCall = x.isSuperCall, isTry = x.isTry,
-        handlerBlocks0 = ArrayBuffer.from(x.handlerBlocks))
-      finishCloned(ne, x, parent)
-    case x: InvokeExpr =>
-      val ne = InvokeExpr(instantiatedTypeArgs = ArrayBuffer.from(x.instantiatedTypeArgs), objType = x.objType,
-        callee0 = x.callee, caller0 = x.caller, args0 = ArrayBuffer.from(x.args),
-        overflowStrategy = x.overflowStrategy, isTry = x.isTry,
-        handlerBlocks0 = ArrayBuffer.from(x.handlerBlocks))
-      finishCloned(ne, x, parent)
-    case x: IntrinsicExpr =>
-      val ne = IntrinsicExpr(instantiatedTypeArgs = ArrayBuffer.from(x.instantiatedTypeArgs), objType = x.objType,
-        intrinsicKind = x.intrinsicKind, args0 = ArrayBuffer.from(x.args), isTry = x.isTry,
-        handlerBlocks0 = ArrayBuffer.from(x.handlerBlocks))
-      finishCloned(ne, x, parent)
-    case x: RawArrayAllocateExpr =>
-      val ne = RawArrayAllocateExpr(elementType = x.elementType, size0 = x.size, isTry = x.isTry,
-        handlerBlocks0 = ArrayBuffer.from(x.handlerBlocks))
-      finishCloned(ne, x, parent)
-    case x: SpawnExpr =>
-      val ne = SpawnExpr(obj0 = x.obj, spawnArg0 = x.spawnArg, executeClosure = x.executeClosure,
-        isTry = x.isTry, handlerBlocks0 = ArrayBuffer.from(x.handlerBlocks))
-      finishCloned(ne, x, parent)
-    case x: BranchExpr =>
-      val ne = BranchExpr(condition0 = x.condition, trueBlock0 = x.trueBlock,
-        falseBlock0 = x.falseBlock, sourceExpr = x.sourceExpr)
-      finishCloned(ne, x, parent)
+    case e: ApplyExpr =>
+      val ne = ApplyExpr(instantiatedTypeArgs = ArrayBuffer.from(e.instantiatedTypeArgs), objType = e.objType,
+        callee0 = e.callee, args0 = ArrayBuffer.from(e.args), isSuperCall = e.isSuperCall, isTry = e.isTry,
+        handlerBlocks0 = ArrayBuffer.from(e.handlerBlocks))
+      finishCloned(ne, e, parent)
+    case e: InvokeExpr =>
+      val ne = InvokeExpr(instantiatedTypeArgs = ArrayBuffer.from(e.instantiatedTypeArgs), objType = e.objType,
+        callee0 = e.callee, caller0 = e.caller, args0 = ArrayBuffer.from(e.args),
+        overflowStrategy = e.overflowStrategy, isTry = e.isTry,
+        handlerBlocks0 = ArrayBuffer.from(e.handlerBlocks))
+      finishCloned(ne, e, parent)
+    case e: IntrinsicExpr =>
+      val ne = IntrinsicExpr(instantiatedTypeArgs = ArrayBuffer.from(e.instantiatedTypeArgs), objType = e.objType,
+        intrinsicKind = e.intrinsicKind, args0 = ArrayBuffer.from(e.args), isTry = e.isTry,
+        handlerBlocks0 = ArrayBuffer.from(e.handlerBlocks))
+      finishCloned(ne, e, parent)
+    case e: RawArrayAllocateExpr =>
+      val ne = RawArrayAllocateExpr(elementType = e.elementType, size0 = e.size, isTry = e.isTry,
+        handlerBlocks0 = ArrayBuffer.from(e.handlerBlocks))
+      finishCloned(ne, e, parent)
+    case e: SpawnExpr =>
+      val ne = SpawnExpr(obj0 = e.obj, spawnArg0 = e.spawnArg, executeClosure = e.executeClosure,
+        isTry = e.isTry, handlerBlocks0 = ArrayBuffer.from(e.handlerBlocks))
+      finishCloned(ne, e, parent)
+    case e: BranchExpr =>
+      val ne = BranchExpr(condition0 = e.condition, trueBlock0 = e.trueBlock,
+        falseBlock0 = e.falseBlock, sourceExpr = e.sourceExpr)
+      finishCloned(ne, e, parent)
       ne.resultVar = None // Branch has no result (C++ asserts result == nullptr)
       ne
-    case x: MultiBranchExpr =>
-      val ne = MultiBranchExpr(condition0 = x.condition, caseValues = ArrayBuffer.from(x.caseValues),
-        defaultBlock0 = x.defaultBlock, normalBlocks0 = ArrayBuffer.from(x.normalBlocks))
-      finishCloned(ne, x, parent)
+    case e: MultiBranchExpr =>
+      val ne = MultiBranchExpr(condition0 = e.condition, caseValues = ArrayBuffer.from(e.caseValues),
+        defaultBlock0 = e.defaultBlock, normalBlocks0 = ArrayBuffer.from(e.normalBlocks))
+      finishCloned(ne, e, parent)
       ne.resultVar = None
       ne
-    case x: GetElementRefExpr =>
-      finishCloned(GetElementRefExpr(base0 = x.base, path = ArrayBuffer.from(x.path)), x, parent)
-    case x: StoreElementRefExpr =>
-      finishCloned(StoreElementRefExpr(value0 = x.value, location0 = x.location, path = ArrayBuffer.from(x.path)), x, parent)
-    case x: GetElementByNameExpr =>
-      finishCloned(GetElementByNameExpr(base0 = x.base, fieldNames = ArrayBuffer.from(x.fieldNames)), x, parent)
-    case x: StoreElementByNameExpr =>
-      finishCloned(StoreElementByNameExpr(value0 = x.value, location0 = x.location, fieldNames = ArrayBuffer.from(x.fieldNames)), x, parent)
-    case x: FieldExpr =>
-      finishCloned(FieldExpr(base0 = x.base, path = ArrayBuffer.from(x.path)), x, parent)
-    case x: FieldByNameExpr =>
-      finishCloned(FieldByNameExpr(base0 = x.base, fieldNames = ArrayBuffer.from(x.fieldNames)), x, parent)
-    case x: InstanceOfExpr =>
-      finishCloned(InstanceOfExpr(obj0 = x.obj, targetType = x.targetType), x, parent)
-    case x: GetInstantiateValueExpr =>
-      finishCloned(GetInstantiateValueExpr(instVal0 = x.instVal, instantiateTypes = ArrayBuffer.from(x.instantiateTypes)), x, parent)
-    case x: DebugExpr =>
-      finishCloned(DebugExpr(srcCodeName = x.srcCodeName, value0 = x.value), x, parent)
-    case x: LambdaExpr =>
-      cloneLambda(x, parent)
+    case e: GetElementRefExpr =>
+      finishCloned(GetElementRefExpr(base0 = e.base, path = ArrayBuffer.from(e.path)), e, parent)
+    case e: StoreElementRefExpr =>
+      finishCloned(StoreElementRefExpr(value0 = e.value, location0 = e.location, path = ArrayBuffer.from(e.path)), e, parent)
+    case e: GetElementByNameExpr =>
+      finishCloned(GetElementByNameExpr(base0 = e.base, fieldNames = ArrayBuffer.from(e.fieldNames)), e, parent)
+    case e: StoreElementByNameExpr =>
+      finishCloned(StoreElementByNameExpr(value0 = e.value, location0 = e.location, fieldNames = ArrayBuffer.from(e.fieldNames)), e, parent)
+    case e: FieldExpr =>
+      finishCloned(FieldExpr(base0 = e.base, path = ArrayBuffer.from(e.path)), e, parent)
+    case e: FieldByNameExpr =>
+      finishCloned(FieldByNameExpr(base0 = e.base, fieldNames = ArrayBuffer.from(e.fieldNames)), e, parent)
+    case e: InstanceOfExpr =>
+      finishCloned(InstanceOfExpr(obj0 = e.obj, targetType = e.targetType), e, parent)
+    case e: GetInstantiateValueExpr =>
+      finishCloned(GetInstantiateValueExpr(instVal0 = e.instVal, instantiateTypes = ArrayBuffer.from(e.instantiateTypes)), e, parent)
+    case e: DebugExpr =>
+      finishCloned(DebugExpr(srcCodeName = e.srcCodeName, value0 = e.value), e, parent)
+    case e: LambdaExpr =>
+      cloneLambda(e, parent)
   }
   /** Port of `Lambda::Clone` + `BlockGroup::Clone` + `Block::Clone`. */
   private def cloneLambda(x: LambdaExpr, parent: Block): LambdaExpr = {
@@ -304,10 +297,7 @@ object ExprBuilder {
   // =================================================================================
 
   private def minted(topLevel: Func, resultTy: Type, e: Expression, parent: Block): Expression = {
-    e match {
-      case e: ExprBase =>
-        e.resultVar = Some(ChirOps.mintResult(topLevel, resultTy, e))
-    }
+    e.resultVar = Some(ChirOps.mintResult(topLevel, resultTy, e))
     ChirOps.appendExpression(parent, e)
     e
   }

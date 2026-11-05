@@ -6,7 +6,17 @@ object CHIR {
 
   val defaultVersion = CHIRConfig.defaultVersion
 
+  /** CHIR schema versions supported by this build (newest first). */
+  val supportedVersions: Seq[Int] = CHIRConfig.supportedVersions
+
   def newPackage(source: String, version: Int): Package = AugmentedPackage(CHIRConfig.newPackage(source, version))
+
+  /** Deserializes a .chir byte array with the materializer of the given schema version. */
+  def loadPackage(bytes: Array[Byte], version: Int): model.Package = CHIRConfig.loadPackage(bytes, version)
+
+  /** Serializes the model package with the serializer of the given schema version. */
+  def packageBytes(pkg: model.Package, version: Int, phase: model.Phase): Array[Byte] =
+    CHIRConfig.packageBytes(pkg, version, phase)
 
   def newIntrinsicsPackage: Package = new IntrinsicsPackage
 

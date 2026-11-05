@@ -11,9 +11,6 @@ package com.huawei.excelsior.jet.compiler.patchgen
 import java.nio.file.{Files, Paths}
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.model.{Package, Phase}
-import com.huawei.excelsior.jet.compiler.chir.v1203.{Materializer1203, Serializer1203}
-import com.huawei.excelsior.jet.compiler.chir.v13002.{Materializer13002, Serializer13002}
-import com.huawei.excelsior.jet.compiler.chir.v13008.{Materializer13008, Serializer13008}
 import scala.collection.mutable.ArrayBuffer
 
 /** Port of C++ `main.cpp` (namespace PatchGen).
@@ -28,7 +25,7 @@ import scala.collection.mutable.ArrayBuffer
   * `"diff" + <patched basename>` in the current working directory, phase OPT.
   */
 object Main {
-  private val SupportedChirVersions = Seq(13008, 13002, 1203)
+  private val SupportedChirVersions = CHIR.supportedVersions
 
   private def usage(): Unit = {
     System.err.println("Usage:")
@@ -44,21 +41,11 @@ object Main {
 
   private def load(chirPath: String, chirVersion: Int): Package = {
     val bytes = Files.readAllBytes(Paths.get(chirPath))
-    chirVersion match {
-      case 13008 => Materializer13008.load(bytes)
-      case 13002 => Materializer13002.load(bytes)
-      case 1203  => Materializer1203.load(bytes)
-      case v     => throw new IllegalArgumentException("unsupported CHIR version: " + v)
-    }
+    CHIR.loadPackage(bytes, chirVersion)
   }
 
   private def serialize(pkg: Package, chirVersion: Int, outPath: String): Unit = {
-    val bytes = chirVersion match {
-      case 13008 => Serializer13008.toBytes(pkg, Phase.Opt)
-      case 13002 => Serializer13002.toBytes(pkg, Phase.Opt)
-      case 1203  => Serializer1203.toBytes(pkg, Phase.Opt)
-      case v     => throw new IllegalArgumentException("unsupported CHIR version: " + v)
-    }
+    val bytes = CHIR.packageBytes(pkg, chirVersion, Phase.Opt)
     Files.write(Paths.get(outPath), bytes)
   }
 
@@ -157,7 +144,7 @@ object Main {
     }
 
     if (debugMode) {
-      Debug.setEnabled(true)
+      Debug.enabled = true
     }
 
     genPatch(sourcePackage, patchedPath, chirVersion) match {
@@ -170,7 +157,7 @@ object Main {
         }
         if (testMode) {
           try {
-            DebugDump.dumpTestInfo(load(patchFileName, chirVersion))
+            Debug.dumpTestInfo(load(patchFileName, chirVersion))
           } catch {
             case e: RuntimeException =>
               System.err.println("Error: Couldn't deserialize: " + patchFileName)

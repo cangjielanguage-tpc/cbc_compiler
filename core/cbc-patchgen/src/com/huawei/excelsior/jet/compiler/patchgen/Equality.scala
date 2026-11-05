@@ -84,9 +84,9 @@ object Equality {
     if (Debug.enabled && !res) {
       Debug.log("Types differ")
       Debug.log("first ")
-      Debug.log(DebugDump.ty(l))
+      Debug.log(Debug.ty(l))
       Debug.log("second ")
-      Debug.log(DebugDump.ty(r))
+      Debug.log(Debug.ty(r))
     }
     res
   }
@@ -124,9 +124,9 @@ object Equality {
       if (Debug.enabled && !res) {
         Debug.log("Values differ")
         Debug.log("first ")
-        Debug.log(DebugDump.value(first))
+        Debug.log(Debug.value(first))
         Debug.log("second ")
-        Debug.log(DebugDump.value(second))
+        Debug.log(Debug.value(second))
       }
       res
     }
@@ -199,9 +199,9 @@ object Equality {
       if (Debug.enabled && !res) {
         Debug.log("Exprs differ")
         Debug.log("first ")
-        Debug.log(DebugDump.expr(first))
+        Debug.log(Debug.expr(first))
         Debug.log("second ")
-        Debug.log(DebugDump.expr(second))
+        Debug.log(Debug.expr(second))
       }
       res
     }
