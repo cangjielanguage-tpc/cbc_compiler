@@ -435,10 +435,6 @@ compiler/CodegenCJNative/demangle/type/cpointer_type1.cj
 # bug 179 (extra spaces in type printing via reflection)
 compiler/CodegenCJNative/ExtensionDef/extensiondef_07.cj
 
-# bug 183 (Resolved method is abi incompatible)
-compiler/Sema/class/class_inheritance_9.cj
-compiler/CHIR/UG/VTable/generic/non_static/return_class01.cj
-
 # bug 184 (StackOverflowError in CangjieNodes$StoreFieldSeq.blockRef)
 API/std/collection/test_Concurrent.cj
 compiler/Macro/basic_expansion/main_in_macro_call.cj
