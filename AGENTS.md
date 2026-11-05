@@ -24,10 +24,22 @@ in [test/README.md](test/README.md).
 
 These conventions apply to all new code and are enforced by review.
 
-1. **Parenthesize `for` / `while` heads.** Never the bare `for x <- xs do` /
-   `while c do` forms. Multi-enumerator heads use `;`:
-   `for (x <- xs; y <- ys) { ... }`. A multiline `for` body is always
-   enclosed in braces.
+1. **Parenthesize `for` / `while` heads; brace heads with 3+ enumerators.**
+   Never the bare `for x <- xs do` / `while c do` forms. A `for` with two
+   enumerators (or one enumerator plus a guard) uses a parenthesized head with
+   `;`: `for (x <- xs; y <- ys) { ... }`. With more than two enumerators use
+   the braced form, one enumerator or guard per line, no `;`:
+
+   ```scala
+   for {
+     x   <- xs
+     y   <- f(x)
+     z   <- ys
+     if z > y
+   } { ... }
+   ```
+
+   A multiline `for` body is always enclosed in braces.
 
 2. **Prefer braces; do not rely on significant-indentation syntax.** Do not
    use indentation to delimit anything beyond a single expression: no
@@ -103,3 +115,8 @@ These conventions apply to all new code and are enforced by review.
 
 17. **Keep blank lines regular.** No stray blank lines before a closing
     brace.
+
+18. **Context bounds for `ClassTag`.** When a method needs a
+    `scala.reflect.ClassTag` (e.g. annotation lookup by class), use the
+    context-bound form `[T <: Annotation : ClassTag]`, not a `using ...`
+    parameter or a `Class[T]` argument.
