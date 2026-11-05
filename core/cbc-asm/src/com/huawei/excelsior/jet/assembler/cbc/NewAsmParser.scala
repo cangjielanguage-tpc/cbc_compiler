@@ -1363,7 +1363,7 @@ private object InstructionParser {
   instr("ld.uslot.f32") { (a, s) => a.loadUntyped(s.freg, LD_F32, s.us) }
   instr("ld.uslot.f64") { (a, s) => a.loadUntyped(s.freg, LD_F64, s.us) }
 
-  instr("st.uslot.8")   { (a, s) => a.storeUntyped(s.freg, ST_8, s.us) }
+  instr("st.uslot.8")   { (a, s) => a.storeUntyped(s.ireg, ST_8, s.us) }
   instr("st.uslot.16")  { (a, s) => a.storeUntyped(s.ireg, ST_16, s.us) }
   instr("st.uslot.32")  { (a, s) => a.storeUntyped(s.ireg, ST_32, s.us) }
   instr("st.uslot.64")  { (a, s) => a.storeUntyped(s.ireg, ST_64, s.us) }
