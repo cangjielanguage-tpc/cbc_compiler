@@ -26,7 +26,8 @@ These conventions apply to all new code and are enforced by review.
 
 1. **Parenthesize `for` / `while` heads.** Never the bare `for x <- xs do` /
    `while c do` forms. Multi-enumerator heads use `;`:
-   `for (x <- xs; y <- ys) { ... }`.
+   `for (x <- xs; y <- ys) { ... }`. A multiline `for` body is always
+   enclosed in braces.
 
 2. **Prefer braces; do not rely on significant-indentation syntax.** Do not
    use indentation to delimit anything beyond a single expression: no
@@ -34,8 +35,9 @@ These conventions apply to all new code and are enforced by review.
    match/if/lambda blocks. Braced bodies are used even for one-line
    definitions like `enum Color { case Red, Green, Blue }`.
 
-3. **Brace multi-statement bodies.** A def/val whose body consists of more
-   than one statement (or expression) uses a `{ }` block:
+3. **Brace any multiline def/val body.** If the body of a def/val spans
+   several lines, enclose it in a `{ }` block — not only multi-statement
+   bodies:
 
    ```scala
    def update(x: Int): Unit = {
@@ -44,7 +46,9 @@ These conventions apply to all new code and are enforced by review.
    }
    ```
 
-   Single-expression bodies may stay unbraced: `def f(x: Int): Int = x + 1`.
+   Only single-line bodies stay unbraced: `def f(x: Int): Int = x + 1`.
+   (A `match` on the `=` line per rule 14 is already braced.) Multiline
+   `for` / `if` bodies are always braced as well (rules 1 and 5).
 
 4. **Matches are always braced**: `x match { case ... }`.
 
@@ -63,3 +67,39 @@ These conventions apply to all new code and are enforced by review.
    In comments and docs use plain ASCII punctuation: use `-` instead of em
    or en dashes, write out arrows in words ("to", "->"), and avoid other
    decorative unicode characters.
+
+9. **Test suites are named `*Suite`, not `*Spec`.** Class name and file name
+   follow: `class ChirOpsSuite extends AnyFunSuite` in `ChirOpsSuite.scala`.
+
+10. **ScalaTest matcher DSL instead of `assert` in tests.** Use the
+    matchers, e.g. `x shouldBe y`, `x should not be y`, `xs shouldBe
+    List(1, 2)`, `x shouldBe true`.
+
+11. **No `final` on case classes.** We do not inherit from case classes, so
+    `final` adds nothing: write `case class`, not `final case class`.
+
+12. **Partial-function lambdas instead of explicit match lambdas.** Prefer
+    `xs.map { case (k, v) => ... }` over `xs.map { kv => kv match { ... } }`.
+
+13. **Qualified names for mutable collections.** Do not import
+    `LinkedHashMap`/`LinkedHashSet` unqualified; write
+    `mutable.LinkedHashMap` / `mutable.LinkedHashSet` at use sites.
+
+14. **Put `match` on the line with `=`.**
+    `def f(x: Int): Int = x match { ... }`.
+
+15. **Align `case` arrows within rows of single-line cases.** Consecutive
+    single-line cases in a row are aligned by `=>`. A bodiless default
+    (`case _ =>`) is not aligned, and neither are multiline cases.
+
+16. **`foreach` vs `for`.** Single-expression `foreach` is fine
+    (`xs.foreach(f)`). Convert to `for` when the lambda is a
+    multi-statement block (`xs.foreach { x => s1; s2 }` becomes
+    `for (x <- xs) { ... }`) or its body is a lone `if`
+    (`xs.foreach { x => if (p(x)) ... }` becomes
+    `for (x <- xs if p(x)) { ... }`; no `;` before a guard). When a
+    loop's body is just another loop over a different collection, join
+    them into a single `for` (`for (x <- xs; y <- f(x)) { ... }`).
+
+17. **Keep blank lines regular.** No stray blank lines before a closing
+    brace.
