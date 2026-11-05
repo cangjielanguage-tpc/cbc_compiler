@@ -669,7 +669,6 @@ compiler/CHIR/UG/OpenGeneric/inter.cj
 compiler/CHIR/UG/OpenGeneric/mut.cj
 
 # bug 207 (GC stress test: assertion failed: tt->type == builder.type)
-Runtime/CJNative/GC/gc_tracing_roots.cj
 Runtime/CJNative/GC/gc_wcollector_finalizer.cj
 
 # bug 208 (inout tests fail)
