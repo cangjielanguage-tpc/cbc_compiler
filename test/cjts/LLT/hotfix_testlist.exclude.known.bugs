@@ -679,11 +679,6 @@ compiler/CodegenCommon/bug0307/default.cj
 compiler/Modules/defaultArg/default.cj
 compiler/Modules/multiple_module_01/main.cj
 
-# bug 213 (generic default interface method call through an interface-typed reference -- `could not find VTable slot for`)
-API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
-compiler/CHIR/UG/ClosureConversion/instanceOf03.cj
-compiler/CHIR/UG/ClosureConversion/instanceOf04.cj
-
 # bug 215 (not implemented: intrinsic CPOINTER_ADD)
 compiler/CHIROptTest/SancovPass/traceMemCmpArray3.cj
 compiler/CHIROptTest/SancovPass/traceStringCmpIndexOf.cj
