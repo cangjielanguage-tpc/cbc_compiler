@@ -264,7 +264,7 @@ object Build {
              |  }
              |
              |  /** Serializes the model package with the serializer of the given schema version. */
-             |  def packageBytes(pkg: model.Package, version: Int, phase: model.Phase): Array[Byte] = version match {
+             |  def serializePackage(pkg: model.Package, version: Int, phase: model.Phase): Array[Byte] = version match {
              |$serCases
              |    case _ => notImplemented("unsupported CHIR version", version)
              |  }

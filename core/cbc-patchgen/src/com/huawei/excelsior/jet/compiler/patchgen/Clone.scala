@@ -49,15 +49,8 @@ object Clone {
   /** Port of `builder->GetType<RefType>(ty)`. */
   def refTy(base: Type): Type = TypeImpl(TypeKind.Ref, ArrayBuffer(base))
 
-  /** Port of `CHIRBuilder::CreateExpression` + `parent.AppendExpression`. */
-  private def finish(e: Expression, parent: Block): e.type = {
-    e.owner = Some(parent)
-    ChirOps.appendExpression(parent, e)
-    e
-  }
-
   /** Mint result + append + copy base info + merge result attrs — the common tail
-  * of every C++ Clone impl.
+    * of every C++ Clone impl.
     */
   private def finishCloned(e: Expression, orig: Expression, parent: Block): Expression = {
     val topLevel = ChirOps.topLevelFunc(parent.parentGroup.get)

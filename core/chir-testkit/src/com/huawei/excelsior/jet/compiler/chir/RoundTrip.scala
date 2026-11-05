@@ -24,12 +24,12 @@ object RoundTrip {
 
   def roundTripFile(bytes: Array[Byte], version: Int): Either[String, Array[Byte]] = {
     val m1 = CHIR.loadPackage(bytes, version)
-    val bytes2 = CHIR.packageBytes(m1, version, m1.phase)
+    val bytes2 = CHIR.serializePackage(m1, version, m1.phase)
     val m2 = CHIR.loadPackage(bytes2, version)
     // ids may legitimately shift on the first round-trip (def seed grouping,
     // see ModelCompare doc); structure must be identical
     val diff = ModelCompare.compare(m1, m2, compareIds = false)
-    val bytes3 = CHIR.packageBytes(m2, version, m2.phase)
+    val bytes3 = CHIR.serializePackage(m2, version, m2.phase)
     if (diff.isEmpty && java.util.Arrays.equals(bytes2, bytes3)) Right(bytes2)
     else {
       val why =

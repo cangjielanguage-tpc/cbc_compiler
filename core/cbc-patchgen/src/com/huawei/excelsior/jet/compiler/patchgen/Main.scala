@@ -45,7 +45,7 @@ object Main {
   }
 
   private def serialize(pkg: Package, chirVersion: Int, outPath: String): Unit = {
-    val bytes = CHIR.packageBytes(pkg, chirVersion, Phase.Opt)
+    val bytes = CHIR.serializePackage(pkg, chirVersion, Phase.Opt)
     Files.write(Paths.get(outPath), bytes)
   }
 

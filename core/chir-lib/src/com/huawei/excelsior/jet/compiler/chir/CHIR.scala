@@ -15,8 +15,8 @@ object CHIR {
   def loadPackage(bytes: Array[Byte], version: Int): model.Package = CHIRConfig.loadPackage(bytes, version)
 
   /** Serializes the model package with the serializer of the given schema version. */
-  def packageBytes(pkg: model.Package, version: Int, phase: model.Phase): Array[Byte] =
-    CHIRConfig.packageBytes(pkg, version, phase)
+  def serializePackage(pkg: model.Package, version: Int, phase: model.Phase): Array[Byte] =
+    CHIRConfig.serializePackage(pkg, version, phase)
 
   def newIntrinsicsPackage: Package = new IntrinsicsPackage
 

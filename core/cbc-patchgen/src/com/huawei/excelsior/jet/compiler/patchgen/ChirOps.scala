@@ -64,7 +64,11 @@ object ChirOps {
     */
   def usersOf(v: Value, pkg: Package): ArrayBuffer[Expression] = {
     val users = ArrayBuffer[Expression]()
-    def scanFunc(f: Func): Unit = for (bg <- f.body; block <- bg.blocks; expr <- block.exprs) {
+    def scanFunc(f: Func): Unit = for {
+      bg <- f.body
+      block <- bg.blocks
+      expr <- block.exprs
+    } {
       if (operandsOf(expr).contains(v)) users += expr
       for (lambdaBg <- expr.blockGroups) scanBlockGroup(lambdaBg)
     }
@@ -149,7 +153,13 @@ object ChirOps {
     */
   def replaceWith(expr: Expression, newExpr: Expression, pkg: Package): Unit = {
     // 1. replace result
-    for (result <- expr.resultVar; newResult <- newExpr.resultVar; user <- usersOf(result, pkg).toList) replaceOperand(user, result, newResult)
+    for {
+      result <- expr.resultVar
+      newResult <- newExpr.resultVar
+      user <- usersOf(result, pkg).toList
+    } {
+      replaceOperand(user, result, newResult)
+    }
     // 2-3. remember position, remove self
     val tempParent = expr.owner.getOrElse(throw new IllegalStateException("expression has no parent block"))
     val idx = tempParent.exprs.indexWhere(_ eq expr)
@@ -203,7 +213,13 @@ object ChirOps {
   /** Port of `Function::DestroyFuncBody`. */
   def destroyFuncBody(func: Func): Unit = {
     func.retVal = None
-    for (bg <- func.body; block <- bg.blocks; expr <- block.exprs.toList) removeSelfFromBlock(expr)
+    for {
+      bg <- func.body
+      block <- bg.blocks
+      expr <- block.exprs.toList
+    } {
+      removeSelfFromBlock(expr)
+    }
     func.body = None
   }
 
@@ -257,8 +273,7 @@ object ChirOps {
     */
   def topLevelFunc(bg: BlockGroup): Option[Func] = bg.ownedFunc match {
     case Some(f) => Some(f)
-    case None =>
-      bg.ownedExpression.flatMap(_.owner).flatMap(_.parentGroup).flatMap(topLevelFunc)
+    case None => bg.ownedExpression.flatMap(_.owner).flatMap(_.parentGroup).flatMap(topLevelFunc)
   }
 
   /** Mints a fresh result local var for an expression, like C++

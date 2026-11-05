@@ -51,26 +51,19 @@ class PatchableNameSuite extends AnyFunSuite with Matchers {
     pn.genGuardVarName(forPackageInit = true) shouldBe "$default$packageInit$GV"
     pn.genGuardVarFlagName(forPackageInit = false) shouldBe "$default$GVF"
     pn.genPatchClassName shouldBe "$PatchImpl$GC"
-    pn.genGuardMethodName(GuardMethodKind.PackageInitCtor) ==
-      "$default$PackageInitPatch$GC$<init>$GF" shouldBe true
-    pn.genGuardMethodName(GuardMethodKind.PackageInit) ==
-      "$default$PackageInitPatch$GC$packageInit$GF" shouldBe true
-    pn.genGuardMethodName(GuardMethodKind.PackageLiteralInit) ==
-      "$default$PackageInitPatch$GC$packageLiteralInit$GF" shouldBe true
+    pn.genGuardMethodName(GuardMethodKind.PackageInitCtor) shouldBe "$default$PackageInitPatch$GC$<init>$GF"
+    pn.genGuardMethodName(GuardMethodKind.PackageInit) shouldBe "$default$PackageInitPatch$GC$packageInit$GF"
+    pn.genGuardMethodName(GuardMethodKind.PackageLiteralInit) shouldBe "$default$PackageInitPatch$GC$packageLiteralInit$GF"
   }
 
   test("package-level flag accessors (no class name, no func name)") {
     val pkg = new Package()
     pkg.name = "default"
     val pn = PatchableName(pkg)
-    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = true) ==
-      "$defaultpackageInitGetter$GF" shouldBe true
-    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = false) ==
-      "$defaultpackageInitSetter$GF" shouldBe true
-    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageLiteralInit, isGetter = true) ==
-      "$defaultpackageLiteralInitGetter$GF" shouldBe true
-    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageLiteralInit, isGetter = false) ==
-      "$defaultpackageLiteralInitSetter$GF" shouldBe true
+    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = true) shouldBe "$defaultpackageInitGetter$GF"
+    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = false) shouldBe "$defaultpackageInitSetter$GF"
+    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageLiteralInit, isGetter = true) shouldBe "$defaultpackageLiteralInitGetter$GF"
+    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageLiteralInit, isGetter = false) shouldBe "$defaultpackageLiteralInitSetter$GF"
   }
 
   test("class-level names") {
@@ -83,8 +76,7 @@ class PatchableNameSuite extends AnyFunSuite with Matchers {
 
     val plainClass = structDef("default", "Foo")
     val pn2 = PatchableName(plainClass)
-    pn2.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = true) ==
-      "$default$FoopackageInitGetter$GF" shouldBe true
+    pn2.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = true) shouldBe "$default$FoopackageInitGetter$GF"
   }
 
   test("func-level names (class method with params)") {
@@ -95,8 +87,7 @@ class PatchableNameSuite extends AnyFunSuite with Matchers {
     pn.qualifiedName shouldBe "default.Foo.bar"
     // genName("$GC", "$GF") = "$default$Foo$GC$bar$$default.Foo$_Int64$GF",
     // then "$Patch$GC" inserted after "$default"
-    pn.genGuardMethodName(GuardMethodKind.Plain) ==
-      "$default$Patch$GC$Foo$GC$bar$$default.Foo$_Int64$GF" shouldBe true
+    pn.genGuardMethodName(GuardMethodKind.Plain) shouldBe "$default$Patch$GC$Foo$GC$bar$$default.Foo$_Int64$GF"
   }
 
   test("func-level names (global func without params)") {
@@ -114,8 +105,7 @@ class PatchableNameSuite extends AnyFunSuite with Matchers {
     val raw = RawArrayType(rawRef, 0)
     val f = func("default", "qux", None, Seq(raw))
     val pn = PatchableName(f)
-    pn.genGuardMethodName(GuardMethodKind.Plain) ==
-      "$default$Patch$GC$qux$$RawArray<VArray<Int64,3>>$GF" shouldBe true
+    pn.genGuardMethodName(GuardMethodKind.Plain) shouldBe "$default$Patch$GC$qux$$RawArray<VArray<Int64,3>>$GF"
   }
 
   test("equality is by qualified name") {

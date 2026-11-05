@@ -42,19 +42,19 @@ class ModelSuite extends AnyFunSuite with Matchers {
 
   test("Package.getFunc/getDef accept prefixed and unprefixed identifiers") {
     val pkg = Fixture.build()
-    pkg.getFunc("@N.Pkg.main").isDefined shouldBe true
+    pkg.getFunc("@N.Pkg.main") shouldBe defined
     pkg.getFunc("N.Pkg.main").get shouldBe pkg.getFunc("@N.Pkg.main").get
-    pkg.getFunc("@N.Pkg.missing").isEmpty shouldBe true
-    pkg.getDef("N.Pkg.St").get.eq(pkg.getDef("@N.Pkg.St").get) shouldBe true
-    pkg.getDef("@N.Imp.ImpSt").get.eq(pkg.getDef("N.Imp.ImpSt").get) shouldBe true
+    pkg.getFunc("@N.Pkg.missing") shouldBe empty
+    pkg.getDef("N.Pkg.St").get should be theSameInstanceAs pkg.getDef("@N.Pkg.St").get
+    pkg.getDef("@N.Imp.ImpSt").get should be theSameInstanceAs pkg.getDef("N.Imp.ImpSt").get
   }
 
   test("Package def lists keep imported/current grouping and order") {
     val pkg = Fixture.build()
-    pkg.allCustomTypeDefs.map(_.identifier) ==
-      Seq("@N.Imp.ImpSt", "@N.Pkg.St", "@N.Pkg.Cl", "@N.Pkg.Color", "@N.Pkg.Ext") shouldBe true
-    pkg.curPkgCustomTypeDefs.map(_.identifier) ==
-      Seq("@N.Pkg.St", "@N.Pkg.Cl", "@N.Pkg.Color", "@N.Pkg.Ext") shouldBe true
+    pkg.allCustomTypeDefs.map(_.identifier) shouldBe
+      Seq("@N.Imp.ImpSt", "@N.Pkg.St", "@N.Pkg.Cl", "@N.Pkg.Color", "@N.Pkg.Ext")
+    pkg.curPkgCustomTypeDefs.map(_.identifier) shouldBe
+      Seq("@N.Pkg.St", "@N.Pkg.Cl", "@N.Pkg.Color", "@N.Pkg.Ext")
     pkg.importedStructs.head.isImported shouldBe true
     pkg.structs.head.isImported shouldBe false
   }
@@ -81,7 +81,7 @@ class ModelSuite extends AnyFunSuite with Matchers {
     tryApply.successors shouldBe Seq(bg.blocks(1), bg.blocks(4))
     mbranch.successors shouldBe Seq(bg.blocks(3), bg.blocks(2), bg.blocks(3))
     goto.successors shouldBe Seq(bg.blocks(3))
-    alloc.successors.isEmpty shouldBe true
+    alloc.successors shouldBe empty
   }
 
   test("FuncKind/MainEntry and Func helpers") {

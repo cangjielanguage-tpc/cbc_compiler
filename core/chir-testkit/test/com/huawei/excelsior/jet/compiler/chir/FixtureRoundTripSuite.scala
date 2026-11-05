@@ -40,44 +40,37 @@ class FixtureRoundTripSuite extends AnyFunSuite with Matchers {
   for (version <- CHIR.supportedVersions) {
     test(s"v$version fixture round-trips structurally (ids may regroup on first pass)") {
       val fixture = Fixture.build()
-      val bytes2 = CHIR.packageBytes(fixture, version, fixture.phase)
+      val bytes2 = CHIR.serializePackage(fixture, version, fixture.phase)
       val m2 = CHIR.loadPackage(bytes2, version)
-      ModelCompare.compare(fixture, m2, compareIds = false) === None shouldBe true
+      ModelCompare.compare(fixture, m2, compareIds = false) shouldBe None
     }
 
     test(s"v$version re-serialization is byte-stable and ids become exact") {
       val fixture = Fixture.build()
-      val bytes2 = CHIR.packageBytes(fixture, version, fixture.phase)
+      val bytes2 = CHIR.serializePackage(fixture, version, fixture.phase)
       val m2 = CHIR.loadPackage(bytes2, version)
-      val bytes3 = CHIR.packageBytes(m2, version, m2.phase)
-      java.util.Arrays.equals(bytes2, bytes3) shouldBe true
+      val bytes3 = CHIR.serializePackage(m2, version, m2.phase)
+      bytes2 shouldBe bytes3
       val m3 = CHIR.loadPackage(bytes3, version)
-      ModelCompare.compare(m2, m3, compareIds = true) === None shouldBe true
+      ModelCompare.compare(m2, m3, compareIds = true) shouldBe None
     }
   }
 
-  // The MatchCaseId annotation and the non-default MultiBranch.sourceExpr exist
-  // only in the newest schema, so the delta fixture is exercised on it only.
-  for (version <- Seq(CHIR.supportedVersions.max)) {
-    test(s"v$version MultiBranch.sourceExpr and MatchCaseId survive the round-trip") {
-      val p = Fixture.build()
-      val exprs = allExprs(p)
-      exprs.collectFirst { case m: MultiBranchExpr => m } match {
-        case Some(m) => m.sourceExpr = SourceExprTag.MatchCase
-        case None    => fail("fixture has no MultiBranch to exercise sourceExpr")
-      }
-      // MatchCaseId is a newest-schema-only annotation union element: attach one
-      // to the MultiBranch and check it survives the round-trip with its payload.
-      exprs.collectFirst { case m: MultiBranchExpr => m } match {
-        case Some(m) => m.annos += MatchCaseId(42L)
-        case None    => fail("fixture has no MultiBranch to carry the MatchCaseId anno")
-      }
-      val bytes2 = CHIR.packageBytes(p, version, p.phase)
-      val m2 = CHIR.loadPackage(bytes2, version)
-      val mbranch = allExprs(m2).collectFirst { case m: MultiBranchExpr => m }
-      mbranch.isDefined shouldBe true
-      mbranch.get.sourceExpr === SourceExprTag.MatchCase shouldBe true
-      mbranch.get.annos.collectFirst { case m: MatchCaseId => m.id } === Some(42L) shouldBe true
-    }
+  // The MATCH_CASE value of the SourceExpr enum and the MatchCaseId annotation
+  // exist only in the newest schema (in v1203/v13002 the MultiBranch table has
+  // no sourceExpr field at all and the Annotation union has no matchCaseId;
+  // their serializers reject MatchCaseId), so this invariant cannot be part of
+  // the version-agnostic Fixture and is checked on the newest version only.
+  test("newest schema: MultiBranch.sourceExpr=MatchCase and MatchCaseId survive the round-trip") {
+    val version = CHIR.supportedVersions.max
+    val p = Fixture.build()
+    val mbranch = allExprs(p).collect { case m: MultiBranchExpr => m }.head
+    mbranch.sourceExpr = SourceExprTag.MatchCase
+    mbranch.annos += MatchCaseId(42L)
+    val bytes2 = CHIR.serializePackage(p, version, p.phase)
+    val m2 = CHIR.loadPackage(bytes2, version)
+    val mbranch2 = allExprs(m2).collect { case m: MultiBranchExpr => m }.head
+    mbranch2.sourceExpr shouldBe SourceExprTag.MatchCase
+    mbranch2.annos.collectFirst { case m: MatchCaseId => m.id } shouldBe Some(42L)
   }
 }

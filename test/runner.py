@@ -547,6 +547,132 @@ class HotfixTestSuite(StandaloneTestSuite):
         return [os.path.join(mode_work_dir, name)]
 
 
+class ChirStabilityTestSuite(StandaloneTestSuite):
+    """CHIR serialization round-trip stability: compiles every test to CHIR with
+    the standalone pipeline's cjc step and verifies that materialize ->
+    serialize -> materialize -> serialize reproduces the same bytes (via the
+    RoundTripStability tool from the toolchain's patch-gen.jar). Nothing is
+    executed; a test fails if cjc fails or the round-trip is unstable."""
+
+    suite_mode = "chir-stability"
+    compilation_modes = [("default", [])]
+    standalone_tests = parse_tests_list(os.path.join(TestSuite.root_dir, "tests-list-standalone.cfg"),
+                                        root_dir=TestSuite.root_dir)
+
+    def stability_tool(self):
+        jar = os.path.join(self.toolchain_path, "tools", "bin", "patch-gen.jar")
+        if not os.path.isfile(jar):
+            failedTests.append(f"{self.suite_mode}: patch-gen.jar not found in toolchain ({jar})")
+            return None
+        return ["java", "-cp", jar, "com.huawei.excelsior.jet.compiler.chir.RoundTripStability"]
+
+    async def prepare_tools(self, args):
+        self.chir_version = args.chir_version
+        return 0
+
+    async def run_test(self, test_name: str):
+        # no run phase: the check happens in build_test right after cjc
+        return 0
+
+    async def build_test(self, test_name: str):
+        cmd = self.stability_tool()
+        if cmd is None:
+            return 1
+        if not os.path.isfile(dotcj(test_name)):
+            return 0  # asm-only tests have no CHIR to check
+        test_work_dir, name = test_name.rsplit('/', 1)
+        mode, opt_flags = self.compilation_modes[0]
+        mode_work_dir = os.path.abspath(self.mode_work_dir(test_work_dir, mode, name))
+        os.makedirs(mode_work_dir, exist_ok=True)
+
+        import_args = []
+        aot_so_names = []
+        for aot_file in sorted(glob.glob(os.path.join(test_work_dir, "*.aot.cj"))):
+            aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
+            aot_so = f"{test_work_dir}/lib{aot_name}.so"
+            import_args = ["--import-path", test_work_dir]
+            aot_log = io.StringIO()
+            res = await self.run_cjc(aot_file,
+                                     output_file=aot_so,
+                                     output_type="dylib",
+                                     use_tool_sh=True,
+                                     log=aot_log)
+            if res != 0:
+                err_msg = f"{self.suite_mode.capitalize()} test AOT part compilation error ({aot_name}): {res}\n"
+                if aot_log.getvalue().strip():
+                    err_msg += aot_log.getvalue()
+                await self.print_stderr(err_msg)
+                self.compilation_failures.append((test_name, "cj", f"during AOT compilation ({aot_name})"))
+                return 1
+            aot_so_names.append(aot_name)
+
+        native_lib_names = []
+        for c_file in sorted(glob.glob(os.path.join(test_work_dir, "*.c"))):
+            native_name = os.path.basename(c_file)[:-len(".c")]
+            native_so = f"{test_work_dir}/lib{native_name}.so"
+            native_log = io.StringIO()
+            native_err = io.StringIO()
+            res = await run_in_env(True, os.environ.copy(), ["cc", "-shared", "-fPIC", "-o", native_so, c_file],
+                                   log=native_log, stderr_log=native_err)
+            if res != 0:
+                err_msg = f"{self.suite_mode.capitalize()} test native library compilation error ({native_name}): {res}\n"
+                if native_err.getvalue().strip():
+                    err_msg += native_err.getvalue()
+                await self.print_stderr(err_msg)
+                self.compilation_failures.append((test_name, "cj", f"during native library compilation ({native_name})"))
+                return 1
+            native_lib_names.append(native_name)
+
+        int_chir_files = []
+        int_cj_files = sorted(glob.glob(os.path.join(test_work_dir, "*.int.cj")))
+        if int_cj_files:
+            int_temp_dir = f"{mode_work_dir}/temp"
+            import_args += ["--import-path", int_temp_dir]
+            os.makedirs(int_temp_dir, exist_ok=True)
+            for int_cj_file in int_cj_files:
+                int_fullname = os.path.splitext(os.path.basename(int_cj_file))[0]
+                int_basename = os.path.splitext(int_fullname)[0]
+                int_chir_files.append(f"temp/{int_basename}.chir")
+                int_log = io.StringIO()
+                res = await self.run_cjc(int_cj_file,
+                                         output_file=f"{int_temp_dir}/{int_basename}",
+                                         additional_args=["--save-temps", int_temp_dir, "--output-type", "staticlib"] +
+                                                         import_args + opt_flags,
+                                         use_tool_sh=True,
+                                         log=int_log)
+                if res != 0:
+                    err_msg = f"{self.suite_mode.capitalize()} test INT package compilation error ({int_basename}): {res}\n"
+                    if int_log.getvalue().strip():
+                        err_msg += int_log.getvalue()
+                    await self.print_stderr(err_msg)
+                    self.compilation_failures.append((test_name, "cj", f"during INT package compilation ({int_basename})"))
+                    return 1
+
+        chir_log = io.StringIO()
+        res = await self.compile_cj(test_name, mode_work_dir, name,
+                                    import_args, opt_flags, aot_so_names, native_lib_names, chir_log)
+        if res != 0:
+            err_msg = f"{self.suite_mode.capitalize()} test compilation error ({test_name} - {mode}): {res}\n"
+            if chir_log.getvalue().strip():
+                err_msg += chir_log.getvalue()
+            await self.print_stderr(err_msg)
+            self.compilation_failures.append((test_name, "cj", f"during compilation ({mode})"))
+            return 1
+
+        chir_files = [f"{mode_work_dir}/{name}.chir"] + int_chir_files
+        res = await run_in_env(True, os.environ.copy(),
+                               cmd + (["--chir-version", self.chir_version] if self.chir_version else []) + chir_files,
+                               cwd=mode_work_dir, log=chir_log, stderr_log=chir_log)
+        if res != 0:
+            err_msg = f"{self.suite_mode.capitalize()} test CHIR round-trip instability ({test_name} - {mode})\n"
+            if chir_log.getvalue().strip():
+                err_msg += chir_log.getvalue()
+            await self.print_stderr(err_msg)
+            self.compilation_failures.append((test_name, "cj", "during CHIR round-trip stability check"))
+            return 1
+        return 0
+
+
 def enabled(name, args):
     if args.filter_file:
         return name in enabled_exact_tests
@@ -657,7 +783,9 @@ def test(args):
 
     print(f"CANGJIE_TOOLCHAIN: {toolchain_path}")
 
-    suite = HotfixTestSuite if args.mode == "hotfix" else StandaloneTestSuite
+    suite = {'standalone': StandaloneTestSuite,
+             'hotfix': HotfixTestSuite,
+             'chir-stability': ChirStabilityTestSuite}[args.mode]
     asyncio.run(suite(toolchain_path).run(args))
 
     print()
@@ -678,13 +806,17 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(required=True)
     parser_test = subparsers.add_parser('test', help="Test all test cases")
     parser_test.set_defaults(func=test)
-    parser_test.add_argument('--mode', choices=['standalone', 'hotfix'], default='standalone',
-                             help="Test execution mode (default: standalone)")
+    parser_test.add_argument('--mode', choices=['standalone', 'hotfix', 'chir-stability'], default='standalone',
+                             help="Test execution mode (default: standalone; chir-stability only checks "
+                                  "CHIR serialization round-trip stability)")
     parser_test.add_argument('--cangjie-home', help="Path to Cangjie toolchain (overrides CANGJIE_HOME env var)")
     parser_test.add_argument('--filter', nargs='+', default=[], help="Run only test cases with given prefixes")
     parser_test.add_argument('--filter-file', help="Run only test cases listed in given file")
     parser_test.add_argument('-j', '--parallelism', nargs='?', help="Count of tests built in parallel")
     parser_test.add_argument('--jc-options', nargs='?', default='', help="Options for cbc compiler")
+    parser_test.add_argument('--chir-version', default=None,
+                             help="CHIR schema version for the chir-stability mode "
+                                  "(default: the built-in default of patch-gen.jar)")
 
     parser_clean = subparsers.add_parser('clean', help="Clean up intermediate files")
     parser_clean.set_defaults(func=lambda _: TestSuite().clean())

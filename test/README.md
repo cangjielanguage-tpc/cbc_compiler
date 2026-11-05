@@ -10,6 +10,12 @@ a Cangjie toolchain (SDK distribution):
 
 - `standalone` - the main pipeline: `cjc --emit-chir` -> `cbc-compiler` ->
   `launcher`. Each test is compiled in `default` and `O2` modes.
+- `chir-stability` - CHIR serialization round-trip stability: each test is
+  compiled to CHIR with the standalone pipeline's cjc step (default mode
+  only, nothing is executed), then the `RoundTripStability` tool from the
+  toolchain's `patch-gen.jar` verifies that materialize -> serialize ->
+  materialize -> serialize reproduces the same bytes. Use `--chir-version`
+  to override the schema version (default: patch-gen.jar's built-in default).
 - `hotfix` - the hotfix/patching pipeline: `cjc` with `libhotfix-plugin.so`
   produces a throw-stub binary (must abort with `Exception: should not reach
   here`), then a patched CHIR; `patch-gen` computes the patch CHIR, which
