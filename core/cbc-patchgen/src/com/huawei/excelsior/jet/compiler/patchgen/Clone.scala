@@ -73,26 +73,22 @@ object ExprBuilder {
     }
     ChirOps.appendExpression(parent, e)
     copyBaseInfoFrom(e, orig)
-    orig.resultVar.foreach { origRes =>
-      e.resultVar.foreach { res =>
-        res.attributes |= origRes.attributes
-      }
-    }
+    for (origRes <- orig.resultVar; res <- e.resultVar) res.attributes |= origRes.attributes
     e
   }
 
   /** Port of `Base::CopyBaseInfoFrom` (annos + loc, not attributes). */
-  def copyBaseInfoFrom(dst: Expression, src: Expression): Unit =
-    dst match {
-      case dst: ExprBase =>
-        dst.annos = ArrayBuffer(src.annos.toSeq*)
-        dst.loc = src.loc
-    }
+  def copyBaseInfoFrom(dst: Expression, src: Expression): Unit = dst match {
+    case dst: ExprBase =>
+      dst.annos = ArrayBuffer(src.annos.toSeq*)
+      dst.loc = src.loc
+  }
   /** Reads an annotation of the given class from the model annos list
     * (port of `Base::Get<T>()`).
     */
-  def getAnno[T <: Annotation](e: Expression, cls: Class[T]): Option[T] =
+  def getAnno[T <: Annotation](e: Expression, cls: Class[T]): Option[T] = {
     e.annos.collectFirst { case a if cls.isInstance(a) => a.asInstanceOf[T] }
+  }
 
   /** Port of `Base::Set<T>(anno)` — replaces the annotation of the given class. */
   def setAnno[T <: Annotation](e: Expression, anno: T)(using reflectable: scala.reflect.ClassTag[T]): Unit = {
@@ -230,7 +226,6 @@ object ExprBuilder {
       finishCloned(DebugExpr(srcCodeName = x.srcCodeName, value0 = x.value), x, parent)
     case x: LambdaExpr =>
       cloneLambda(x, parent)
-
   }
   /** Port of `Lambda::Clone` + `BlockGroup::Clone` + `Block::Clone`. */
   private def cloneLambda(x: LambdaExpr, parent: Block): LambdaExpr = {
@@ -257,7 +252,6 @@ object ExprBuilder {
         ownedLambda = Some(ne), srcCodeIdentifier = p.srcCodeIdentifier, annoInfo = p.annoInfo)
       np.id = id.toInt
       ne.params += np
-
     }
     // fresh return value: C++ finds the orig body's ret alloc by index and takes the
     // same position in the new body (the clone's result is fresh, no IsRetVal flag set)

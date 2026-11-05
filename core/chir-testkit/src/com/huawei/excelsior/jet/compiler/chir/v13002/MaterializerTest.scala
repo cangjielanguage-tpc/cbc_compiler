@@ -52,10 +52,11 @@ object MaterializerTest {
         case _ =>
       }
     }
-    def walkGroup(bg: BlockGroup): Unit =
+    def walkGroup(bg: BlockGroup): Unit = {
       for (b <- bg.blocks) {
         for (e <- b.exprs) walkExpr(e)
       }
+    }
     def walkFunc(f: Func): Unit = f.body.foreach(walkGroup)
     for (v <- pkg.globalVars) v.initializer match {
       case Some(f: Func) => walkFunc(f)
@@ -64,7 +65,7 @@ object MaterializerTest {
     for (f <- pkg.globalFuncs) walkFunc(f)
     for (d <- pkg.allCustomTypeDefs) {
       for (f <- d.methods) walkFunc(f)
-      for (mv <- d.instanceMemberVars) mv.initializerFunc.foreach(walkFunc)
+      for (mv <- d.instanceMemberVars; f <- mv.initializerFunc) walkFunc(f)
       d.instanceVarInitFunc.foreach(walkFunc)
       for (gv <- d.staticMemberVars) gv.initializer match {
         case Some(f: Func) => walkFunc(f)

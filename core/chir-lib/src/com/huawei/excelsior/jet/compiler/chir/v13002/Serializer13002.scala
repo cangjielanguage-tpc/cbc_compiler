@@ -53,12 +53,14 @@ import scala.collection.mutable.ArrayBuffer
 object Serializer13002 {
 
   /** Serializes `pkg` and writes the bytes to `filename`. */
-  def serialize(pkg: model.Package, filename: String, phase: model.Phase): Unit =
+  def serialize(pkg: model.Package, filename: String, phase: model.Phase): Unit = {
     Files.write(Paths.get(filename), toBytes(pkg, phase))
+  }
 
   /** Serializes `pkg` into .chir bytes. */
-  def toBytes(pkg: model.Package, phase: model.Phase): Array[Byte] =
+  def toBytes(pkg: model.Package, phase: model.Phase): Array[Byte] = {
     new Impl(pkg).serialize(phase)
+  }
 
   private final class Impl(pkg: model.Package) {
 
@@ -124,7 +126,6 @@ object Serializer13002 {
         defCount += 1
         def2Id.put(d, Integer.valueOf(defCount))
         allCustomTypeDef += null
-
       }
       // allocate value ids earlier
       for (v <- valueQueue.toList) {
@@ -248,11 +249,11 @@ object Serializer13002 {
         case t: CustomType =>
           val base = new TypeT()
           base.setKind(t.customTypeDef match {
-            case Some(d) => d.kind match {
+            case Some(d)                => d.kind match {
               case CustomDefKind.Struct => CHIRTypeKind.STRUCT
               case CustomDefKind.Enum   => CHIRTypeKind.ENUM
               case CustomDefKind.Class  => CHIRTypeKind.CLASS
-              case k => sys.error(s"Unexpected CustomType def kind $k")
+              case k                    => sys.error(s"Unexpected CustomType def kind $k")
             }
             case None => sys.error("CustomType without custom type def cannot be serialized")
           })
@@ -396,7 +397,7 @@ object Serializer13002 {
       // skip serializing genericDecl when it is an imported func (no body)
       u.setGenericDecl(f.genericDecl match {
         case Some(g: Func) if g.body.isDefined => valueId(g)
-        case _ => 0L
+        case _                                 => 0L
       })
       u.setFuncKind(f.funcKind.ordinal)
       u.setIsFastNative(f.isFastNative)
@@ -648,11 +649,11 @@ object Serializer13002 {
 
     /** model OverflowStrategy -> v13002 wire ordinal (no CHECKED in v13002) */
     private def ofsWire(o: OverflowStrategy): Int = o match {
-      case OverflowStrategy.Na        => 0
-      case OverflowStrategy.Wrapping  => 1
-      case OverflowStrategy.Throwing  => 2
+      case OverflowStrategy.Na         => 0
+      case OverflowStrategy.Wrapping   => 1
+      case OverflowStrategy.Throwing   => 2
       case OverflowStrategy.Saturating => 3
-      case other => sys.error(s"OverflowStrategy $other not representable in v13002")
+      case other                       => sys.error(s"OverflowStrategy $other not representable in v13002")
     }
 
     // =================================================================================
@@ -819,7 +820,7 @@ object Serializer13002 {
 
     private def debugLocationT(loc: Option[DebugLocation]): DebugLocationT = {
       val u = new DebugLocationT()
-      loc.foreach { l =>
+      for (l <- loc) {
         u.setFilePath(l.filePath)
         u.setFileId(l.fileId.toLong)
         // C++ always writes begin/end pos and the (possibly empty) scope vector
@@ -839,7 +840,7 @@ object Serializer13002 {
 
     private def annoInfoT(info: Option[AnnoInfo]): AnnoInfoT = {
       val u = new AnnoInfoT()
-      info.foreach { ai =>
+      for (ai <- info) {
         u.setMangledName(ai.mangledName)
         if (ai.annoInstances.nonEmpty) {
           u.setAnnoInstances(ai.annoInstances.map { inst =>

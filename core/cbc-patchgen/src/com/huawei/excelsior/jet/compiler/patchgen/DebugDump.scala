@@ -48,8 +48,9 @@ object DebugDump {
   }
 
   /** C++ `Value::GetIdentifierWithoutPrefix()` = identifier.substr(1). */
-  def withoutPrefix(identifier: String): String =
+  def withoutPrefix(identifier: String): String = {
     if (identifier.isEmpty) "" else identifier.substring(1)
+  }
 
   // ===================================================================================
   // compact IR rendering (stand-in for the C++ ToString(0) dumps)
@@ -81,14 +82,14 @@ object DebugDump {
 
   /** One-line rendering of a value; identifiers for locals/params/globals/funcs. */
   def valueLine(v: Value): String = v match {
-    case l: BoolLiteral    => "Bool(" + l.value + ")"
-    case l: RuneLiteral    => "Rune(" + l.value + ")"
-    case l: StringLiteral  => "String(\"" + l.value + "\")"
-    case l: IntLiteral     => "Int(" + l.value + ")"
-    case l: FloatLiteral   => "Float(" + l.value + ")"
-    case _: UnitLiteral    => "Unit"
-    case _: NullLiteral    => "Null"
-    case f: Func           => f.identifier
+    case l: BoolLiteral   => "Bool(" + l.value + ")"
+    case l: RuneLiteral   => "Rune(" + l.value + ")"
+    case l: StringLiteral => "String(\"" + l.value + "\")"
+    case l: IntLiteral    => "Int(" + l.value + ")"
+    case l: FloatLiteral  => "Float(" + l.value + ")"
+    case _: UnitLiteral   => "Unit"
+    case _: NullLiteral   => "Null"
+    case f: Func          => f.identifier
     case v: ValueBase =>
       val id = if (v.identifier.isEmpty) "<" + v.getClass.getSimpleName + ">" else v.identifier
       v.tpe.map(t => id + ": " + ty(t)).getOrElse(id)

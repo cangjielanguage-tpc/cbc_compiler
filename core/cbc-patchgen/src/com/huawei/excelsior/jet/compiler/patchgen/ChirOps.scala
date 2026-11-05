@@ -30,21 +30,24 @@ object ChirOps {
     * snapshots of the expression lists (C++ `Iterator::Iterate` returns by value),
     * so expressions appended during the walk are not revisited.
     */
-  def visitFuncExprs(func: Func)(pre: Expression => Unit): Unit =
+  def visitFuncExprs(func: Func)(pre: Expression => Unit): Unit = {
     func.body.foreach(bg => visitBlockGroupExprs(bg)(pre))
+  }
 
-  def visitBlockGroupExprs(bg: BlockGroup)(pre: Expression => Unit): Unit =
+  def visitBlockGroupExprs(bg: BlockGroup)(pre: Expression => Unit): Unit = {
     for (block <- bg.blocks.toList) visitBlockExprs(block)(pre)
+  }
 
-  def visitBlockExprs(block: Block)(pre: Expression => Unit): Unit =
+  def visitBlockExprs(block: Block)(pre: Expression => Unit): Unit = {
     for (expr <- block.exprs.toList) {
       pre(expr)
       visitExprChildren(expr)(pre)
-
     }
+  }
   /** Port of `Walk(expr, pre)`: descends into the expression's (live) block groups. */
-  def visitExprChildren(expr: Expression)(pre: Expression => Unit): Unit =
+  def visitExprChildren(expr: Expression)(pre: Expression => Unit): Unit = {
     for (bg <- expr.blockGroups.toList) visitBlockGroupExprs(bg)(pre)
+  }
 
   // =================================================================================
   // operands (flat, in C++ Expression::GetOperands() order)
@@ -60,7 +63,11 @@ object ChirOps {
     */
   def usersOf(v: Value, pkg: Package): ArrayBuffer[Expression] = {
     val users = ArrayBuffer[Expression]()
-    def scanFunc(f: Func): Unit = f.body.foreach { bg =>
+    def scanFunc(f: Func): Unit = for (bg <- f.body; block <- bg.blocks; expr <- block.exprs) {
+      if (operandsOf(expr).exists(_ eq v)) users += expr
+      for (lambdaBg <- expr.blockGroups) scanBlockGroup(lambdaBg)
+    }
+    def scanBlockGroup(bg: BlockGroup): Unit = {
       for (block <- bg.blocks) {
         for (expr <- block.exprs) {
           if (operandsOf(expr).exists(_ eq v)) users += expr
@@ -68,13 +75,6 @@ object ChirOps {
         }
       }
     }
-    def scanBlockGroup(bg: BlockGroup): Unit =
-      for (block <- bg.blocks) {
-        for (expr <- block.exprs) {
-          if (operandsOf(expr).exists(_ eq v)) users += expr
-          for (lambdaBg <- expr.blockGroups) scanBlockGroup(lambdaBg)
-        }
-      }
     pkg.globalFuncs.foreach(scanFunc)
     users
   }
@@ -82,32 +82,36 @@ object ChirOps {
   /** Port of `Expression::ReplaceOperand` — in-place rewrite of the operand slot
     * (plus CFG predecessor bookkeeping for block operands).
     */
-  def replaceOperand(e: Expression, oldV: Value, newV: Value): Unit =
+  def replaceOperand(e: Expression, oldV: Value, newV: Value): Unit = {
     if ((oldV ne newV) && e.operands.exists(_ eq oldV)) {
       for (i <- e.operands.indices) if (e.operands(i) eq oldV) e.operands(i) = newV
       // block operands update CFG edges (port of the C++ predecessor bookkeeping)
       oldV match {
         case b: Block => e.owner.foreach(o => removePredecessor(b, o))
-        case _         =>
+        case _ =>
       }
       newV match {
         case n: Block => e.owner.foreach(o => addPredecessor(n, o))
-        case _         =>
+        case _ =>
       }
     }
+  }
   // =================================================================================
   // block / block group primitives
   // =================================================================================
 
-  def addPredecessor(block: Block, pred: Block): Unit =
+  def addPredecessor(block: Block, pred: Block): Unit = {
     if (!block.predecessors.exists(_ eq pred)) block.predecessors += pred
+  }
 
-  def removePredecessor(block: Block, pred: Block): Unit =
+  def removePredecessor(block: Block, pred: Block): Unit = {
     block.predecessors -= pred
+  }
 
   /** Port of `Block::RemoveExprOnly`. */
-  def removeExprOnly(block: Block, expr: Expression): Unit =
+  def removeExprOnly(block: Block, expr: Expression): Unit = {
     block.exprs -= expr
+  }
 
   /** Port of `Block::AppendExpression`. */
   def appendExpression(block: Block, expr: Expression): Unit = {
@@ -121,14 +125,14 @@ object ChirOps {
 
   /** Port of `Expression::RemoveSelfFromBlock`. */
   def removeSelfFromBlock(expr: Expression): Unit = {
-    for (suc <- expr.successors) expr.owner.foreach(removePredecessor(suc, _))
+    for (suc <- expr.successors; o <- expr.owner) removePredecessor(suc, o)
     expr.owner.foreach(removeExprOnly(_, expr))
     setOwner(expr, None)
   }
 
   /** Port of `Block::RemoveSelfFromBlockGroup`. */
   def removeSelfFromBlockGroup(block: Block): Unit = {
-    block.parentGroup.foreach { group =>
+    for (group <- block.parentGroup) {
       group.blocks -= block
       if (group.entryBlock.exists(_ eq block)) group.entryBlock = None
     }
@@ -151,13 +155,7 @@ object ChirOps {
     */
   def replaceWith(expr: Expression, newExpr: Expression, pkg: Package): Unit = {
     // 1. replace result
-    expr.resultVar.foreach { result =>
-      newExpr.resultVar.foreach { newResult =>
-        for (user <- usersOf(result, pkg).toList) {
-          replaceOperand(user, result, newResult)
-        }
-      }
-    }
+    for (result <- expr.resultVar; newResult <- newExpr.resultVar; user <- usersOf(result, pkg).toList) replaceOperand(user, result, newResult)
     // 2-3. remember position, remove self
     val tempParent = expr.owner.getOrElse(throw new IllegalStateException("expression has no parent block"))
     val idx = tempParent.exprs.indexWhere(_ eq expr)
@@ -187,7 +185,7 @@ object ChirOps {
 
   /** Port of `Expression::MoveAfter`. */
   def moveAfter(expr: Expression, target: Expression): Unit = {
-    expr.owner.foreach { old =>
+    for (old <- expr.owner) {
       removeExprOnly(old, expr)
       for (suc <- expr.successors) removePredecessor(suc, old)
     }
@@ -200,7 +198,7 @@ object ChirOps {
 
   /** Port of `Expression::MoveTo`. */
   def moveTo(expr: Expression, block: Block): Unit = {
-    expr.owner.foreach { old =>
+    for (old <- expr.owner) {
       removeExprOnly(old, expr)
       for (suc <- expr.successors) removePredecessor(suc, old)
     }
@@ -214,11 +212,7 @@ object ChirOps {
   /** Port of `Function::DestroyFuncBody`. */
   def destroyFuncBody(func: Func): Unit = {
     func.retVal = None
-    func.body.foreach { bg =>
-      for (block <- bg.blocks) {
-        for (expr <- block.exprs.toList) removeSelfFromBlock(expr)
-      }
-    }
+    for (bg <- func.body; block <- bg.blocks; expr <- block.exprs.toList) removeSelfFromBlock(expr)
     func.body = None
   }
 
@@ -228,10 +222,8 @@ object ChirOps {
     */
   def setOwnerFunc(bg: BlockGroup, func: Func): Unit = {
     bg.ownedFunc.foreach(_.body = None)
-    bg.ownedExpression.foreach { l =>
-      if (l.body.exists(_ eq bg)) {
-        l.body = None
-      }
+    for (l <- bg.ownedExpression if l.body.exists(_ eq bg)) {
+      l.body = None
     }
     bg.ownedExpression = None
     bg.ownedFunc = Some(func)
@@ -247,14 +239,15 @@ object ChirOps {
   }
 
   /** Port of `BlockGroup::SetEntryBlock`. */
-  def setEntryBlock(bg: BlockGroup, block: Block): Unit =
+  def setEntryBlock(bg: BlockGroup, block: Block): Unit = {
     bg.entryBlock = Some(block)
+  }
 
   /** Port of `Block::MoveTo` (removes from the old group, clears its entry, appends
     * to the new group; entry of the new group is not set).
     */
   def moveBlockTo(block: Block, newGroup: BlockGroup): Unit = {
-    block.parentGroup.foreach { old =>
+    for (old <- block.parentGroup) {
       old.blocks -= block
       if (old.entryBlock.exists(_ eq block)) {
         old.entryBlock = None
@@ -271,13 +264,11 @@ object ChirOps {
   /** The top-level function owning a block group, either directly or through a
     * lambda expression (port of `Block::GetTopLevelFunc`).
     */
-  def topLevelFunc(bg: BlockGroup): Option[Func] =
-    bg.ownedFunc match {
-      case Some(f) => Some(f)
-      case None    =>
-        bg.ownedExpression.flatMap(_.owner).flatMap(_.parentGroup).flatMap(topLevelFunc)
-
-    }
+  def topLevelFunc(bg: BlockGroup): Option[Func] = bg.ownedFunc match {
+    case Some(f) => Some(f)
+    case None =>
+      bg.ownedExpression.flatMap(_.owner).flatMap(_.parentGroup).flatMap(topLevelFunc)
+  }
   /** Mints a fresh result local var for an expression, like C++
     * `CHIRBuilder::CreateExpression` (identifier "%<n>" from the top-level
     * function's localId counter).
@@ -288,5 +279,4 @@ object ChirOps {
     lv.id = id.toInt // transient; the serializer renumbers
     lv
   }
-
 }

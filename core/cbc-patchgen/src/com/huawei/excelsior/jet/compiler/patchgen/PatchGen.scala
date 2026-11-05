@@ -9,7 +9,8 @@
 package com.huawei.excelsior.jet.compiler.patchgen
 
 import com.huawei.excelsior.jet.compiler.chir.model.*
-import scala.collection.mutable.{ArrayBuffer, LinkedHashMap, LinkedHashSet}
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 class PatchGenException(msg: String) extends RuntimeException(msg)
 
@@ -70,7 +71,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
 
         val patchClassName = guardClass.map(g => PatchableName(g).genPatchClassName)
 
-        val patchedTypeDefsSet = LinkedHashMap[Equality.CustomDefKey, CustomTypeDef]()
+        val patchedTypeDefsSet = mutable.LinkedHashMap[Equality.CustomDefKey, CustomTypeDef]()
         for (typeDef <- patchedPackage.curPkgCustomTypeDefs) {
           patchedTypeDefsSet.update(Equality.customDefKey(typeDef), typeDef)
         }
@@ -99,7 +100,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
         }
 
         val sourceGlobalFuncs = source.globalFuncs
-        val patchedGlobalFuncsSet = LinkedHashMap[Equality.FunctionKey, Func]()
+        val patchedGlobalFuncsSet = mutable.LinkedHashMap[Equality.FunctionKey, Func]()
         for (f <- patchedGlobalFuncs) {
           patchedGlobalFuncsSet.update(Equality.functionKey(f), f)
         }
@@ -137,7 +138,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
 
         markFuncsAsNonPatchable(patchedGlobalFuncs, sourceGlobalFuncs.map(Equality.functionKey).toSet)
 
-        val patchedGlobalVarsSet = LinkedHashMap[Equality.GlobalVarKey, GlobalVar]()
+        val patchedGlobalVarsSet = mutable.LinkedHashMap[Equality.GlobalVarKey, GlobalVar]()
         for (v <- patchedPackage.globalVars) {
           patchedGlobalVarsSet.update(Equality.globalVarKey(v), v)
         }
@@ -212,7 +213,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
 
   private def markInternalFuncsAsNonImportedAreReachableFromPatchable(): Unit = {
     val patchableSet = markContext.patchables.toSet
-    val visited = LinkedHashSet[Func]()
+    val visited = mutable.LinkedHashSet[Func]()
     for (patchable <- markContext.patchables) {
       markInternalFuncAsNonImportedAreReachableFromPatchable(patchable, patchableSet, visited)
     }
@@ -224,29 +225,27 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
     */
   private def markInternalFuncAsNonImportedAreReachableFromPatchable(func: Func,
                                                                      patchableSet: Set[Func],
-                                                                     visited: LinkedHashSet[Func]): Unit = {
-    ChirOps.visitFuncExprs(func) { e =>
-      e match {
-        case apply: ApplyExpr =>
-          apply.callee match {
-            case callee: Func if linkageOf(callee).contains(Linkage.Internal) =>
-              if (callee.isLambda) {
-                markContext.unmarkFuncAsDeleted(callee)
-                // Patchable functions should be imported anyway, otherwise an inconsistency
-                // happens, when some patchable function F is unmarked as imported, but during
-                // patch generation the F body moved to the corresponding patch function in the
-                // PatchImpl class, making the F body empty. Finally, we would have unimported F
-                // without body, so we want to avoid such situations.
-              } else if (!patchableSet.contains(callee)) {
-                markContext.unmarkFuncAsImported(callee)
-              }
-              if (visited.add(callee)) {
-                markInternalFuncAsNonImportedAreReachableFromPatchable(callee, patchableSet, visited)
-              }
-            case _ => ()
-          }
-        case _ => ()
-      }
+                                                                     visited: mutable.LinkedHashSet[Func]): Unit = {
+    ChirOps.visitFuncExprs(func) {
+      case apply: ApplyExpr =>
+        apply.callee match {
+          case callee: Func if linkageOf(callee).contains(Linkage.Internal) =>
+            if (callee.isLambda) {
+              markContext.unmarkFuncAsDeleted(callee)
+              // Patchable functions should be imported anyway, otherwise an inconsistency
+              // happens, when some patchable function F is unmarked as imported, but during
+              // patch generation the F body moved to the corresponding patch function in the
+              // PatchImpl class, making the F body empty. Finally, we would have unimported F
+              // without body, so we want to avoid such situations.
+            } else if (!patchableSet.contains(callee)) {
+              markContext.unmarkFuncAsImported(callee)
+            }
+            if (visited.add(callee)) {
+              markInternalFuncAsNonImportedAreReachableFromPatchable(callee, patchableSet, visited)
+            }
+          case _ => ()
+        }
+      case _ => ()
     }
   }
 
@@ -297,20 +296,18 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
       terminatorOf(entryBlock).exists(_.isInstanceOf[ExitExpr])
     }
 
-    def removeEmptyInitializersCalls(packageInit: Option[Func]): LinkedHashSet[String] = {
-      val initializersToRemove = LinkedHashSet[String]()
+    def removeEmptyInitializersCalls(packageInit: Option[Func]): mutable.LinkedHashSet[String] = {
+      val initializersToRemove = mutable.LinkedHashSet[String]()
       packageInit.foreach { init =>
-        ChirOps.visitFuncExprs(init) { e =>
-          e match {
-            case apply: ApplyExpr =>
-              apply.callee match {
-                case func: Func if isEmptyInitializer(func) =>
-                  initializersToRemove += func.identifier.drop(1)
-                  ChirOps.removeSelfFromBlock(apply)
-                case _ => ()
-              }
-            case _ => ()
-          }
+        ChirOps.visitFuncExprs(init) {
+          case apply: ApplyExpr =>
+            apply.callee match {
+              case func: Func if isEmptyInitializer(func) =>
+                initializersToRemove += func.identifier.drop(1)
+                ChirOps.removeSelfFromBlock(apply)
+              case _ => ()
+            }
+          case _ => ()
         }
       }
       initializersToRemove
@@ -371,18 +368,16 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
     def replaceFlagAccessToFlagAccessorCall(packageInit: Option[Func], flag: GlobalVar,
                                             getter: Option[Func], setter: Option[Func]): Unit =
       packageInit.foreach { init =>
-        ChirOps.visitFuncExprs(init) { e =>
-          e match {
-            case load: LoadExpr if load.location eq flag =>
-              val g = getter.get
-              val replacement = newApplyCall(init, g, Seq.empty)
-              ChirOps.replaceWith(load, replacement, patchedPackage)
-            case store: StoreExpr if store.location eq flag =>
-              val s = setter.get
-              val replacement = newApplyCall(init, s, Seq(store.value))
-              ChirOps.replaceWith(store, replacement, patchedPackage)
-            case _ => ()
-          }
+        ChirOps.visitFuncExprs(init) {
+          case load: LoadExpr if load.location eq flag =>
+            val g = getter.get
+            val replacement = newApplyCall(init, g, Seq.empty)
+            ChirOps.replaceWith(load, replacement, patchedPackage)
+          case store: StoreExpr if store.location eq flag =>
+            val s = setter.get
+            val replacement = newApplyCall(init, s, Seq(store.value))
+            ChirOps.replaceWith(store, replacement, patchedPackage)
+          case _ => ()
         }
       }
 
@@ -445,7 +440,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
       val loadGuardVarCandidate = patchableExpressions(patchableExpressions.size - 2)
       val loadGuardVarOk = loadGuardVarCandidate match {
         case load: LoadExpr if load.location eq guardVarFlag.get => Some(load)
-        case _ => None
+        case _                                                   => None
       }
       loadGuardVarOk match {
         case Some(loadGuardVar) =>
@@ -530,8 +525,8 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
     }
   }
 
-  private def genPatches(): LinkedHashSet[Func] = {
-    val patches = LinkedHashSet[Func]()
+  private def genPatches(): mutable.LinkedHashSet[Func] = {
+    val patches = mutable.LinkedHashSet[Func]()
     for (patchable <- markContext.patchables) {
       Debug.log("patchable before transformation: ")
       Debug.log(DebugDump.func(patchable))
@@ -579,7 +574,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
         // We need to regenerate all the values' identifiers, otherwise there might be some
         // local var duplicates after patch generation. The only known approach is to clone
         // the existing expressions.
-        val clonedTerminators = LinkedHashMap[Value, Value]()
+        val clonedTerminators = mutable.LinkedHashMap[Value, Value]()
         ChirOps.visitFuncExprs(patchMethod.get) { e =>
           var clonedExpr = e
           if (e.isTerminator) {
@@ -695,7 +690,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
 
     val guardVarType = guardVar.get.tpe.get match {
       case t: TypeImpl if t.kind == TypeKind.Ref => t.argTys.head
-      case t => t
+      case t                                     => t
     }
     val tuple = TupleExpr(owner = Some(guardVarsInitFuncBody),
       elementValues0 = ArrayBuffer[Value](falseExpr.resultVar.get, typeCast.resultVar.get))
@@ -733,7 +728,7 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
     ChirOps.moveAfter(storeToGuardVarFlag, trueExpr)
   }
 
-  private def importFuncs(patches: LinkedHashSet[Func]): Unit = {
+  private def importFuncs(patches: mutable.LinkedHashSet[Func]): Unit = {
     for (func <- markContext.funcsToImport.values if !patches.contains(func)) {
       ChirOps.destroyFuncBody(func)
       func.attributes = func.attributes | Attribute.Imported
@@ -757,16 +752,16 @@ final class PatchGen(fileName: String, sourcePackage: Option[Package],
         // DefBase owns the mutable attributes var; the CustomTypeDef trait exposes it read-only
         typeDef.asInstanceOf[DefBase].attributes = typeDef.attributes | Attribute.Imported
         kind match {
-          case CustomDefKind.Class => patchedPackage.importedClasses += typeDef.asInstanceOf[ClassDef]
+          case CustomDefKind.Class  => patchedPackage.importedClasses += typeDef.asInstanceOf[ClassDef]
           case CustomDefKind.Struct => patchedPackage.importedStructs += typeDef.asInstanceOf[StructDef]
-          case CustomDefKind.Enum => () // TODO support
+          case CustomDefKind.Enum   => () // TODO support
           case CustomDefKind.Extend => () // TODO support
         }
       } else {
         kind match {
-          case CustomDefKind.Class => newClassDefs += typeDef.asInstanceOf[ClassDef]
+          case CustomDefKind.Class  => newClassDefs += typeDef.asInstanceOf[ClassDef]
           case CustomDefKind.Struct => newStructDefs += typeDef.asInstanceOf[StructDef]
-          case CustomDefKind.Enum => () // TODO support
+          case CustomDefKind.Enum   => () // TODO support
           case CustomDefKind.Extend => () // TODO support
         }
       }
@@ -813,7 +808,7 @@ object PatchGen {
   /** C++ `GetFuncParams(BlockGroup&)`. */
   def funcParamsOf(body: BlockGroup): ArrayBuffer[Parameter] = body.ownedFunc match {
     case Some(func) => func.params
-    case None => body.ownedExpression.getOrElse(
+    case None       => body.ownedExpression.getOrElse(
       throw new IllegalStateException("block group without owner")).params
   }
 
@@ -826,14 +821,15 @@ object PatchGen {
   /** The model has no cached builtin types; "std.core" String is identified by name. */
   def isStringType(tpe: Option[Type]): Boolean = tpe match {
     case Some(t: CustomType) => t.customTypeDef match {
-      case Some(d) => d.packageName == "std.core" && d.srcCodeIdentifier == "String"
-      case None => false
+      case Some(d)           => d.packageName == "std.core" && d.srcCodeIdentifier == "String"
+      case None              => false
     }
     case _ => false
   }
 
-  def linkageOf(func: Func): Option[Linkage] =
+  def linkageOf(func: Func): Option[Linkage] = {
     func.annos.collectFirst { case l: LinkTypeInfo => l.linkage }
+  }
 
   def findGuardVarsInitializer(packageDef: Package): Option[Func] = {
     val gvitName = PatchableName(packageDef).genGuardVarInitializedName
@@ -902,17 +898,18 @@ object PatchGen {
     globalVarName == guardVarFlagName
   }
 
-  def isPackageInit(func: Func, packageDef: Package): Boolean =
+  def isPackageInit(func: Func, packageDef: Package): Boolean = {
     packageDef.packageInitFunc.exists(_ eq func) || packageDef.packageLiteralInitFunc.exists(_ eq func)
+  }
 }
 
 /** Port of `MarkContext` (C++ PatchGen.h). */
 final class MarkContext {
-  val typesToImport = LinkedHashSet[String]()
-  val funcsToImport = LinkedHashMap[Equality.FunctionKey, Func]()
-  val funcsToMakeNonPatchable = LinkedHashMap[Equality.FunctionKey, Func]()
-  val funcsToDelete = LinkedHashSet[String]()
-  val varsToImport = LinkedHashMap[Equality.GlobalVarKey, GlobalVar]()
+  val typesToImport = mutable.LinkedHashSet[String]()
+  val funcsToImport = mutable.LinkedHashMap[Equality.FunctionKey, Func]()
+  val funcsToMakeNonPatchable = mutable.LinkedHashMap[Equality.FunctionKey, Func]()
+  val funcsToDelete = mutable.LinkedHashSet[String]()
+  val varsToImport = mutable.LinkedHashMap[Equality.GlobalVarKey, GlobalVar]()
   val patchables = ArrayBuffer[Func]()
 
   def markTypeAsImported(typeToImport: String): Unit = {

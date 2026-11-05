@@ -11,25 +11,29 @@ object Equality {
   // CustomDefEquality / FunctionEquality / GlobalVarEquality)
   // ===================================================================================
 
-  final case class CustomDefKey(kind: CustomDefKind, packageName: String, identifier: String,
+  case class CustomDefKey(kind: CustomDefKind, packageName: String, identifier: String,
                                 srcCodeIdentifier: String)
 
-  final case class FunctionKey(isFuncWithBody: Boolean, isImportedFunc: Boolean, packageName: String,
+  case class FunctionKey(isFuncWithBody: Boolean, isImportedFunc: Boolean, packageName: String,
                                identifier: String, srcCodeIdentifier: String)
 
-  final case class GlobalVarKey(identifier: String, srcCodeIdentifier: String, packageName: String)
+  case class GlobalVarKey(identifier: String, srcCodeIdentifier: String, packageName: String)
 
-  def customDefKey(d: CustomTypeDef): CustomDefKey =
+  def customDefKey(d: CustomTypeDef): CustomDefKey = {
     CustomDefKey(d.kind, d.packageName, d.identifier, d.srcCodeIdentifier)
+  }
 
-  def functionKey(f: Func): FunctionKey =
+  def functionKey(f: Func): FunctionKey = {
     FunctionKey(f.body.isDefined, f.isImported, f.packageName, f.identifier, f.srcCodeIdentifier)
+  }
 
-  def globalVarKey(v: GlobalVar): GlobalVarKey =
+  def globalVarKey(v: GlobalVar): GlobalVarKey = {
     GlobalVarKey(v.identifier, v.srcCodeIdentifier, v.packageName)
+  }
 
-  def areEqual(l: CustomTypeDef, r: CustomTypeDef): Boolean =
+  def areEqual(l: CustomTypeDef, r: CustomTypeDef): Boolean = {
     (l eq r) || customDefKey(l) == customDefKey(r)
+  }
 
   def areEqual(l: Func, r: Func): Boolean = {
     (l eq r) || (functionKey(l) == functionKey(r) && {
@@ -40,15 +44,17 @@ object Equality {
     })
   }
 
-  def areEqual(l: GlobalVar, r: GlobalVar): Boolean =
+  def areEqual(l: GlobalVar, r: GlobalVar): Boolean = {
     (l eq r) || globalVarKey(l) == globalVarKey(r)
+  }
 
   // ===================================================================================
   // type equality
   // ===================================================================================
 
-  def areEqualTypes(l: Seq[Type], r: Seq[Type]): Boolean =
+  def areEqualTypes(l: Seq[Type], r: Seq[Type]): Boolean = {
     l.size == r.size && l.zip(r).forall { (a, b) => areEqual(a, b) }
+  }
 
   def areEqual(l: Type, r: Type): Boolean = {
     if (l eq r) {
@@ -89,16 +95,16 @@ object Equality {
 
   private def areEqualOptDef(l: Option[CustomTypeDef], r: Option[CustomTypeDef]): Boolean =
     (l, r) match {
-      case (None, None) => true
+      case (None, None)       => true
       case (Some(l), Some(r)) => areEqual(l, r)
-      case _ => false
+      case _                  => false
     }
 
   private def areEqualOptType(l: Option[Type], r: Option[Type]): Boolean =
     (l, r) match {
-      case (None, None) => true
+      case (None, None)       => true
       case (Some(l), Some(r)) => areEqual(l, r)
-      case _ => false
+      case _                  => false
     }
 
   // ===================================================================================
@@ -176,16 +182,16 @@ object Equality {
 
     private def areEqualOptFunc(l: Option[Func], r: Option[Func]): Boolean =
       (l, r) match {
-        case (None, None) => true
+        case (None, None)       => true
         case (Some(l), Some(r)) => areEqual(l, r)
-        case _ => false
+        case _                  => false
       }
 
     private def areEqualOptExpr(l: Option[Expression], r: Option[Expression]): Boolean =
       (l, r) match {
-        case (None, None) => true
+        case (None, None)       => true
         case (Some(l), Some(r)) => areEqual(l, r)
-        case _ => false
+        case _                  => false
       }
 
     def areEqual(first: Expression, second: Expression): Boolean = {
@@ -220,7 +226,7 @@ object Equality {
           l.isSuperCall == r.isSuperCall
         case (l: BinaryExpr, r: BinaryExpr) => l.op == r.op && l.overflowStrategy == r.overflowStrategy
         case (l: BranchExpr, r: BranchExpr) => l.sourceExpr == r.sourceExpr
-        case (l: DebugExpr, r: DebugExpr) => l.srcCodeName == r.srcCodeName
+        case (l: DebugExpr, r: DebugExpr)   => l.srcCodeName == r.srcCodeName
         case (l: InvokeExpr, r: InvokeExpr) =>
           // GetMethodName = OverflowStrategyPrefix(strategy) + callee.srcCodeIdentifier,
           // and the prefix is injective per strategy
@@ -228,14 +234,14 @@ object Equality {
             l.overflowStrategy == r.overflowStrategy &&
             areEqualOptType(l.objType, r.objType) &&
             areEqualTypes(l.instantiatedTypeArgs.toSeq, r.instantiatedTypeArgs.toSeq)
-        case (l: FieldExpr, r: FieldExpr) => l.path == r.path
-        case (l: FieldByNameExpr, r: FieldByNameExpr) => l.fieldNames == r.fieldNames
+        case (l: FieldExpr, r: FieldExpr)                       => l.path == r.path
+        case (l: FieldByNameExpr, r: FieldByNameExpr)           => l.fieldNames == r.fieldNames
         case (l: GetElementByNameExpr, r: GetElementByNameExpr) => l.fieldNames == r.fieldNames
-        case (l: GetElementRefExpr, r: GetElementRefExpr) => l.path == r.path
+        case (l: GetElementRefExpr, r: GetElementRefExpr)       => l.path == r.path
         case (l: GetInstantiateValueExpr, r: GetInstantiateValueExpr) =>
           areEqualTypes(l.instantiateTypes.toSeq, r.instantiateTypes.toSeq)
         case (l: GetRTTIStaticExpr, r: GetRTTIStaticExpr) => Equality.areEqual(l.rttiType, r.rttiType)
-        case (l: InstanceOfExpr, r: InstanceOfExpr) => Equality.areEqual(l.targetType, r.targetType)
+        case (l: InstanceOfExpr, r: InstanceOfExpr)       => Equality.areEqual(l.targetType, r.targetType)
         case (l: IntrinsicExpr, r: IntrinsicExpr) =>
           l.intrinsicKind == r.intrinsicKind && areEqualOptType(l.objType, r.objType) &&
             areEqualTypes(l.instantiatedTypeArgs.toSeq, r.instantiatedTypeArgs.toSeq)
@@ -243,15 +249,15 @@ object Equality {
           l.isLocalFunc == r.isLocalFunc && l.identifier == r.identifier &&
             l.srcCodeName == r.srcCodeName && Equality.areEqual(l.funcTy, r.funcTy) &&
             areEqualTypes(l.genericTypeParams.toSeq, r.genericTypeParams.toSeq)
-        case (l: MultiBranchExpr, r: MultiBranchExpr) => l.caseValues == r.caseValues
-        case (l: NumericCastExpr, r: NumericCastExpr) => l.overflowStrategy == r.overflowStrategy
-        case (l: CastExpr, r: CastExpr) => l.op == r.op
-        case (l: RawArrayAllocateExpr, r: RawArrayAllocateExpr) => Equality.areEqual(l.elementType, r.elementType)
-        case (l: SpawnExpr, r: SpawnExpr) => areEqualOptFunc(l.executeClosure, r.executeClosure)
+        case (l: MultiBranchExpr, r: MultiBranchExpr)               => l.caseValues == r.caseValues
+        case (l: NumericCastExpr, r: NumericCastExpr)               => l.overflowStrategy == r.overflowStrategy
+        case (l: CastExpr, r: CastExpr)                             => l.op == r.op
+        case (l: RawArrayAllocateExpr, r: RawArrayAllocateExpr)     => Equality.areEqual(l.elementType, r.elementType)
+        case (l: SpawnExpr, r: SpawnExpr)                           => areEqualOptFunc(l.executeClosure, r.executeClosure)
         case (l: StoreElementByNameExpr, r: StoreElementByNameExpr) => l.fieldNames == r.fieldNames
-        case (l: StoreElementRefExpr, r: StoreElementRefExpr) => l.path == r.path
-        case (l: UnaryExpr, r: UnaryExpr) => l.op == r.op && l.overflowStrategy == r.overflowStrategy
-        case _ => true // C++ default Expression branch
+        case (l: StoreElementRefExpr, r: StoreElementRefExpr)       => l.path == r.path
+        case (l: UnaryExpr, r: UnaryExpr)                           => l.op == r.op && l.overflowStrategy == r.overflowStrategy
+        case _                                                      => true // C++ default Expression branch
       }
     }
 
@@ -259,16 +265,16 @@ object Equality {
       l.getClass == r.getClass && exprTry(l) == exprTry(r)
 
     private def exprTry(e: Expression): Boolean = e match {
-      case e: AllocateExpr => e.isTry
-      case e: ApplyExpr => e.isTry
-      case e: UnaryExpr => e.isTry
-      case e: BinaryExpr => e.isTry
-      case e: IntrinsicExpr => e.isTry
-      case e: InvokeExpr => e.isTry
-      case e: NumericCastExpr => e.isTry
+      case e: AllocateExpr         => e.isTry
+      case e: ApplyExpr            => e.isTry
+      case e: UnaryExpr            => e.isTry
+      case e: BinaryExpr           => e.isTry
+      case e: IntrinsicExpr        => e.isTry
+      case e: InvokeExpr           => e.isTry
+      case e: NumericCastExpr      => e.isTry
       case e: RawArrayAllocateExpr => e.isTry
-      case e: SpawnExpr => e.isTry
-      case _ => false
+      case e: SpawnExpr            => e.isTry
+      case _                       => false
     }
   }
 }

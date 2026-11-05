@@ -11,10 +11,11 @@ package com.huawei.excelsior.jet.compiler.patchgen
 import com.huawei.excelsior.jet.compiler.chir.model.*
 import com.huawei.excelsior.jet.compiler.patchgen.PatchableName.GuardMethodKind
 import com.huawei.excelsior.jet.compiler.patchgen.PatchableName.PackageInitAccessorKind
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.funsuite.AnyFunSuite
 import scala.collection.mutable.ArrayBuffer
 
-class PatchableNameSpec extends AnyFunSuite {
+class PatchableNameSuite extends AnyFunSuite with Matchers {
 
   private val tI64: Type = TypeImpl(TypeKind.Int64)
   private val tRefI64: Type = TypeImpl(TypeKind.Ref, ArrayBuffer(tI64))
@@ -42,48 +43,48 @@ class PatchableNameSpec extends AnyFunSuite {
     val pkg = new Package()
     pkg.name = "default"
     val pn = PatchableName(pkg)
-    assert(pn.qualifiedName == "default")
-    assert(pn.genGuardVarInitializedName == "$default$GVI")
-    assert(pn.genGuardClassName(forPackageInit = false) == "$default$Patch$GC")
-    assert(pn.genGuardClassName(forPackageInit = true) == "$default$PackageInitPatch$GC")
-    assert(pn.genGuardVarName(forPackageInit = false) == "$default$GV")
-    assert(pn.genGuardVarName(forPackageInit = true) == "$default$packageInit$GV")
-    assert(pn.genGuardVarFlagName(forPackageInit = false) == "$default$GVF")
-    assert(pn.genPatchClassName == "$PatchImpl$GC")
-    assert(pn.genGuardMethodName(GuardMethodKind.PackageInitCtor) ==
-      "$default$PackageInitPatch$GC$<init>$GF")
-    assert(pn.genGuardMethodName(GuardMethodKind.PackageInit) ==
-      "$default$PackageInitPatch$GC$packageInit$GF")
-    assert(pn.genGuardMethodName(GuardMethodKind.PackageLiteralInit) ==
-      "$default$PackageInitPatch$GC$packageLiteralInit$GF")
+    pn.qualifiedName shouldBe "default"
+    pn.genGuardVarInitializedName shouldBe "$default$GVI"
+    pn.genGuardClassName(forPackageInit = false) shouldBe "$default$Patch$GC"
+    pn.genGuardClassName(forPackageInit = true) shouldBe "$default$PackageInitPatch$GC"
+    pn.genGuardVarName(forPackageInit = false) shouldBe "$default$GV"
+    pn.genGuardVarName(forPackageInit = true) shouldBe "$default$packageInit$GV"
+    pn.genGuardVarFlagName(forPackageInit = false) shouldBe "$default$GVF"
+    pn.genPatchClassName shouldBe "$PatchImpl$GC"
+    pn.genGuardMethodName(GuardMethodKind.PackageInitCtor) ==
+      "$default$PackageInitPatch$GC$<init>$GF" shouldBe true
+    pn.genGuardMethodName(GuardMethodKind.PackageInit) ==
+      "$default$PackageInitPatch$GC$packageInit$GF" shouldBe true
+    pn.genGuardMethodName(GuardMethodKind.PackageLiteralInit) ==
+      "$default$PackageInitPatch$GC$packageLiteralInit$GF" shouldBe true
   }
 
   test("package-level flag accessors (no class name, no func name)") {
     val pkg = new Package()
     pkg.name = "default"
     val pn = PatchableName(pkg)
-    assert(pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = true) ==
-      "$defaultpackageInitGetter$GF")
-    assert(pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = false) ==
-      "$defaultpackageInitSetter$GF")
-    assert(pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageLiteralInit, isGetter = true) ==
-      "$defaultpackageLiteralInitGetter$GF")
-    assert(pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageLiteralInit, isGetter = false) ==
-      "$defaultpackageLiteralInitSetter$GF")
+    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = true) ==
+      "$defaultpackageInitGetter$GF" shouldBe true
+    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = false) ==
+      "$defaultpackageInitSetter$GF" shouldBe true
+    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageLiteralInit, isGetter = true) ==
+      "$defaultpackageLiteralInitGetter$GF" shouldBe true
+    pn.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageLiteralInit, isGetter = false) ==
+      "$defaultpackageLiteralInitSetter$GF" shouldBe true
   }
 
   test("class-level names") {
     val guardClass = structDef("default", "$default$Patch$GC")
     val pn = PatchableName(guardClass)
-    assert(pn.qualifiedName == "default.$default$Patch$GC")
+    pn.qualifiedName shouldBe "default.$default$Patch$GC"
     // "Impl" inserted before the $GC suffix
-    assert(pn.genPatchClassName == "$default$PatchImpl$GC")
-    assert(pn.genSyntheticCtorName == "$default$$default$Patch$GC$$CTOR")
+    pn.genPatchClassName shouldBe "$default$PatchImpl$GC"
+    pn.genSyntheticCtorName shouldBe "$default$$default$Patch$GC$$CTOR"
 
     val plainClass = structDef("default", "Foo")
     val pn2 = PatchableName(plainClass)
-    assert(pn2.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = true) ==
-      "$default$FoopackageInitGetter$GF")
+    pn2.genPackageInitFlagAccessor(PackageInitAccessorKind.PackageInit, isGetter = true) ==
+      "$default$FoopackageInitGetter$GF" shouldBe true
   }
 
   test("func-level names (class method with params)") {
@@ -91,19 +92,19 @@ class PatchableNameSpec extends AnyFunSuite {
     val fooTy = CustomType(Some(foo))
     val f = func("default", "bar", Some(foo), Seq(fooTy, tI64))
     val pn = PatchableName(f)
-    assert(pn.qualifiedName == "default.Foo.bar")
+    pn.qualifiedName shouldBe "default.Foo.bar"
     // genName("$GC", "$GF") = "$default$Foo$GC$bar$$default.Foo$_Int64$GF",
     // then "$Patch$GC" inserted after "$default"
-    assert(pn.genGuardMethodName(GuardMethodKind.Plain) ==
-      "$default$Patch$GC$Foo$GC$bar$$default.Foo$_Int64$GF")
+    pn.genGuardMethodName(GuardMethodKind.Plain) ==
+      "$default$Patch$GC$Foo$GC$bar$$default.Foo$_Int64$GF" shouldBe true
   }
 
   test("func-level names (global func without params)") {
     val f = func("default", "baz", None, Seq.empty)
     val pn = PatchableName(f)
-    assert(pn.qualifiedName == "default.baz")
-    assert(pn.genGuardMethodName(GuardMethodKind.Plain) == "$default$Patch$GC$baz$GF")
-    assert(pn.genGuardVarFlagName(forPackageInit = false) == "$default$baz$GVF")
+    pn.qualifiedName shouldBe "default.baz"
+    pn.genGuardMethodName(GuardMethodKind.Plain) shouldBe "$default$Patch$GC$baz$GF"
+    pn.genGuardVarFlagName(forPackageInit = false) shouldBe "$default$baz$GVF"
   }
 
   test("qualified name rendering of param types") {
@@ -113,15 +114,15 @@ class PatchableNameSpec extends AnyFunSuite {
     val raw = RawArrayType(rawRef, 0)
     val f = func("default", "qux", None, Seq(raw))
     val pn = PatchableName(f)
-    assert(pn.genGuardMethodName(GuardMethodKind.Plain) ==
-      "$default$Patch$GC$qux$$RawArray<VArray<Int64,3>>$GF")
+    pn.genGuardMethodName(GuardMethodKind.Plain) ==
+      "$default$Patch$GC$qux$$RawArray<VArray<Int64,3>>$GF" shouldBe true
   }
 
   test("equality is by qualified name") {
     val f1 = func("default", "bar", None, Seq(tI64))
     val f2 = func("default", "bar", None, Seq(tI64))
-    assert(PatchableName(f1) == PatchableName(f2))
+    PatchableName(f1) shouldBe PatchableName(f2)
     val f3 = func("default", "quux", None, Seq(tI64))
-    assert(PatchableName(f1) != PatchableName(f3))
+    PatchableName(f1) should not be PatchableName(f3)
   }
 }

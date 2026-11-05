@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.chir.v1203
 
 import com.huawei.excelsior.jet.compiler.chir.model.{Fixture, ModelCompare}
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.funsuite.AnyFunSuite
 
 /** Round-trip of the synthetic fixture through the v1203 materializer/serializer.
@@ -16,22 +17,22 @@ import org.scalatest.funsuite.AnyFunSuite
   * (see docs/hotfix-port-notes.md), so this self-round-trip is the only
   * verification for the v1203 layer.
   */
-class FixtureRoundTripSpec1203 extends AnyFunSuite {
+class FixtureRoundTripSpec1203 extends AnyFunSuite with Matchers {
 
   private val fixture = Fixture.build()
 
   test("v1203 fixture round-trips structurally (ids may regroup on first pass)") {
     val bytes2 = Serializer1203.toBytes(fixture, fixture.phase)
     val m2 = Materializer1203.load(bytes2)
-    assert(ModelCompare.compare(fixture, m2, compareIds = false) === None)
+    ModelCompare.compare(fixture, m2, compareIds = false) === None shouldBe true
   }
 
   test("v1203 re-serialization is byte-stable and ids become exact") {
     val bytes2 = Serializer1203.toBytes(fixture, fixture.phase)
     val m2 = Materializer1203.load(bytes2)
     val bytes3 = Serializer1203.toBytes(m2, m2.phase)
-    assert(java.util.Arrays.equals(bytes2, bytes3))
+    java.util.Arrays.equals(bytes2, bytes3) shouldBe true
     val m3 = Materializer1203.load(bytes3)
-    assert(ModelCompare.compare(m2, m3, compareIds = true) === None)
+    ModelCompare.compare(m2, m3, compareIds = true) === None shouldBe true
   }
 }

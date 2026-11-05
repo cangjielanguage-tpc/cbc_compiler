@@ -9,6 +9,7 @@
 package com.huawei.excelsior.jet.compiler.patchgen
 
 import com.huawei.excelsior.jet.compiler.chir.model.*
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.funsuite.AnyFunSuite
 
 import scala.collection.mutable.ArrayBuffer
@@ -16,7 +17,7 @@ import scala.collection.mutable.ArrayBuffer
 /** Tests for expression cloning / creation (port of the C++ per-type Clone impls
   * and CHIRBuilder factories).
   */
-class CloneSpec extends AnyFunSuite {
+class CloneSuite extends AnyFunSuite with Matchers {
 
   private val tI32 = TypeImpl(TypeKind.Int32)
   private val tBool = TypeImpl(TypeKind.Boolean)
@@ -54,18 +55,18 @@ class CloneSpec extends AnyFunSuite {
 
     val clone = ExprBuilder.cloneExpr(orig, b1).asInstanceOf[AllocateExpr]
     // fresh result, identifier minted from the top-level counter (next = 11)
-    assert(clone ne orig)
-    assert(clone.resultVar.get ne orig.resultVar.get)
-    assert(clone.resultVar.get.identifier == "%11")
-    assert(clone.resultVar.get.tpe.contains(orig.resultVar.get.tpe.get))
+    clone should not be orig
+    clone.resultVar.get should not be orig.resultVar.get
+    clone.resultVar.get.identifier shouldBe "%11"
+    clone.resultVar.get.tpe.contains(orig.resultVar.get.tpe.get) shouldBe true
     // result attributes merged, expression attributes lost (C++ CopyBaseInfoFrom)
-    assert((clone.resultVar.get.attributes & Attribute.Public) != 0L)
-    assert(clone.attributes == 0L)
+    (clone.resultVar.get.attributes & Attribute.Public) should not be 0L
+    clone.attributes shouldBe 0L
     // operand (allocated type) shared
-    assert(clone.allocatedType eq orig.allocatedType)
+    clone.allocatedType shouldBe orig.allocatedType
     // owner/position
-    assert(clone.owner.contains(b1))
-    assert(b1.exprs.last eq clone)
+    clone.owner.contains(b1) shouldBe true
+    b1.exprs.last shouldBe clone
   }
 
   test("cloneExpr copies annos and loc via copyBaseInfoFrom") {
@@ -78,8 +79,8 @@ class CloneSpec extends AnyFunSuite {
     orig.loc = Some(DebugLocation("F.cj", 3, Some(Pos(1, 2)), Some(Pos(3, 4)), ArrayBuffer()))
 
     val clone = ExprBuilder.cloneExpr(orig, b1)
-    assert(ExprBuilder.getAnno(clone, classOf[LinkTypeInfo]).isDefined)
-    assert(clone.loc == orig.loc)
+    ExprBuilder.getAnno(clone, classOf[LinkTypeInfo]).isDefined shouldBe true
+    clone.loc shouldBe orig.loc
   }
 
   test("cloneExpr of a Constant shares literals but mints a fresh NullLiteral") {
@@ -92,16 +93,16 @@ class CloneSpec extends AnyFunSuite {
     c1.resultVar = Some(LocalVar(tpe = Some(tI32), identifier = "%5", associatedExpr = Some(c1)))
     ChirOps.appendExpression(b0, c1)
     val clone1 = ExprBuilder.cloneExpr(c1, b1).asInstanceOf[ConstantExpr]
-    assert(clone1.literal eq intLit)
+    clone1.literal shouldBe intLit
 
     val nullLit = NullLiteral(tpe = Some(ExprBuilder.refTy(tI32)))
     val c2 = ConstantExpr(literal0 = nullLit)
     c2.resultVar = Some(LocalVar(tpe = Some(ExprBuilder.refTy(tI32)), identifier = "%6", associatedExpr = Some(c2)))
     ChirOps.appendExpression(b0, c2)
     val clone2 = ExprBuilder.cloneExpr(c2, b1).asInstanceOf[ConstantExpr]
-    assert(clone2.literal ne nullLit)
-    assert(clone2.literal.isInstanceOf[NullLiteral])
-    assert(clone2.literal.asInstanceOf[NullLiteral].tpe.contains(nullLit.tpe.get))
+    clone2.literal should not be nullLit
+    clone2.literal.isInstanceOf[NullLiteral] shouldBe true
+    clone2.literal.asInstanceOf[NullLiteral].tpe.contains(nullLit.tpe.get) shouldBe true
   }
 
   test("cloneExpr of terminators without results yields no result var") {
@@ -113,9 +114,9 @@ class CloneSpec extends AnyFunSuite {
     val branch = BranchExpr(condition0 = alloc(tI32, b0).resultVar.get, trueBlock0 = b1,
       falseBlock0 = b2, sourceExpr = SourceExprTag.IfExpr)
     val clone = ExprBuilder.cloneExpr(branch, b1).asInstanceOf[BranchExpr]
-    assert(clone.resultVar.isEmpty)
-    assert(clone.trueBlock eq b1)
-    assert(clone.falseBlock eq b2)
+    clone.resultVar.isEmpty shouldBe true
+    clone.trueBlock shouldBe b1
+    clone.falseBlock shouldBe b2
   }
 
   test("cloneExpr of NumericCast copies NeedCheckCast and the result EnumCaseIndex") {
@@ -131,9 +132,9 @@ class CloneSpec extends AnyFunSuite {
     ChirOps.appendExpression(b0, orig)
 
     val clone = ExprBuilder.cloneExpr(orig, b1).asInstanceOf[NumericCastExpr]
-    assert(ExprBuilder.getAnno(clone, classOf[NeedCheckCast]).exists(_.need))
-    assert(clone.resultVar.get.annos.collectFirst { case e: EnumCaseIndex => e.index }.contains(5L))
-    assert(clone.overflowStrategy == OverflowStrategy.Throwing)
+    ExprBuilder.getAnno(clone, classOf[NeedCheckCast]).exists(_.need) shouldBe true
+    clone.resultVar.get.annos.collectFirst { case e: EnumCaseIndex => e.index }.contains(5L) shouldBe true
+    clone.overflowStrategy shouldBe OverflowStrategy.Throwing
   }
 
   test("cloneExpr of a StaticCast: base info (annos) copies for all casts; EnumCaseIndex only for casts") {
@@ -147,7 +148,7 @@ class CloneSpec extends AnyFunSuite {
       associatedExpr = Some(staticCast)))
     ChirOps.appendExpression(b0, staticCast)
     val sc = ExprBuilder.cloneExpr(staticCast, b1).asInstanceOf[CastExpr]
-    assert(ExprBuilder.getAnno(sc, classOf[NeedCheckCast]).exists(_.need))
+    ExprBuilder.getAnno(sc, classOf[NeedCheckCast]).exists(_.need) shouldBe true
 
     // UnboxToValue clone: the wholesale anno copy (C++ CopyBaseInfoFrom, done by
     // genPatches/Block::Clone after Clone) carries orig annos incl. NeedCheckCast
@@ -155,7 +156,7 @@ class CloneSpec extends AnyFunSuite {
     unbox.resultVar = Some(LocalVar(tpe = Some(tI32), identifier = "%9", associatedExpr = Some(unbox)))
     ChirOps.appendExpression(b0, unbox)
     val ub = ExprBuilder.cloneExpr(unbox, b1).asInstanceOf[CastExpr]
-    assert(ExprBuilder.getAnno(ub, classOf[NeedCheckCast]).exists(_.need))
+    ExprBuilder.getAnno(ub, classOf[NeedCheckCast]).exists(_.need) shouldBe true
   }
 
   test("cloneExpr of a Lambda mints a fresh identifier, params, body and retVal") {
@@ -179,43 +180,43 @@ class CloneSpec extends AnyFunSuite {
     ChirOps.appendExpression(b0, orig)
 
     val clone = ExprBuilder.cloneExpr(orig, b1).asInstanceOf[LambdaExpr]
-    assert(clone ne orig)
-    assert(clone.identifier.startsWith("@T.f.lam.3."))
-    assert(clone.params.size == 1)
+    clone should not be orig
+    clone.identifier.startsWith("@T.f.lam.3.") shouldBe true
+    clone.params.size shouldBe 1
     val np = clone.params.head
-    assert(np ne p)
-    assert((np.attributes & Attribute.Readonly) != 0L)
-    assert(np.ownedLambda.contains(clone))
+    np should not be p
+    (np.attributes & Attribute.Readonly) should not be 0L
+    np.ownedLambda.contains(clone) shouldBe true
     // fresh body with cloned contents; operands shared
     val nb = clone.body.get
-    assert(nb ne origBody)
-    assert(nb.ownedExpression.contains(clone))
-    assert(nb.entryBlock.isDefined)
-    assert(nb.blocks.size == 1)
+    nb should not be origBody
+    nb.ownedExpression.contains(clone) shouldBe true
+    nb.entryBlock.isDefined shouldBe true
+    nb.blocks.size shouldBe 1
     val nAlloc = nb.blocks.head.exprs(0).asInstanceOf[AllocateExpr]
-    assert(nAlloc.allocatedType eq origAlloc.allocatedType)
+    nAlloc.allocatedType shouldBe origAlloc.allocatedType
     // C++ Lambda::Clone does not set IsRetVal on the fresh result
-    assert(!nAlloc.resultVar.get.isRetVal)
-    assert(clone.retVal.contains(nAlloc.resultVar.get))
-    assert(clone.blockGroups.head eq nb)
+    nAlloc.resultVar.get.isRetVal shouldBe false
+    clone.retVal.contains(nAlloc.resultVar.get) shouldBe true
+    clone.blockGroups.head shouldBe nb
     // the original is untouched
-    assert(orig.body.get eq origBody)
-    assert(orig.params.head eq p)
+    orig.body.get shouldBe origBody
+    orig.params.head shouldBe p
   }
 
   test("factory newAllocate gives the result a Ref type and appends to the parent") {
     val (f, _, b0) = mkFunc()
     val e = ExprBuilder.newAllocate(f, tI32, b0)
-    assert(b0.exprs.last eq e)
-    assert(e.owner.contains(b0))
+    b0.exprs.last shouldBe e
+    e.owner.contains(b0) shouldBe true
     val res = e.resultVar.get
-    assert(res.tpe.get.isInstanceOf[TypeImpl])
+    res.tpe.get.isInstanceOf[TypeImpl] shouldBe true
     res.tpe.get.asInstanceOf[TypeImpl].kind match {
-      case TypeKind.Ref => assert(res.tpe.get.asInstanceOf[TypeImpl].argTys.head eq tI32)
+      case TypeKind.Ref => res.tpe.get.asInstanceOf[TypeImpl].argTys.head shouldBe tI32
       case k            => fail(s"expected Ref type, got $k")
     }
-    assert(res.associatedExpr.contains(e))
-    assert(f.localId == 12L)
+    res.associatedExpr.contains(e) shouldBe true
+    f.localId shouldBe 12L
   }
 
   test("factory newStore/newBoolConstant/newTuple/newApply create well-formed exprs") {
@@ -223,38 +224,38 @@ class CloneSpec extends AnyFunSuite {
     val lv = alloc(tI32, b0).resultVar.get
 
     val st = ExprBuilder.newStore(f, lv, lv, b0)
-    assert(st.resultVar.get.tpe.get.asInstanceOf[TypeImpl].kind == TypeKind.Unit)
-    assert(st.value eq lv)
-    assert(st.location eq lv)
-    assert(b0.exprs.last eq st)
+    st.resultVar.get.tpe.get.asInstanceOf[TypeImpl].kind shouldBe TypeKind.Unit
+    st.value shouldBe lv
+    st.location shouldBe lv
+    b0.exprs.last shouldBe st
 
     val bc = ExprBuilder.newBoolConstant(f, v = true, b0)
-    assert(bc.literal.isInstanceOf[BoolLiteral] && bc.literal.asInstanceOf[BoolLiteral].value)
-    assert(bc.resultVar.get.tpe.get.asInstanceOf[TypeImpl].kind == TypeKind.Boolean)
+    (bc.literal.isInstanceOf[BoolLiteral] && bc.literal.asInstanceOf[BoolLiteral].value) shouldBe true
+    bc.resultVar.get.tpe.get.asInstanceOf[TypeImpl].kind shouldBe TypeKind.Boolean
 
     val tup = ExprBuilder.newTuple(f, tI32, Seq(lv, lv), b0)
-    assert(tup.elementValues.toSeq == Seq[Value](lv, lv))
+    tup.elementValues.toSeq shouldBe Seq[Value](lv, lv)
 
     val callee = Func(identifier = "@T.g", srcCodeIdentifier = "g", rawMangledName = "@T.g",
       packageName = "T", localId = 1L, blockId = 1L, blockGroupId = 1L)
     val ap = ExprBuilder.newApply(f, tI32, callee, Seq(lv), parent = b0)
-    assert(ap.callee eq callee)
-    assert(ap.args.toSeq == Seq[Value](lv))
-    assert(!ap.isTry && !ap.isSuperCall)
-    assert(ap.resultVar.get.tpe.get.asInstanceOf[TypeImpl].kind == TypeKind.Int32)
-    assert(b0.exprs.last eq ap)
+    ap.callee shouldBe callee
+    ap.args.toSeq shouldBe Seq[Value](lv)
+    (ap.isTry && !ap.isSuperCall) shouldBe false
+    ap.resultVar.get.tpe.get.asInstanceOf[TypeImpl].kind shouldBe TypeKind.Int32
+    b0.exprs.last shouldBe ap
   }
 
   test("getAnno/setAnno replace the annotation of the given class") {
     val (f, _, b0) = mkFunc()
     val e = alloc(tI32, b0)
-    assert(ExprBuilder.getAnno(e, classOf[LinkTypeInfo]).isEmpty)
+    ExprBuilder.getAnno(e, classOf[LinkTypeInfo]).isEmpty shouldBe true
 
     ExprBuilder.setAnno(e, LinkTypeInfo(Linkage.WeakOdr))
-    assert(ExprBuilder.getAnno(e, classOf[LinkTypeInfo]).exists(_.linkage == Linkage.WeakOdr))
+    ExprBuilder.getAnno(e, classOf[LinkTypeInfo]).exists(_.linkage == Linkage.WeakOdr) shouldBe true
 
     ExprBuilder.setAnno(e, LinkTypeInfo(Linkage.Internal))
-    assert(e.annos.collect { case l: LinkTypeInfo => l }.size == 1)
-    assert(ExprBuilder.getAnno(e, classOf[LinkTypeInfo]).exists(_.linkage == Linkage.Internal))
+    e.annos.collect { case l: LinkTypeInfo => l }.size shouldBe 1
+    ExprBuilder.getAnno(e, classOf[LinkTypeInfo]).exists(_.linkage == Linkage.Internal) shouldBe true
   }
 }

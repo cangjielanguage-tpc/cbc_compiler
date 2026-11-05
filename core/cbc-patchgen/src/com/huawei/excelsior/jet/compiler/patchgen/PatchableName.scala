@@ -4,8 +4,9 @@ import com.huawei.excelsior.jet.compiler.chir.model.*
 
 /** Port of `ToCjQualifiedName` / `JoinCjQualifiedNames` (C++ PatchGen.h). */
 object CjQualifiedName {
-  def join(types: Seq[Type], delimiter: String): String =
+  def join(types: Seq[Type], delimiter: String): String = {
     types.map(toCjQualifiedName).mkString(delimiter)
+  }
 
   /** C++ `TYPEKIND_TO_STRING` (Type.h) for the plain-type fallback branch. */
   private val kindToString: Map[TypeKind, String] = Map(
@@ -25,11 +26,11 @@ object CjQualifiedName {
 
   def toCjQualifiedName(tpe: Type): String = {
     tpe match {
-      case t: RawArrayType => "RawArray<" + toCjQualifiedName(t.elementType) + ">"
-      case t: TypeImpl if t.kind == TypeKind.Ref => toCjQualifiedName(t.argTys.head)
-      case t: VArrayType => "VArray<" + toCjQualifiedName(t.elementType) + "," + t.size + ">"
+      case t: RawArrayType                            => "RawArray<" + toCjQualifiedName(t.elementType) + ">"
+      case t: TypeImpl if t.kind == TypeKind.Ref      => toCjQualifiedName(t.argTys.head)
+      case t: VArrayType                              => "VArray<" + toCjQualifiedName(t.elementType) + "," + t.size + ">"
       case t: TypeImpl if t.kind == TypeKind.CPointer => "CPointer<" + toCjQualifiedName(t.argTys.head) + ">"
-      case t: TypeImpl if t.kind == TypeKind.Tuple => "Tuple<" + join(t.argTys.toSeq, ",") + ">"
+      case t: TypeImpl if t.kind == TypeKind.Tuple    => "Tuple<" + join(t.argTys.toSeq, ",") + ">"
       case t: CustomType =>
         val defn = t.customTypeDef.getOrElse(throw new IllegalStateException("custom type without def"))
         val defName = defn.srcCodeIdentifier
@@ -38,10 +39,10 @@ object CjQualifiedName {
         } else {
           defn.packageName + "." + defName
         }
-      case t: FuncType => "(" + join(t.paramTypes.toSeq, ",") + ")->" + toCjQualifiedName(t.returnType)
-      case t: GenericType => t.srcCodeIdentifier
+      case t: FuncType                           => "(" + join(t.paramTypes.toSeq, ",") + ")->" + toCjQualifiedName(t.returnType)
+      case t: GenericType                        => t.srcCodeIdentifier
       case t: TypeImpl if t.kind == TypeKind.Box => "Box<" + toCjQualifiedName(t.argTys.head) + ">"
-      case t: TypeImpl => kindToString.getOrElse(t.kind, "UnknownType")
+      case t: TypeImpl                           => kindToString.getOrElse(t.kind, "UnknownType")
     }
   }
 }
@@ -62,15 +63,17 @@ final class PatchableName private (pkgName: String, className: Option[String],
     q
   }
 
-  def getClassName: String =
+  def getClassName: String = {
     className.getOrElse(throw new NoSuchElementException("class name is not present"))
+  }
 
-  def getFuncName: String =
+  def getFuncName: String = {
     funcName.getOrElse(throw new NoSuchElementException("func name is not present"))
+  }
 
   def genPatchClassName: String = className match {
     case Some(name) => name.stripSuffix(GuardClassSuffix) + "Impl" + GuardClassSuffix
-    case None => BaseDelimiter + "PatchImpl" + GuardClassSuffix
+    case None       => BaseDelimiter + "PatchImpl" + GuardClassSuffix
   }
 
   def genSyntheticCtorName: String = {
@@ -102,23 +105,27 @@ final class PatchableName private (pkgName: String, className: Option[String],
       genName(true, Some(PackageLiteralInitGuardMethodName), None)
   }
 
-  def genGuardClassName(forPackageInit: Boolean): String =
+  def genGuardClassName(forPackageInit: Boolean): String = {
     genName(forPackageInit, Some(PackageInitGuardClassName), Some(GuardClassName))
+  }
 
-  def genGuardVarName(forPackageInit: Boolean): String =
+  def genGuardVarName(forPackageInit: Boolean): String = {
     genName(forPackageInit, Some(PackageInitGuardVarName), Some(GuardVarSuffix))
+  }
 
-  def genGuardVarFlagName(forPackageInit: Boolean): String =
+  def genGuardVarFlagName(forPackageInit: Boolean): String = {
     genName(forPackageInit, Some(PackageInitGuardVarFlagName), Some(GuardVarFlagSuffix))
+  }
 
-  def genGuardVarInitializedName: String =
+  def genGuardVarInitializedName: String = {
     genName(true, Some(GuardVarsInitializerName), None)
+  }
 
   def canEqual(other: PatchableName): Boolean = other.isInstanceOf[PatchableName]
 
   override def equals(other: Any): Boolean = other match {
     case other: PatchableName => qualifiedName == other.qualifiedName
-    case _ => false
+    case _                    => false
   }
 
   override def hashCode: Int = qualifiedName.hashCode
@@ -138,7 +145,7 @@ final class PatchableName private (pkgName: String, className: Option[String],
   private def genName(classSuffix: String, suffix: String): String = {
     var name = BaseDelimiter + packageName
     className.foreach(c => name += BaseDelimiter + c + classSuffix)
-    funcName.foreach { f =>
+    for (f <- funcName) {
       name += BaseDelimiter + f
       val nfuncParams = funcParams.size
       if (nfuncParams > 0) {
@@ -185,11 +192,13 @@ object PatchableName {
   enum GuardMethodKind { case Plain, PackageInitCtor, PackageInit, PackageLiteralInit }
   enum PackageInitAccessorKind { case PackageInit, PackageLiteralInit }
 
-  def apply(packageDef: Package): PatchableName =
+  def apply(packageDef: Package): PatchableName = {
     new PatchableName(packageDef.name, None, None, Seq.empty)
+  }
 
-  def apply(typeDef: CustomTypeDef): PatchableName =
+  def apply(typeDef: CustomTypeDef): PatchableName = {
     new PatchableName(typeDef.packageName, Some(typeDef.srcCodeIdentifier), None, Seq.empty)
+  }
 
   def apply(func: Func): PatchableName = {
     val funcTy = func.tpe.getOrElse(throw new IllegalStateException("func without type"))
