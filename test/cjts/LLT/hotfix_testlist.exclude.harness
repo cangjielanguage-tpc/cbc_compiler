@@ -443,3 +443,20 @@ compiler/FFI/CFFI/dock/cfunc_record/main.cj
 compiler/FFI/CFFI/import/import002/import002.cj
 compiler/FFI/CFFI/import/import003/import003.cj
 compiler/FFI/CFFI/import/import004/import004.cj
+
+# Usage of runtime library symbols from test
+compiler/Sema/concurrency/spawn10.cj
+
+# tries to link .a cangjie static library during test compilation
+API/std/unittest/mock/compiler/createMock/usePrivateTypesOtherPackage.cj
+API/std/unittest/mock/compiler/createSpy/indirectSpying.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package_separate.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_same_package_separate.cj
+API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
+API/std/unittest/mock/framework/expectation_failed_test.cj
+API/std/unittest/mock/framework/listeners_test.cj
+API/std/unittest/mock/framework/runtime_failure_report_test.cj
+API/std/unittest/mock/framework/stub_base_test.cj
+API/std/unittest/mock/framework/verification_failed_report_test.cj
+API/std/unittest/mock/framework/verify_misconfiguration_test.cj

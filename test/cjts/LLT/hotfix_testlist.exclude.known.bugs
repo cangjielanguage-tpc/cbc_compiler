@@ -250,9 +250,6 @@ compiler/CHIR/UG/VTable/extend/extend5/main.cj
 compiler/CodegenCJNative/LegacyTests/operatorParenExpr.cj
 compiler/Sema/Extend/extend_lookup/main.cj
 
-# bug 63 (Proper parse @C methods with C-struct return type)
-compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
-
 # bug 132 (Incorrect signature of return type)
 compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
 
@@ -552,31 +549,6 @@ compiler/Sema/interface/interface_default_impl/static_defaule_impl_class.cj
 compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
 compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
 compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
-
-# bug 202 (some complicated foreign funcs build patterns in LLT testsuite)
-API/std/unittest/mock/framework/listeners_test.cj
-API/std/unittest/mock/framework/stub_base_test.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_interface.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package_separate.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_ret_generic.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_same_package_separate.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/same_package.cj
-compiler/CodegenCJNative/LegacyTests/native.cj
-compiler/CodegenCJNative/incremental/foreign/foreign1.cj
-compiler/FFI/CFFI/foreign/foreign001/foreign001.cj
-compiler/FFI/CFFI/foreign/foreign005/foreign005.cj
-compiler/FFI/CFFI/foreign/foreign006/foreign006.cj
-compiler/FFI/CFFI/foreign/foreign007/foreign007.cj
-compiler/FFI/CFFI/foreign/foreign01.cj
-compiler/Sema/concurrency/spawn10.cj
-API/std/unittest/mock/compiler/createMock/usePrivateTypesOtherPackage.cj
-API/std/unittest/mock/compiler/createSpy/indirectSpying.cj
-API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
-API/std/unittest/mock/framework/expectation_failed_test.cj
-API/std/unittest/mock/framework/runtime_failure_report_test.cj
-API/std/unittest/mock/framework/verification_failed_report_test.cj
-API/std/unittest/mock/framework/verify_misconfiguration_test.cj
 
 # bug 203 (sigsegv on partially constructed TypeInfo: class with functional type field that references same class in signature)
 API/std/unittest/custom_assertions/nested_expect_inside_assert.cj
