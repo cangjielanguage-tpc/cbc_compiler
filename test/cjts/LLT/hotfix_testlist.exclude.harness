@@ -430,3 +430,7 @@ compiler/CodegenCJNative/incremental/cfunc2/main.info
 # broken tests - test expect throwing of `ArithmeticException: pow` when cast should throw. issue-140
 compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
 compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
+
+# @C functions in cbc code
+compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_7.cj
+compiler/Sema/varray/varray_cffi/varray_inout05.cj
