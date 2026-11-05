@@ -169,6 +169,7 @@ trait ForkedAssembler {
   def cmuli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.Mul, w, d, l, imm)
   def clsli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.Lsl, w, d, l, imm)
   def casri(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.Asr, w, d, l, imm)
+  def cdivi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.Div, w, d, l, imm)
   def cuaddi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.UAdd, w, d, l, imm)
   def cusubi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.USub, w, d, l, imm)
   def cumuli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genCheckedBinaryImm(Checked.UMul, w, d, l, imm)
@@ -223,12 +224,16 @@ trait ForkedAssembler {
   def saddi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Add, w, d, l, imm)
   def ssubi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Sub, w, d, l, imm)
   def smuli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Mul, w, d, l, imm)
+  def sdivi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Div, w, d, l, imm)
+  def smodi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Mod, w, d, l, imm)
+  def spowi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Pow, w, d, l, imm)
   def suaddi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.UAdd, w, d, l, imm)
   def susubi(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.USub, w, d, l, imm)
   def sumuli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.UMul, w, d, l, imm)
   def slsli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Lsl, w, d, l, imm)
   def sasri(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Asr, w, d, l, imm)
   def sulsli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.ULsl, w, d, l, imm)
+  def sulsri(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Lsr, w, d, l, imm)
 
   def atomicLoad(dst: IR, obj: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
@@ -930,10 +935,10 @@ trait ForkedAssembler {
 
   def storeUntyped(src: Rg, tk: CbcTypeKind, dst: StackSlot.Untyped): Unit = storeUntyped(src, StoreAccessKind.from(tk), dst)
 
-  def storeUntypedImm(src: Long, dst: StackSlot.Untyped): Unit = {
+  def storeUntypedImm(src: Long, dst: StackSlot.Untyped): Unit = instr {
     stream
       .opc8(Opcode.StoreUntypedImm)
-      .uleb(analyzer.prim(dst).slot)
+      .uleb(dst.slot)
       .sleb(src)
   }
 

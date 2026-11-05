@@ -399,6 +399,8 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
 
     def parseFloat(): Double = parse("float", 0.0) {
       case t: FloatLit => t.value
+      case Identifier(_, _, "nan") => Double.NaN
+      case Identifier(_, _, "inf") => Double.PositiveInfinity
     }
 
     def parseCC(): BranchOp = parse("branch op", BranchOp.EQ) {
@@ -1020,6 +1022,7 @@ private object InstructionParser {
   instr("cuadd.32") { (a, s) => a.cuadd(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("cusub.32") { (a, s) => a.cusub(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("cumul.32") { (a, s) => a.cumul(s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("cpow.32")  { (a, s) => a.cpow(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("clsl.32")  { (a, s) => a.clsl(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("clsr.32")  { (a, s) => a.clsr(s.ireg, s.ireg, s.ireg, Width.W32) }
   instr("casr.32")  { (a, s) => a.casr(s.ireg, s.ireg, s.ireg, Width.W32) }
@@ -1115,42 +1118,59 @@ private object InstructionParser {
 
   // saturating immediate arithmetic
   instr("saddi.8")   { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("ssubi.8")    { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("smuli.8")    { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("slsli.8")    { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("sasri.8")    { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("suaddi.8")   { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("susubi.8")   { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W8) }
-  instr("sumuli.8")   { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("ssubi.8")   { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("smuli.8")   { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("sdivi.8")   { (a, s) => a.sdivi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("smodi.8")   { (a, s) => a.smodi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("spowi.8")   { (a, s) => a.spowi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("slsli.8")   { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("sasri.8")   { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("suaddi.8")  { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("susubi.8")  { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("sumuli.8")  { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("sulsri.8")  { (a, s) => a.sulsri(s.ireg, s.ireg, s.int, Width.W8) }
   instr("saddi.16")  { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("ssubi.16")  { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("smuli.16")  { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("sdivi.16")  { (a, s) => a.sdivi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("smodi.16")  { (a, s) => a.smodi(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("spowi.16")  { (a, s) => a.spowi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("slsli.16")  { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W16) }
   instr("sasri.16")  { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W16) }
   instr("suaddi.16") { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("susubi.16") { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("sumuli.16") { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("sulsri.16") { (a, s) => a.sulsri(s.ireg, s.ireg, s.int, Width.W16) }
   instr("saddi.32")  { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("ssubi.32")  { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("smuli.32")  { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("sdivi.32")  { (a, s) => a.sdivi(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("smodi.32")  { (a, s) => a.smodi(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("spowi.32")  { (a, s) => a.spowi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("slsli.32")  { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W32) }
   instr("sasri.32")  { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W32) }
   instr("saddi.64")  { (a, s) => a.saddi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("ssubi.64")  { (a, s) => a.ssubi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("smuli.64")  { (a, s) => a.smuli(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("sdivi.64")  { (a, s) => a.sdivi(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("smodi.64")  { (a, s) => a.smodi(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("spowi.64")  { (a, s) => a.spowi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("slsli.64")  { (a, s) => a.slsli(s.ireg, s.ireg, s.int, Width.W64) }
   instr("sasri.64")  { (a, s) => a.sasri(s.ireg, s.ireg, s.int, Width.W64) }
   instr("suaddi.32") { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("susubi.32") { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("sumuli.32") { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("sulsri.32") { (a, s) => a.sulsri(s.ireg, s.ireg, s.int, Width.W32) }
   instr("suaddi.64") { (a, s) => a.suaddi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("susubi.64") { (a, s) => a.susubi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("sumuli.64") { (a, s) => a.sumuli(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("sulsri.64") { (a, s) => a.sulsri(s.ireg, s.ireg, s.int, Width.W64) }
 
   // 8/16-bit checked immediate arithmetic
   instr("caddi.8")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("csubi.8")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("cmuli.8")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W8) }
+  instr("cdivi.8")  { (a, s) => a.cdivi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("cuaddi.8") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("cusubi.8") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W8) }
   instr("cumuli.8") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W8) }
@@ -1161,6 +1181,7 @@ private object InstructionParser {
   instr("caddi.16")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("csubi.16")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("cmuli.16")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W16) }
+  instr("cdivi.16")  { (a, s) => a.cdivi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("cuaddi.16") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("cusubi.16") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W16) }
   instr("cumuli.16") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W16) }
@@ -1173,9 +1194,11 @@ private object InstructionParser {
   instr("caddi.32")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("csubi.32")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("cmuli.32")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("cdivi.32")  { (a, s) => a.cdivi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("cuaddi.32") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("cusubi.32") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("cumuli.32") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W32) }
+  instr("cpowi.32")  { (a, s) => a.cpowi(s.ireg, s.ireg, s.int, Width.W32) }
   instr("clsli.32")  { (a, s) => a.clsli(s.ireg, s.ireg, s.int, Width.W32) }
   instr("clsri.32")  { (a, s) => a.clsri(s.ireg, s.ireg, s.int, Width.W32) }
   instr("casri.32")  { (a, s) => a.casri(s.ireg, s.ireg, s.int, Width.W32) }
@@ -1184,6 +1207,7 @@ private object InstructionParser {
   instr("caddi.64")  { (a, s) => a.caddi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("csubi.64")  { (a, s) => a.csubi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("cmuli.64")  { (a, s) => a.cmuli(s.ireg, s.ireg, s.int, Width.W64) }
+  instr("cdivi.64")  { (a, s) => a.cdivi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("cuaddi.64") { (a, s) => a.cuaddi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("cusubi.64") { (a, s) => a.cusubi(s.ireg, s.ireg, s.int, Width.W64) }
   instr("cumuli.64") { (a, s) => a.cumuli(s.ireg, s.ireg, s.int, Width.W64) }
@@ -1363,7 +1387,7 @@ private object InstructionParser {
   instr("ld.uslot.f32") { (a, s) => a.loadUntyped(s.freg, LD_F32, s.us) }
   instr("ld.uslot.f64") { (a, s) => a.loadUntyped(s.freg, LD_F64, s.us) }
 
-  instr("st.uslot.8")   { (a, s) => a.storeUntyped(s.freg, ST_8, s.us) }
+  instr("st.uslot.8")   { (a, s) => a.storeUntyped(s.ireg, ST_8, s.us) }
   instr("st.uslot.16")  { (a, s) => a.storeUntyped(s.ireg, ST_16, s.us) }
   instr("st.uslot.32")  { (a, s) => a.storeUntyped(s.ireg, ST_32, s.us) }
   instr("st.uslot.64")  { (a, s) => a.storeUntyped(s.ireg, ST_64, s.us) }
