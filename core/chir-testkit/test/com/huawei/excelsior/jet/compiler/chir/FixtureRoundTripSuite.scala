@@ -57,20 +57,22 @@ class FixtureRoundTripSuite extends AnyFunSuite with Matchers {
   }
 
   // The MATCH_CASE value of the SourceExpr enum and the MatchCaseId annotation
-  // exist only in the newest schema (in v1203/v13002 the MultiBranch table has
-  // no sourceExpr field at all and the Annotation union has no matchCaseId;
+  // are not representable in every schema (in v1203/v13002 the MultiBranch table
+  // has no sourceExpr field at all and the Annotation union has no matchCaseId;
   // their serializers reject MatchCaseId), so this invariant cannot be part of
-  // the version-agnostic Fixture and is checked on the newest version only.
-  test("newest schema: MultiBranch.sourceExpr=MatchCase and MatchCaseId survive the round-trip") {
-    val version = CHIR.supportedVersions.max
-    val p = Fixture.build()
-    val mbranch = allExprs(p).collect { case m: MultiBranchExpr => m }.head
-    mbranch.sourceExpr = SourceExprTag.MatchCase
-    mbranch.annos += MatchCaseId(42L)
-    val bytes2 = CHIR.serializePackage(p, version, p.phase)
-    val m2 = CHIR.loadPackage(bytes2, version)
-    val mbranch2 = allExprs(m2).collect { case m: MultiBranchExpr => m }.head
-    mbranch2.sourceExpr shouldBe SourceExprTag.MatchCase
-    mbranch2.annos.collectFirst { case m: MatchCaseId => m.id } shouldBe Some(42L)
+  // the version-agnostic Fixture — the test iterates over the supported versions
+  // and skips the ones that cannot represent it.
+  for (version <- CHIR.supportedVersions if version != 1203 && version != 13002) {
+    test(s"v$version MultiBranch.sourceExpr=MatchCase and MatchCaseId survive the round-trip") {
+      val p = Fixture.build()
+      val mbranch = allExprs(p).collect { case m: MultiBranchExpr => m }.head
+      mbranch.sourceExpr = SourceExprTag.MatchCase
+      mbranch.annos += MatchCaseId(42L)
+      val bytes2 = CHIR.serializePackage(p, version, p.phase)
+      val m2 = CHIR.loadPackage(bytes2, version)
+      val mbranch2 = allExprs(m2).collect { case m: MultiBranchExpr => m }.head
+      mbranch2.sourceExpr shouldBe SourceExprTag.MatchCase
+      mbranch2.annos.collectFirst { case m: MatchCaseId => m.id } shouldBe Some(42L)
+    }
   }
 }
