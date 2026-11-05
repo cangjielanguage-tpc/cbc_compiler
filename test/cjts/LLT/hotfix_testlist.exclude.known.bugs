@@ -786,12 +786,6 @@ compiler/CHIR/package/package01/test1.cj
 # bug 224 (`CPointer<T>` : Failed to resolve method)
 compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
 
-# bug 226 (sizeOf<CString>() == 0)
-compiler/FFI/CFFI/type_size/sizeOf.cj
-compiler/FFI/CFFI/ctype/ctype_2.cj
-compiler/FFI/CFFI/type_size/alignOf.cj
-compiler/Sema/array/array_builin_ctype.cj
-
 # bug 227 (HashMap stdlib behaviour differs from test expectancy)
 API/std/collection/test_HashMap.cj
 
