@@ -59,7 +59,7 @@ object Clone {
   /** Mint result + append + copy base info + merge result attrs — the common tail
   * of every C++ Clone impl.
     */
-  private def finishCloned(e: Expression, orig: Expression, parent: Block): e.type = {
+  private def finishCloned(e: Expression, orig: Expression, parent: Block): Expression = {
     val topLevel = ChirOps.topLevelFunc(parent.parentGroup.get)
       .getOrElse(throw new IllegalStateException("no top-level function for block"))
     // terminators without results (Goto/Branch/MultiBranch/Exit/RaiseException)
