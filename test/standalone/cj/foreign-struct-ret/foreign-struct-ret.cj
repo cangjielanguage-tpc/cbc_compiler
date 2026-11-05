@@ -68,6 +68,13 @@ struct F3d {
     var c: Float64 = 0.0
 }
 
+@C
+struct P3 {
+    var a: Int32 = 0
+    var b: Int32 = 0
+    var c: Int32 = 0
+}
+
 foreign func retS4(): S4
 foreign func retS8(): S8
 foreign func retS16(): S16
@@ -78,6 +85,8 @@ foreign func retF3f(a: Float32, b: Float32, c: Float32): F3f
 foreign func retF4f(a: Float32, b: Float32, c: Float32, d: Float32): F4f
 foreign func retMix(x: Int64, f: Float64): Mix
 foreign func retF3d(x: Int64, y: Int64, z: Int64): F3d
+
+foreign func procP3(d: P3): P3
 
 main() {
     var passed = 0
@@ -155,8 +164,20 @@ main() {
         println("retF3d failed")
     }
 
+    var din = P3()
+    din.a = 11
+    din.b = 22
+    din.c = 33
+    var p3 = unsafe { procP3(din) }
+    println("P3: ${p3.a} ${p3.b} ${p3.c}")
+    if (p3.a == 12 && p3.b == 24 && p3.c == 36) {
+        passed += 1
+    } else {
+        println("procP3 failed")
+    }
+
     println("passed ${passed}")
-    if (passed == 9) {
+    if (passed == 10) {
         return 0
     }
     return 1
