@@ -591,11 +591,6 @@ compiler/CHIR/UG/OpenGeneric/mut.cj
 # bug 253 (finalizers don't run)
 Runtime/CJNative/GC/gc_wcollector_finalizer.cj
 
-# bug 208 (inout tests fail)
-compiler/FFI/CFFI/inout/inout_0.cj
-compiler/Macro/inout/inout_m2.cj
-compiler/Macro/inout/inout_m5.cj
-
 # bug 209 (package recompilation test: new version of package ignored)
 compiler/CodegenCJNative/compitability/class_add_interface_concrete/main.cj
 compiler/CodegenCJNative/compitability/class_add_interface_concrete2/main.cj
@@ -608,12 +603,6 @@ compiler/CodegenCJNative/compitability/class_add_open_method4/main.cj
 compiler/CodegenCJNative/compitability/non_open_generic_class/main.cj
 compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi.cj
 compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi_recursive.cj
-
-# bug 210 (inout tests: key not found compiler.chir.v13002.GlobalVarImpl)
-API/std/unittest/mock/compiler/misc/foreign_inout_param_struct.cj
-compiler/FFI/CFFI/inout/inout_13.cj
-compiler/FFI/CFFI/inout/inout_14.cj
-compiler/FFI/CFFI/inout/inout_7.cj
 
 # bug 212 (UNEXPECTED: no cbc for launcher)
 compiler/Driver/options/optional_space/output.cj
@@ -714,14 +703,6 @@ compiler/CHIROptTest/SancovPass/traceStringCmpIndexOf.cj
 compiler/CodegenCJNative/compitability/non_open_generic_class_reflection/main.cj
 compiler/CodegenCJNative/reflect/reflect_01.cj
 API/std/reflect/typeInfo_instanceMemberFunction_generic.cj
-
-# bug 214 (inout receives value instead of address -- SIGSEGV)
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/return.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/staticWithForeign.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/topLvlWithForeign.cj
-compiler/FFI/CFFI/inout/inout_1.cj
-compiler/CodegenCHIR/cptr_cstr/init_01.cj
-compiler/FFI/CFFI/inout/inout_3.cj
 
 # bug 218 (umbrella issue: `could not find VTable slot for *`)
 API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
