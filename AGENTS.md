@@ -32,9 +32,9 @@ These conventions apply to all new code and are enforced by review.
 
    ```scala
    for {
-     x   <- xs
-     y   <- f(x)
-     z   <- ys
+     x <- xs
+     y <- f(x)
+     z <- ys
      if z > y
    } { ... }
    ```
@@ -117,6 +117,6 @@ These conventions apply to all new code and are enforced by review.
     brace.
 
 18. **Context bounds for `ClassTag`.** When a method needs a
-    `scala.reflect.ClassTag` (e.g. annotation lookup by class), use the
-    context-bound form `[T <: Annotation : ClassTag]`, not a `using ...`
+    `scala.reflect.ClassTag` (e.g. pattern match on type variable), use the
+    context-bound form `[T <: Foo : ClassTag]`, not a `using ...`
     parameter or a `Class[T]` argument.
