@@ -398,10 +398,6 @@ class AsmTokenizer(input: String, private var pos: Int = 0) {
     str.iterator.sameElements(data.view.slice(pos, pos + str.length))
   }
 
-  /** Checks that `str` starts at `pos` as a standalone word (not a prefix of a longer identifier). */
-  private def startsWithWord(str: String): Boolean =
-    startsWith(str) && (pos + str.length == data.length || !isIdent(data(pos + str.length)))
-
   private def readStructural(): Option[Token] = {
     val start = pos
     for (kind <- Token.StructuralKind.values) {
@@ -422,15 +418,7 @@ class AsmTokenizer(input: String, private var pos: Int = 0) {
           tokens += Token.Eol(pos, pos)
           return
         case ';' => tokens += readComment()
-        case '-' =>
-          next()
-          if (startsWithWord("inf")) {
-            val start = pos
-            pos += "inf".length
-            tokens += Token.FloatLit(start, pos, Double.NegativeInfinity)
-          } else {
-            tokens += readNumber(1, negative = true)
-          }
+        case '-' => next(); tokens += readNumber(1, negative = true)
         case c if isDigit(c) => tokens += readNumber(0, negative = false)
         case c if isIdentStart(c) => tokens += readIdentifier()
         case '@' => tokens += readAnnot()
