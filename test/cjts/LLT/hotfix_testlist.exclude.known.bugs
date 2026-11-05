@@ -813,9 +813,6 @@ API/std/libast/tokens/toString/test_004.cj
 compiler/CHIR/AST2CHIR/bugfix/bugfix4/test.cj
 compiler/CHIR/package/package01/test1.cj
 
-# bug 224 (`CPointer<T>` : Failed to resolve method)
-compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
-
 # bug 226 (sizeOf<CString>() == 0)
 compiler/FFI/CFFI/type_size/sizeOf.cj
 compiler/FFI/CFFI/ctype/ctype_2.cj
