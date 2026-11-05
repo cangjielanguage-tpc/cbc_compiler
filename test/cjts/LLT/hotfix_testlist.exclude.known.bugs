@@ -250,9 +250,6 @@ compiler/FFI/CFFI/import/import004/import004.cj
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
 
-# bug 79 (try86.cj: expects "OverflowException: sub", engine reports "usub")
-compiler/CHIR/CHIR2HLIR/exception/try86.cj
-
 # bug 84 (ZeroSizedEnum in match expression)
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_03.cj
