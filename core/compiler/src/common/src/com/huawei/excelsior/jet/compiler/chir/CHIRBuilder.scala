@@ -242,6 +242,15 @@ object CHIRBuilder {
 
     val virtMethods = mutable.HashMap.empty[CHIR.Func, Method]
 
+    def findOverrideReturnType(d: CHIR.CustomTypeDef, m: CHIR.Func): Option[SignatureType] = {
+      for (t <- d.vtables; (s, i) <- t.vMethods.zipWithIndex if s.instance == m) {
+        val idef = t.srcParentType.typeDef
+        val funcType = idef.vtables.find(_.srcParentType.typeDef == idef).get.vMethods(i).instance.tpe
+        return Some(resolver.functionSig(funcType, hasReceiver = false)._1.returnType)
+      }
+      None
+    }
+
     def fillMethods(symType: SymClassType, d: CHIR.CustomTypeDef, typeSig: SignatureType): Unit = {
       val rcvSig = typeSig match {
         case typeSig: SignatureType.OptionLikeEnum if typeSig.someType.isTypeVariable => SignatureType.Box(typeSig)
@@ -273,8 +282,7 @@ object CHIRBuilder {
           }
         }
 
-        val overrideSig = resolver.getOverrideSrcFuncType(m).map(s => resolver.functionSig(s.tpe, hasReceiver = !modifiers.contains(STATIC))._1)
-        val hasRetByVal = overrideSig.exists(_.returnType.isTypeVariable)
+        val hasRetByVal = findOverrideReturnType(d, m).exists(_.isTypeVariable)
 
         val vtableNames = (name +: resolver.findVTableMethods(m).map(_.name)).distinct
 
@@ -361,7 +369,7 @@ object CHIRBuilder {
         m.instance.attributes.contains(CHIR.Attribute.Static))
       .map(m => m.instance -> m.parentType).toMap
 
-    def restoreGlobalAbstractFunc(m: CHIR.Func, symType: SymClassType): Method = {
+    def restoreGlobalAbstractFunc(m: CHIR.Func, symType: SymClassType, d: CHIR.CustomTypeDef): Method = {
       val name = resolver.symName(m)
       val modifiers = resolver.symModifiers(m)
       assert(modifiers.contains(ABSTRACT), name)
@@ -374,9 +382,11 @@ object CHIRBuilder {
 
       assert(!resolver.isOperator(m), m.identifier)
 
+      val hasRetByVal = findOverrideReturnType(d, m).exists(_.isTypeVariable)
+
       val symMethod = builder.addMethod(symType, name, sig, linkageName, modifiers.value, genericInfo,
         ABI.Description(rcv, hasMutParam = false, hasThisTypeInfoParam,
-          isCFunc = false, hasOuterTypeInfo, hasRetByVal = false, genericFuncParamsCount),
+          isCFunc = false, hasOuterTypeInfo, hasRetByVal, genericFuncParamsCount),
           m.sourceFile, resolver.sourceFullName(m))
       virtMethods(m) = symMethod
 
@@ -412,7 +422,7 @@ object CHIRBuilder {
                   } else {
                     symType
                   }
-                  restoreGlobalAbstractFunc(impl, symType)
+                  restoreGlobalAbstractFunc(impl, symType, d)
                 } else {
                   virtMethods(impl)
                 }
