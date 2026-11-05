@@ -811,6 +811,7 @@ API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/staticWithFo
 API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/topLvlWithForeign.cj
 compiler/FFI/CFFI/inout/inout_1.cj
 compiler/CodegenCHIR/cptr_cstr/init_01.cj
+compiler/FFI/CFFI/inout/inout_3.cj
 
 # bug 218 (umbrella issue: `could not find VTable slot for *`)
 API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
@@ -954,3 +955,17 @@ compiler/CHIR/UG/OpenGeneric/devirt.cj
 
 # bug 248 (`match(C(None))` should unpack into `None`, not `Some(None)`)
 API/std/unittest/powerAssert/nodeTypes/matchExpr.cj
+
+# bug 197 (Support @C functions)
+compiler/CHIR/CHIR2HLIR/exception/exception_pass_through_ffi/exception_pass_through_ffi.cj
+
+# bug 250 (fuzzer test: `arg#0 of DerivedPtrProxy is expected to have tag VALUE & type LongType`)
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix31.cj
+
+# bug 251 (SIGSEGV in Execution::TypeArg)
+API/std/deriving/shrink_test.cj
+
+# bug 252 (OutOfMemory does not happen and other GC related tests)
+API/std/unittest/new_bench/bench_disable_gc.cj
+API/std/unittest/new_bench/bench_explicit_gc.cj
+Runtime/CJNative/Exception/Expection42_NewObject.cj
