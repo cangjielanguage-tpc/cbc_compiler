@@ -332,7 +332,7 @@ object CHIRBuilder {
           if (!symType.isCHIRDef && m.body.nonEmpty) {
             builder.markAsCHIRDef(symType)
           }
-          if (symType.isCHIRDef && !resolver.isImported(m)) {
+          if (symType.isCHIRDef && (!resolver.isImported(m) || m.body.nonEmpty)) {
             builder.markAsCHIRDef(symMethod, m.id.toInt, overwrite = false)
           }
           m.kind match {
