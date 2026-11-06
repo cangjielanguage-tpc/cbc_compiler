@@ -157,17 +157,31 @@ object CompilerPhases {
       assert(currentInlineContext == null)
 
       val (scope, rtPartsInfo) = withInlineContext(InlineContext.newRoot(rootMethod)) {
-        createScope(Scope.createAnchor(entryBlock), BytecodePosition(currentInlineContext), None) {
-          if (rootDeclaringClass.isCangjieType) {
-            val source = rootDeclaringClass.getCangjiePackage.getInputFile.toString
-            if (source.endsWith(".chir")) {
-              loadCHIRMethod(rootMethod, rootMethodParams)
+        val anchor = Scope.createAnchor(entryBlock)
+        try {
+          createScope(anchor, BytecodePosition(currentInlineContext), None) {
+            if (rootDeclaringClass.isCangjieType) {
+              val source = rootDeclaringClass.getCangjiePackage.getInputFile.toString
+              if (source.endsWith(".chir")) {
+                loadCHIRMethod(rootMethod, rootMethodParams)
+              } else {
+                loadHLIRMethod(rootMethod, rootMethodParams)
+              }
             } else {
-              loadHLIRMethod(rootMethod, rootMethodParams)
+              loadJBCMethod(rootMethod, rootMethodParams)
             }
-          } else {
-            loadJBCMethod(rootMethod, rootMethodParams)
           }
+        } catch {
+          case e: Throwable if rootDeclaringClass.isCangjieType &&
+            rootDeclaringClass.getCangjiePackage.getInputFile.toString.endsWith(".chir") =>
+            // WORKAROUND(stdlib-to-cbc): the method cannot be parsed yet.
+            // Discard the half-built IR and retry with a stub body so that
+            // compilation of the remaining methods can proceed.
+            Opt.UnsupportedCHIRMethods.report(rootMethod, e)
+            strikeOut(anchor)
+            createScope(Scope.createAnchor(entryBlock), BytecodePosition(currentInlineContext), None) {
+              loadCHIRMethodStub(rootMethod)
+            }
         }
       }
       scope.merge()

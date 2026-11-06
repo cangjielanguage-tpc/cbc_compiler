@@ -60,6 +60,48 @@ trait CHIRParser
     RTPartsInfo(isDirtyForClassGC = false)
   }
 
+  /** WORKAROUND(stdlib-to-cbc): fallback body for methods whose CHIR cannot be
+    * parsed yet (unsupported constructs or parser bugs). Builds a trivial
+    * single-block body: immediately returns a default value (zero/null/sret).
+    * The produced code is not expected to be executed or semantically correct.
+    */
+  def loadCHIRMethodStub(method: Method): RTPartsInfo = {
+    val retType = method.getReturnType
+    val retVal: Node =
+      if (retType.isZST) {
+        Void()
+      } else if (method.hasRetByValParameter) {
+        // For ret-by-val methods the result is passed through the sret pointer,
+        // callers never consume the Return value, so a type-correct dummy is enough.
+        val retByVal = rootMethodParam(method.getRetByValArgIdx)
+        val abiRetValType = method.getMethodType.parameterType(method.getMethodType.getRetByValArgIdx)
+        val formal = ValueType(retType)
+        if (abiRetValType.isZST || retByVal.tpe == formal) {
+          retByVal
+        } else if (formal.isRecordAddrType) {
+          // Standalone ABI: sret is a raw address while the formal is a record
+          ReinterpretCast(retByVal.tpe, formal)(retByVal)
+        } else {
+          // Standalone ABI: type-variable/boxed returns have Address sret and traceable-ref formal
+          Null()
+        }
+      } else {
+        ValueType.fromSig(retType) match {
+          case t if t.isTraceableRefType => Null()
+          case IntType => IConst(0)
+          case LongType => LConst(0L)
+          case FloatType => FConst(0.0f)
+          case DoubleType => DConst(0.0)
+          case t => shouldNotReachHere(s"stub: unsupported return type $t for $method")
+        }
+      }
+    val ret = currentScope.inState(entryBlock, entryBlock) {
+      Return.proto(ValueType(retType))(retVal)
+    }
+    currentScope.setResult(ret)
+    RTPartsInfo(isDirtyForClassGC = false)
+  }
+
   private def convertRecord(tpe: Type, n: Node): Node = (n.tpe, tpe) match {
     case (from, to) if from == to => n
 

@@ -112,6 +112,34 @@ class Opt(_env: Environment, platformConfig: PlatformConfig) extends CompilerWit
 
 object Opt {
 
+  /** WORKAROUND(stdlib-to-cbc): registry of methods which failed to compile and
+    * were replaced by stubs. Used to collect the list of unsupported constructs.
+    */
+  object UnsupportedCHIRMethods {
+    private val reported = new java.util.concurrent.ConcurrentHashMap[String, String]()
+
+    def report(method: Method, e: Throwable): Unit = {
+      val name = method.getFullName
+      val msg = Option(e.getMessage).getOrElse(e.toString)
+      if (reported.putIfAbsent(name, msg) == null) {
+        println(s"CBC-STUBBED-METHOD: $name")
+        println(s"CBC-STUBBED-REASON: $msg")
+        // Top frames of the original failure help to locate the parser problem
+        e.getStackTrace.take(12).foreach { f => println(s"CBC-STUBBED-AT: $f") }
+      }
+    }
+
+    def all: Map[String, String] = {
+      val b = Map.newBuilder[String, String]
+      val it = reported.entrySet().iterator()
+      while (it.hasNext) {
+        val e = it.next()
+        b += e.getKey -> e.getValue
+      }
+      b.result()
+    }
+  }
+
   private def extraInfoAvailableFor(method: Method, env: Environment): Boolean =
     ProjectLogic.openIRAndExtraInfoPDB && method.shouldBeSerialized
 
