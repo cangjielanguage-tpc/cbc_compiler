@@ -515,12 +515,12 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   }
 
   def subType(x: SignatureType, y: SignatureType): Boolean = {
-    x == y || {
+    x == y || (!x.isInstanceOf[SignatureType.Box] && !y.isInstanceOf[SignatureType.Box] && {
       // TODO: traverse extensions
       (CompiledType(x), CompiledType(y)) match {
         case (x: ReferenceType, y: ReferenceType) => x.compare(y) == CC.Less
         case _ => false
       }
-    }
+    })
   }
 }
