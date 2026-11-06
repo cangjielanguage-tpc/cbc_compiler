@@ -2042,6 +2042,24 @@ trait CHIRParser
                CHIR.Intrinsic.Kind.CStringConvertCstrToPtr =>
             state(e) = fakeIntrinsicResult(e)
 
+          // WORKAROUND(stdlib-to-cbc): sync primitive intrinsics faked as no-ops;
+          // only MutexTryLock reports success so that callers do not spin.
+          case CHIR.Intrinsic.Kind.MutexInit |
+               CHIR.Intrinsic.Kind.CjMutexLock |
+               CHIR.Intrinsic.Kind.MutexCheckStatus |
+               CHIR.Intrinsic.Kind.MutexUnlock |
+               CHIR.Intrinsic.Kind.MonitorInit |
+               CHIR.Intrinsic.Kind.WaitQueueInit |
+               CHIR.Intrinsic.Kind.MoitiorWait |
+               CHIR.Intrinsic.Kind.MoitiorNotify |
+               CHIR.Intrinsic.Kind.MoitiorNotifyAll |
+               CHIR.Intrinsic.Kind.MultiConditionWait |
+               CHIR.Intrinsic.Kind.MultiConditionNotify |
+               CHIR.Intrinsic.Kind.MultiConditionNotifyAll =>
+            state(e) = fakeIntrinsicResult(e)
+          case CHIR.Intrinsic.Kind.MutexTryLock =>
+            state(e) = IConst(1)
+
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {
               case g: CHIR.GlobalVar =>

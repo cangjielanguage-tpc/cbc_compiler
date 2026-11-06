@@ -443,6 +443,20 @@ object CHIR {
       case CPointerInit1
       case CStringInit
       case CStringConvertCstrToPtr
+      case MutexInit
+      case CjMutexLock
+      case MutexTryLock
+      case MutexCheckStatus
+      case MutexUnlock
+      case MonitorInit
+      case WaitQueueInit
+      // NB: Moitior mirrors the MOITIOR_* schema typo for MONITOR
+      case MoitiorWait
+      case MoitiorNotify
+      case MoitiorNotifyAll
+      case MultiConditionWait
+      case MultiConditionNotify
+      case MultiConditionNotifyAll
       case InoutParam
       case ObjectZeroValue
       case Sqrt
