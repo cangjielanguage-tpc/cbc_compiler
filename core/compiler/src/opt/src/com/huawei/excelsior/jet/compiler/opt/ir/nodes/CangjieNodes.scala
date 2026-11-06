@@ -388,6 +388,22 @@ trait CangjieNodes { self: Universe =>
     }
   }
 
+  class InoutParam private(proto: InoutParam.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with ProducesValue {
+    def chirArg: AnyRef = proto.chirArg
+    def value: Node = arg(2)
+  }
+
+  object InoutParam {
+    case class Proto private[InoutParam](chirArg: AnyRef, valueType: Option[Type])
+      extends FixedArgs[InoutParam](Seq(ControlType, MemoryType) ++ valueType: _*)(AddrType)
+      with ControlMemoryValueTagged[InoutParam] {
+      def newInstance() = new InoutParam(this)
+    }
+
+    def global(chirArg: AnyRef) = Prototype.intern(Proto(chirArg, None))()
+    def apply(chirArg: AnyRef)(value: Node): Node = Prototype.intern(Proto(chirArg, Some(value.tpe)))(value)
+  }
+
   class ZeroValueGeneric private(proto: ZeroValueGeneric.Proto) extends FloatingNodeWithFixedArgs(proto) {
     def ti = arg(0)
   }
