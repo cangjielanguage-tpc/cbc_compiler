@@ -661,6 +661,7 @@ compiler/CodegenCJNative/compitability/class_add_open_method3/main.cj
 compiler/CodegenCJNative/compitability/class_add_open_method4/main.cj
 compiler/CodegenCJNative/compitability/non_open_generic_class/main.cj
 compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi.cj
+compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi_recursive.cj
 
 # bug 210 (inout tests: key not found compiler.chir.v13002.GlobalVarImpl)
 API/std/unittest/mock/compiler/misc/foreign_inout_param_struct.cj
