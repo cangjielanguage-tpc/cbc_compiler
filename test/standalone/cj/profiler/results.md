@@ -48,7 +48,7 @@ No inline: 8419 ms
 
 Inline: 6799.6 ms
 
-### Code size
+### Cbc code size
 
 No inline: 54006 bytes
 
@@ -94,7 +94,7 @@ Inline (`my_abs`): 4744.3 ms
 
 Inline (`my_abs` + `compute`): 4250.4 ms
 
-### Code size
+### Cbc code size
 
 No inline: 57822 bytes
 
@@ -138,7 +138,7 @@ Inline with cold path: 8283.6 ms
 
 Inline: 8274.5 ms
 
-### Code size
+### Cbc Cbc code size
 
 No inline: 56774 bytes
 
@@ -181,7 +181,7 @@ inlined-with-cold-path: 4554.1 ms
 
 Inline: 4507.9 ms
 
-### Code size
+### Cbc code size
 
 No inline: 56454 bytes
 
