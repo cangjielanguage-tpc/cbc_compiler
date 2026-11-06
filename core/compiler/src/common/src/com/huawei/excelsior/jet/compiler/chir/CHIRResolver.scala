@@ -336,8 +336,10 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
         // For some unknown reason cjc might create generic lambda functions as global functions
         // with generic type params from lambda class, instead of creating independent generic param types
         // for this global function, like it should do for any other regular global function.
+        // Such shared param objects are already registered as class type variables above,
+        // and re-registering them as local ones is neither possible nor needed.
         if (!isGlobalGenericLambdaFunc(d)) {
-          fillTypeVars(d.genericTypeParams, local = true)
+          fillTypeVars(d.genericTypeParams.filterNot(cache.contains), local = true)
         }
       case _ =>
     }
