@@ -437,9 +437,12 @@ object CHIR {
       case Preinitialize
       case CPointerRead
       case CPointerWrite
+      case CPointerAdd
+      case CPointerGetPointerAddress
       case CPointerInit0
       case CPointerInit1
       case CStringInit
+      case CStringConvertCstrToPtr
       case InoutParam
       case ObjectZeroValue
       case Sqrt

@@ -102,6 +102,29 @@ trait CHIRParser
     RTPartsInfo(isDirtyForClassGC = false)
   }
 
+  /** WORKAROUND(stdlib-to-cbc): fabricate a correct-typed dummy value for
+    * intrinsics we only fake for now (always zero/null).
+    */
+  private def fakeIntrinsicResult(e: CHIR.Intrinsic)(implicit resolver: CHIRResolver): Node = {
+    val sig = resolver.typeSig(e.resultTpe)
+    if (sig.isZST) {
+      Void()
+    } else if (sig.isRecord) {
+      StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
+    } else if (sig.isVariableSizeType) {
+      ZeroValueGeneric(loadTypeInfo(sig))
+    } else {
+      ValueType.fromSig(sig) match {
+        case t if t.isTraceableRefType => Null()
+        case IntType => IConst(0)
+        case LongType => LConst(0L)
+        case FloatType => FConst(0.0f)
+        case DoubleType => DConst(0.0)
+        case t => shouldNotReachHere(s"fake intrinsic: unsupported result type $t")
+      }
+    }
+  }
+
   private def convertRecord(tpe: Type, n: Node): Node = (n.tpe, tpe) match {
     case (from, to) if from == to => n
 
@@ -2011,6 +2034,13 @@ trait CHIRParser
 
           case CHIR.Intrinsic.Kind.CStringInit =>
             state(e) = state(e.args.head)
+
+          // WORKAROUND(stdlib-to-cbc): pointer intrinsics faked as always
+          // returning a zero/null value of the correct type.
+          case CHIR.Intrinsic.Kind.CPointerAdd |
+               CHIR.Intrinsic.Kind.CPointerGetPointerAddress |
+               CHIR.Intrinsic.Kind.CStringConvertCstrToPtr =>
+            state(e) = fakeIntrinsicResult(e)
 
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {

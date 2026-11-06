@@ -129,12 +129,15 @@ class IntrinsicImpl(in: IntrinsicBase)(implicit provider: CHIRItemProvider) exte
     case IntrinsicKind.ATOMIC_SWAP => Intrinsic.Kind.AtomicSwap
     case IntrinsicKind.BEGIN_CATCH => Intrinsic.Kind.BeginCatch
     case IntrinsicKind.PREINITIALIZE => Intrinsic.Kind.Preinitialize
+    case IntrinsicKind.CPOINTER_GET_POINTER_ADDRESS => Intrinsic.Kind.CPointerGetPointerAddress
     case IntrinsicKind.CPOINTER_INIT0 => Intrinsic.Kind.CPointerInit0
     case IntrinsicKind.CPOINTER_INIT1 => Intrinsic.Kind.CPointerInit1
     case IntrinsicKind.CSTRING_INIT => Intrinsic.Kind.CStringInit
+    case IntrinsicKind.CSTRING_CONVERT_CSTR_TO_PTR => Intrinsic.Kind.CStringConvertCstrToPtr
     case IntrinsicKind.INOUT_PARAM => Intrinsic.Kind.InoutParam
     case IntrinsicKind.CPOINTER_READ => Intrinsic.Kind.CPointerRead
     case IntrinsicKind.CPOINTER_WRITE => Intrinsic.Kind.CPointerWrite
+    case IntrinsicKind.CPOINTER_ADD => Intrinsic.Kind.CPointerAdd
     case IntrinsicKind.OBJECT_ZERO_VALUE => Intrinsic.Kind.ObjectZeroValue
     case IntrinsicKind.SQRT => Intrinsic.Kind.Sqrt
     case IntrinsicKind.POW => Intrinsic.Kind.Pow
