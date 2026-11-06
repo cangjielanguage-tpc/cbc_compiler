@@ -6,10 +6,18 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cc, run_cjc, run_in_toolchain
+from runner_lib import (
+    DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite,
+    remove_engine_frames, run_cc, run_cjc, run_in_toolchain,
+)
 
 HERE = Path(__file__).resolve().parent
 SRC = HERE
+MODES = ("default", "O2")
+
+
+def mode_flags(mode):
+    return ["-O2"] if mode == "O2" else []
 
 
 def _import_flags(paths):
@@ -58,18 +66,19 @@ class HotfixTestSuite(TestSuite):
             if f.endswith((".aot.cj", ".int.cj")):
                 continue
             rel = os.path.relpath(f, SRC)[:-len(".cj")]
-            ids.append(TestIdentifier(self.SUITE, rel, "default"))
+            for mode in MODES:
+                ids.append(TestIdentifier(self.SUITE, rel, mode))
         return ids
 
     async def build(self, test_id: TestIdentifier, workdir: Path) -> int:
         rel = test_id.test_name
         name = Path(rel).name
         wdir = workdir.absolute()       # per-mode area
-        test_copy = wdir.parent         # per-test area (source copy)
+        test_copy = wdir / "sources"    # isolated sources and dependencies per mode
         log_io = io.StringIO()
 
         # Copy the source dir once, then compile its deps into the copy.
-        async with self._copy_lock(test_id.test_name):
+        async with self._copy_lock(str(test_id)):
             if not test_copy.exists():
                 shutil.copytree(SRC / Path(rel).parent, test_copy, dirs_exist_ok=True)
 
@@ -112,7 +121,7 @@ class HotfixTestSuite(TestSuite):
                 pkg = int_file.name[:-len(".int.cj")]
                 res = await run_cjc(str(int_file), str(temp_dir / pkg), output_type="staticlib",
                                     additional_args=["--save-temps", str(temp_dir)]
-                                    + _import_flags(import_paths),
+                                    + _import_flags(import_paths) + mode_flags(test_id.mode),
                                     log=log_io, timings=self.timings)
                 log_io.write(f"\n[int {pkg}] exit {res}\n")
                 if res != 0:
@@ -129,7 +138,7 @@ class HotfixTestSuite(TestSuite):
             archive = wdir / int_chir[:-len(".chir")]
             shutil.copy2(archive, f"{archive}.a")
             link_args.append(f"{archive}.a")
-        common_args = _import_flags(import_paths) + link_args + ["--link-options=--export-dynamic"]
+        common_args = _import_flags(import_paths) + link_args + mode_flags(test_id.mode) + ["--link-options=--export-dynamic"]
 
         # cjc and the plugin write intermediate files into cwd; drop stale
         # top-level artifacts so the CHIR scan below sees exactly one file.
@@ -224,7 +233,7 @@ class HotfixTestSuite(TestSuite):
         if not cbc.is_file():
             raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
-        test_copy = wdir.parent
+        test_copy = wdir / "sources"
         preload = Path(os.environ["TOOLCHAIN"]) / "tools" / "lib" / f"libcbc-preload{DYLIB_EXT}"
         # The stub binary is run directly (no launcher): the preload library
         # restores in-process interpreter initialization for AOT binaries, and
@@ -243,15 +252,19 @@ class HotfixTestSuite(TestSuite):
         (wdir / "run.log").write_text(stdout_txt)
         (wdir / "run.err").write_text(err_txt)
         (wdir / f"{name}.actual").write_text(stdout_txt + (err_txt if err_txt.strip() else f"{res}\n"))
-        return verify(wdir, name)
+        return verify(wdir, name, test_id.mode)
 
 
-def verify(wdir, name):
-    hotfix_expected = wdir.parent / f"{name}.hotfix.expected"
-    expected = hotfix_expected if hotfix_expected.is_file() else wdir.parent / f"{name}.expected"
+def verify(wdir, name, mode):
+    sources = wdir / "sources"
+    candidates = [sources / f"{name}.hotfix.{mode}.expected",
+                  sources / f"{name}.hotfix.expected",
+                  sources / f"{name}.{mode}.expected",
+                  sources / f"{name}.expected"]
+    expected = next((p for p in candidates if p.is_file()), candidates[-1])
     actual = wdir / f"{name}.actual"
-    exp_txt = expected.read_text() if expected.is_file() else None
-    act_txt = actual.read_text()
+    exp_txt = remove_engine_frames(expected.read_text()) if expected.is_file() else None
+    act_txt = remove_engine_frames(actual.read_text())
     if exp_txt is None or exp_txt != act_txt:
         diff_lines = difflib.unified_diff(exp_txt.splitlines(keepends=True) if exp_txt is not None else [],
                                           act_txt.splitlines(keepends=True),

@@ -15,3 +15,6 @@
 [dependencies]
   [dependencies.mod2]
     path = "../mod2"
+
+[profile.customized-option]
+  O2 = "-O2"

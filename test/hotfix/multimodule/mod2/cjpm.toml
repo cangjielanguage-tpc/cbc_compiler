@@ -13,3 +13,6 @@
   package-configuration = {}
 
 [dependencies]
+
+[profile.customized-option]
+  O2 = "-O2"

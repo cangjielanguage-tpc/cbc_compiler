@@ -7,7 +7,7 @@ runs them against a Cangjie toolchain, and diffs program output against
 Suites: 
 - `cj` (cjc -> cbc-compiler -> launcher, `default` + `O2` modes);
 - `asm` (CBC assembly via `cbc-asm`);
-- `hotfix` (cj sources rebuilt as hotfix patches).
+- `hotfix` (cj sources rebuilt as hotfix patches, `default` + `O2` modes).
 
 A new suite is a `<name>_testsuite.py` defining one `TestSuite` subclass
 (from `runner_lib`) that implements async `discover` / `build` / `run`;
@@ -55,3 +55,41 @@ python3 runner.py clean                                            # remove the 
   `diff.log`. The generated `run.sh` re-runs the test through the runner and
   can be executed by hand; `--describe` prints its path.
 - Exit codes: `0` all passed, `1` failures, `2` hard error.
+
+The `cj` and `hotfix` suites omit `cangjie.runtime.cbcengine.*` stack frames
+when comparing output. Expected files omit these implementation details;
+raw logs and `.actual` files retain the complete trace.
+
+Hotfix builds isolate sources and dependencies per mode. Both the native throw
+stub and patched CHIR use the selected optimization level. Expected output is
+selected in this order: `<name>.hotfix.<mode>.expected`,
+`<name>.hotfix.expected`, `<name>.<mode>.expected`, `<name>.expected`.
+The stdx library path defaults to `<toolchain>/stdx/dynamic/stdx` and can be
+overridden with `CANGJIE_STDX_PATH`.
+
+## Package hotfix tests
+
+The package tests under `test/hotfix` use a separate runner:
+
+```bash
+python3 test/hotfix/hotfix_tests.py test --cangjie-home <toolchain>
+```
+
+It runs every enabled test and patch variant in both `default` and `O2` modes.
+Use `--opt-level default` or `--opt-level O2` to select one mode, and `--tests-only`
+or `--tags-only` to select tests or variants. The default mode runs `cjpm run`
+without extra optimization options. O2 selects `[profile.customized-option].O2`
+through `cjpm run --build-args=--O2`, including local dependencies. Copied
+manifests are not rewritten.
+
+Artifacts are retained under `<test>/temp/default/` and `<test>/temp/O2/`,
+with separate `release/` and variant directories. `--save-temps <path>`
+selects another artifact root; an absolute root gets one subdirectory per
+test. Native output is saved as `native.actual`. Each variant's `.hotfix/`
+directory contains its CHIR inputs, patch CBC, `patch.actual`, and
+`patch.stderr`.
+
+A failed mode does not stop the other mode or subsequent tests. Independent
+tag variants are all awaited, and the runner exits with a failure status only
+after attempting the selected tests. If a mode's release build fails, its patch
+variants cannot run because their native baseline is unavailable.
