@@ -510,6 +510,24 @@ object CHIR {
       case OverflowWrappingInc
       case OverflowWrappingDec
       case OverflowWrappingNeg
+      case FillInStackTrace
+      case BitCast
+      case FutureIsComplete
+      case FutureWait
+      case FutureNotifyAll
+      case SizeOf
+      case Sleep
+      case DecodeStackTrace
+      case AlignOf
+      case DumpAllThreadsInfo
+      case DumpCurrentThreadInfo
+      case ExclusiveScope
+      case FutureInit
+      case IsThreadObjectInited
+      case GetThreadObject
+      case SetThreadObject
+      case ObjectRefeq
+      case RawArrayRefeq
       case VectorCompare32
       case VectorIndexByte32
     }

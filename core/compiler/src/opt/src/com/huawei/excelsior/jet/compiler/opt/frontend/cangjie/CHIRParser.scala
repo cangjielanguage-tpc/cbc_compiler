@@ -2060,6 +2060,43 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.MutexTryLock =>
             state(e) = IConst(1)
 
+          // WORKAROUND(stdlib-to-cbc): core-runtime intrinsics faked as no-ops
+          // returning a zero/null value of the correct result type.
+          case CHIR.Intrinsic.Kind.FillInStackTrace |
+               CHIR.Intrinsic.Kind.Sleep |
+               CHIR.Intrinsic.Kind.DecodeStackTrace |
+               CHIR.Intrinsic.Kind.AlignOf |
+               CHIR.Intrinsic.Kind.DumpAllThreadsInfo |
+               CHIR.Intrinsic.Kind.DumpCurrentThreadInfo |
+               CHIR.Intrinsic.Kind.ExclusiveScope |
+               CHIR.Intrinsic.Kind.FutureInit |
+               CHIR.Intrinsic.Kind.IsThreadObjectInited |
+               CHIR.Intrinsic.Kind.ObjectRefeq |
+               CHIR.Intrinsic.Kind.RawArrayRefeq |
+               CHIR.Intrinsic.Kind.VectorCompare32 |
+               CHIR.Intrinsic.Kind.VectorIndexByte32 |
+               CHIR.Intrinsic.Kind.FutureWait |
+               CHIR.Intrinsic.Kind.FutureNotifyAll |
+               CHIR.Intrinsic.Kind.SetThreadObject |
+               CHIR.Intrinsic.Kind.GetThreadObject =>
+            state(e) = fakeIntrinsicResult(e)
+
+          // WORKAROUND(stdlib-to-cbc): fake size, but avoid 0/1/-1: callers like
+          // LibC.malloc divide the max element count by sizeOfType<T>, and a
+          // division by such a constant is not accepted by the CBC back end.
+          case CHIR.Intrinsic.Kind.SizeOf =>
+            state(e) = LConst(8)
+
+          // WORKAROUND(stdlib-to-cbc): claim futures are always complete so
+          // that hypothetical waits do not block.
+          case CHIR.Intrinsic.Kind.FutureIsComplete =>
+            state(e) = IConst(1)
+
+          case CHIR.Intrinsic.Kind.BitCast =>
+            val value = state(e.args.head)
+            val toTpe = ValueType.fromSig(resolver.typeSig(e.resultTpe))
+            state(e) = ReinterpretCast(value.tpe, toTpe)(value)
+
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {
               case g: CHIR.GlobalVar =>
