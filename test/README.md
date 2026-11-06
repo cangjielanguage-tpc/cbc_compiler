@@ -7,7 +7,7 @@ runs them against a Cangjie toolchain, and diffs program output against
 Suites: 
 - `cj` (cjc -> cbc-compiler -> launcher, `default` + `O2` modes);
 - `asm` (CBC assembly via `cbc-asm`);
-- `hotfix` (cj sources rebuilt as hotfix patches).
+- `hotfix` (cj sources rebuilt as hotfix patches, `default` + `O2` modes).
 
 A new suite is a `<name>_testsuite.py` defining one `TestSuite` subclass
 (from `runner_lib`) that implements async `discover` / `build` / `run`;
@@ -51,3 +51,10 @@ python3 runner.py clean                                            # remove the 
   `diff.log`. The generated `run.sh` re-runs the test through the runner and
   can be executed by hand; `--describe` prints its path.
 - Exit codes: `0` all passed, `1` failures, `2` hard error.
+
+Hotfix builds isolate sources and dependencies per mode. Both the native throw
+stub and patched CHIR use the selected optimization level. Expected output is
+selected in this order: `<name>.hotfix.<mode>.expected`,
+`<name>.hotfix.expected`, `<name>.<mode>.expected`, `<name>.expected`.
+The stdx library path defaults to `<toolchain>/stdx/dynamic/stdx` and can be
+overridden with `CANGJIE_STDX_PATH`.

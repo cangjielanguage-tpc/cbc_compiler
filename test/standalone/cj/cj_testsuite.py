@@ -138,11 +138,12 @@ class CjTestSuite(TestSuite):
         (wdir / "run.log").write_text(stdout_txt)
         (wdir / "run.err").write_text(err_txt)
         (wdir / f"{name}.actual").write_text(stdout_txt + (err_txt if err_txt.strip() else f"{res}\n"))
-        return verify(wdir, name)
+        return verify(wdir, name, test_id.mode)
 
 
-def verify(wdir, name):
-    expected = wdir / f"{name}.expected"
+def verify(wdir, name, mode):
+    mode_expected = wdir / f"{name}.{mode}.expected"
+    expected = mode_expected if mode_expected.is_file() else wdir / f"{name}.expected"
     actual = wdir / f"{name}.actual"
     exp_txt = expected.read_text() if expected.is_file() else None
     act_txt = actual.read_text()
