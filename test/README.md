@@ -15,7 +15,8 @@ a Cangjie toolchain (SDK distribution):
   here`), then a patched CHIR; `patch-gen` computes the patch CHIR, which
   `cbc-compiler` compiles into `diff<name>_patched.cbc`. At run time the stub
   binary is executed with the patch loaded via `libcbc-preload.so` and
-  `CBCOPT=cbc.path=...`. Tests run in `default` mode only.
+  `CBCOPT=cbc.path=...`. Each test is compiled in `default` and `O2` modes;
+  both the native stub and patched CHIR use the selected optimization level.
 
 The `cjts/` directory holds the Cangjie LLT suite; it is run by CI with its
 own wrappers (`cjts/cjc-wrapper`, `cjts/launcher-wrapper`) and per-suite
@@ -77,10 +78,13 @@ A test under `standalone/cj/` is a directory with the main source
   `-foreignlibs`.
 - `<name>.expected` - golden output: the program's stdout followed by its
   exit status. For the hotfix suite, a `<name>.hotfix.expected` file
-  overrides it when present.
+  overrides it when present. A `<name>.hotfix.O2.expected` file can record
+  optimization-dependent stack traces in hotfix O2; standalone supports
+  `<name>.O2.expected` in the same way.
 
 Files generated during a run are kept next to the sources in per-mode
-subdirectories (`default/`, `O2/`, `hotfix-default/`), including `*.actual`
+subdirectories (`standalone/default/<name>/`, `standalone/O2/<name>/`,
+`hotfix/default/<name>/`, `hotfix/O2/<name>/`), including `*.actual`
 with the observed output for diffing, and are removed by
 `python3 test/runner.py clean`.
 

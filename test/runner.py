@@ -104,21 +104,29 @@ class TestSuite:
         if parallelism == "auto":
             parallelism = self.parallelism(args)
         semaphore = asyncio.Semaphore(parallelism)
+        directory_locks = {}
 
         async def build_bounded(test: str):
             async with semaphore:
-                return test, await build(test)
+                # Tests in one source directory share AOT libraries and metadata.
+                lock = directory_locks.setdefault(dirname(test), asyncio.Lock())
+                async with lock:
+                    return test, await build(test)
 
         tasks = [asyncio.create_task(build_bounded(test)) for test in tests]
         results = await asyncio.gather(*tasks)
         succeeded = [test_name for test_name, err_code in results if err_code == 0]
         return succeeded
 
-    def expected_file(self, test_name: str):
+    def expected_file(self, test_name: str, mode: str = None):
+        if mode is not None:
+            mode_expected = dotexpected(f"{test_name}.{mode}")
+            if os.path.isfile(mode_expected):
+                return mode_expected
         return dotexpected(test_name)
 
-    async def check_result(self, test_name: str, custom_actual: str = None):
-        expected = self.expected_file(test_name)
+    async def check_result(self, test_name: str, custom_actual: str = None, mode: str = None):
+        expected = self.expected_file(test_name, mode)
         actual = custom_actual if custom_actual is not None else dotactual(test_name)
         diff_err = io.StringIO()
         t0 = time.monotonic()
@@ -177,7 +185,7 @@ class StandaloneTestSuite(TestSuite):
         self.built_modes = set()
 
     def mode_work_dir(self, test_work_dir, mode, name):
-        return f"{test_work_dir}/{mode}"
+        return f"{test_work_dir}/{self.suite_mode}/{mode}/{name}"
 
     async def prepare_tools(self, args):
         return 0
@@ -267,6 +275,7 @@ class StandaloneTestSuite(TestSuite):
             case "cj":
                 any_mode_succeeded = False
                 attempted_modes = 0
+                base_import_args = import_args.copy()
                 for mode, opt_flags in self.compilation_modes:
                     if mode in excluded_modes:
                         await self.print_status(f"Skipping {test_name} compilation ({mode} mode) due to config exclusion.")
@@ -275,6 +284,7 @@ class StandaloneTestSuite(TestSuite):
                     attempted_modes += 1
                     mode_work_dir = self.mode_work_dir(test_work_dir, mode, name)
                     os.makedirs(mode_work_dir, exist_ok=True)
+                    import_args = base_import_args.copy()
 
                     int_chir_files = []
                     int_cj_files = sorted(glob.glob(os.path.join(test_work_dir, "*.int.cj")))
@@ -388,7 +398,7 @@ class StandaloneTestSuite(TestSuite):
                     res = await run_in_env(True, env, cmd, log=test_output, stderr_log=launcher_err)
                     err_res = launcher_err.getvalue()
                     test_output.write(f"{res}\n" if not err_res else err_res)
-                if await self.check_result(test_name, custom_actual=actual_file) != 0:
+                if await self.check_result(test_name, custom_actual=actual_file, mode=mode) != 0:
                     err = launcher_err.getvalue().strip()
                     if err:
                         await self.print_stderr(err)
@@ -433,19 +443,19 @@ class StandaloneTestSuite(TestSuite):
 
 class HotfixTestSuite(StandaloneTestSuite):
     suite_mode = "hotfix"
-    compilation_modes = [("default", [])]
     standalone_tests = parse_tests_list(os.path.join(TestSuite.root_dir, "tests-list-hotfix.cfg"),
                                        root_dir=TestSuite.root_dir)
 
-    def expected_file(self, test_name: str):
+    def expected_file(self, test_name: str, mode: str = None):
+        if mode is not None:
+            mode_expected = dotexpected(f"{test_name}.hotfix.{mode}")
+            if os.path.isfile(mode_expected):
+                return mode_expected
         hotfix_expected = dotexpected(f"{test_name}.hotfix")
-        return hotfix_expected if os.path.isfile(hotfix_expected) else super().expected_file(test_name)
+        return hotfix_expected if os.path.isfile(hotfix_expected) else super().expected_file(test_name, mode)
 
     def cjc_env(self):
         return self.hotfix_env.copy()
-
-    def mode_work_dir(self, test_work_dir, mode, name):
-        return f"{test_work_dir}/hotfix-{mode}/{name}"
 
     def cbc_name(self, name):
         return f"diff{name}_patched"
@@ -490,7 +500,7 @@ class HotfixTestSuite(StandaloneTestSuite):
             # Standalone writes extensionless archives; cjc accepts .a inputs.
             shutil.copy2(archive, f"{archive}.a")
             link_args.append(f"{archive}.a")
-        common_args = import_args + link_args + ["--link-options=--export-dynamic"]
+        common_args = import_args + link_args + opt_flags + ["--link-options=--export-dynamic"]
         stub_env = self.cjc_env()
         stub_env['HOTFIX_GEN_THROW_STUBS'] = 'true'
         # --save-temps keeps the package-named CHIR and lets compilation finish
