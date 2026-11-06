@@ -3,13 +3,13 @@ import std.time.*
 const dataSize: Int64 = 100
 const iterations: Int64 = 1000000
 
-func simpleFastPath(add: Int64, data: Array<Int64>, len: Int64, flag: Bool): Int64 {
+func simpleFastPath(imm: Int64, data: Array<Int64>, len: Int64, flag: Bool): Int64 {
     var result: Int64 = 0
 
     if (flag) {
         var i: Int64 = 0
         while (i < len) {
-            result += data[i] + add
+            result += data[i] + imm
             i++
         }
     } else {
@@ -42,11 +42,12 @@ func simpleFastPath(add: Int64, data: Array<Int64>, len: Int64, flag: Bool): Int
 
 main(): Int64 {
     let data = Array<Int64>(dataSize) { i => i * 13 + 17 }
+    let imm: Int64 = 7
 
     let started = MonoTime.now()
     for (iteration in 0..iterations) {
         data[0] = iteration % 1000
-        simpleFastPath(7, data, dataSize, true)
+        simpleFastPath(imm, data, dataSize, true)
     }
     let elapsed = MonoTime.now() - started
 
