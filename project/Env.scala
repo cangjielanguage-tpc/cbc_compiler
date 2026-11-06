@@ -24,7 +24,7 @@ class Env(props: Properties, val chirVersions: Seq[Int]) {
   val flatc              = apply("flatc",               Some("flatc"))
   val graalvm            = apply("graalvm",             Some(""))
   val graalvmParallelism = apply("graalvmParallelism",  Some("2"))
-  val chirDefaultVersion = apply("chir.defaultVersion", Some("13002"), chirVersions.map(_.toString)*)
+  val chirDefaultVersion = apply("chir.defaultVersion", Some("13008"), chirVersions.map(_.toString)*)
 
   def apply(name: String, default: Option[String], variants: String*): String = {
     sys.props.get(name)
