@@ -190,6 +190,7 @@ trait CHIRParser
     }
 
     resolveDerivedPtrProxies()
+    resolveInoutParams()
 
     if (eliminateUnreachableCode()) {
       dbgPrinter.debugNodes("All graph after UCE")
@@ -1149,6 +1150,20 @@ trait CHIRParser
 
           val retType = resolver.typeSig(e.resultTpe)
           val call = callMethod(target, outerType, thisType, retType, paramTypes, args, None)
+
+          for (a <- args) ReinterpretCast.skip(a) match {
+            case p: InoutParam =>
+              p.chirArg match {
+                case arg@(_: CHIR.LocalVar | _: CHIR.Parameter) =>
+                  val ValueSig(sig) = arg
+                  if (sig.isPrimitive && !sig.isZST && !isInMemory(state(arg))) {
+                    state(arg) = LoadMemory(sig.toAsm, sig, atomic = false)(p)
+                  }
+                case _ =>
+              }
+            case _ =>
+          }
+
           state(e) = call
 
         case _ => // Indirect call
@@ -1861,23 +1876,8 @@ trait CHIRParser
 
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {
-              case g: CHIR.GlobalVar =>
-                state(e) = GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(g))
-              case arg =>
-                val ValueSig(sig) = arg
-                state(arg) match {
-                  case _: NoValue =>
-                    assert(sig.isZST, sig)
-                    state(e) = LConst(0)
-                  case StackAlloc.Local(_) | GetFieldSeqRef(_, _, _) | GetStaticFieldSeqRef(_) =>
-                    state(e) = state(arg)
-                  case value =>
-                    // local primitives
-                    val mem = StackAlloc.Local(sig)
-                    StoreMemory(sig.toAsm, sig, atomic = false)(mem, value)
-                    state(arg) = mem
-                    state(e) = mem
-                }
+              case g: CHIR.GlobalVar => state(e) = InoutParam.global(g)
+              case arg => state(e) = InoutParam(arg)(state(arg))
             }
 
           case CHIR.Intrinsic.Kind.BlackBox =>
@@ -2003,8 +2003,6 @@ trait CHIRParser
                 case mem @ GetStaticFieldSeqRef(fields) =>
                   assert(sig == mem.resType, s"$sig != ${mem.resType} in $mem")
                   LoadStaticFieldSeq(DerivedPtr.Global(), fields*)
-                case StackAlloc.Local(_) if !sig.isRecord =>
-                  LoadMemory(sig.toAsm, sig, atomic = false)(mem)
                 case mem =>
                   if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive || sig.isTypeVariable) {
                     mem
@@ -2055,8 +2053,6 @@ trait CHIRParser
                     StoreFieldSeq(maybeDerivedPtrBase(mem), base, value, fields*)
                   case GetStaticFieldSeqRef(fields) =>
                     StoreStaticFieldSeq(DerivedPtr.Global(), value, fields*)
-                  case StackAlloc.Local(_) if !sig.isRecord =>
-                    StoreMemory(sig.toAsm, sig, atomic = false)(mem, value)
                   case mem =>
                     if (sig.isTraceableReference || sig.isPrimitive || sig.isVariableSizeType) {
                       state(loc) = value
@@ -2394,19 +2390,6 @@ trait CHIRParser
         state(e) = ThisTypeInfoBy(state(e.obj))
     }
 
-    private def staticFieldRef(globalVar: CHIR.GlobalVar): CangjieReferenceNode = {
-      val symRefType = globalVar.declaringDef
-        .map(d => asClassType(resolver.symType(d).get))
-        .getOrElse(resolver.findClass(globalVar.packageName).get)
-
-      val refType = fromSymType(symRefType)
-      val name = resolver.symName(globalVar)
-      val sig = resolver.typeSig(globalVar.tpe)
-      val f = symRefType.findDeclaredFieldOrNull(xstr(name), sig) ensuring
-        (_ != null, s"cannot find field '$name' with signature '${sig.toJETSignature}' in class '${symRefType.getName}'")
-
-      FieldReferenceNode(CangjieFieldReference(f, refType, f.getType))
-    }
 
     private def calcMethodRef(declType: SymClassType, refType: SignatureType, _name: String, func: CHIR.Func): MethodReference = {
       val isStatic = declType.isCangjiePackage || func.attributes.contains(Attribute.Static)
@@ -2922,6 +2905,49 @@ trait CHIRParser
     assert(all[DerivedPtr.Proxy].isEmpty,
       s"there should be no alive DerivedPtr.Proxy nodes after parsing:" +
         s"${all[DerivedPtr.Proxy].map(_.rec).map(ReinterpretCast.skip).toSeq}")
+  }
+
+  private def staticFieldRef(globalVar: CHIR.GlobalVar)(implicit resolver: CHIRResolver): CangjieReferenceNode = {
+    val symRefType = globalVar.declaringDef
+      .map(d => asClassType(resolver.symType(d).get))
+      .getOrElse(resolver.findClass(globalVar.packageName).get)
+
+    val refType = fromSymType(symRefType)
+    val name = resolver.symName(globalVar)
+    val sig = resolver.typeSig(globalVar.tpe)
+    val f = symRefType.findDeclaredFieldOrNull(xstr(name), sig) ensuring
+      (_ != null, s"cannot find field '$name' with signature '${sig.toJETSignature}' in class '${symRefType.getName}'")
+
+    FieldReferenceNode(CangjieFieldReference(f, refType, f.getType))
+  }
+
+  private def isInMemory(v: Node): Boolean = v match {
+    case _: StackAlloc | _: GetFieldSeqRef | _: GetStaticFieldSeqRef => true
+    case _ => false
+  }
+
+  private def resolveInoutParams()(implicit resolver: CHIRResolver): Unit = {
+    for (n <- all[InoutParam].toList) {
+      val sig = n.chirArg match {
+        case v: CHIR.GlobalVar => resolver.typeSig(v.tpe)
+        case v: CHIR.LocalVar => resolver.typeSig(v.tpe)
+        case v: CHIR.Parameter => resolver.typeSig(v.tpe)
+      }
+      replaceByCode(n) {
+        if (sig.isZST) {
+          LConst(0)
+        } else n.chirArg match {
+          case globalVar: CHIR.GlobalVar => GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(globalVar))
+          case _ => if (sig.isPrimitive && !isInMemory(n.value)) {
+            val slot = StackAlloc.Local(sig)
+            StoreMemory(sig.toAsm, sig, atomic = false)(slot, n.value)
+            slot
+          } else {
+            n.value
+          }
+        }
+      }
+    }
   }
 
   private def createBox(base: SignatureType, value: Node): Node = {
