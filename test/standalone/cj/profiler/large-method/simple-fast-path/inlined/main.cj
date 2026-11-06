@@ -5,6 +5,7 @@ const iterations: Int64 = 1000000
 
 main(): Int64 {
     let data = Array<Int64>(dataSize) { i => i * 13 + 17 }
+    let imm: Int64 = 7
 
     let started = MonoTime.now()
     for (iteration in 0..iterations) {
@@ -13,7 +14,7 @@ main(): Int64 {
         var result: Int64 = 0
         var i: Int64 = 0
         while (i < dataSize) {
-            result += data[i] + 7
+            result += data[i] + imm
             i++
         }
     }

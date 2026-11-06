@@ -132,13 +132,17 @@ for (iteration in 0..iterations) {
 
 ### Time
 
-No inline: 9068.1 ms
+No inline: 8559 ms
 
-Inline: 8671.5 ms
+Inline with cold path: 8283.6 ms
+
+Inline: 8274.5 ms
 
 ### Code size
 
 No inline: 56774 bytes
+
+Inline with cold path: 56734 bytes
 
 Inline: 56062 bytes
 
@@ -146,15 +150,15 @@ Inline: 56062 bytes
 
 Структура функции такая же как в `complexFastPath`: `flag` всегда равен `true`, а холодная ветвь содержит несколько одновременно живых аккумуляторов. Отличие в горячем пути: он короткий, линейный и использует только один аккумулятор.
 
-Этот сценарий проверяет более выгодный случай инлайнинга крупной функции. После раскрытия остаётся компактный цикл, значение `add` становится константой, а условие и большая холодная ветвь удаляются.
+Этот сценарий проверяет более выгодный случай инлайнинга крупной функции. После раскрытия остаётся компактный цикл, значение `imm` становится константой, а условие и большая холодная ветвь удаляются.
 
 ```cangjie
-func simpleFastPath(add: Int64, data: Array<Int64>, len: Int64, flag: Bool): Int64 {
+func simpleFastPath(imm: Int64, data: Array<Int64>, len: Int64, flag: Bool): Int64 {
     var result: Int64 = 0
     if (flag) {
         var i: Int64 = 0
         while (i < len) {
-            result += data[i] + add
+            result += data[i] + imm
             i++
         }
     } else {
@@ -164,19 +168,24 @@ func simpleFastPath(add: Int64, data: Array<Int64>, len: Int64, flag: Bool): Int
 }
 
 func main() {
-    simpleFastPath(7, data, dataSize, true)
+    let imm: Int64 = 7
+    simpleFastPath(imm, data, dataSize, true)
 }
 ```
 
 ### Time
 
-No inline: 5876.1 ms
+No inline: 4960.6 ms
 
-Inline: 5131.7 ms
+inlined-with-cold-path: 4554.1 ms
+
+Inline: 4507.9 ms
 
 ### Code size
 
 No inline: 56454 bytes
+
+inlined-with-cold-path: 56398 bytes
 
 Inline: 55882 bytes
 
