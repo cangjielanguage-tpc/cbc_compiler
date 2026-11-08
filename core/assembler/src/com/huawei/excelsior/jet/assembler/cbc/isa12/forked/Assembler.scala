@@ -15,9 +15,10 @@ import com.huawei.excelsior.jet.assembler.cbc.Register.*
 import com.huawei.excelsior.jet.assembler.cbc.Register.IR.{IR1, IRZ}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W16, W32, W64, W8}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{CC, Checked, Common, Saturating, Width}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.{LD_F32, LD_F64, LD_REC, LD_REF}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.{LD_F16, LD_F32, LD_F64, LD_REC, LD_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.{ST_F32, ST_F64, ST_REF}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Float16
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.Opcode.CallInterf
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.RegGroup.{DivCheck, NullCheck}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.{LivenessAnalyzer, LivenessInfoCollector, Assembler as OldAssembler}
@@ -101,17 +102,25 @@ trait ForkedAssembler {
   }
 
   def fmovi(r: FR, fimm: Double, w: AsmWidth): Unit = {
-    if (Width(w) == W32) {
+    if (Width(w) == Width.W16) {
+      fmovi16Bits(r, Float16.bits(fimm))
+    } else if (Width(w) == W32) {
       stream
         .opc8(Opcode.FMov32i)
         .bits(_.w4(FILLER).w4(r))
         .write32(floatToRawIntBits(fimm.toFloat))
     } else {
+      assert(Width(w) == W64)
       stream
         .opc8(Opcode.FMov64i)
         .bits(_.w4(FILLER).w4(r))
         .write64(doubleToRawLongBits(fimm))
     }
+  }
+
+  def fmovi16Bits(r: FR, bits: Int): Unit = {
+    require((bits & ~0xffff) == 0)
+    stream.opc8(Opcode.FMov16i).bits(_.w4(FILLER).w4(r)).write16(bits)
   }
 
   def movbp(dst: IR, local: Boolean): Unit = {
@@ -303,7 +312,12 @@ trait ForkedAssembler {
 
   private def floatOperation(w: Width, op: FloatOperations, r1: FR | IR, r2: FR | IR, r3: FR | IR) = {
     stream
-      .opc8(if w == W32 then Opcode.Float32 else Opcode.Float64)
+      .opc8(w match {
+        case Width.W16 => Opcode.Float16
+        case W32 => Opcode.Float32
+        case W64 => Opcode.Float64
+        case _ => shouldNotReachHere(s"unsupported float width: $w")
+      })
       .bits(_.w4(op).w4(r1))
       .bits(_.w4(r2).w4(r3))
   }
@@ -313,7 +327,12 @@ trait ForkedAssembler {
 
   def fmathunary(op: FloatMathOperaions, w: AsmWidth, d: FR, s: FR): Unit = instr {
     stream
-      .opc8(if Width(w) == W32 then Opcode.FMathUn32 else Opcode.FMathUn64)
+      .opc8(Width(w) match {
+        case Width.W16 => Opcode.FMathUn16
+        case W32 => Opcode.FMathUn32
+        case W64 => Opcode.FMathUn64
+        case _ => shouldNotReachHere(s"unsupported float width: $w")
+      })
       .bits(_.w4(op).w4(FILLER))
       .bits(_.w4(d).w4(s))
   }
@@ -717,6 +736,7 @@ trait ForkedAssembler {
     lazy val idst = dst.asInstanceOf[IR]
     lazy val fdst = dst.asInstanceOf[FR]
     ldk match {
+      case LD_F16 =>
       case LD_F32 =>
       case LD_F64 =>
       case LD_REC => analyzer.rec(idst)
@@ -725,7 +745,7 @@ trait ForkedAssembler {
     }
   }
 
-  def loadTailParam(dst: Rg, tailReg: IR, ldk: LoadAccessKind, number: Long): Unit = {
+  def loadTailParam(dst: Rg, tailReg: IR, ldk: LoadAccessKind, number: Long): Unit = instr {
     analyzeLoadDstUse(dst, ldk)
     stream
       .opc8(Opcode.LoadTailParam)
@@ -790,10 +810,11 @@ trait ForkedAssembler {
     val w = Width(width)
     val (cc, swap) = CondConversions.normalize(op)
     val (lhs, rhs) = if (!swap) (l, r) else (r, l)
-    assert(w == W32 || w == W64)
+    assert(w == Width.W16 || w == W32 || w == W64)
+    require(w != Width.W16 || (!op.isIntegral && !op.isReference))
 
     stream
-      .opc8(if (w == W32) Opcode.Scc32 else Opcode.Scc64)
+      .opc8(if (w == Width.W16) Opcode.Scc16 else if (w == W32) Opcode.Scc32 else Opcode.Scc64)
       .bits(_.w4(cc).w4(dst))
       .bits(_.w4(lhs).w4(rhs))
   }
@@ -805,8 +826,10 @@ trait ForkedAssembler {
     sccCommon(op, dst, l, r, width)
   }
 
-  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit =
+  def scc(op: BranchOp, dst: IR, src1: FR, src2: FR, width: AsmWidth): Unit = instr {
+    analyzer.prim(dst)
     sccCommon(CondConversions.toFloat(op), dst, src1, src2, width)
+  }
 
   def scc(op: BranchOp, dst: IR, lhs: IR, _imm: Long, width: AsmWidth): Unit = instr {
     analyzer.trans(dst, lhs)
@@ -924,7 +947,7 @@ trait ForkedAssembler {
   }
 
   def loadUntyped(dst: Rg, ldk: LoadAccessKind, src: StackSlot.Untyped): Unit = instr {
-    if (ldk != LD_F32 && ldk != LD_F64) analyzer.trans(dst.asInstanceOf[IR], src)
+    if (!ldk.isFloat) analyzer.trans(dst.asInstanceOf[IR], src)
     stream
       .opc8(Opcode.LoadUntyped)
       .bits(_.w4(dst).w4(ldk))
@@ -932,7 +955,11 @@ trait ForkedAssembler {
   }
 
   def storeUntyped(src: Rg, stk: StoreAccessKind, dst: StackSlot.Untyped): Unit = instr {
-    if (stk != ST_F32 && stk != ST_F64) analyzer.trans(dst, src.asInstanceOf[IR])
+    if (stk.isFloat) {
+      analyzer.prim(dst)
+    } else {
+      analyzer.trans(dst, src.asInstanceOf[IR])
+    }
     stream
       .opc8(Opcode.StoreUntyped)
       .bits(_.w4(src).w4(stk))
@@ -1551,6 +1578,12 @@ object Assembler {
     case CopyFromTypeSlotGeneric
     case FPowi32
     case FPowi64
+    case Float16
+    case FMov16
+    case FMov16i
+    case Bcc16
+    case Scc16
+    case FMathUn16
   }
 
   enum RegSymGroup extends Ordinal {
@@ -1579,6 +1612,7 @@ object Assembler {
     case Throw
     case RetRef
     case NullCheck
+    case FRet16
   }
 
   enum FloatOperations extends Ordinal {
@@ -1611,6 +1645,7 @@ object Assembler {
   @nowarn("msg=match may not be exhaustive")
   object RegGroup {
     def fret(w: Width): RegGroup = w match {
+      case W16 => RegGroup.FRet16
       case W32 => RegGroup.FRet32
       case W64 => RegGroup.FRet64
     }

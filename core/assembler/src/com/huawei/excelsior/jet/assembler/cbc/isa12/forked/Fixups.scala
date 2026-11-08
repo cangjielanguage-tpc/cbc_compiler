@@ -56,6 +56,7 @@ object Fixups {
         case (UGE, W64) => specialized(Bcc64Uge)
         case (REQ, W64) => specialized(BccReq)
         case (RNE, W64) => specialized(BccRne)
+        case (FEQ | FNE | FLT | FNLT | FGE | FNGE, Width.W16) => generic(Bcc16)
         case (_, W32) => generic(Bcc32)
         case (_, W64) => generic(Bcc64)
         case _ => shouldNotReachHere(s"Width $width must be $W32 or $W64")
