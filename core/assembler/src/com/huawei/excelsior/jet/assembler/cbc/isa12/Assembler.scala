@@ -294,7 +294,7 @@ object Assembler {
     case LD_F32 // 0110 | fr*,32 |
     case LD_F64 // 0111 | fr*,64 |
     case LD_REC // 1000 | ir*,64 | load pointer to record
-    case LD_UNUSED1 // 1001 | ------ |
+    case LD_F16 // 1001 | fr*,16 |
     case LD_U32 // 1010 | ir*,64 |
     case LD_64 // 1011 | ir*,64 |
     case LD_UNUSED2 // 1100 | ------ |
@@ -303,6 +303,8 @@ object Assembler {
     case LD_REF // 1111 | ir*,64 | load traced objref
 
     def ldk: Int = ordinal
+
+    def isFloat: Boolean = this == LD_F16 || this == LD_F32 || this == LD_F64
   }
 
   object LoadAccessKind {
@@ -313,7 +315,8 @@ object Assembler {
       cbcTypeKind match {
         case I8 => LoadAccessKind.LD_S8
         case U8 => LoadAccessKind.LD_U8
-        case F16 | I16 => LoadAccessKind.LD_S16
+        case F16 => LoadAccessKind.LD_F16
+        case I16 => LoadAccessKind.LD_S16
         case U16 => LoadAccessKind.LD_U16
         case CHAR | I32 | U32 => LoadAccessKind.LD_32
         case I64 | U64 | REC => LoadAccessKind.LD_64
@@ -336,9 +339,12 @@ object Assembler {
     case SPECIAL // 101 | --  |   ir*   | set memexpr head and switch to Mem opcode space
     case ST_F32 // 110 | 32  |   fr*   |
     case ST_F64 // 111 | 64  |   fr*   |
+    case ST_F16 // 1000 | 16 | fr* |
 
 
     def stk: Int = ordinal
+
+    def isFloat: Boolean = this == ST_F16 || this == ST_F32 || this == ST_F64
 
     def opx(highBit: Int): Int = {
       p(highBit, freeBits = 3) | s3(stk)
@@ -354,6 +360,7 @@ object Assembler {
         case (W64, false) => ST_64
         // ST_REF
         // SPECIAL
+        case (W16, true) => ST_F16
         case (W32, true) => ST_F32
         case (W64, true) => ST_F64
 
@@ -367,7 +374,8 @@ object Assembler {
 
       cbcTypeKind match {
         case I8 | U8 => StoreAccessKind.ST_8
-        case F16 | I16 | U16 => StoreAccessKind.ST_16
+        case F16 => StoreAccessKind.ST_F16
+        case I16 | U16 => StoreAccessKind.ST_16
         case CHAR | I32 | U32 => StoreAccessKind.ST_32
         case I64 | U64 | REC => StoreAccessKind.ST_64
         case REF | NREF => StoreAccessKind.ST_REF

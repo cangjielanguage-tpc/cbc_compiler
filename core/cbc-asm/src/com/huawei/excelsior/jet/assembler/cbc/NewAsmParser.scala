@@ -896,11 +896,16 @@ private object InstructionParser {
   // movs
   instr("movi.32")  { (a, s) => a.movi32(s.ireg, s.int.toInt) }
   instr("movi.64")  { (a, s) => a.movi64(s.ireg, s.int) }
+  instr("fmovi.16") { (a, s) => a.fmovi(s.freg, s.float, Width.W16) }
+  instr("fmovi.bits.16") { (a, s) => a.fmovi16Bits(s.freg, Math.toIntExact(s.int)) }
   instr("fmovi.32") { (a, s) => a.fmovi(s.freg, s.float, Width.W32) }
   instr("fmovi.64") { (a, s) => a.fmovi(s.freg, s.float, Width.W64) }
   instr("mov.32")    { (a, s) => a.mov(s.ireg, s.ireg, W32) }
+  instr("fmov.16")   { (a, s) => a.fmov(s.freg, s.freg, com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.W16) }
   instr("fmov.32")   { (a, s) => a.fmov(s.freg, s.freg, W32) }
+  instr("movi2f.16") { (a, s) => a.movi2f(s.freg, s.ireg, com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.W16) }
   instr("movi2f.32") { (a, s) => a.movi2f(s.freg, s.ireg, W32) }
+  instr("movf2i.16") { (a, s) => a.movf2i(s.ireg, s.freg, com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.W16) }
   instr("movf2i.32") { (a, s) => a.movf2i(s.ireg, s.freg, W32) }
   instr("mov.64")    { (a, s) => a.mov(s.ireg, s.ireg, W64) }
   instr("fmov.64")   { (a, s) => a.fmov(s.freg, s.freg, W64) }
@@ -1216,6 +1221,13 @@ private object InstructionParser {
   instr("clsri.64")  { (a, s) => a.clsri(s.ireg, s.ireg, s.int, Width.W64) }
   instr("casri.64")  { (a, s) => a.casri(s.ireg, s.ireg, s.int, Width.W64) }
 
+  // 16-bit float arithmetic
+  instr("fadd.16") { (a, s) => a.fadd(Width.W16, s.freg, s.freg, s.freg) }
+  instr("fsub.16") { (a, s) => a.fsub(Width.W16, s.freg, s.freg, s.freg) }
+  instr("fmul.16") { (a, s) => a.fmul(Width.W16, s.freg, s.freg, s.freg) }
+  instr("fdiv.16") { (a, s) => a.fdiv(Width.W16, s.freg, s.freg, s.freg) }
+  instr("fpow.16") { (a, s) => a.fpow(Width.W16, s.freg, s.freg, s.freg) }
+
   // 32-bit float arithmetic
   instr("fadd.32") { (a, s) => a.fadd(Width.W32, s.freg, s.freg, s.freg) }
   instr("fsub.32") { (a, s) => a.fsub(Width.W32, s.freg, s.freg, s.freg) }
@@ -1233,6 +1245,12 @@ private object InstructionParser {
   instr("fpowi.64") { (a, s) => a.fpowi(Width.W64, s.freg, s.freg, s.ireg) }
 
   // float unary math
+  instr("fsin.16")   { (a, s) => a.fmathunary(FloatMathOperaions.SIN, Width.W16, s.freg, s.freg) }
+  instr("fcos.16")   { (a, s) => a.fmathunary(FloatMathOperaions.COS, Width.W16, s.freg, s.freg) }
+  instr("flog.16")   { (a, s) => a.fmathunary(FloatMathOperaions.LOG, Width.W16, s.freg, s.freg) }
+  instr("fceil.16")  { (a, s) => a.fmathunary(FloatMathOperaions.CEIL, Width.W16, s.freg, s.freg) }
+  instr("ffloor.16") { (a, s) => a.fmathunary(FloatMathOperaions.FLOOR, Width.W16, s.freg, s.freg) }
+
   instr("fsin.32")   { (a, s) => a.fmathunary(FloatMathOperaions.SIN, Width.W32, s.freg, s.freg) }
   instr("fcos.32")   { (a, s) => a.fmathunary(FloatMathOperaions.COS, Width.W32, s.freg, s.freg) }
   instr("flog.32")   { (a, s) => a.fmathunary(FloatMathOperaions.LOG, Width.W32, s.freg, s.freg) }
@@ -1258,6 +1276,9 @@ private object InstructionParser {
   instr("ftrunc.64") { (a, s) => a.fmathunary(FloatMathOperaions.TRUNC, Width.W64, s.freg, s.freg) }
 
   // float unary
+  instr("fneg.16")  { (a, s) => a.fneg(s.freg, s.freg, Width.W16) }
+  instr("fabs.16")  { (a, s) => a.fabs(s.freg, s.freg, Width.W16) }
+  instr("fsqrt.16") { (a, s) => a.fsqrt(s.freg, s.freg, Width.W16) }
   instr("fneg.32")  { (a, s) => a.fneg(s.freg, s.freg, Width.W32) }
   instr("fabs.32")  { (a, s) => a.fabs(s.freg, s.freg, Width.W32) }
   instr("fsqrt.32") { (a, s) => a.fsqrt(s.freg, s.freg, Width.W32) }
@@ -1269,6 +1290,7 @@ private object InstructionParser {
   instr("ret.32")  { (a, s) => a.ret(s.ireg, Width.W32) }
   instr("ret.64")  { (a, s) => a.ret(s.ireg, Width.W64) }
   instr("ret.ref") { (a, s) => a.retRef(s.ireg) }
+  instr("fret.16") { (a, s) => a.fret(s.freg, Width.W16) }
   instr("fret.32") { (a, s) => a.fret(s.freg, Width.W32) }
   instr("fret.64") { (a, s) => a.fret(s.freg, Width.W64) }
 
@@ -1277,6 +1299,7 @@ private object InstructionParser {
   instr("fbcc.64") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W64, s.label, wide = false) }
   instr("bcci.64") { (a, s) => a.doBccImm(s.cc, s.ireg, s.int, Width.W64, s.label, wide = false) }
   instr("bcc.32")  { (a, s) => a.doBcc(s.cc, s.ireg, s.ireg, Width.W32, s.label, wide = false) }
+  instr("fbcc.16") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W16, s.label, wide = false) }
   instr("fbcc.32") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W32, s.label, wide = false) }
   instr("bcci.32") { (a, s) => a.doBccImm(s.cc, s.ireg, s.int, Width.W32, s.label, wide = false) }
 
@@ -1285,6 +1308,7 @@ private object InstructionParser {
   instr("w.fbcc.64") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W64, s.label, wide = true) }
   instr("w.bcci.64") { (a, s) => a.doBccImm(s.cc, s.ireg, s.int, Width.W64, s.label, wide = true) }
   instr("w.bcc.32")  { (a, s) => a.doBcc(s.cc, s.ireg, s.ireg, Width.W32, s.label, wide = true) }
+  instr("w.fbcc.16") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W16, s.label, wide = true) }
   instr("w.fbcc.32") { (a, s) => a.doBcc(s.cc, s.freg, s.freg, Width.W32, s.label, wide = true) }
   instr("w.bcci.32") { (a, s) => a.doBccImm(s.cc, s.ireg, s.int, Width.W32, s.label, wide = true) }
 
@@ -1293,6 +1317,7 @@ private object InstructionParser {
   instr("fscc.64")   { (a, s) => a.scc(s.cc, s.ireg, s.freg, s.freg, Width.W64) }
   instr("scci.64")   { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.int,  Width.W64) }
   instr("scc.32")    { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.ireg, Width.W32) }
+  instr("fscc.16")   { (a, s) => a.scc(s.cc, s.ireg, s.freg, s.freg, Width.W16) }
   instr("fscc.32")   { (a, s) => a.scc(s.cc, s.ireg, s.freg, s.freg, Width.W32) }
   instr("scci.32")   { (a, s) => a.scc(s.cc, s.ireg, s.ireg, s.int,  Width.W32) }
 
@@ -1398,6 +1423,7 @@ private object InstructionParser {
   instr("ld.uslot.u32") { (a, s) => a.loadUntyped(s.ireg, LD_U32, s.us) }
   instr("ld.uslot.64")  { (a, s) => a.loadUntyped(s.ireg, LD_64, s.us) }
   instr("ld.uslot.ref") { (a, s) => a.loadUntyped(s.ireg, LD_REF, s.us) }
+  instr("ld.uslot.f16") { (a, s) => a.loadUntyped(s.freg, LD_F16, s.us) }
   instr("ld.uslot.f32") { (a, s) => a.loadUntyped(s.freg, LD_F32, s.us) }
   instr("ld.uslot.f64") { (a, s) => a.loadUntyped(s.freg, LD_F64, s.us) }
 
@@ -1406,6 +1432,7 @@ private object InstructionParser {
   instr("st.uslot.32")  { (a, s) => a.storeUntyped(s.ireg, ST_32, s.us) }
   instr("st.uslot.64")  { (a, s) => a.storeUntyped(s.ireg, ST_64, s.us) }
   instr("st.uslot.ref") { (a, s) => a.storeUntyped(s.ireg, ST_REF, s.us) }
+  instr("st.uslot.f16") { (a, s) => a.storeUntyped(s.freg, ST_F16, s.us) }
   instr("st.uslot.f32") { (a, s) => a.storeUntyped(s.freg, ST_F32, s.us) }
   instr("st.uslot.f64") { (a, s) => a.storeUntyped(s.freg, ST_F64, s.us) }
   instr("st.uslot.imm") { (a, s) => a.storeUntypedImm(s.int, s.us) }
@@ -1420,6 +1447,7 @@ private object InstructionParser {
   instr("ld.arr.s32") { (a, s) => a.loadArray(s.ireg, LD_S32, s.ireg, s.ireg) }
   instr("ld.arr.64")  { (a, s) => a.loadArray(s.ireg, LD_64, s.ireg, s.ireg) }
   instr("ld.arr.ref") { (a, s) => a.loadArray(s.ireg, LD_REF, s.ireg, s.ireg) }
+  instr("ld.arr.f16") { (a, s) => a.loadArray(s.freg, LD_F16, s.ireg, s.ireg) }
   instr("ld.arr.f32") { (a, s) => a.loadArray(s.freg, LD_F32, s.ireg, s.ireg) }
   instr("ld.arr.f64") { (a, s) => a.loadArray(s.freg, LD_F64, s.ireg, s.ireg) }
 
@@ -1428,11 +1456,15 @@ private object InstructionParser {
   instr("st.arr.32")  { (a, s) => a.storeArray(s.ireg, ST_32, s.ireg, s.ireg) }
   instr("st.arr.64")  { (a, s) => a.storeArray(s.ireg, ST_64, s.ireg, s.ireg) }
   instr("st.arr.ref") { (a, s) => a.storeArray(s.ireg, ST_REF, s.ireg, s.ireg) }
+  instr("st.arr.f16") { (a, s) => a.storeArray(s.freg, ST_F16, s.ireg, s.ireg) }
   instr("st.arr.f32") { (a, s) => a.storeArray(s.freg, ST_F32, s.ireg, s.ireg) }
   instr("st.arr.f64") { (a, s) => a.storeArray(s.freg, ST_F64, s.ireg, s.ireg) }
 
   // memory access - raw
-  instr("ld.tail") { (a, s) => a.loadTailParam(ldk = s.ldk, dst = s.ireg, tailReg = s.ireg, number = s.int) }
+  instr("ld.tail") { (a, s) =>
+    val ldk = s.ldk
+    a.loadTailParam(ldk = ldk, dst = if (ldk.isFloat) s.freg else s.ireg, tailReg = s.ireg, number = s.int)
+  }
   instr("ld.raw.s8")  { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_S8, s.int) }
   instr("ld.raw.s16") { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_S16, s.int) }
   instr("ld.raw.u8")  { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_U8, s.int) }
@@ -1442,6 +1474,7 @@ private object InstructionParser {
   instr("ld.raw.s32") { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_S32, s.int) }
   instr("ld.raw.64")  { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_64, s.int) }
   instr("ld.raw.ref") { (a, s) => a.loadRawMemory(s.ireg, s.ireg, LD_REF, s.int) }
+  instr("ld.raw.f16") { (a, s) => a.loadRawMemory(s.freg, s.ireg, LD_F16, s.int) }
   instr("ld.raw.f32") { (a, s) => a.loadRawMemory(s.freg, s.ireg, LD_F32, s.int) }
   instr("ld.raw.f64") { (a, s) => a.loadRawMemory(s.freg, s.ireg, LD_F64, s.int) }
 
@@ -1450,6 +1483,7 @@ private object InstructionParser {
   instr("st.raw.32")  { (a, s) => a.storeRawMemory(s.ireg, s.ireg, ST_32, s.int) }
   instr("st.raw.64")  { (a, s) => a.storeRawMemory(s.ireg, s.ireg, ST_64, s.int) }
   instr("st.raw.ref") { (a, s) => a.storeRawMemory(s.ireg, s.ireg, ST_REF, s.int) }
+  instr("st.raw.f16") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F16, s.int) }
   instr("st.raw.f32") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F32, s.int) }
   instr("st.raw.f64") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F64, s.int) }
 
@@ -1479,10 +1513,12 @@ private object InstructionParser {
   instr("load.type.info")   { (a, s) => a.loadTypeInfoSig(s.ireg, s.tpe) }
   instr("load.type.info.g") { (a, s) => a.loadTypeInfoGeneric(s.ireg, s.tpe) }
   instr("box")              { (a, s) => a.box(s.ireg, s.ireg, s.tpe) }
+  instr("box.f")            { (a, s) => a.box(s.freg, s.ireg, s.tpe) }
   instr("box.ts")           { (a, s) => a.box(s.ts, s.ireg) }
   instr("box.g")            { (a, s) => a.boxGeneric(s.ireg, s.ireg, s.ireg) }
   instr("boxt.g")           { (a, s) => a.boxGeneric(s.ts, s.ireg, s.ireg) }
   instr("unbox")            { (a, s) => a.unbox(s.ireg, s.ireg, s.tpe) }
+  instr("unbox.f")          { (a, s) => a.unbox(s.freg, s.ireg, s.tpe) }
   instr("unbox.ts")         { (a, s) => a.unbox(s.ts, s.ireg) }
   instr("type.arg")         { (a, s) => a.typeArg(dst = s.ireg, idx = s.int.toInt, ti = s.ireg) }
   instr("offset")           { (a, s) => a.offset(dst = s.ireg, fr = s.field, ti = s.ireg) }
