@@ -643,9 +643,6 @@ API/std/unittest/report_bench_html/report_html_no_gnuplot.cj
 # bug 237 (unexpected cast base: 13:UnboxLea)
 compiler/CodegenCJNative/record/record_5.cj
 
-# bug 238 (Resources.scala: equirement failed: InstantiatedRecord)
-API/std/unittest/mock/compiler/createMock/mutableStruct.cj
-
 # bug 240 (Language constraint: all variables in `extend` should be used in the extended type)
 API/std/unittest/mock/compiler/createMock/defaultValues/customExtension.cj
 
