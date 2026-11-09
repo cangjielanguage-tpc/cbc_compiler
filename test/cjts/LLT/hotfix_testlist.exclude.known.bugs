@@ -473,9 +473,6 @@ compiler/CHIR/UG/VTable/generic/non_static/return_class01.cj
 API/std/collection/test_Concurrent.cj
 compiler/Macro/basic_expansion/main_in_macro_call.cj
 
-# bug 187 (exception at creation of empty HashMap<int32, CString>)
-compiler/CodegenCommon/lambda/lambda_cstring.cj
-
 # bug 188 (extend+is cornercase)
 compiler/CodegenCJNative/is/is_01.cj
 compiler/CodegenCJNative/is/is_02.cj
