@@ -5,11 +5,13 @@ import shutil
 import asyncio
 import subprocess
 import traceback
+from collections.abc import Sequence
 from pathlib import Path
 
 SEMAPHORE = asyncio.Semaphore(os.cpu_count() or 4)
 
-def group_files_by_tags(master_test_dir: Path, search_root: Path, tags_only: set[str]) -> dict[str, list[Path]]:
+def group_files_by_tags(master_test_dir: Path, search_root: Path, tags_only: set[str],
+                        artifact_root: Path | None = None) -> dict[str, list[Path]]:
     """
     Recursively scans from the repository search_root to group files.
     - Expected files are targeted flatly inside the identified master module directory.
@@ -43,6 +45,10 @@ def group_files_by_tags(master_test_dir: Path, search_root: Path, tags_only: set
         all_source_files.extend(list(search_root.rglob(ext)))
 
     for file_path in all_source_files:
+        if artifact_root is not None and file_path.is_relative_to(artifact_root):
+            continue
+        if any(part in {"temp", "target", ".hotfix"} for part in file_path.relative_to(search_root).parts[:-1]):
+            continue
         stem = file_path.stem
         ext = file_path.suffix
 
@@ -208,6 +214,8 @@ async def build_and_test_patch(release_dir: Path, tag_dir: Path, log_prefix: str
         try:
             patch_ret_code, patch_stdout_bytes, patch_stderr_bytes = await execute_patch(f"{release_dir}/main",
                 tmp_path, test_env, log_prefix)
+            (tmp_path / "patch.actual").write_bytes(patch_stdout_bytes)
+            (tmp_path / "patch.stderr").write_bytes(patch_stderr_bytes)
             actual_test_output = patch_stdout_bytes.decode(encoding="utf-8", errors="ignore").strip()
             if patch_ret_code != 0:
                 err_log = patch_stderr_bytes.decode(encoding="utf-8", errors="ignore").strip()
@@ -223,7 +231,8 @@ async def build_and_test_patch(release_dir: Path, tag_dir: Path, log_prefix: str
 
     return await patch_in_temp(tag_dir)
 
-async def build_and_test_tag_version(tag: str, tag_target_root: Path, exec_subdir_name: Path, release_hotfix_dir: Path) -> bool:
+async def build_and_test_tag_version(tag: str, tag_target_root: Path, exec_subdir_name: Path,
+                                    release_hotfix_dir: Path, opt_level: str) -> bool:
     """
     Executes 'cjpm clean && cjpm run' asynchronously inside the test module folder.
     Isolates .chir objects, builds hotfix patches, and compares runtime output vs result.expected.
@@ -253,7 +262,7 @@ async def build_and_test_tag_version(tag: str, tag_target_root: Path, exec_subdi
         async def exec_cjpm_run():
             async with SEMAPHORE:
                 proc = await asyncio.create_subprocess_exec(
-                    "cjpm", "run",
+                    "cjpm", "run", f"--build-args=--{opt_level}",
                     cwd=exec_dir,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE
@@ -268,6 +277,7 @@ async def build_and_test_tag_version(tag: str, tag_target_root: Path, exec_subdi
             return False
 
         actual_output = cjpm_run_stdout_bytes.decode(encoding="utf-8", errors="ignore").replace("cjpm run finished", "").strip()
+        (exec_dir / "native.actual").write_text(actual_output + "\n")
 
         expected_file_path = exec_dir / "result.expected"
         if expected_file_path.is_file():
@@ -321,7 +331,7 @@ async def build_and_test_tag_version(tag: str, tag_target_root: Path, exec_subdi
     return True
 
 
-def build_and_test_release_version(workspace_dir: Path, exec_subdir_name: Path) -> str | None:
+def build_and_test_release_version(workspace_dir: Path, exec_subdir_name: Path, opt_level: str) -> str | None:
     """
     Executes 'cjpm clean && cjpm run' synchronously inside the release module folder.
     Asserts standard outputs and copies BOTH .chir and .exe files into .hotfix/.
@@ -335,11 +345,12 @@ def build_and_test_release_version(workspace_dir: Path, exec_subdir_name: Path) 
         subprocess.run(["cjpm", "clean"], cwd=exec_dir, capture_output=True, check=True)
 
         result = subprocess.run(
-            ["cjpm", "run"], cwd=exec_dir,
+            ["cjpm", "run", f"--build-args=--{opt_level}"], cwd=exec_dir,
             text=True, capture_output=True
         )
 
         actual_output = result.stdout.replace("cjpm run finished", "").strip() if result.stdout else ""
+        (exec_dir / "native.actual").write_text(actual_output + "\n")
 
         if result.returncode != 0:
             print(f"{log_prefix} [ERROR] Process failed (code {result.returncode}). Logs: {result.stderr.strip()}")
@@ -375,7 +386,8 @@ def build_and_test_release_version(workspace_dir: Path, exec_subdir_name: Path) 
         traceback.print_exc()
         return None
 
-def run_tests(search_root: Path, tag_groups: dict[str, list[Path]], tmp_dir: Path, master_test_subdir_name: str) -> bool:
+def run_tests(search_root: Path, tag_groups: dict[str, list[Path]], tmp_dir: Path,
+              master_test_subdir_name: str, opt_level: str) -> bool:
     """
     Synchronously creates sandbox directories, copies layout dependencies,
     builds a release version of app synchronously and each of tag versions of app asynchronously.
@@ -419,7 +431,7 @@ def run_tests(search_root: Path, tag_groups: dict[str, list[Path]], tmp_dir: Pat
         return False
 
     print(f"\n--- Phase 1: Building release version of app ---")
-    release_hotfix_dir = build_and_test_release_version(release_root, master_test_subdir_name)
+    release_hotfix_dir = build_and_test_release_version(release_root, master_test_subdir_name, opt_level)
 
     if release_hotfix_dir is None:
         return False
@@ -430,8 +442,11 @@ def run_tests(search_root: Path, tag_groups: dict[str, list[Path]], tmp_dir: Pat
         print(f"\n--- Phase 2: Building tag version of app ---")
 
         async def run_gathered_tasks():
+            global SEMAPHORE
+            # Each mode uses a new event loop, so its semaphore must be fresh.
+            SEMAPHORE = asyncio.Semaphore(os.cpu_count() or 4)
             async_tasks = [
-                build_and_test_tag_version(tag, path, master_test_subdir_name, release_hotfix_dir)
+                build_and_test_tag_version(tag, path, master_test_subdir_name, release_hotfix_dir, opt_level)
                 for tag, path in tags_to_execute
             ]
             return await asyncio.gather(*async_tasks)
@@ -453,7 +468,8 @@ def split_first_line(path: Path) -> list[str] | None:
         print(f"[ERROR] Error parsing '{path}' configuration file: {e}")
         return None
 
-def test_command(test_root_dir: Path, tmp_dir_arg: str, tags_only: set[str]) -> bool:
+def test_command(test_root_dir: Path, tmp_dir_arg: str | None, tags_only: set[str],
+                 opt_levels: Sequence[str] = ("O0", "O2")) -> bool:
     master_test_dir = None
     if (test_root_dir / "cjpm.toml").exists() and (test_root_dir / "tags").exists():
         # one module
@@ -473,29 +489,37 @@ def test_command(test_root_dir: Path, tmp_dir_arg: str, tags_only: set[str]) -> 
     print(f"\nREPOSITORY ROOT:         {test_root_dir.name}")
     print(f"MASTER MODULE:           {master_test_dir.name}/")
 
-    tmp_dir = Path(test_root_dir / tmp_dir_arg).resolve() if tmp_dir_arg else master_test_dir / "temp"
-    if tmp_dir.is_dir():
-        print(f"[INFO] Clearing environment in temp directory: {tmp_dir.name}/")
-        try:
-            shutil.rmtree(tmp_dir)
-            print("[INFO] Clean environment initialized successfully.")
-        except Exception as pre_cleanup_err:
-            print(f"[WARN] Non-breaking initialization cleanup anomaly: {pre_cleanup_err}")
+    if tmp_dir_arg:
+        requested_dir = Path(tmp_dir_arg).expanduser()
+        tmp_dir = (requested_dir / test_root_dir.name if requested_dir.is_absolute()
+                   else test_root_dir / requested_dir).resolve()
+    else:
+        tmp_dir = test_root_dir / "temp"
 
-    tag_groups = group_files_by_tags(master_test_dir, test_root_dir, tags_only)
+    tag_groups = group_files_by_tags(master_test_dir, test_root_dir, tags_only, tmp_dir)
     if not tag_groups:
         return False
 
-    pipeline_success = run_tests(test_root_dir, tag_groups, tmp_dir,
-        master_test_dir.name if master_test_dir != test_root_dir else "")
-
-    if not tmp_dir_arg and pipeline_success and tmp_dir.is_dir():
-        print(f"[SUCCESS] All pipelines passed successfully. Purging temporary workspaces in: {tmp_dir.name}/")
+    pipeline_success = True
+    for opt_level in opt_levels:
+        mode = "default" if opt_level == "O0" else "O2"
+        mode_dir = tmp_dir / mode
+        print(f"\n=== {test_root_dir.name}: {opt_level} ===")
         try:
-            shutil.rmtree(tmp_dir)
-            print("[INFO] Workspace directory tree cleaned completely.")
-        except Exception as cleanup_err:
-            print(f"[WARN] Error during cleanup: {cleanup_err}")
+            if mode_dir.is_dir():
+                print(f"[INFO] Clearing artifacts for {test_root_dir.name} ({opt_level}): {mode_dir}")
+                shutil.rmtree(mode_dir)
+            passed = run_tests(test_root_dir, tag_groups, mode_dir,
+                master_test_dir.name if master_test_dir != test_root_dir else "", opt_level)
+        except Exception as error:
+            print(f"[ERROR] {test_root_dir.name} ({opt_level}): {error}")
+            traceback.print_exc()
+            passed = False
+        status = "SUCCESS" if passed else "ERROR"
+        print(f"[{status}] {test_root_dir.name} ({opt_level})")
+        pipeline_success = pipeline_success and passed
+
+    print(f"[INFO] Artifacts retained in: {tmp_dir}")
 
     if pipeline_success:
         return True
@@ -635,6 +659,13 @@ def main():
         default=[],
         help="Run test cases with given tags")
 
+    test_parser.add_argument(
+        '--opt-level',
+        nargs='+',
+        choices=['O0', 'O2'],
+        default=['O0', 'O2'],
+        help="Compiler optimization levels to test (default: O0 O2)")
+
     # TODO the task that creates empty test project
 
     args = parser.parse_args()
@@ -658,9 +689,15 @@ def main():
             sys.exit(1)
 
         failed_tests = []
-        for item in script_dir.iterdir():
-            if item.is_dir() and item.name not in tests_excluded and (not args.tests_only or item.name in args.tests_only):
-                passed = test_command(item, args.save_temps, set(args.tags_only))
+        for item in sorted(script_dir.iterdir()):
+            if (item.is_dir() and item.name != "__pycache__" and not item.name.startswith('.')
+                    and item.name not in tests_excluded and (not args.tests_only or item.name in args.tests_only)):
+                try:
+                    passed = test_command(item, args.save_temps, set(args.tags_only), args.opt_level)
+                except Exception as error:
+                    print(f"[ERROR] Test '{item.name}' setup failed: {error}")
+                    traceback.print_exc()
+                    passed = False
                 if passed is False:
                     print(f"[ERROR] Test '{item.name}' execution failed.")
                     failed_tests.append(item.name)
