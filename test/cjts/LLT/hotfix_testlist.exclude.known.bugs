@@ -421,10 +421,6 @@ compiler/CHIR/CHIR2HLIR/time/native3.cj
 compiler/CodegenCJNative/generic/generic_struct2.cj
 compiler/CodegenCJNative/generic/generic_struct4.cj
 
-# bug 174 (assertion failed: !Engine::Term(term).IsGeneric())
-compiler/FFI/CFFI/cpointer/extend_interfaces.cj
-compiler/Modules/Package/extend/extend_multiple_exportID/main.cj
-
 # bug 175 (CHIRParser.genericTypeInfoParam(CHIRParser.scala:2770))
 compiler/CHIR/UG/ClosureConversion/extendFunc01.cj
 compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
@@ -438,10 +434,6 @@ compiler/CodegenCJNative/demangle/type/cpointer_type1.cj
 
 # bug 179 (extra spaces in type printing via reflection)
 compiler/CodegenCJNative/ExtensionDef/extensiondef_07.cj
-
-# bug 183 (Resolved method is abi incompatible)
-compiler/Sema/class/class_inheritance_9.cj
-compiler/CHIR/UG/VTable/generic/non_static/return_class01.cj
 
 # bug 184 (StackOverflowError in CangjieNodes$StoreFieldSeq.blockRef)
 API/std/collection/test_Concurrent.cj
@@ -687,11 +679,6 @@ compiler/CodegenCommon/bug0307/default.cj
 compiler/Modules/defaultArg/default.cj
 compiler/Modules/multiple_module_01/main.cj
 
-# bug 213 (generic default interface method call through an interface-typed reference -- `could not find VTable slot for`)
-API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
-compiler/CHIR/UG/ClosureConversion/instanceOf03.cj
-compiler/CHIR/UG/ClosureConversion/instanceOf04.cj
-
 # bug 215 (not implemented: intrinsic CPOINTER_ADD)
 compiler/CHIROptTest/SancovPass/traceMemCmpArray3.cj
 compiler/CHIROptTest/SancovPass/traceStringCmpIndexOf.cj
@@ -740,9 +727,6 @@ API/std/unittest/mock/compiler/createSpy/accessingToNonPackagePrivateFieldsOfAno
 API/std/unittest/mock/compiler/createSpy/accessingToPackagePrivateFieldsOfAnotherPackage.cj
 API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
 
-# bug 220 (declarartion recursion (enum with struct that has the same enum as field) lead to compiler crash)
-compiler/CHIR/UG/RecursionEnum/recursionEnum05.cj
-
 # bug 221 (`I<Unit> = CPointer()` crashes with StoreStaticFieldSeq[Plain] ...  got arg LConst[0])
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
 compiler/CodegenCJNative/generic/generic_struct.cj
@@ -753,9 +737,6 @@ compiler/Sema/ffi/cpointer_generic.cj
 API/std/libast/tokens/toString/test_004.cj
 compiler/CHIR/AST2CHIR/bugfix/bugfix4/test.cj
 compiler/CHIR/package/package01/test1.cj
-
-# bug 224 (`CPointer<T>` : Failed to resolve method)
-compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
 
 # bug 227 (HashMap stdlib behaviour differs from test expectancy)
 API/std/collection/test_HashMap.cj

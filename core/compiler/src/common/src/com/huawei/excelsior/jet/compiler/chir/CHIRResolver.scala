@@ -16,6 +16,8 @@ import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.*
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.LocalTypeVariable
 import com.huawei.excelsior.jet.compiler.symlevel.{GenericInfo, MethodSignature, SignatureType, ClassType as SymClassType, Type as SymType}
+import com.huawei.excelsior.jet.compiler.types.Approximation.CC
+import com.huawei.excelsior.jet.compiler.types.CompiledType
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
 import com.huawei.excelsior.jet.util.ScalaCollections
@@ -510,5 +512,15 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
     f.annotations.collectFirst {
       case a: CHIR.OverrideSrcFuncType => a
     }
+  }
+
+  def subType(x: SignatureType, y: SignatureType): Boolean = {
+    x == y || (!x.isInstanceOf[SignatureType.Box] && !y.isInstanceOf[SignatureType.Box] && {
+      // TODO: traverse extensions
+      (CompiledType(x), CompiledType(y)) match {
+        case (x: ReferenceType, y: ReferenceType) => x.compare(y) == CC.Less
+        case _ => false
+      }
+    })
   }
 }

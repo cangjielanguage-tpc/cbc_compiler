@@ -1212,8 +1212,12 @@ trait CHIRParser
         }
         val (gsig, _, _, _) = resolver.functionSig(methodArgVal.tpe, hasReceiver = !isStatic)
 
-        def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = {
-          if (g.isTypeVariable && !i.isTypeVariable && (!i.isReference || i.isInstanceOf[SignatureType.OptionLikeEnum])) SignatureType.Box(i) else i
+        def boxTypeVar(g: SignatureType, i: SignatureType): SignatureType = g match {
+          case g: SignatureType.LocalTypeVariable => g
+          case g: SignatureType.ClassTypeVariable =>
+            if (!i.isTypeVariable && (!i.isReference || i.isInstanceOf[SignatureType.OptionLikeEnum])) SignatureType.Box(i)
+            else i
+          case _ => i
         }
 
         val isig = MethodSignature(retType, isigParams.drop(if (isStatic) 0 else 1))
@@ -1510,9 +1514,9 @@ trait CHIRParser
               iparams = c.params.map(_.instantiate(from.params, Seq.empty))
               if iparams.size == targetCtor.size
               if iparams zip targetCtor forall {
-                case (x, y) if x == y => true
+                case (x, y) if resolver.subType(x, y) => true
                 // Ignore boxes that might have been inserted for recursive enums
-                case (SignatureType.Box(x), y) if x == y => true
+                case (SignatureType.Box(x), y) if resolver.subType(x, y) => true
                 case _ => false
               }
             } yield idx
@@ -2967,6 +2971,7 @@ trait CHIRParser
         case t: Tuple             => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
         case t: CangjieEnum       => LoadTypeInfoGeneric(t)(t.params.map(loadTypeInfo): _*)
         case t: SignatureType.Box => loadTypeInfo(t.base)
+        case t: CPointer          => LoadTypeInfoGeneric(t)(loadTypeInfo(t.pointee.asInstanceOf[SignatureType]))
         case t => shouldNotReachHere(t)
       }
     } else {
