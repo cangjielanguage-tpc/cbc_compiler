@@ -1935,10 +1935,10 @@ trait CHIRParser
             val sig = resolver.typeSig(e.resultTpe)
             val res = if (sig.isZST) {
               Void()
-            } else if (sig.isRecord) {
-              StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
             } else if (sig.isVariableSizeType) {
               ZeroValueGeneric(loadTypeInfo(sig))
+            } else if (sig.isRecord) {
+              StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
             } else {
               ZeroValueNode(ValueType.fromSig(sig))
             }
