@@ -93,3 +93,6 @@ A failed mode does not stop the other mode or subsequent tests. Independent
 tag variants are all awaited, and the runner exits with a failure status only
 after attempting the selected tests. If a mode's release build fails, its patch
 variants cannot run because their native baseline is unavailable.
+
+Patch-gen declaration/diagnostic fixtures and their runner are described in
+[patch-gen/README.md](patch-gen/README.md).
