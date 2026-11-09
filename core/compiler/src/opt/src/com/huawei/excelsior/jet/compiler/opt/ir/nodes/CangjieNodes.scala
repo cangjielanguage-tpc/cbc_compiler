@@ -14,6 +14,7 @@ import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
 
 import PartialFunction.condOpt
+import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.STATIC
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CPointer, CangjieArray, Void}
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, MethodReference, MethodSignature, MethodType, SignatureType}
@@ -386,6 +387,22 @@ trait CangjieNodes { self: Universe =>
         case x => DerivedPtr.Local()
       }
     }
+  }
+
+  class InoutParam private(proto: InoutParam.Proto) extends NodeWithFixedArgs(proto) with SpinalMemoryNode with ProducesValue {
+    def chirArg: InoutParam.CHIRType = proto.chirArg
+    def value: Node = arg(2)
+  }
+
+  object InoutParam {
+    type CHIRType = CHIR.LocalVar | CHIR.Parameter
+
+    case class Proto private[InoutParam](chirArg: CHIRType, valueType: Type)
+      extends FixedArgs[InoutParam](ControlType, MemoryType, valueType)(AddrType) with ControlMemoryValueTagged[InoutParam] {
+      def newInstance() = new InoutParam(this)
+    }
+
+    def apply(chirArg: CHIRType)(value: Node): Node = Prototype.intern(Proto(chirArg, value.tpe))(value)
   }
 
   class ZeroValueGeneric private(proto: ZeroValueGeneric.Proto) extends FloatingNodeWithFixedArgs(proto) {

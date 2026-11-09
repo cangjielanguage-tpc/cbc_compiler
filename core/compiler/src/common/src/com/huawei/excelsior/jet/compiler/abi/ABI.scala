@@ -181,7 +181,7 @@ object ABI {
         case _ =>
       }
     } else if (sigReturnType.isRecord) {
-      specialParamMap(CFuncRetByVal) = sigReturnType
+      specialParamMap(RetByVal) = sigReturnType
     }
 
     val abiSig = makeABISigWithSpecialParams(specialParamMap)

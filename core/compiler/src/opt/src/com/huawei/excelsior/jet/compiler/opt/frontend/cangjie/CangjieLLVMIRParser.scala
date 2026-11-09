@@ -2681,7 +2681,6 @@ trait CangjieLLVMIRParser
       val adjustedArgs = adjustRetByVal(target, adjustMutFunc(target, args)) {
         val abiRetType = target.methodType.returnType
         if (abiRetType.isZST) {
-          assert(!target.methodType.hasCFuncRetByValParameter)
           Void()
         } else {
           StackAlloc.Local(abiRetType)
@@ -2750,16 +2749,8 @@ trait CangjieLLVMIRParser
     }
 
     private def adjustRetByVal(target: MethodReference, args: Seq[Node])(retByVal: => Node): Seq[Node] = {
-      val hasRetByVal = target.methodType.hasRetByValParameter
-      val hasCFuncRetByVal = target.methodType.hasCFuncRetByValParameter
-      assert(!(hasRetByVal && hasCFuncRetByVal))
-
-      val adjustedArgs = adjustParam(args, hasRetByVal) {
+      adjustParam(args, target.methodType.hasRetByValParameter) {
         (target.methodType.getRetByValArgIdx, retByVal)
-      }
-
-      adjustParam(adjustedArgs, hasCFuncRetByVal) {
-        (target.methodType.getCFuncRetByValArgIdx, retByVal)
       }
     }
 
@@ -2810,7 +2801,7 @@ trait CangjieLLVMIRParser
       val abiRetType = mt.returnType
       val res = invoke(args)
       if (abiRetType.isRecord) {
-        args(if (mt.hasCFuncRetByValParameter) mt.getCFuncRetByValArgIdx else mt.getRetByValArgIdx)
+        args(mt.getRetByValArgIdx)
       } else if (abiRetType.isZST) {
         Void()
       } else {
@@ -2831,7 +2822,6 @@ trait CangjieLLVMIRParser
       val abiRetType = mt.returnType
       val adjustedArgs = adjustRetByVal(mr, args.toSeq) { 
         if (abiRetType.isZST) {
-          assert(!mt.hasCFuncRetByValParameter)
           Void()
         } else {
           StackAlloc.Local(abiRetType)
@@ -2841,7 +2831,7 @@ trait CangjieLLVMIRParser
       val res = Call(mr)(target +: adjustedArgs: _*)
 
       if (abiRetType.isRecord) {
-        adjustedArgs(mt.getCFuncRetByValArgIdx)
+        adjustedArgs(mt.getRetByValArgIdx)
       } else if (abiRetType.isZST) {
         Void()
       } else {

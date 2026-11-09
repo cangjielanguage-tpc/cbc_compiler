@@ -190,6 +190,7 @@ trait CHIRParser
     }
 
     resolveDerivedPtrProxies()
+    resolveInoutParams()
 
     if (eliminateUnreachableCode()) {
       dbgPrinter.debugNodes("All graph after UCE")
@@ -372,6 +373,16 @@ trait CHIRParser
     chirEntryBlock addArg Goto(entryBlock, entryBlock)
 
     blockMap
+  }
+
+  object ValueSig {
+    def unapply(v: CHIR.Value)(implicit resolver: CHIRResolver) : Option[SignatureType] = 
+      Some(resolver.typeSig(v match {
+        case v: CHIR.GlobalVar => v.tpe
+        case v: CHIR.LocalVar => v.tpe
+        case v: CHIR.Parameter => v.tpe
+        case v: CHIR.Func => v.tpe
+      }))
   }
 
   private class CHIRInterpreter(method: Method, func: CHIR.Func, blockMap: BlockMap, debugState: mutable.ArrayBuffer[CHIR.DebugLocation])(implicit pkg: CHIR.Package, resolver: CHIRResolver) extends AbstractInterpreter {
@@ -657,15 +668,6 @@ trait CHIRParser
       for ((p, i) <- args.zipWithIndex) {
         state(p) = rootMethodParam(i + chirParamStart)
       }
-    }
-
-    object ValueSig {
-      def unapply(v: CHIR.Value): Option[SignatureType] = Some(resolver.typeSig(v match {
-          case v: CHIR.GlobalVar => v.tpe
-          case v: CHIR.LocalVar => v.tpe
-          case v: CHIR.Parameter => v.tpe
-          case v: CHIR.Func => v.tpe
-      }))
     }
 
     private def parseExpression(e: CHIR.Expression, block: Block, state: State): Unit = e match {
@@ -1149,6 +1151,16 @@ trait CHIRParser
 
           val retType = resolver.typeSig(e.resultTpe)
           val call = callMethod(target, outerType, thisType, retType, paramTypes, args, None)
+
+          for (a <- args) ReinterpretCast.skip(a) match {
+            case p: InoutParam =>
+              val ValueSig(sig) = p.chirArg
+              if (sig.isPrimitive && !sig.isZST && !isInMemory(state(p.chirArg))) {
+                state(p.chirArg) = LoadMemory(sig.toAsm, sig, atomic = false)(p)
+              }
+            case _ =>
+          }
+
           state(e) = call
 
         case _ => // Indirect call
@@ -1592,10 +1604,10 @@ trait CHIRParser
                     // nothing to do
                   case StackAlloc.Local(allocType) =>
                     // string
-                    val mem = GetStaticFieldSeqRef(DerivedPtr.Global(), createFieldReferenceNode(field, SignatureType.fromSymType(declType), field.getType, Some(field.getFieldIndex)))
+                    val mem = GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(g))
                     copy(allocType, mem, value)
                   case _ =>
-                    StoreStaticFieldSeq(DerivedPtr.Global(), value, createFieldReferenceNode(field, SignatureType.fromSymType(declType), field.getType, Some(field.getFieldIndex)))
+                    StoreStaticFieldSeq(DerivedPtr.Global(), value, staticFieldRef(g))
                 }
               case _ =>
             }
@@ -1860,7 +1872,12 @@ trait CHIRParser
             state(e) = state(e.args.head)
 
           case CHIR.Intrinsic.Kind.InoutParam =>
-            state(e) = state(e.args.head)
+            e.args.head match {
+              case g: CHIR.GlobalVar =>
+                state(e) = GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(g))
+              case arg: (CHIR.Parameter | CHIR.LocalVar) =>
+                state(e) = InoutParam(arg)(state(arg))
+            }
 
           case CHIR.Intrinsic.Kind.BlackBox =>
             state(e) = state(e.args.head)
@@ -2372,7 +2389,7 @@ trait CHIRParser
         state(e) = ThisTypeInfoBy(state(e.obj))
     }
 
-    private def staticFieldRef(globalVar: CHIR.GlobalVar): CangjieReferenceNode = {
+    private def staticFieldRef(globalVar: CHIR.GlobalVar)(implicit resolver: CHIRResolver): CangjieReferenceNode = {
       val symRefType = globalVar.declaringDef
         .map(d => asClassType(resolver.symType(d).get))
         .getOrElse(resolver.findClass(globalVar.packageName).get)
@@ -2477,15 +2494,14 @@ trait CHIRParser
 
       lazy val abiRetValType = {
         val mt = target.methodType
-        mt.parameterType(if (mt.hasCFuncRetByValParameter) mt.getCFuncRetByValArgIdx else mt.getRetByValArgIdx)
+        mt.parameterType(mt.getRetByValArgIdx)
       }
 
       var abiRetVal: Node = null
       val abiArgs = calcABIArgs(target, ugArgs) {
-        case RetByVal | CFuncRetByVal =>
+        case RetByVal =>
           abiRetVal = abiRetValType match {
             case _ if abiRetValType.isZST =>
-              assert(!target.methodType.hasCFuncRetByValParameter)
               Void()
 
             case t: SignatureType.Box =>
@@ -2901,6 +2917,28 @@ trait CHIRParser
     assert(all[DerivedPtr.Proxy].isEmpty,
       s"there should be no alive DerivedPtr.Proxy nodes after parsing:" +
         s"${all[DerivedPtr.Proxy].map(_.rec).map(ReinterpretCast.skip).toSeq}")
+  }
+
+  private def isInMemory(v: Node): Boolean = v match {
+    case _: StackAlloc | _: GetFieldSeqRef | _: GetStaticFieldSeqRef => true
+    case _ => false
+  }
+
+  private def resolveInoutParams()(implicit resolver: CHIRResolver): Unit = {
+    for (n <- all[InoutParam].toList) {
+      val ValueSig(sig) = n.chirArg
+      replaceByCode(n) {
+        if (sig.isZST) {
+          LConst(0)
+        } else if (sig.isPrimitive && !isInMemory(n.value)) {
+          val slot = StackAlloc.Local(sig)
+          StoreMemory(sig.toAsm, sig, atomic = false)(slot, n.value)
+          slot
+        } else {
+          n.value
+        }
+      }
+    }
   }
 
   private def createBox(base: SignatureType, value: Node): Node = {

@@ -221,32 +221,6 @@ compiler/CodegenCommon/overflow/cmpfuzz/test_3_main.cj
 compiler/CodegenCJNative/demangle/decl/exception_throw2.cj
 compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
 
-# bug 67 (C-struct getRetByValArgIdx crash)
-compiler/FFI/CFFI/record/small_0.cj
-compiler/FFI/CFFI/record/small_1.cj
-compiler/FFI/CFFI/record/small_2.cj
-compiler/FFI/CFFI/record/small_3.cj
-compiler/FFI/CFFI/record/small_4.cj
-compiler/FFI/CFFI/record/small_5.cj
-compiler/FFI/CFFI/record/small_6.cj
-compiler/FFI/CFFI/record/small_19.cj
-compiler/FFI/CFFI/record/small_20.cj
-compiler/Sema/call/call21.cj
-compiler/CodegenCJNative/incremental/cfunc1/main.cj
-compiler/FFI/CFFI/c_ffi_00102/c_ffi_00102.cj
-compiler/FFI/CFFI/case7-struct/c_ffi_00101.cj
-compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_1.cj
-compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_2.cj
-compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_6.cj
-compiler/FFI/CFFI/cfunc/empty_type/empty_type.cj
-compiler/FFI/CFFI/dock/cfunc_record/main.cj
-compiler/FFI/CFFI/foreign/foreign002/foreign002.cj
-compiler/FFI/CFFI/foreign/foreign003/foreign003.cj
-compiler/FFI/CFFI/foreign/foreign004/foreign004.cj
-compiler/FFI/CFFI/import/import002/import002.cj
-compiler/FFI/CFFI/import/import003/import003.cj
-compiler/FFI/CFFI/import/import004/import004.cj
-
 # bug 60 (Support Process.current.atExit)
 compiler/CodegenCommon/atexit
 
@@ -275,9 +249,6 @@ compiler/CHIR/UG/VTable/extend/extend4/main.cj
 compiler/CHIR/UG/VTable/extend/extend5/main.cj
 compiler/CodegenCJNative/LegacyTests/operatorParenExpr.cj
 compiler/Sema/Extend/extend_lookup/main.cj
-
-# bug 63 (Proper parse @C methods with C-struct return type)
-compiler/CodegenCJNative/trycatch/nested_try_cstruct.cj
 
 # bug 132 (Incorrect signature of return type)
 compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
@@ -476,9 +447,6 @@ compiler/CHIR/UG/VTable/generic/non_static/return_class01.cj
 API/std/collection/test_Concurrent.cj
 compiler/Macro/basic_expansion/main_in_macro_call.cj
 
-# bug 187 (exception at creation of empty HashMap<int32, CString>)
-compiler/CodegenCommon/lambda/lambda_cstring.cj
-
 # bug 188 (extend+is cornercase)
 compiler/CodegenCJNative/is/is_01.cj
 compiler/CodegenCJNative/is/is_02.cj
@@ -579,31 +547,6 @@ compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_00
 compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
 compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
 
-# bug 202 (some complicated foreign funcs build patterns in LLT testsuite)
-API/std/unittest/mock/framework/listeners_test.cj
-API/std/unittest/mock/framework/stub_base_test.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_interface.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package_separate.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_ret_generic.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_same_package_separate.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/same_package.cj
-compiler/CodegenCJNative/LegacyTests/native.cj
-compiler/CodegenCJNative/incremental/foreign/foreign1.cj
-compiler/FFI/CFFI/foreign/foreign001/foreign001.cj
-compiler/FFI/CFFI/foreign/foreign005/foreign005.cj
-compiler/FFI/CFFI/foreign/foreign006/foreign006.cj
-compiler/FFI/CFFI/foreign/foreign007/foreign007.cj
-compiler/FFI/CFFI/foreign/foreign01.cj
-compiler/Sema/concurrency/spawn10.cj
-API/std/unittest/mock/compiler/createMock/usePrivateTypesOtherPackage.cj
-API/std/unittest/mock/compiler/createSpy/indirectSpying.cj
-API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
-API/std/unittest/mock/framework/expectation_failed_test.cj
-API/std/unittest/mock/framework/runtime_failure_report_test.cj
-API/std/unittest/mock/framework/verification_failed_report_test.cj
-API/std/unittest/mock/framework/verify_misconfiguration_test.cj
-
 # bug 203 (sigsegv on partially constructed TypeInfo: class with functional type field that references same class in signature)
 API/std/unittest/custom_assertions/nested_expect_inside_assert.cj
 API/std/unittest/custom_assertions/nested_expect_inside_expect.cj
@@ -645,11 +588,6 @@ compiler/CHIR/UG/OpenGeneric/mut.cj
 # bug 253 (finalizers don't run)
 Runtime/CJNative/GC/gc_wcollector_finalizer.cj
 
-# bug 208 (inout tests fail)
-compiler/FFI/CFFI/inout/inout_0.cj
-compiler/Macro/inout/inout_m2.cj
-compiler/Macro/inout/inout_m5.cj
-
 # bug 209 (package recompilation test: new version of package ignored)
 compiler/CodegenCJNative/compitability/class_add_interface_concrete/main.cj
 compiler/CodegenCJNative/compitability/class_add_interface_concrete2/main.cj
@@ -662,12 +600,6 @@ compiler/CodegenCJNative/compitability/class_add_open_method4/main.cj
 compiler/CodegenCJNative/compitability/non_open_generic_class/main.cj
 compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi.cj
 compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi_recursive.cj
-
-# bug 210 (inout tests: key not found compiler.chir.v13002.GlobalVarImpl)
-API/std/unittest/mock/compiler/misc/foreign_inout_param_struct.cj
-compiler/FFI/CFFI/inout/inout_13.cj
-compiler/FFI/CFFI/inout/inout_14.cj
-compiler/FFI/CFFI/inout/inout_7.cj
 
 # bug 212 (UNEXPECTED: no cbc for launcher)
 compiler/Driver/options/optional_space/output.cj
@@ -769,14 +701,6 @@ compiler/CodegenCJNative/compitability/non_open_generic_class_reflection/main.cj
 compiler/CodegenCJNative/reflect/reflect_01.cj
 API/std/reflect/typeInfo_instanceMemberFunction_generic.cj
 
-# bug 214 (inout receives value instead of address -- SIGSEGV)
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/return.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/staticWithForeign.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/topLvlWithForeign.cj
-compiler/FFI/CFFI/inout/inout_1.cj
-compiler/CodegenCHIR/cptr_cstr/init_01.cj
-compiler/FFI/CFFI/inout/inout_3.cj
-
 # bug 218 (umbrella issue: `could not find VTable slot for *`)
 API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
 compiler/CHIR/CHIR2HLIR/operator_overload/all_assign.cj
@@ -832,12 +756,6 @@ compiler/CHIR/package/package01/test1.cj
 
 # bug 224 (`CPointer<T>` : Failed to resolve method)
 compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
-
-# bug 226 (sizeOf<CString>() == 0)
-compiler/FFI/CFFI/type_size/sizeOf.cj
-compiler/FFI/CFFI/ctype/ctype_2.cj
-compiler/FFI/CFFI/type_size/alignOf.cj
-compiler/Sema/array/array_builin_ctype.cj
 
 # bug 227 (HashMap stdlib behaviour differs from test expectancy)
 API/std/collection/test_HashMap.cj

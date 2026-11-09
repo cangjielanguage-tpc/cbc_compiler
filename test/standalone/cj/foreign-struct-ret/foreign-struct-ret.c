@@ -134,3 +134,18 @@ struct F3d retF3d(int64_t x, int64_t y, int64_t z)
     r.c = z + 0.5;
     return r;
 }
+
+struct P3 {
+    int32_t a;
+    int32_t b;
+    int32_t c;
+};
+
+struct P3 procP3(struct P3 d)
+{
+    struct P3 r;
+    r.a = d.a + 1;
+    r.b = d.b + 2;
+    r.c = d.c + 3;
+    return r;
+}
