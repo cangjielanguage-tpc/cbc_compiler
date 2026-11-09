@@ -1,0 +1,26 @@
+global vars
+global funcs
+_CNat5ArrayIhE6<init>Hv
+_CNat5ArrayIhE10rangeSliceHRNat5RangeIlEl
+_CNat5ArrayIhE7isLegalHll
+_CNat5ArrayIhE9normalizeHRNat5RangeIlE
+_CNat8IteratorIhE6<init>Hv
+_CNat13ArrayIteratorIhE6<init>HRNat5ArrayIhE
+_CAF7default3fooHCNY_8FooClassE
+_CAO7default3fooHCNY_8FooClassEK_iiHv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+$default$GVI
+$default$Patch$GC$foo$$default.FooClass$GF
+types
+_CNat5ArrayIhE
+_CNat8IteratorIhE
+_CNat13ArrayIteratorIhE
+$default$PatchImpl$GC
+_CNat6OptionICNat6ObjectEE
+_CNat6OptionIlE
+_CNat6OptionIhE
+_CNatXRNat5ArrayICNat6ObjectEEU000000027kGpLK_IY3_E
+_CNatXRNat5ArrayIhEU000000027kGpLK_IhE
