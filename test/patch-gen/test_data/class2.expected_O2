@@ -1,0 +1,37 @@
+global vars
+_CN7default5itemsE
+_CN7default7threadsE
+global funcs
+_CNat5ArrayIVHb2_lE6<init>Hv
+_CNat8IteratorIVHb2_lE6<init>Hv
+_CNat13ArrayIteratorIVHb2_lE6<init>HRNat5ArrayIY2_E
+_CAF7default8FooClass3fooHv
+_CAO7default8FooClass3fooHvK_iiHv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+_CGF7defaultU00000002OBFbwilHv
+$default$GVI
+$default$Patch$GC$FooClass$GC$foo$$default.FooClass$GF
+_CN7default8FooClass3fooHvEL_E
+_CCN7default8FooClass3fooHvEL_E$g
+_CCN7default8FooClass3fooHvEL_E$i
+types
+_CNat5ArrayIVHb2_lE
+_CNac10ArrayStackIVHb2_lE
+_CNat8IteratorIVHb2_lE
+_CNat13ArrayIteratorIVHb2_lE
+_CNac18ArrayStackIteratorIVHb2_lE
+$default$PatchImpl$GC
+$CiF0uvE
+$ClN7default8FooClass3fooHvEL_E$0
+$CiF0bvE
+$CiF0uCNat6ThreadECNat9ExceptionEE
+$CiF0uCNat5ErrorEE
+$CiF0llE
+_CNat6OptionICNat6ObjectEE
+_CNat6OptionIlE
+_CNat6OptionIVHb2_lE
+_CNatXRNat5ArrayICNat6ObjectEEU00000002OBFbwK_IY3_E
+_CNatXRNat5ArrayIVHb2_lEU00000002OBFbwK_IY3_E

@@ -1,0 +1,33 @@
+global vars
+_CAO7default4bar1HvK_E
+_CAO7default4bar2HvK_E
+_CAO7default4bar3HvK_E
+global funcs
+_CAF7default4foo1Hv
+_CAO7default4foo1HvK_iiHv
+_CN7default4bar1Hv
+_CAF7default4bar1Hv
+_CAO7default4bar1HvK_iiHv
+_CAF7default4foo2Hv
+_CAO7default4foo2HvK_iiHv
+_CN7default4bar2Hv
+_CAF7default4bar2Hv
+_CAO7default4bar2HvK_iiHv
+_CAF7default4foo3Hv
+_CAO7default4foo3HvK_iiHv
+_CN7default4bar3Hv
+_CAF7default4bar3Hv
+_CAO7default4bar3HvK_iiHv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+$default$GVI
+$default$Patch$GC$foo1$GF
+[unreachable] $default$Patch$GC$bar1$GF
+$default$Patch$GC$foo2$GF
+[unreachable] $default$Patch$GC$bar2$GF
+$default$Patch$GC$foo3$GF
+[unreachable] $default$Patch$GC$bar3$GF
+types
+$default$PatchImpl$GC

@@ -103,3 +103,6 @@ An `exclude` without a trailing mode removes the test from the suite
 completely; with a mode it skips only that compilation mode. The two lists
 are independent: a test excluded from the standalone list may still run in
 the hotfix suite and vice versa.
+
+Patch-gen declaration/diagnostic fixtures and their runner are described in
+[patch-gen/README.md](patch-gen/README.md).
