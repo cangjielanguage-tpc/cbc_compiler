@@ -99,12 +99,12 @@ The package tests under `test/hotfix` use a separate runner:
 python3 test/hotfix/hotfix_tests.py test --cangjie-home <toolchain>
 ```
 
-It runs every enabled test and patch variant in both O0 and O2. Use
-`--opt-level O0` or `--opt-level O2` to select one level, and `--tests-only`
-or `--tags-only` to select tests or variants. The runner selects the fixed O0/O2
-options in `[profile.customized-option]` through `cjpm run --build-args=--O0`
-or `--build-args=--O2`, including local dependencies. Copied manifests are not
-rewritten.
+It runs every enabled test and patch variant in both `default` and `O2` modes.
+Use `--opt-level default` or `--opt-level O2` to select one mode, and `--tests-only`
+or `--tags-only` to select tests or variants. The default mode runs `cjpm run`
+without extra optimization options. O2 selects `[profile.customized-option].O2`
+through `cjpm run --build-args=--O2`, including local dependencies. Copied
+manifests are not rewritten.
 
 Artifacts are retained under `<test>/temp/default/` and `<test>/temp/O2/`,
 with separate `release/` and variant directories. `--save-temps <path>`

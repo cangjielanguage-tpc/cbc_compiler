@@ -239,6 +239,7 @@ async def build_and_test_tag_version(tag: str, tag_target_root: Path, exec_subdi
     """
     log_prefix = f"[TAG-{tag.upper()}]"
     exec_dir = tag_target_root / exec_subdir_name
+    build_args = [] if opt_level == "default" else [f"--build-args=--{opt_level}"]
     print(f"{log_prefix} [INFO] Initializing execution runtime in: {exec_dir}")
 
     try:
@@ -262,7 +263,7 @@ async def build_and_test_tag_version(tag: str, tag_target_root: Path, exec_subdi
         async def exec_cjpm_run():
             async with SEMAPHORE:
                 proc = await asyncio.create_subprocess_exec(
-                    "cjpm", "run", f"--build-args=--{opt_level}",
+                    "cjpm", "run", *build_args,
                     cwd=exec_dir,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE
@@ -339,13 +340,14 @@ def build_and_test_release_version(workspace_dir: Path, exec_subdir_name: Path, 
     """
     log_prefix = "[RELEASE]"
     exec_dir = workspace_dir / exec_subdir_name
+    build_args = [] if opt_level == "default" else [f"--build-args=--{opt_level}"]
     print(f"{log_prefix} Initializing execution runtime in: {exec_dir}")
 
     try:
         subprocess.run(["cjpm", "clean"], cwd=exec_dir, capture_output=True, check=True)
 
         result = subprocess.run(
-            ["cjpm", "run", f"--build-args=--{opt_level}"], cwd=exec_dir,
+            ["cjpm", "run", *build_args], cwd=exec_dir,
             text=True, capture_output=True
         )
 
@@ -469,7 +471,7 @@ def split_first_line(path: Path) -> list[str] | None:
         return None
 
 def test_command(test_root_dir: Path, tmp_dir_arg: str | None, tags_only: set[str],
-                 opt_levels: Sequence[str] = ("O0", "O2")) -> bool:
+                 opt_levels: Sequence[str] = ("default", "O2")) -> bool:
     master_test_dir = None
     if (test_root_dir / "cjpm.toml").exists() and (test_root_dir / "tags").exists():
         # one module
@@ -502,8 +504,7 @@ def test_command(test_root_dir: Path, tmp_dir_arg: str | None, tags_only: set[st
 
     pipeline_success = True
     for opt_level in opt_levels:
-        mode = "default" if opt_level == "O0" else "O2"
-        mode_dir = tmp_dir / mode
+        mode_dir = tmp_dir / opt_level
         print(f"\n=== {test_root_dir.name}: {opt_level} ===")
         try:
             if mode_dir.is_dir():
@@ -662,9 +663,9 @@ def main():
     test_parser.add_argument(
         '--opt-level',
         nargs='+',
-        choices=['O0', 'O2'],
-        default=['O0', 'O2'],
-        help="Compiler optimization levels to test (default: O0 O2)")
+        choices=['default', 'O2'],
+        default=['default', 'O2'],
+        help="Compilation modes to test (default: default O2)")
 
     # TODO the task that creates empty test project
 
