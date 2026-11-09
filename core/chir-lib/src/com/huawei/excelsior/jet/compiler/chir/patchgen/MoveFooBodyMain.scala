@@ -11,7 +11,7 @@ import scala.sys.process.*
 object MoveFooBodyMain {
   def main(args: Array[String]): Unit = {
     val toolchain = if (args.nonEmpty) Paths.get(args(0)).toAbsolutePath
-      else Paths.get(System.getProperty("user.home"), "Projects/software/hotfix-20.10")
+      else Paths.get(System.getProperty("user.home"), "Projects/software/hotfix-06.11")
     val source = Paths.get("core/chir-lib/examples/foo.cj").toAbsolutePath
     val out = Paths.get("core/chir-lib/target/chir-body-demo").toAbsolutePath
     Files.createDirectories(out)
