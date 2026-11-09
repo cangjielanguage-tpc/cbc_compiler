@@ -80,27 +80,28 @@ It is not a replacement for the compiler's full type checker. Schema nodes that
 lack a specialized CHIR interface are retained and exposed as generic expression
 views. Both v13002 and v1203 use the T-backed implementation; pass the version to
 `CHIR.read` for v1203. Factories for arbitrary new functions, definitions or types
-are not provided.
+are not provided. Table IDs and the block/group/branch factories used by editor
+tests are implementation details, not members of the common `CHIR.Package` API.
 
 The existing `new PackageImpl(source)` constructors and `CHIR.newPackage` read API
-remain available. `CHIR.newPackage` retains the compiler's synthetic patch
+remain available. `CHIR.newPackage` retains the compiler's synthetic function
 overlay; use `CHIR.read` for file transformations. An overlay containing synthetic
 DSL functions cannot be written as a CHIR file.
 
 Run the editor tests with `sbt 'chirLib/test'`.
 
-## End-to-end demo with hotfix-20.10 (v13002)
+## End-to-end demo with hotfix-06.11 (v13002)
 
 The runnable main is
 `com.huawei.excelsior.jet.compiler.chir.patchgen.MoveFooBodyMain` in `chirLib`.
-It uses the v13002 bindings appropriate for `hotfix-20.10`. Run from the repository root:
+It uses the v13002 bindings appropriate for `hotfix-06.11`. Run from the repository root:
 
 ```bash
 sbt 'chirLib/runMain com.huawei.excelsior.jet.compiler.chir.patchgen.MoveFooBodyMain'
 ```
 
 An optional argument supplies a different absolute toolchain directory; the
-default is `~/Projects/software/hotfix-20.10`. The main prints `foo.cj` first,
+default is `~/Projects/software/hotfix-06.11`. The main prints `foo.cj` first,
 invokes `cjc --emit-chir=raw`, loads the package through `CHIR.read`, and
 prints the two functions' IDs, parameters, and block contents. It removes the
 global `foo` conditional and calls `from.moveBody(to)` on the same editable
