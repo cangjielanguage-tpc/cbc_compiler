@@ -612,12 +612,6 @@ API/std/unittest/mock/compiler/createSpy/accessingToNonPackagePrivateFieldsOfAno
 API/std/unittest/mock/compiler/createSpy/accessingToPackagePrivateFieldsOfAnotherPackage.cj
 API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
 
-# bug 221 (`I<Unit> = CPointer()` crashes with StoreStaticFieldSeq[Plain] ...  got arg LConst[0])
-compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
-compiler/CodegenCJNative/generic/generic_struct.cj
-compiler/CodegenCJNative/storeElementRef.cj
-compiler/Sema/ffi/cpointer_generic.cj
-
 # bug 222 (castIdentity: F16/F32/F64)
 API/std/libast/tokens/toString/test_004.cj
 compiler/CHIR/AST2CHIR/bugfix/bugfix4/test.cj
