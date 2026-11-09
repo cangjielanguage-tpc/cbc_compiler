@@ -375,6 +375,16 @@ trait CHIRParser
     blockMap
   }
 
+  object ValueSig {
+    def unapply(v: CHIR.Value)(implicit resolver: CHIRResolver) : Option[SignatureType] = 
+      Some(resolver.typeSig(v match {
+        case v: CHIR.GlobalVar => v.tpe
+        case v: CHIR.LocalVar => v.tpe
+        case v: CHIR.Parameter => v.tpe
+        case v: CHIR.Func => v.tpe
+      }))
+  }
+
   private class CHIRInterpreter(method: Method, func: CHIR.Func, blockMap: BlockMap, debugState: mutable.ArrayBuffer[CHIR.DebugLocation])(implicit pkg: CHIR.Package, resolver: CHIRResolver) extends AbstractInterpreter {
     interpreter =>
 
@@ -658,15 +668,6 @@ trait CHIRParser
       for ((p, i) <- args.zipWithIndex) {
         state(p) = rootMethodParam(i + chirParamStart)
       }
-    }
-
-    object ValueSig {
-      def unapply(v: CHIR.Value): Option[SignatureType] = Some(resolver.typeSig(v match {
-          case v: CHIR.GlobalVar => v.tpe
-          case v: CHIR.LocalVar => v.tpe
-          case v: CHIR.Parameter => v.tpe
-          case v: CHIR.Func => v.tpe
-      }))
     }
 
     private def parseExpression(e: CHIR.Expression, block: Block, state: State): Unit = e match {
@@ -1153,13 +1154,9 @@ trait CHIRParser
 
           for (a <- args) ReinterpretCast.skip(a) match {
             case p: InoutParam =>
-              p.chirArg match {
-                case arg@(_: CHIR.LocalVar | _: CHIR.Parameter) =>
-                  val ValueSig(sig) = arg
-                  if (sig.isPrimitive && !sig.isZST && !isInMemory(state(arg))) {
-                    state(arg) = LoadMemory(sig.toAsm, sig, atomic = false)(p)
-                  }
-                case _ =>
+              val ValueSig(sig) = p.chirArg
+              if (sig.isPrimitive && !sig.isZST && !isInMemory(state(p.chirArg))) {
+                state(p.chirArg) = LoadMemory(sig.toAsm, sig, atomic = false)(p)
               }
             case _ =>
           }
@@ -1876,8 +1873,10 @@ trait CHIRParser
 
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {
-              case g: CHIR.GlobalVar => state(e) = InoutParam.global(g)
-              case arg => state(e) = InoutParam(arg)(state(arg))
+              case g: CHIR.GlobalVar =>
+                state(e) = GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(g))
+              case arg: (CHIR.Parameter | CHIR.LocalVar) =>
+                state(e) = InoutParam(arg)(state(arg))
             }
 
           case CHIR.Intrinsic.Kind.BlackBox =>
@@ -2390,6 +2389,19 @@ trait CHIRParser
         state(e) = ThisTypeInfoBy(state(e.obj))
     }
 
+    private def staticFieldRef(globalVar: CHIR.GlobalVar)(implicit resolver: CHIRResolver): CangjieReferenceNode = {
+      val symRefType = globalVar.declaringDef
+        .map(d => asClassType(resolver.symType(d).get))
+        .getOrElse(resolver.findClass(globalVar.packageName).get)
+
+      val refType = fromSymType(symRefType)
+      val name = resolver.symName(globalVar)
+      val sig = resolver.typeSig(globalVar.tpe)
+      val f = symRefType.findDeclaredFieldOrNull(xstr(name), sig) ensuring
+        (_ != null, s"cannot find field '$name' with signature '${sig.toJETSignature}' in class '${symRefType.getName}'")
+
+      FieldReferenceNode(CangjieFieldReference(f, refType, f.getType))
+    }
 
     private def calcMethodRef(declType: SymClassType, refType: SignatureType, _name: String, func: CHIR.Func): MethodReference = {
       val isStatic = declType.isCangjiePackage || func.attributes.contains(Attribute.Static)
@@ -2907,20 +2919,6 @@ trait CHIRParser
         s"${all[DerivedPtr.Proxy].map(_.rec).map(ReinterpretCast.skip).toSeq}")
   }
 
-  private def staticFieldRef(globalVar: CHIR.GlobalVar)(implicit resolver: CHIRResolver): CangjieReferenceNode = {
-    val symRefType = globalVar.declaringDef
-      .map(d => asClassType(resolver.symType(d).get))
-      .getOrElse(resolver.findClass(globalVar.packageName).get)
-
-    val refType = fromSymType(symRefType)
-    val name = resolver.symName(globalVar)
-    val sig = resolver.typeSig(globalVar.tpe)
-    val f = symRefType.findDeclaredFieldOrNull(xstr(name), sig) ensuring
-      (_ != null, s"cannot find field '$name' with signature '${sig.toJETSignature}' in class '${symRefType.getName}'")
-
-    FieldReferenceNode(CangjieFieldReference(f, refType, f.getType))
-  }
-
   private def isInMemory(v: Node): Boolean = v match {
     case _: StackAlloc | _: GetFieldSeqRef | _: GetStaticFieldSeqRef => true
     case _ => false
@@ -2928,23 +2926,16 @@ trait CHIRParser
 
   private def resolveInoutParams()(implicit resolver: CHIRResolver): Unit = {
     for (n <- all[InoutParam].toList) {
-      val sig = n.chirArg match {
-        case v: CHIR.GlobalVar => resolver.typeSig(v.tpe)
-        case v: CHIR.LocalVar => resolver.typeSig(v.tpe)
-        case v: CHIR.Parameter => resolver.typeSig(v.tpe)
-      }
+      val ValueSig(sig) = n.chirArg
       replaceByCode(n) {
         if (sig.isZST) {
           LConst(0)
-        } else n.chirArg match {
-          case globalVar: CHIR.GlobalVar => GetStaticFieldSeqRef(DerivedPtr.Global(), staticFieldRef(globalVar))
-          case _ => if (sig.isPrimitive && !isInMemory(n.value)) {
-            val slot = StackAlloc.Local(sig)
-            StoreMemory(sig.toAsm, sig, atomic = false)(slot, n.value)
-            slot
-          } else {
-            n.value
-          }
+        } else if (sig.isPrimitive && !isInMemory(n.value)) {
+          val slot = StackAlloc.Local(sig)
+          StoreMemory(sig.toAsm, sig, atomic = false)(slot, n.value)
+          slot
+        } else {
+          n.value
         }
       }
     }
