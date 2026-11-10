@@ -16,11 +16,25 @@ import com.huawei.excelsior.jet.compiler.chir.dsl.CHIRDSL
  * Everything those intrinsics refer to should be referred to as imported AOT CHIR entities
  */
 private final class IntrinsicsPackage extends CHIR.Package {
+  def newGoto(destination: CHIR.Block, debugLoc: Option[CHIR.DebugLocation]): CHIR.Goto = shouldNotCallThis("This synthetic package does not support serialized edits")
+  def write(output: java.nio.file.Path): Unit = shouldNotCallThis("This synthetic package does not support serialized edits")
+  def expressions(function: CHIR.Func): Seq[CHIR.Expression] = shouldNotCallThis("This synthetic package does not support serialized edits")
+  def isInternal(function: CHIR.Func): Boolean = shouldNotCallThis("This synthetic package does not support serialized edits")
+  def insert(block: CHIR.Block, operation: CHIR.Operation, before: Option[CHIR.Expression]): CHIR.LocalVar = shouldNotCallThis("This synthetic package does not support serialized edits")
+  def replace(expression: CHIR.Expression, operation: CHIR.Operation): Unit = shouldNotCallThis("This synthetic package does not support serialized edits")
+  def setOptimized(): Unit = shouldNotCallThis("This synthetic package does not support serialized edits")
+
   private class CHIRThrowFuncGenerator(_pkg: CHIR.Package, _name: String, _exceptionMsg: String) extends CHIRFuncGenerator {
     implicit val pkg: CHIR.Package = _pkg
 
     def generateFunc(_id: Int): Option[CHIR.Func] = {
       Option(new CHIR.Func {
+        def ownerPackage: CHIR.Package = shouldNotCallThis("This synthetic function does not support serialized edits")
+        def moveBody(destination: CHIR.Func): Unit = shouldNotCallThis("This synthetic function does not support serialized edits")
+        def removeBody(): Unit = shouldNotCallThis("This synthetic function does not support serialized edits")
+        def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit = shouldNotCallThis("This synthetic function does not support serialized edits")
+        def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = shouldNotCallThis("This synthetic function does not support serialized edits")
+
         def tpe: CHIR.FuncType = new CHIR.FuncType {
           def paramTypes: Seq[CHIR.Type] = Seq.empty
 
@@ -183,6 +197,12 @@ private final class FakeFunc(
   val attributes: Seq[CHIR.Attribute],
   val declaringDef: Option[CHIR.CustomTypeDef]
 ) extends CHIR.Func {
+  def ownerPackage: CHIR.Package = shouldNotCallThis("This synthetic function does not support serialized edits")
+  def moveBody(destination: CHIR.Func): Unit = shouldNotCallThis("This synthetic function does not support serialized edits")
+  def removeBody(): Unit = shouldNotCallThis("This synthetic function does not support serialized edits")
+  def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit = shouldNotCallThis("This synthetic function does not support serialized edits")
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = shouldNotCallThis("This synthetic function does not support serialized edits")
+
   def id: Long = 1L
   def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
   def body: Option[CHIR.BlockGroup] = None
@@ -200,6 +220,9 @@ private final class FakeClassDef(
   val superClass: Option[CHIR.ClassType],
   methods0: => Seq[CHIR.Func]
 ) extends CHIR.ClassDef {
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = shouldNotCallThis("This synthetic definition does not support serialized edits")
+  def replaceMethods(methods: Seq[CHIR.Func]): Unit = shouldNotCallThis("This synthetic definition does not support serialized edits")
+
   lazy val tpe: CHIR.ClassType = new CHIR.ClassType {
     def typeDef: CHIR.ClassDef = FakeClassDef.this
     def genericTypeParams: Seq[CHIR.Type] = Seq.empty
@@ -220,6 +243,9 @@ private final class FakeStructDef(
   val attributes: Seq[CHIR.Attribute],
   val instanceVars: Seq[CHIR.InstanceVar]
 ) extends CHIR.StructDef {
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = shouldNotCallThis("This synthetic definition does not support serialized edits")
+  def replaceMethods(methods: Seq[CHIR.Func]): Unit = shouldNotCallThis("This synthetic definition does not support serialized edits")
+
   lazy val tpe: CHIR.StructType = new CHIR.StructType {
     def typeDef: CHIR.StructDef = FakeStructDef.this
     def genericTypeParams: Seq[CHIR.Type] = Seq.empty

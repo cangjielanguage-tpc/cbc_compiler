@@ -567,7 +567,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     }
   }
 
-  override def newGoto(destination: CHIR.Block, debugLoc: Option[CHIR.DebugLocation] = None): CHIR.Goto = {
+  def newGoto(destination: CHIR.Block, debugLoc: Option[CHIR.DebugLocation] = None): CHIR.Goto = {
     val destinationId = valueId(destination)
     blockTable(destinationId)
     val e = newExpression(CHIRExprKind.Goto, Array(destinationId), debugLoc)
@@ -795,7 +795,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     } finally changes.restore()
   }
 
-  override def write(output: Path): Unit = {
+  def write(output: Path): Unit = {
     prepareBodies()
     val bytes = serializedBytes()
     val target = output.toAbsolutePath
@@ -1357,7 +1357,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     getExpr[CHIR.Branch](appendExpression(ExpressionElem.Branch, b))
   }
 
-  override def expressions(function: CHIR.Func): Seq[CHIR.Expression] = {
+  def expressions(function: CHIR.Func): Seq[CHIR.Expression] = {
     def visit(group: CHIR.BlockGroup): Seq[CHIR.Expression] = group.blocks.flatMap { block =>
       block.expressions.flatMap { e =>
         e +: nestedGroups(expressionTable(expressionId(e)).getValue).toSeq.flatMap(id => visit(this.group(id)))
@@ -1366,7 +1366,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     function.body.toSeq.flatMap(visit)
   }
 
-  override def isInternal(function: CHIR.Func): Boolean = {
+  def isInternal(function: CHIR.Func): Boolean = {
     val base = valueTable(valueId(function)).asFunction().getBase.getBase.getBase
     Option(base.getAnnos).toSeq.flatten.exists { a => a.getValue match {
       case a: LinkTypeInfoT => a.getLinkage == Linkage.INTERNAL
@@ -1383,7 +1383,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     }
   }
 
-  override def setOptimized(): Unit = model.setPhase(Phase.OPT)
+  def setOptimized(): Unit = model.setPhase(Phase.OPT)
 
   private def ensureType(tpe: CHIR.Type): Long = {
     val cached = insertedTypeObjects.get(tpe)
@@ -1445,7 +1445,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     }
   }
 
-  override def insert(block: CHIR.Block, op: CHIR.Operation, before: Option[CHIR.Expression]): CHIR.LocalVar = {
+  def insert(block: CHIR.Block, op: CHIR.Operation, before: Option[CHIR.Expression]): CHIR.LocalVar = {
     val blockId = valueId(block)
     val function = enclosingFunction(blockTable(blockId).getParentGroup).getOrElse(
       throw new IllegalArgumentException("Insertion requires a function-owned block"))
@@ -1470,7 +1470,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     getValue[CHIR.LocalVar](localId).get
   }
 
-  override def replace(expression: CHIR.Expression, op: CHIR.Operation): Unit = {
+  def replace(expression: CHIR.Expression, op: CHIR.Operation): Unit = {
     val id = expressionId(expression)
     val old = expressionBase(expressionTable(id).getValue)
     require(!isTerminator(old), "Cannot replace a terminator with a value operation")

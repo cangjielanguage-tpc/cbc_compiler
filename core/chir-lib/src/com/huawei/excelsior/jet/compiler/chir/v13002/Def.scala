@@ -8,9 +8,9 @@ abstract class CustomTypeDefImpl(d: CustomTypeDefT)(using val provider: CHIRItem
   with HasAnnotationsImpl with HasAttributesImpl {
   def base: BaseT = d.getBase
   def attrs: Long = base.getAttributes
-  override def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
     base.setAttributes(attributes.foldLeft(0L)((mask, a) => mask | (1L << a.ordinal)))
-  override def replaceMethods(methods: Seq[CHIR.Func]): Unit = {
+  def replaceMethods(methods: Seq[CHIR.Func]): Unit = {
     val pkg = provider.asInstanceOf[PackageImpl]
     d.setMethods(methods.map(pkg.valueId).toArray)
   }

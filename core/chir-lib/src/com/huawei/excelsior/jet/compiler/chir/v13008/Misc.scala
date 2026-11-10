@@ -3,93 +3,91 @@ package com.huawei.excelsior.jet.compiler.chir.v13008
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{HasAnnotations, HasAttributes, HasDeclaringDef}
 import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRFormat.*
-import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRUtils.{toSeq, toTypeSeq}
+import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRUtils.toTypeSeq
 
 trait HasAnnotationsImpl extends HasAnnotations {
-  def base: Base
+  def base: BaseT
   implicit def provider: CHIRItemProvider
-  
-  lazy val annotations: Seq[CHIR.Annotation] = {
-    val annos = base.annosVector
-    (0 until annos.length).collect {
-      case i if base.annosType(i) != Annotation.NONE =>
-        val obj = base.annosType(i) match {
-          case Annotation.needCheckArrayBound => new NeedCheckArrayBound
-          case Annotation.needCheckCast => new NeedCheckCast
-          case Annotation.debugLocationInfoForWarning => new DebugLocation
-          case Annotation.generatedFromForIn => new GeneratedFromForIn
-          case Annotation.isAutoEnvClass => new IsAutoEnvClass
-          case Annotation.isCapturedClassInCC => new IsCapturedClassInCC
-          case Annotation.linkTypeInfo => new LinkTypeInfo
-          case Annotation.skipCheck => new SkipCheck
-          case Annotation.neverOverflowInfo => new NeverOverflowInfo
-          case Annotation.enumCaseIndex => new EnumCaseIndex
-          case Annotation.virMethodOffset => new VirMethodOffset
-          case Annotation.wrappedRawMethod => new WrappedRawMethod
-          case Annotation.overrideSrcFuncType => new OverrideSrcFuncType
-        }
-
-        annos.get(obj, i) match {
-          case a: IsAutoEnvClass => IsAutoEnvClassImpl(a)
-          case a: OverrideSrcFuncType => OverrideSrcFuncTypeImpl(a)
-          case a: WrappedRawMethod => WrappedRawMethodImpl(a)
-          case other => null // Fallback for unhandled objects (skips them safely)
-        }
-    }.filterNot(_ == null)
-  }
+  def annotations: Seq[CHIR.Annotation] =
+    Option(base).toSeq.flatMap(b => Option(b.getAnnos).toSeq.flatten).flatMap { a =>
+      a.getValue match {
+        case x: IsAutoEnvClassT => Some(IsAutoEnvClassImpl(x))
+        case x: OverrideSrcFuncTypeT => Some(OverrideSrcFuncTypeImpl(x))
+        case x: WrappedRawMethodT => Some(WrappedRawMethodImpl(x))
+        case x: MatchCaseIdT => Some(MatchCaseIdImpl(x))
+        case _ => None
+      }
+    }
 }
 
-final class IsAutoEnvClassImpl(i: IsAutoEnvClass) extends CHIR.IsAutoEnvClass {
-  def value: Boolean = i.value
+final class IsAutoEnvClassImpl(i: IsAutoEnvClassT) extends CHIR.IsAutoEnvClass {
+  def value: Boolean = i.getValue
 }
 
-final class OverrideSrcFuncTypeImpl(o: OverrideSrcFuncType)(using provider: CHIRItemProvider) extends CHIR.OverrideSrcFuncType {
-  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](o.`type`).get
+final class OverrideSrcFuncTypeImpl(o: OverrideSrcFuncTypeT)(using provider: CHIRItemProvider) extends CHIR.OverrideSrcFuncType {
+  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](o.getType).get
 }
 
-final class WrappedRawMethodImpl(w: WrappedRawMethod)(using provider: CHIRItemProvider) extends CHIR.WrappedRawMethod {
-  def rawMethod: CHIR.Func = provider.getValue[CHIR.Func](w.rawMethod).get
+final class WrappedRawMethodImpl(w: WrappedRawMethodT)(using provider: CHIRItemProvider) extends CHIR.WrappedRawMethod {
+  def rawMethod: CHIR.Func = provider.getValue[CHIR.Func](w.getRawMethod).get
+}
+
+private object AttributeValues {
+  val all: Vector[CHIR.Attribute] = CHIR.Attribute.values.toVector
+}
+
+final class MatchCaseIdImpl(m: MatchCaseIdT) extends CHIR.MatchCaseId {
+  def id: Long = m.getId
 }
 
 trait HasAttributesImpl extends HasAttributes {
   def attrs: Long
-
-  lazy val attributes: Seq[CHIR.Attribute] = {
-    CHIR.Attribute.values.toIndexedSeq.filter { attr =>
-      (attrs & (1L << attr.ordinal)) != 0L
+  private var cachedMask = 0L
+  private var cachedAttributes: Seq[CHIR.Attribute] = Seq.empty
+  def attributes: Seq[CHIR.Attribute] = {
+    val mask = attrs
+    if (mask != cachedMask) {
+      cachedAttributes = AttributeValues.all.filter(attr => (mask & (1L << attr.ordinal)) != 0L)
+      cachedMask = mask
     }
+    cachedAttributes
   }
 }
 
 trait HasDeclaringDefImpl extends HasDeclaringDef {
-  def gv: GlobalValue
+  def gv: GlobalValueT
   implicit def provider: CHIRItemProvider
-
-  def declaringDef: Option[CHIR.CustomTypeDef] = provider.getDef[CHIR.CustomTypeDef](gv.declaredParent)
+  def declaringDef: Option[CHIR.CustomTypeDef] = provider.getDef[CHIR.CustomTypeDef](gv.getDeclaredParent)
 }
 
-final class InstanceVarImpl(m: MemberVarInfo)(using provider: CHIRItemProvider) extends CHIR.InstanceVar with HasAttributesImpl {
-  val attrs: Long = m.attributes
-  def tpe: CHIR.Type = provider.getType[CHIR.Type](m.`type`).get
-  def name: String = m.name
+final class InstanceVarImpl(m: MemberVarInfoT)(using provider: CHIRItemProvider) extends CHIR.InstanceVar with HasAttributesImpl {
+  def attrs: Long = m.getAttributes
+  def tpe: CHIR.Type = provider.getType[CHIR.Type](m.getType).get
+  def name: String = m.getName
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
+    m.setAttributes(attributes.foldLeft(0L)((mask, a) => mask | (1L << a.ordinal)))
+
 }
 
-final class VTableImpl(v: VTableInType)(using provider: CHIRItemProvider) extends CHIR.VTable {
-  def srcParentType: CHIR.ClassType = provider.getType[CHIR.ClassType](v.srcParentType).get
-  def vMethods: Seq[CHIR.VMethod] = v.virtualMethodsVector.toSeq
+final class VTableImpl(v: VTableInTypeT)(using provider: CHIRItemProvider) extends CHIR.VTable {
+  def srcParentType: CHIR.ClassType = provider.getType[CHIR.ClassType](v.getSrcParentType).get
+  def vMethods: Seq[CHIR.VMethod] = Option(v.getVirtualMethods).toSeq.flatten.map(VMethodImpl(_))
 }
 
-final class VMethodImpl(v: VirtualMethodInfo)(using provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl {
-  val attrs: Long = v.attributes
-  def name: String = v.funcName
-  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.sigType).get
-  def instance: CHIR.Func = provider.getValue[CHIR.Func](v.instance).get
-  def genericTypeParams = v.methodGenericTypeParamsVector.toTypeSeq[CHIR.Type]
-  def originalType: CHIR.FuncType = provider.getType[CHIR.FuncType](v.originalType).get
-  def parentType: CHIR.Type = provider.getType[CHIR.Type](v.parentType).get
-  def returnType: CHIR.Type = provider.getType[CHIR.Type](v.returnType).get
+final class VMethodImpl(v: VirtualMethodInfoT)(using provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl {
+  def attrs: Long = v.getAttributes
+  def name: String = v.getFuncName
+  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.getSigType).get
+  def instance: CHIR.Func = provider.getValue[CHIR.Func](v.getInstance).get
+  def genericTypeParams = v.getMethodGenericTypeParams.toTypeSeq[CHIR.Type]
+  def originalType: CHIR.FuncType = provider.getType[CHIR.FuncType](v.getOriginalType).get
+  def parentType: CHIR.Type = provider.getType[CHIR.Type](v.getParentType).get
+  def returnType: CHIR.Type = provider.getType[CHIR.Type](v.getReturnType).get
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
+    v.setAttributes(attributes.foldLeft(0L)((mask, a) => mask | (1L << a.ordinal)))
+
 }
 
-final class EnumCtorImpl(e: EnumCtorInfo)(using provider: CHIRItemProvider) extends CHIR.EnumCtor {
-  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](e.funcType).get
+final class EnumCtorImpl(e: EnumCtorInfoT)(using provider: CHIRItemProvider) extends CHIR.EnumCtor {
+  def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](e.getFuncType).get
 }

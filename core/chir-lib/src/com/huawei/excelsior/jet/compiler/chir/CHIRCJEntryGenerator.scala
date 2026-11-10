@@ -16,6 +16,12 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRFuncGenerator {
 
   def generateFunc(_id: Int): Option[Func] = pkg.getFunc("user.main").map(userMain =>
     new CHIR.Func {
+      def ownerPackage: CHIR.Package = CodeHelpers.shouldNotCallThis("This synthetic function does not support serialized edits")
+      def moveBody(destination: CHIR.Func): Unit = CodeHelpers.shouldNotCallThis("This synthetic function does not support serialized edits")
+      def removeBody(): Unit = CodeHelpers.shouldNotCallThis("This synthetic function does not support serialized edits")
+      def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit = CodeHelpers.shouldNotCallThis("This synthetic function does not support serialized edits")
+      def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = CodeHelpers.shouldNotCallThis("This synthetic function does not support serialized edits")
+
       private var _retVal: CHIR.LocalVar = _
 
       def tpe: CHIR.FuncType = new CHIR.FuncType {
