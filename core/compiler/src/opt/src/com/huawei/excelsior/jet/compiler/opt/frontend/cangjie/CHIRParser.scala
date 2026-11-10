@@ -2070,8 +2070,6 @@ trait CHIRParser
                CHIR.Intrinsic.Kind.ExclusiveScope |
                CHIR.Intrinsic.Kind.FutureInit |
                CHIR.Intrinsic.Kind.IsThreadObjectInited |
-               CHIR.Intrinsic.Kind.ObjectRefeq |
-               CHIR.Intrinsic.Kind.RawArrayRefeq |
                CHIR.Intrinsic.Kind.VectorCompare32 |
                CHIR.Intrinsic.Kind.VectorIndexByte32 |
                CHIR.Intrinsic.Kind.FutureWait |
@@ -2079,6 +2077,15 @@ trait CHIRParser
                CHIR.Intrinsic.Kind.SetThreadObject |
                CHIR.Intrinsic.Kind.GetThreadObject =>
             state(e) = fakeIntrinsicResult(e)
+
+          // Reference identity comparisons over traceable references (Object,
+          // RawArray, lambda closures): a plain pointer equality test producing
+          // a 0/1 Bool, matching the cjnative pointer compare.
+          case CHIR.Intrinsic.Kind.ObjectRefeq |
+               CHIR.Intrinsic.Kind.RawArrayRefeq |
+               CHIR.Intrinsic.Kind.FuncRefeq =>
+            val Seq(l, r) = e.args
+            state(e) = CondVal(Cmp(TRefType, Condition.EQ)(state(l), state(r)))
 
           // WORKAROUND(stdlib-to-cbc): claim futures are always complete so
           // that hypothetical waits do not block.

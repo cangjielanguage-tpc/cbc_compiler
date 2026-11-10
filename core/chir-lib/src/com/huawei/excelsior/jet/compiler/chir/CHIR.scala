@@ -528,6 +528,7 @@ object CHIR {
       case SetThreadObject
       case ObjectRefeq
       case RawArrayRefeq
+      case FuncRefeq
       case VectorCompare32
       case VectorIndexByte32
     }
