@@ -45,6 +45,17 @@ def mode_flags(mode):
     return ["-O2"] if mode == "O2" else []
 
 
+def _import_flags(paths):
+    # Flatten a list of Paths into repeated --import-path args for cjc.
+    return [arg for path in paths for arg in ("--import-path", str(path))]
+
+
+def _fail(log_io, wdir):
+    # Persist the build log for post-mortem and signal failure.
+    (wdir / "build.log").write_text(log_io.getvalue())
+    return 1
+
+
 async def discover():
     patterns = load_excludes()
     ids = []
@@ -64,72 +75,76 @@ async def build(test_id, workdir):
     rel = base.split("/", 1)[1]
     name = Path(rel).name
     test_src = HERE / Path(rel).parent
-    test_copy = Path(workdir).parent
-    wdir = Path(workdir)
+    test_copy = Path(workdir).parent  # per-test area, shared by default + O2
+    wdir = Path(workdir)              # per-mode area
     log_io = io.StringIO()
-
-    toolchain = os.environ["TOOLCHAIN"]
     jc_options = os.environ.get("CBC_JC_OPTIONS", "")
 
-    async with _copy_lock(f"{SUITE}/{base}"):
+    # Copy the source dir once (shared across modes), then compile its deps.
+    async with _copy_lock(base):
         if not test_copy.exists():
             shutil.copytree(test_src, test_copy, dirs_exist_ok=True)
 
-        aot_sos = []
-        for aot_file in sorted(glob.glob(str(test_copy / "*.aot.cj"))):
-            aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
-            aot_so = test_copy / f"lib{aot_name}.so"
-            res = await run_cjc(aot_file, str(aot_so), output_type="dylib", log=log_io)
+        # AOT packages -> native dylibs, later linked via -cbcaotdeps.
+        aot_names = []
+        for aot_file in sorted(test_copy.glob("*.aot.cj")):
+            aot_name = aot_file.name[:-len(".aot.cj")]
+            aot_so = aot_file.with_name(f"lib{aot_name}.so")
+            res = await run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io)
             log_io.write(f"\n[aot {aot_name}] exit {res}\n")
             if res != 0:
-                (wdir / "build.log").write_text(log_io.getvalue())
-                return 1
-            aot_sos.append(aot_name)
+                return _fail(log_io, wdir)
+            aot_names.append(aot_name)
 
+        # Foreign C -> native dylibs, later linked via -foreignlibs.
         native_names = []
-        for c_file in sorted(glob.glob(str(test_copy / "*.c"))):
-            native_name = os.path.basename(c_file)[:-len(".c")]
-            native_so = test_copy / f"lib{native_name}.so"
-            res = await run_in_toolchain(["cc", "-shared", "-fPIC", "-o", str(native_so), c_file], log=log_io)
+        for c_file in sorted(test_copy.glob("*.c")):
+            native_name = c_file.stem
+            native_so = c_file.with_name(f"lib{native_name}.so")
+            res = await run_in_toolchain(
+                ["cc", "-shared", "-fPIC", "-o", str(native_so), str(c_file)], log=log_io)
             log_io.write(f"\n[native {native_name}] exit {res}\n")
             if res != 0:
-                (wdir / "build.log").write_text(log_io.getvalue())
-                return 1
+                return _fail(log_io, wdir)
             native_names.append(native_name)
 
-    os.makedirs(wdir, exist_ok=True)
+    wdir.mkdir(parents=True, exist_ok=True)
 
-    import_args = ["--import-path", str(test_copy)] if aot_sos else []
+    # cjc import search paths; widened as more packages are compiled in.
+    import_paths = [test_copy] if aot_names else []
 
+    # Intermediate packages -> CHIR, handed to cbc-compiler as extra inputs.
     int_chir_files = []
-    int_files = sorted(glob.glob(str(test_copy / "*.int.cj")))
+    int_files = sorted(test_copy.glob("*.int.cj"))
     if int_files:
         temp_dir = wdir / "temp"
-        os.makedirs(temp_dir, exist_ok=True)
-        import_args += ["--import-path", str(temp_dir)]
+        temp_dir.mkdir(exist_ok=True)
+        import_paths.append(temp_dir)
         for int_file in int_files:
-            int_base = os.path.splitext(os.path.basename(int_file))[0]
-            int_base = os.path.splitext(int_base)[0]
-            res = await run_cjc(int_file, str(temp_dir / int_base), output_type="staticlib",
-                                 additional_args=["--save-temps", str(temp_dir)] + import_args + mode_flags(mode),
+            pkg = int_file.name[:-len(".int.cj")]
+            res = await run_cjc(str(int_file), str(temp_dir / pkg), output_type="staticlib",
+                                 additional_args=["--save-temps", str(temp_dir)]
+                                 + _import_flags(import_paths) + mode_flags(mode),
                                  log=log_io)
-            log_io.write(f"\n[int {int_base}] exit {res}\n")
+            log_io.write(f"\n[int {pkg}] exit {res}\n")
             if res != 0:
-                (wdir / "build.log").write_text(log_io.getvalue())
-                return 1
-            int_chir_files.append(f"temp/{int_base}.chir")
+                return _fail(log_io, wdir)
+            int_chir_files.append(f"temp/{pkg}.chir")
 
+    # Compile the entry point to CHIR.
     res = await run_cjc(str(test_copy / f"{name}.cj"), str(wdir / f"{name}.chir"),
-                        additional_args=["--emit-chir"] + import_args + mode_flags(mode), log=log_io)
+                        additional_args=["--emit-chir"] + _import_flags(import_paths) + mode_flags(mode),
+                        log=log_io)
     log_io.write(f"\n[cjc {mode}] exit {res}\n")
     if res != 0:
-        (wdir / "build.log").write_text(log_io.getvalue())
-        return 1
+        return _fail(log_io, wdir)
 
-    aot_deps = [f"-cbcaotdeps={':'.join(aot_sos)}"] if aot_sos else []
+    # Link CHIR (+ AOT/foreign deps + intermediate CHIRs) into the final CBC.
+    aot_deps = [f"-cbcaotdeps={':'.join(aot_names)}"] if aot_names else []
     foreign_libs = [f"-foreignlibs={':'.join(native_names)}"] if native_names else []
-    cbc_cmd = ["cbc-compiler", f"-outputname={name}", f"{name}.chir",
-               f"+IgnoreSourceFileNameForCbc {jc_options}"] + aot_deps + foreign_libs + int_chir_files
+    cbc_cmd = (["cbc-compiler", f"-outputname={name}", f"{name}.chir",
+                f"+IgnoreSourceFileNameForCbc {jc_options}"]
+               + aot_deps + foreign_libs + int_chir_files)
     cbc_err = io.StringIO()
     res = await run_in_toolchain(cbc_cmd, cwd=str(wdir), log=log_io, stderr_log=cbc_err)
     log_io.write(f"\n[cbc {mode}] exit {res}\n")
