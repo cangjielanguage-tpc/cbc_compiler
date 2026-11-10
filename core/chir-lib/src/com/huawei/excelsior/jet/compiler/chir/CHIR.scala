@@ -1,6 +1,5 @@
 package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.common.CodeHelpers.*
 import java.nio.file.Path
 
 /** CHIR read and editing interfaces. Loaded packages use generated mutable
@@ -19,11 +18,8 @@ object CHIR {
   def read(input: Path, version: Int = defaultVersion): Package =
     CHIRConfig.newPackage(input.toString, version)
 
-  private def editingUnsupported(kind: String): Nothing =
-    shouldNotCallThis(s"This CHIR $kind does not support serialized edits")
-
   trait PackageOwned {
-    def ownerPackage: Package = editingUnsupported("function")
+    def ownerPackage: Package
   }
 
   trait Package {
@@ -37,21 +33,20 @@ object CHIR {
     def getDef(identifier: String): Option[CustomTypeDef]
 
     /** Create and register a goto expression in this package. */
-    def newGoto(destination: Block, debugLoc: Option[DebugLocation] = None): Goto = editingUnsupported("package")
+    def newGoto(destination: Block, debugLoc: Option[DebugLocation] = None): Goto
 
     /** Clean up unreachable blocks, validate, then save the complete schema.
       * Preserve table IDs, metadata and the input file-identifier convention.
       * Reject invalid graphs before replacing an existing output file.
       */
-    def write(output: Path): Unit = editingUnsupported("package")
+    def write(output: Path): Unit
 
     /** Schema-independent operations used by IR transformations. */
-    def expressions(function: Func): Seq[Expression] = editingUnsupported("package")
-    def isInternal(function: Func): Boolean = editingUnsupported("package")
-    def insert(block: Block, operation: Operation, before: Option[Expression] = None): LocalVar =
-      editingUnsupported("package")
-    def replace(expression: Expression, operation: Operation): Unit = editingUnsupported("package")
-    def setOptimized(): Unit = editingUnsupported("package")
+    def expressions(function: Func): Seq[Expression]
+    def isInternal(function: Func): Boolean
+    def insert(block: Block, operation: Operation, before: Option[Expression] = None): LocalVar
+    def replace(expression: Expression, operation: Operation): Unit
+    def setOptimized(): Unit
   }
 
   /** The small set of expressions needed by package transformations. */
@@ -83,13 +78,18 @@ object CHIR {
     def rawMethod: Func
   }
 
+  /** Source match-case identity carried by v13008 annotations. */
+  trait MatchCaseId extends Annotation {
+    def id: Long
+  }
+
   trait HasDeclaringDef {
     def declaringDef: Option[CustomTypeDef]
   }
 
   trait HasAttributes {
     def attributes: Seq[Attribute]
-    def replaceAttributes(attributes: Seq[Attribute]): Unit = editingUnsupported("function")
+    def replaceAttributes(attributes: Seq[Attribute]): Unit
   }
 
   trait Value {
@@ -125,19 +125,19 @@ object CHIR {
       * Local transfer checks run before editing. Full cleanup and model
       * validation run before writing; nothing is serialized here.
       */
-    def moveBody(destination: Func): Unit = editingUnsupported("function")
+    def moveBody(destination: Func): Unit
 
     /** Remove the body and return local, leaving the signature and attributes intact.
       * Calling this on a declaration has no effect. Nothing is serialized here.
       */
-    def removeBody(): Unit = editingUnsupported("function")
+    def removeBody(): Unit
 
     // APIs currently called only by tests in this repository (excluding forwarders).
     /** Replace body and return local together. Reject foreign/unregistered
       * nodes and bodies still owned by another function. Use moveBody
       * for transfers that require parameter and generic-type substitution.
       */
-    def replaceBody(body: Option[BlockGroup], retVal: Option[LocalVar]): Unit = editingUnsupported("function")
+    def replaceBody(body: Option[BlockGroup], retVal: Option[LocalVar]): Unit
 
   }
 
@@ -169,7 +169,7 @@ object CHIR {
       * Reject duplicate/shared/foreign blocks. Cleanup, derived predecessors
       * and full model validation run before writing.
       */
-    def replaceBlocks(blocks: Seq[Block], entryBlock: Block): Unit = editingUnsupported("block group")
+    def replaceBlocks(blocks: Seq[Block], entryBlock: Block): Unit
   }
 
   trait Block extends Value with PackageOwned {
@@ -181,8 +181,8 @@ object CHIR {
     /** Update expressions and ownership, allowing staged edits. Predecessors
       * are rebuilt and unreachable blocks are pruned before writing.
       */
-    def replaceTerminator(terminator: Terminator): Unit = editingUnsupported("block")
-    def replaceExpressions(nonTerminators: Seq[Expression], terminator: Terminator): Unit = editingUnsupported("block")
+    def replaceTerminator(terminator: Terminator): Unit
+    def replaceExpressions(nonTerminators: Seq[Expression], terminator: Terminator): Unit
   }
 
   // static field or global var
@@ -427,7 +427,7 @@ object CHIR {
     def instanceVars: Seq[InstanceVar]
     def staticVars: Seq[GlobalVar]
     def methods: Seq[Func]
-    def replaceMethods(methods: Seq[Func]): Unit = editingUnsupported("definition")
+    def replaceMethods(methods: Seq[Func]): Unit
     def vtables: Seq[VTable]
     def implementedInterfaces: Seq[ClassType]
 
