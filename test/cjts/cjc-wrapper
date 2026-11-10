@@ -3,11 +3,24 @@ set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 
+# Static archives produced by cjc-wrapper itself (cjc --output-type=staticlib)
+# are recorded here; such .a args are Cangjie code with CHIR on hand, not
+# foreign C archives, so they must not be linked into .so libraries.
+CJC_LIBS=.cjclibs
+
+is_cjc_lib() {
+    [[ -f $CJC_LIBS ]] && grep -qxF "${1##*/}" $CJC_LIBS
+}
+
 # Fallback to python script if there are (-l / -L) arguments or C inputs (*.o, *.a).
 # The -o / --output operand is an output name, not an input: skip it.
 prev=""
 for arg in "$@"; do
     if [[ "$prev" == "-o" || "$prev" == "--output" || "$arg" == --output=* ]]; then
+        prev=""
+        continue
+    fi
+    if [[ "$arg" == *.a ]] && is_cjc_lib "$arg"; then
         prev=""
         continue
     fi
@@ -44,6 +57,15 @@ done
 export TEMP_DIR=temps
 mkdir -p $TEMP_DIR
 cjc --save-temps $TEMP_DIR "${@:2}"
+
+if [[ "$out" == *.a ]]; then
+  echo "${out##*/}" >> $CJC_LIBS
+fi
+
+# -o <dir>/ is an output directory: the product gets cjc's default name.
+if [[ "$out" == */ ]]; then
+  out="${out}main"
+fi
 
 if [ -n "$out" ] && compgen -G $TEMP_DIR/*.chir > /dev/null; then
   if [[ "$out" != *.a ]]; then

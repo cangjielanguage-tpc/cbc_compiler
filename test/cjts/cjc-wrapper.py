@@ -15,6 +15,17 @@ import subprocess
 import sys
 from pathlib import Path
 
+CJC_LIBS = ".cjclibs"
+
+def is_cjc_lib(path):
+    """True if path is a static archive previously produced by cjc-wrapper."""
+    name = os.path.basename(path)
+    try:
+        with open(CJC_LIBS) as f:
+            return any(line.strip() == name for line in f)
+    except OSError:
+        return False
+
 def run(cmd):
     """Run cmd; on failure exit with its status (like bash `set -e`)."""
     status = subprocess.call(cmd)
@@ -61,7 +72,7 @@ def parse_args(args):
         elif arg.startswith("-l") and len(arg) > 2:
             native_names.append(arg[2:])
             i += 1
-        elif arg.endswith(".o") or arg.endswith(".a"):
+        elif (arg.endswith(".o") or arg.endswith(".a")) and not is_cjc_lib(arg):
             # Static object/archive: instead build a shared lib and register it.
             # --whole-archive matters for archives: members are referenced only
             # via dlsym at runtime, so the linker would otherwise drop them all.
@@ -120,6 +131,13 @@ def main():
     temps = "temps"
     Path(temps).mkdir(parents=True, exist_ok=True)
     run(["cjc", "--save-temps", temps] + sys.argv[2:])  # like bash: cjc --emit-chir "${@:2}"
+
+    if out.endswith(".a"):
+        with open(CJC_LIBS, "a") as f:
+            f.write(os.path.basename(out) + "\n")
+
+    if out.endswith("/"):  # -o <dir>/ is an output directory
+        out += "main"
 
     if out and not out.endswith(".a") and glob.glob(temps + "/*.chir"):
         genlibrary(out, native_names, lib_dirs, script_dir, temps)
