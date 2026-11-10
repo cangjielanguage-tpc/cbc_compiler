@@ -430,7 +430,10 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       "Generic instances are unsupported")
     val sourceGenerics = ids(from.getGenericTypeParams)
     val targetGenerics = ids(to.getGenericTypeParams)
-    require(sourceGenerics.length == targetGenerics.length,
+    // Plugin patch methods can use the source's generic type IDs directly,
+    // without redeclaring them. Signature checks below still require those
+    // shared types to match when there is no destination substitution.
+    require(targetGenerics.isEmpty || sourceGenerics.length == targetGenerics.length,
       "Functions must have the same number of generic parameters")
     val ownerType = getDef[CHIR.CustomTypeDef](from.getBase.getDeclaredParent).map(d => typeId(d.tpe))
     val thisTypes = if (from.getBase.getDeclaredParent != to.getBase.getDeclaredParent && ownerType.nonEmpty) {
