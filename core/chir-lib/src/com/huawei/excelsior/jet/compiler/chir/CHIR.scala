@@ -122,7 +122,8 @@ object CHIR {
       * exist. Patch constructor transfers adapt the return allocation and receiver.
       * Nested groups, lambdas and generic instances are currently unsupported;
       * package initializer bodies cannot move.
-      * Cleanup and validation are automatic; nothing is serialized here.
+      * Local transfer checks run before editing. Full cleanup and model
+      * validation run before writing; nothing is serialized here.
       */
     def moveBody(destination: Func): Unit = editingUnsupported("function")
 
@@ -164,9 +165,9 @@ object CHIR {
     def blocks: Seq[Block]
     def entryBlock: Block
 
-    /** Update membership, parents and predecessors; entry must be a member.
-      * Reject duplicate/shared/foreign blocks. Complete cleanup and validation
-      * run automatically before writing or moving a body.
+    /** Update membership and parents; entry must be a member.
+      * Reject duplicate/shared/foreign blocks. Cleanup, derived predecessors
+      * and full model validation run before writing.
       */
     def replaceBlocks(blocks: Seq[Block], entryBlock: Block): Unit = editingUnsupported("block group")
   }
@@ -177,8 +178,8 @@ object CHIR {
     def terminator: Terminator
     def isLandingPadBlock: Boolean
 
-    /** Maintain ownership and predecessors, pruning unreachable blocks when
-      * the attached body has complete control flow. Staged edits are allowed.
+    /** Update expressions and ownership, allowing staged edits. Predecessors
+      * are rebuilt and unreachable blocks are pruned before writing.
       */
     def replaceTerminator(terminator: Terminator): Unit = editingUnsupported("block")
     def replaceExpressions(nonTerminators: Seq[Expression], terminator: Terminator): Unit = editingUnsupported("block")

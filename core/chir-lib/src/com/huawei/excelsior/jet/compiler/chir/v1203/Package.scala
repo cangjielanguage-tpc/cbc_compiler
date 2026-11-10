@@ -168,6 +168,7 @@ object PackageImpl {
 
     def apply(id: Long): Long = {
       if (id == 0) return 0
+      require(id > 0 && id <= length(pkg.getTypes), s"Invalid type ID $id")
       memo.get(id) match {
         case Some(mapped) => mapped
         case None =>
@@ -264,6 +265,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
   private val historicalExpressionOwners = mutable.LongMap.empty[Long]
   private val historicalBlockParents = mutable.LongMap.empty[Long]
   private val historicalGroupOwners = mutable.LongMap.empty[(Long, Long)]
+  private var predecessorsDirty = false
   private var nextBlockName = nextName(valuesOf(ValueElem.Block).map(_.asBlock().getBase.getIdentifier), "#")
   private var nextGroupName = nextName(valuesOf(ValueElem.BlockGroup).map(_.asBlockGroup().getBase.getIdentifier), "")
   rememberOwners()
@@ -342,7 +344,6 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
 
     val sourceId = functionId(source)
     val targetId = functionId(destination)
-    prepareBodies()
     val from = source
     val to = destination
     require(sourceId != targetId, "Source and destination must differ")
@@ -428,7 +429,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       ids(block.getExprs).map { id =>
         val payload = expressionTable(id).getValue
         require(!payload.isInstanceOf[LambdaT],
-          s"Unsupported expression: ${Option(payload).map(_.getClass.getSimpleName)}")
+          "Nested lambda bodies are unsupported")
         val e = expressionBase(payload)
         require(e.getOwner == blockId, "Invalid expression owner")
         require(ids(e.getBlockGroups).isEmpty, "Nested block groups are unsupported")
@@ -488,10 +489,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       localTable(valueId(allocated)).setIsRetVal(true)
       if (structConstructor) replaceUses(target, target.params.head, allocated)
     }
-    rememberOwners()
-    rebuildPredecessors()
-    refreshCounters()
-    requireValid()
+    rememberGroupOwner(to.getBody)
   }
 
   private def opaque(payload: Object): CHIR.Expression = {
@@ -537,8 +535,8 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     require(replacement.distinct.length == replacement.length, "Duplicate expressions")
     replacement.foreach { id =>
       val e = expressionBase(expressionTable(id).getValue)
-      require(!valuesOf(ValueElem.Block).exists(v =>
-        (v.asBlock() ne table) && ids(v.asBlock().getExprs).contains(id)),
+      val owner = e.getOwner
+      require(owner == 0 || owner == blockId || !ids(blockTable(owner).getExprs).contains(id),
         "Expression is attached to another block")
       if (e.getResultLocalVar != 0)
         require(valueTable(e.getResultLocalVar).asLocalVar().getAssociatedExpr == id,
@@ -546,23 +544,25 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     }
     val previous = ids(table.getExprs)
     previous.filterNot(replacement.contains).foreach(id => expressionBase(expressionTable(id).getValue).setOwner(0))
-    replacement.foreach(id => expressionBase(expressionTable(id).getValue).setOwner(blockId))
+    replacement.foreach { id =>
+      expressionBase(expressionTable(id).getValue).setOwner(blockId)
+      historicalExpressionOwners(id) = blockId
+    }
     table.setExprs(replacement)
-    rememberOwners()
-    rebuildPredecessors()
-    enclosingFunction(table.getParentGroup).foreach(pruneUnreachableBlocks)
+    predecessorsDirty = true
   }
 
   private[v1203] def replaceBlocks(groupId: Long, blocks: Seq[CHIR.Block], entry: CHIR.Block): Unit = {
     val table = groupTable(groupId)
     val replacement = checkedBlocks(groupId, blocks, entry)
     ids(table.getBlocks).filterNot(replacement.contains).foreach(blockTable(_).setParentGroup(0))
-    replacement.foreach(blockTable(_).setParentGroup(groupId))
+    replacement.foreach { id =>
+      blockTable(id).setParentGroup(groupId)
+      historicalBlockParents(id) = groupId
+    }
     table.setBlocks(replacement)
     table.setEntryBlock(valueId(entry))
-    rememberOwners()
-    rebuildPredecessors()
-    refreshCounters()
+    predecessorsDirty = true
   }
 
   private def checkedBlocks(groupId: Long, blocks: Seq[CHIR.Block], entry: CHIR.Block): Array[Long] = {
@@ -573,9 +573,6 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       val parent = blockTable(id).getParentGroup
       require(parent == 0 || parent == groupId || !ids(groupTable(parent).getBlocks).contains(id),
         "Block belongs to another group")
-      require(!valuesOf(ValueElem.BlockGroup).exists(g =>
-        (groupId == 0 || (g.asBlockGroup() ne groupTable(groupId))) && ids(g.asBlockGroup().getBlocks).contains(id)),
-        "Another group still references the block")
     }
     result
   }
@@ -606,7 +603,9 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       }
       // An edge to a block not yet added to the group is a staged edit.
       // Do not retire nodes until all reachable blocks form a complete CFG.
-      if (closed) g.replaceBlocks(g.blocks.filter(b => reachable(valueId(b))), g.entryBlock)
+      if (closed && reachable.size != members.size) {
+        g.replaceBlocks(g.blocks.filter(b => reachable(valueId(b))), g.entryBlock)
+      }
       g.blocks.foreach { b =>
         ids(blockTable(valueId(b)).getExprs).foreach { id =>
           nestedGroups(expressionTable(id).getValue).foreach(gid => visit(group(gid)))
@@ -617,7 +616,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     function.body.foreach(visit)
   }
 
-  private[v1203] def validationIssues(): Seq[ValidationIssue] = {
+  private def referenceIssues(): Seq[ValidationIssue] = {
     val staged = mutable.ArrayBuffer.empty[ValidationIssue]
     (originalExpressionCount.toLong + 1L to length(data.getExprs).toLong).foreach { id =>
       if (expressionBase(expressionTable(id).getValue).getOwner == 0 && !historicalExpressionOwners.contains(id))
@@ -631,21 +630,36 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
         entry.asBlockGroup().getOwnedExpression == 0 && !historicalGroupOwners.contains(id))
         staged += ValidationIssue("New group has not been attached", Some(EntityRef(EntityTable.Values, id)))
     }
-    staged.toSeq ++ validateModel()
+    staged.toSeq ++ SchemaValidation.references(data)
   }
 
-  private def requireValid(): Unit = {
-    val problems = validationIssues()
+  private def requireValid(problems: Seq[ValidationIssue]): Unit = {
     require(problems.isEmpty, problems.map(_.message).mkString("Invalid CHIR: ", "; ", ""))
   }
 
+  private def ensurePredecessors(): Unit = {
+    if (predecessorsDirty) {
+      rebuildPredecessors()
+      predecessorsDirty = false
+    }
+  }
+
+  private[v1203] def validationIssues(): Seq[ValidationIssue] = {
+    val problems = referenceIssues()
+    if (problems.nonEmpty) problems else {
+      ensurePredecessors()
+      validateBodies()
+    }
+  }
+
   private def prepareBodies(): Unit = {
-    // Validate before traversing raw IDs, then check the normalized graph too.
-    // Staged/invalid edits cannot silently pass through a move or a write.
-    requireValid()
-    values.collect { case f: CHIR.Func if f.body.nonEmpty => f }.toVector
-      .foreach(pruneUnreachableBlocks)
-    requireValid()
+    // Check IDs before following them. Normalize and rebuild derived data once,
+    // after the caller has finished editing, then validate the final graph.
+    requireValid(referenceIssues())
+    values.collect { case f: CHIR.Func if f.body.nonEmpty => f }.foreach(pruneUnreachableBlocks)
+    ensurePredecessors()
+    refreshCounters()
+    requireValid(validateBodies())
   }
 
   private def enclosingFunction(groupId: Long): Option[CHIR.Func] = {
@@ -834,7 +848,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
   }
 
   private def valuesOf(tag: Byte): Seq[ValueElemUnion] =
-    Option(data.getValues).toSeq.flatMap(_.toSeq).filter(_.getType == tag)
+    if (data.getValues == null) Seq.empty else data.getValues.iterator.filter(_.getType == tag).toVector
 
   private def normalized(name: String): String = if (name.startsWith("@")) name else "@" + name
 
@@ -959,82 +973,16 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
 
   import EntityTable.*
 
-  private def validateModel(): Seq[ValidationIssue] = {
+  private def validateBodies(): Seq[ValidationIssue] = {
     val pkg = this
     val problems = mutable.ArrayBuffer.empty[ValidationIssue]
     def report(message: String, ref: Option[EntityRef] = None): Unit = problems += ValidationIssue(message, ref)
-    def check(test: Boolean, message: String, ref: Option[EntityRef] = None): Unit = if (!test) report(message, ref)
-
-    def tableSize(table: EntityTable): Int = table match {
-      case Types => length(data.getTypes)
-      case Values => length(data.getValues)
-      case Expressions => length(data.getExprs)
-      case Definitions => length(data.getDefs)
+    def check(test: Boolean, message: => String, ref: Option[EntityRef] = None): Unit = {
+      if (!test) report(message, ref)
     }
-
-    def reference(table: EntityTable, id: Long, field: String, ref: Option[EntityRef]): Unit =
-      check(id >= 0 && id <= tableSize(table), s"$field has invalid $table ID $id", ref)
-
-    // Generated object fields are visited recursively so annotations, lambda
-    // metadata, vtables and other fields not exposed by CHIR are also checked.
-    // Only schema ID fields are interpreted as references; counters/bitsets and
-    // arbitrary numeric literal values must never be treated as entity IDs.
-    def walk(obj: Object, ref: Option[EntityRef]): Unit = {
-      if (obj == null) { report("Missing schema payload", ref); return }
-      val kind = obj.getClass.getSimpleName
-      obj.getClass.getDeclaredFields.filterNot(f => java.lang.reflect.Modifier.isStatic(f.getModifiers)).foreach { f =>
-        f.setAccessible(true)
-        val field = f.get(obj)
-        referenceFields.get((kind, f.getName)) match {
-          case Some(table) => field match {
-            case id: java.lang.Long => reference(table, id.longValue(), s"$kind.${f.getName}", ref)
-            case ids: Array[Long] => ids.foreach(reference(table, _, s"$kind.${f.getName}", ref))
-            case null => ()
-            case _ => report(s"Unexpected reference representation: $kind.${f.getName}", ref)
-          }
-          case None => field match {
-            case children: Array[?] => children.foreach {
-              case child: Object if isSchema(child) => walk(child, ref)
-              case _ => ()
-            }
-            case child: Object if isSchema(child) => walk(child, ref)
-            case _ => ()
-          }
-        }
-      }
+    def safely(ref: Option[EntityRef])(action: => Unit): Unit = {
+      try action catch { case NonFatal(e) => report(Option(e.getMessage).getOrElse("Invalid CHIR payload"), ref) }
     }
-
-    def safely(ref: Option[EntityRef])(action: => Unit): Unit =
-      try action catch { case NonFatal(e) => report(Option(e.getMessage).getOrElse(e.getClass.getSimpleName), ref) }
-
-    Option(data.getTypes).toSeq.flatMap(_.toSeq).zipWithIndex.foreach { (u, i) =>
-      val ref = Some(EntityRef(Types, i + 1L))
-      safely(ref) { check(typeTags.get(u.getType).contains(u.getValue.getClass.getSimpleName), "Type union tag/payload mismatch", ref); walk(u.getValue, ref) }
-    }
-    Option(data.getValues).toSeq.flatMap(_.toSeq).zipWithIndex.foreach { (u, i) =>
-      val ref = Some(EntityRef(Values, i + 1L))
-      safely(ref) { check(valueTags.get(u.getType).contains(u.getValue.getClass.getSimpleName), "Value union tag/payload mismatch", ref); walk(u.getValue, ref); valueBase(u.getValue) }
-    }
-    Option(data.getExprs).toSeq.flatMap(_.toSeq).zipWithIndex.foreach { (u, i) =>
-      val ref = Some(EntityRef(Expressions, i + 1L))
-      safely(ref) {
-        val expected = ExpressionElem.names.lift(u.getType.toInt).map(_ + "T")
-        check(expected.contains(u.getValue.getClass.getSimpleName), "Expression union tag/payload mismatch", ref)
-        walk(u.getValue, ref); expressionBase(u.getValue)
-      }
-    }
-    Option(data.getDefs).toSeq.flatMap(_.toSeq).zipWithIndex.foreach { (u, i) =>
-      val ref = Some(EntityRef(Definitions, i + 1L))
-      safely(ref) {
-        val expected = CustomTypeDefElem.names.lift(u.getType.toInt).map(_ + "T")
-        check(expected.contains(u.getValue.getClass.getSimpleName), "Definition union tag/payload mismatch", ref)
-        walk(u.getValue, ref)
-      }
-    }
-    reference(Values, data.getPackageInitFunc, "packageInitFunc", None)
-    reference(Values, data.getPackageLiteralInitFunc, "packageLiteralInitFunc", None)
-    // Avoid cascading invalid-index failures during graph validation.
-    if (problems.nonEmpty) return problems.toSeq
 
     val usedGroups = mutable.Set.empty[Long]
 
@@ -1170,37 +1118,13 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     problems.toSeq
   }
 
-  private def isSchema(obj: Object): Boolean = obj.getClass.getPackage.getName.endsWith("v1203.PackageFormat")
-  private val typeTags = Map[Byte, String](TypeElem.Type -> "TypeT", TypeElem.RawArrayType -> "RawArrayTypeT",
-    TypeElem.VArrayType -> "VArrayTypeT", TypeElem.FuncType -> "FuncTypeT", TypeElem.CustomType -> "CustomTypeT", TypeElem.GenericType -> "GenericTypeT")
-  private val valueTags = Map[Byte, String](ValueElem.BoolLiteral -> "BoolLiteralT", ValueElem.RuneLiteral -> "RuneLiteralT",
-    ValueElem.StringLiteral -> "StringLiteralT", ValueElem.IntLiteral -> "IntLiteralT", ValueElem.FloatLiteral -> "FloatLiteralT",
-    ValueElem.UnitLiteral -> "UnitLiteralT", ValueElem.NullLiteral -> "NullLiteralT", ValueElem.Parameter -> "ParameterT",
-    ValueElem.LocalVar -> "LocalVarT", ValueElem.GlobalVar -> "GlobalVarT", ValueElem.Function -> "FunctionT",
-    ValueElem.Block -> "BlockT", ValueElem.BlockGroup -> "BlockGroupT")
-
-  private val referenceFields: Map[(String, String), EntityTable] = {
-
-    def fields(table: EntityTable, entries: (String, String)*): Seq[((String, String), EntityTable)] =
-      entries.flatMap((name, fields) => fields.split(" ").map(field => (name + "T", field) -> table))
-
-    (fields(Types, "Type" -> "argTys", "GenericType" -> "upperBounds", "OverrideSrcFuncType" -> "type",
-      "Value" -> "type", "FuncSigInfo" -> "funcType genericTypeParams", "Function" -> "genericTypeParams",
-      "Block" -> "exceptionCatchList", "MemberVarInfo" -> "type",
-      "VirtualMethodInfo" -> "sigType methodGenericTypeParams originalType parentType returnType",
-      "VTableInType" -> "srcParentType", "CustomTypeDef" -> "type implementedInterfaces",
-      "EnumCtorInfo" -> "funcType", "ExtendDef" -> "extendedType genericParams", "ClassDef" -> "superClass",
-      "Expression" -> "resultTy", "AllocateBase" -> "allocatedType", "FuncCall" -> "instantiatedTypeArgs objType",
-      "InstanceOf" -> "targetType", "RawArrayAllocateBase" -> "elementType", "Lambda" -> "funcTy genericTypeParams",
-      "GetInstantiateValue" -> "instantiateTypes", "GetRTTIStatic" -> "rttiType") ++
-      fields(Values, "WrappedRawMethod" -> "rawMethod", "Parameter" -> "ownedFunc", "GlobalVar" -> "initializer",
-        "Function" -> "genericDecl paramDftValHostFunc body params retVal", "Block" -> "parentGroup predecessors",
-        "BlockGroup" -> "entryBlock blocks ownedFunc", "MemberVarInfo" -> "initializerFunc", "VirtualMethodInfo" -> "instance",
-        "CustomTypeDef" -> "methods staticMemberVars instanceVarInitFunc", "ClassDef" -> "annotationTargets",
-        "Expression" -> "operands blockGroups owner resultLocalVar", "SpawnBase" -> "executeClosure", "Lambda" -> "params body retVal") ++
-      fields(Expressions, "Parameter" -> "ownedLambda", "LocalVar" -> "associatedExpr", "Block" -> "exprs", "BlockGroup" -> "ownedExpression") ++
-      fields(Definitions, "CustomType" -> "customTypeDef", "GlobalValue" -> "declaredParent", "MemberVarInfo" -> "outerDef",
-        "CustomTypeDef" -> "customTypeDefId genericDecl")).toMap
+  private def rememberGroupOwner(id: Long): Unit = {
+    if (id != 0) {
+      val g = groupTable(id)
+      if (g.getOwnedFunc != 0 || g.getOwnedExpression != 0) {
+        historicalGroupOwners(id) = (g.getOwnedFunc, g.getOwnedExpression)
+      }
+    }
   }
 
   private def changeFunctionBody(
@@ -1320,7 +1244,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     changes.set(blockCounter)(target.setBlockId)
     changes.set(groupCounter)(target.setBlockGroupId)
     changes.commit()
-    rememberOwners()
+    rememberGroupOwner(bodyId)
   }
 
   // APIs currently called only by tests in this repository (excluding forwarders).
@@ -1347,9 +1271,11 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     g.setEntryBlock(valueId(entryBlock))
     nextGroupName = Math.addExact(nextGroupName, 1L)
     val id = appendValue(ValueElem.BlockGroup, g)
-    blockIds.foreach(blockTable(_).setParentGroup(id))
-    rememberOwners()
-    rebuildPredecessors()
+    blockIds.foreach { blockId =>
+      blockTable(blockId).setParentGroup(id)
+      historicalBlockParents(blockId) = id
+    }
+    predecessorsDirty = true
     group(id)
   }
 

@@ -131,7 +131,7 @@ class PackageImplSuite extends AnyFunSuite {
     assert(p.validationIssues().isEmpty)
   }
 
-  test("replaceTerminator updates the existing IR view, ownership and predecessors") {
+  test("replaceTerminator updates held views and defers predecessor maintenance") {
     val p = fresh()
     val block = p.function(1).body.get.entryBlock
     val old = block.terminator
@@ -144,8 +144,9 @@ class PackageImplSuite extends AnyFunSuite {
     assert(jump.destination eq block)
     assert(jump.debugLoc.contains(CHIR.DebugLocation(10, 11)))
     assert(p.expressionTable(p.expressionId(old)).asExpression().getOwner == 0)
+    assert(p.blockTable(3).getPredecessors.isEmpty)
+    assert(p.validationIssues().isEmpty) // Explicit diagnostics refresh derived data too.
     assert(p.blockTable(3).getPredecessors.sameElements(Array(3L)))
-    assert(p.validationIssues().isEmpty)
     roundTrip(p) { saved =>
       val b = saved.function(1).body.get.entryBlock
       assert(b.terminator.asInstanceOf[CHIR.Goto].destination eq b)
@@ -211,8 +212,9 @@ class PackageImplSuite extends AnyFunSuite {
     second.replaceExpressions(Seq.empty, exit)
     g.replaceBlocks(Seq(first, second), first)
     assert(p.blockTable(p.valueId(second)).getParentGroup == p.valueId(g))
-    assert(p.blockTable(p.valueId(second)).getPredecessors.sameElements(Array(3L)))
+    assert(PackageImpl.ids(p.blockTable(p.valueId(second)).getPredecessors).isEmpty)
     assert(p.validationIssues().isEmpty)
+    assert(p.blockTable(p.valueId(second)).getPredecessors.sameElements(Array(3L)))
     roundTrip(p) { saved =>
       val body = saved.function(1).body.get
       val b = body.entryBlock.terminator.asInstanceOf[CHIR.Branch]
@@ -235,7 +237,7 @@ class PackageImplSuite extends AnyFunSuite {
     roundTrip(p) { saved => assert(saved.function(1).body.get.entryBlock.isLandingPadBlock) }
   }
 
-  test("terminator replacement automatically prunes a complete attached body") {
+  test("terminator replacement defers unreachable block pruning until write") {
     val p = fresh()
     val g = p.function(1).body.get
     val entry = g.entryBlock
@@ -245,19 +247,49 @@ class PackageImplSuite extends AnyFunSuite {
     g.replaceBlocks(g.blocks :+ unused, entry)
     assert(g.blocks.size == 2)
     entry.replaceTerminator(p.newGoto(entry))
+    assert(g.blocks.size == 2)
+    assert(p.blockTable(unusedId).getParentGroup == p.valueId(g))
+    roundTrip(p)(saved => assert(saved.function(1).body.get.blocks.size == 1))
     assert(g.blocks == Seq(entry))
     assert(p.blockTable(unusedId).getParentGroup == 0)
-    roundTrip(p)(saved => assert(saved.function(1).body.get.blocks.size == 1))
   }
 
-  test("moveBody automatically validates before transferring a body") {
+  test("moveBody checks types used by the moved body before applying edits") {
     val data = genericMoveData()
     data.getExprs()(0).asAllocateBase().getBase.setResultTy(9999)
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val before = p.data.serializeToBinary()
     val error = intercept[IllegalArgumentException](p.function(1).moveBody(p.function(8)))
-    assert(error.getMessage.contains("invalid Types ID"))
+    assert(error.getMessage.contains("Invalid type ID"))
     assert(p.data.serializeToBinary().sameElements(before))
+  }
+
+  test("moveBody defers unrelated metadata validation until writing") {
+    val data = genericMoveData()
+    val method = new WrappedRawMethodT
+    method.setRawMethod(9999)
+    val annotation = new AnnotationUnion
+    annotation.setType(Annotation.wrappedRawMethod)
+    annotation.setValue(method)
+    data.getValues()(7).asFunction().getBase.getBase.getBase.setAnnos(Array(annotation))
+    val p = PackageImpl.fromBytes(data.serializeToBinary())
+    val moved = p.function(1).body.get
+    p.function(1).moveBody(p.function(8))
+    assert(p.function(8).body.contains(moved))
+    val output = Files.createTempFile("invalid-metadata-", ".chir")
+    val sentinel = Array[Byte](1, 2, 3)
+    try {
+      Files.write(output, sentinel)
+      val error = intercept[IllegalArgumentException](p.write(output))
+      assert(error.getMessage.contains("WrappedRawMethod.rawMethod has invalid Values ID"))
+      assert(Files.readAllBytes(output).sameElements(sentinel))
+    } finally Files.delete(output)
+  }
+
+  test("typed reference validation rejects mismatched union tags") {
+    val p = fresh()
+    p.data.getExprs()(0).setType(ExpressionElem.Expression)
+    assert(p.validationIssues().exists(_.message == "Expression union tag/payload mismatch"))
   }
 
   test("write automatically detaches unreachable blocks and preserves IDs") {
