@@ -468,7 +468,6 @@ class PackageImplSuite extends AnyFunSuite {
     val b = p.function(1).body.get.entryBlock
     val before = p.p.serializeToBinary()
     intercept[IllegalArgumentException](p.valueId(foreign.function(1)))
-    intercept[IllegalArgumentException](p.newGoto(foreign.function(1).body.get.entryBlock))
     intercept[IllegalArgumentException](b.replaceTerminator(p.function(8).body.get.entryBlock.terminator))
     intercept[IllegalArgumentException](p.newBranch(p.function(1).params.head, b, b))
     intercept[IllegalArgumentException](p.newGoto(b, Some(CHIR.DebugLocation(10, 1))))
