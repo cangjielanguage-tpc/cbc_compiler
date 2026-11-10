@@ -12,5 +12,9 @@ func check(x: Float64, n: Int64): Unit {
 main(): Int64 {
   check(100.0, 10)
   check(2.0, -2)
+  check(0.0, 5)
+  check(-2.0, 3)
+  check(1.0e300, 2)
+  check(0.5, 0)
   0
 }
