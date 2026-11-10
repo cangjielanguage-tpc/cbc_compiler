@@ -12,7 +12,7 @@ final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider:
   def base: BaseT = v.getBase
   def attrs: Long = base.getAttributes
 
-  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = {
+  override def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = {
     val mask = attributes.foldLeft(0L)((bits, attribute) => bits | (1L << attribute.ordinal))
     base.setAttributes(mask)
   }
@@ -43,9 +43,9 @@ final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider:
   def params = f.getParams.toValueSeq[CHIR.Parameter]
   def retVal: Option[CHIR.LocalVar] = provider.getValue[CHIR.LocalVar](f.getRetVal)
   def sourceFile: Option[String] = Option(base).flatMap(b => Option(b.getLoc)).flatMap(l => Option(l.getFilePath))
-  def ownerPackage: CHIR.Package = provider.asInstanceOf[PackageImpl]
+  override def ownerPackage: CHIR.Package = provider.asInstanceOf[PackageImpl]
 
-  def moveBody(destination: CHIR.Func): Unit = {
+  override def moveBody(destination: CHIR.Func): Unit = {
     val pkg = provider.asInstanceOf[PackageImpl]
     pkg.valueId(this)
     pkg.valueId(destination)
@@ -55,27 +55,27 @@ final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider:
     }
   }
 
-  def removeBody(): Unit =
+  override def removeBody(): Unit =
     provider.asInstanceOf[PackageImpl].replaceFunctionBody(id, None, None)
 
   // APIs currently called only by tests in this repository (excluding forwarders).
-  def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit =
+  override def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit =
     provider.asInstanceOf[PackageImpl].replaceFunctionBody(id, body, retVal)
 }
 
 final class BlockGroupImpl private[v13002] (
-  val ownerPackage: PackageImpl,
+  override val ownerPackage: PackageImpl,
   private[v13002] val id: Long
 ) extends CHIR.BlockGroup {
   private def table = ownerPackage.groupTable(id)
   def blocks: Seq[CHIR.Block] = PackageImpl.ids(table.getBlocks).toSeq.map(ownerPackage.blockView)
   def entryBlock: CHIR.Block = ownerPackage.blockView(table.getEntryBlock)
-  def replaceBlocks(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block): Unit =
+  override def replaceBlocks(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block): Unit =
     ownerPackage.replaceBlocks(id, blocks, entryBlock)
 }
 
 final class BlockImpl private[v13002] (
-  val ownerPackage: PackageImpl,
+  override val ownerPackage: PackageImpl,
   private[v13002] val id: Long
 ) extends CHIR.Block {
   private def table = ownerPackage.blockTable(id)
@@ -90,9 +90,9 @@ final class BlockImpl private[v13002] (
     case _ => throw new IllegalStateException(s"Block $id has no terminator")
   }
   def isLandingPadBlock: Boolean = table.getIsLandingPadBlock
-  def replaceTerminator(terminator: CHIR.Terminator): Unit =
+  override def replaceTerminator(terminator: CHIR.Terminator): Unit =
     replaceExpressions(nonTerminatorExpressions, terminator)
-  def replaceExpressions(nonTerminators: Seq[CHIR.Expression], terminator: CHIR.Terminator): Unit =
+  override def replaceExpressions(nonTerminators: Seq[CHIR.Expression], terminator: CHIR.Terminator): Unit =
     ownerPackage.replaceExpressions(id, nonTerminators, terminator)
 }
 
@@ -103,7 +103,7 @@ final class GlobalVarImpl(g: GlobalVarT, val id: Long)(using val provider: CHIRI
   def base: BaseT = v.getBase
   def attrs: Long = base.getAttributes
 
-  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = {
+  override def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = {
     val mask = attributes.foldLeft(0L)((bits, attribute) => bits | (1L << attribute.ordinal))
     base.setAttributes(mask)
   }

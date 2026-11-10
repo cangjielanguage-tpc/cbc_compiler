@@ -31,7 +31,7 @@ trait CHIRItemProvider {
  *  - Exprs
  *  - Defs
  */
-final class PackageImpl(source: String) extends ReadOnlyPackage with CHIRItemProvider {
+final class PackageImpl(source: String) extends CHIR.Package with CHIRItemProvider {
 
   given provider: CHIRItemProvider = this
 
