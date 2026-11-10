@@ -32,12 +32,21 @@ final class WrappedRawMethodImpl(w: WrappedRawMethodT)(using provider: CHIRItemP
   def rawMethod: CHIR.Func = provider.getValue[CHIR.Func](w.getRawMethod).get
 }
 
+private object AttributeValues {
+  val all: Vector[CHIR.Attribute] = CHIR.Attribute.values.toVector
+}
+
 trait HasAttributesImpl extends HasAttributes {
   def attrs: Long
+  private var cachedMask = 0L
+  private var cachedAttributes: Seq[CHIR.Attribute] = Seq.empty
   def attributes: Seq[CHIR.Attribute] = {
-    CHIR.Attribute.values.toIndexedSeq.filter { attr =>
-      (attrs & (1L << attr.ordinal)) != 0L
+    val mask = attrs
+    if (mask != cachedMask) {
+      cachedAttributes = AttributeValues.all.filter(attr => (mask & (1L << attr.ordinal)) != 0L)
+      cachedMask = mask
     }
+    cachedAttributes
   }
 }
 

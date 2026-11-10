@@ -263,6 +263,66 @@ class PackageImplSuite extends AnyFunSuite {
     } finally Files.delete(output)
   }
 
+  test("attribute caching follows both API and backing-mask updates") {
+    val p = fresh()
+    val f = p.function(1)
+    val original = f.attributes
+    assert(f.attributes eq original)
+    f.replaceAttributes(Seq(CHIR.Attribute.Imported))
+    val imported = f.attributes
+    assert(imported == Seq(CHIR.Attribute.Imported))
+    assert(f.attributes eq imported)
+    p.data.getValues()(0).asFunction().getBase.getBase.getBase.setAttributes(1L << CHIR.Attribute.Public.ordinal)
+    assert(f.attributes == Seq(CHIR.Attribute.Public))
+    f.replaceAttributes(Seq.empty)
+    assert(f.attributes.isEmpty)
+  }
+
+  test("batched appends preserve IDs and held views across flushes and saving") {
+    val p = fresh()
+    val f = p.function(1)
+    val block = f.body.get.entryBlock
+    val initialValues = p.values.size
+    val initialTypes = p.data.getTypes.length
+    val first = p.insert(block, CHIR.Operation.BooleanConstant(true))
+    val firstId = p.valueId(first)
+    for (i <- 1 until 128) {
+      p.insert(block, CHIR.Operation.BooleanConstant(i % 2 == 0))
+    }
+    assert(p.values.size == initialValues + 256)
+    assert(p.getValue[CHIR.LocalVar](firstId).get eq first)
+    assert(p.data.getValues.length == initialValues + 256)
+    assert(p.data.getTypes.length == initialTypes + 1)
+    p.insert(block, CHIR.Operation.BooleanConstant(false))
+    assert(p.getValue[CHIR.LocalVar](firstId).get eq first)
+    assert(p.function(1) eq f)
+    roundTrip(p) { saved =>
+      assert(saved.values.size == initialValues + 258)
+      assert(saved.getValue[CHIR.LocalVar](firstId).get.tpe == CHIR.BuiltinType.Boolean)
+      assert(saved.function(1).body.get.entryBlock.nonTerminatorExpressions.size == 130)
+      assert(saved.data.getTypes.length == initialTypes + 1)
+    }
+  }
+
+  test("inserted types use the first matching table ID regardless of view access order") {
+    val data = TestData.fixtureData()
+    def booleanType(): TypeElemUnion = {
+      val t = new TypeT
+      t.setKind(CHIRTypeKind.BOOLEAN)
+      t.setArgTys(Array.emptyLongArray)
+      val entry = new TypeElemUnion
+      entry.setType(TypeElem.Type)
+      entry.setValue(t)
+      entry
+    }
+    data.setTypes(data.getTypes ++ Array(booleanType(), booleanType()))
+    val p = PackageImpl.fromBytes(data.serializeToBinary())
+    assert(p.getType[CHIR.Type](7).contains(CHIR.BuiltinType.Boolean))
+    val value = p.insert(p.function(1).body.get.entryBlock, CHIR.Operation.BooleanConstant(true))
+    assert(p.valueTable(p.valueId(value)).asLocalVar().getBase.getType == 6)
+    assert(p.data.getTypes.length == 7)
+  }
+
   test("new nodes may be staged but must be attached before writing") {
     val p = fresh()
     val block = p.newBlock()
