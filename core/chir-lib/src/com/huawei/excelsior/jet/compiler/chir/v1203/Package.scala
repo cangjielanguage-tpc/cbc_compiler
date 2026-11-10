@@ -99,6 +99,7 @@ object PackageImpl {
 
   private def newExpression(kind: Int, operands: Array[Long], debug: Option[CHIR.DebugLocation]): ExpressionT = {
     val e = new ExpressionT; e.setKind(kind); e.setOperands(operands)
+    e.setBlockGroups(Array.emptyLongArray)
     val base = newBase()
     debug.foreach { loc =>
       require(loc.startLine >= 0 && loc.endLine >= loc.startLine && loc.endLine <= 0xffffffffL,
@@ -152,6 +153,16 @@ object PackageImpl {
     private val pending = scala.collection.mutable.ArrayBuffer.empty[() => Unit]
     def set[A](next: A)(setter: A => Unit): Unit = pending += (() => setter(next))
     def commit(): Unit = pending.foreach(_())
+  }
+
+  /** Serialization-only edits are undone even if the generated packer fails. */
+  private class WireChanges {
+    private val undo = mutable.ArrayBuffer.empty[() => Unit]
+    def set[A](previous: A, next: A)(setter: A => Unit): Unit = {
+      undo += (() => setter(previous))
+      setter(next)
+    }
+    def restore(): Unit = undo.reverseIterator.foreach(_())
   }
 
   private def index(id: Long): Int = {
@@ -682,66 +693,73 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     find(groupId)
   }
 
+  private def serializedBytes(): Array[Byte] = {
+    val changes = new WireChanges
+    // Find detached blocks before applying historical parents to the same model.
+    val retiredBlocks = historicalBlockParents.keysIterator.filter(id => blockTable(id).getParentGroup == 0).toArray
+    try {
+      // Native readers still follow owners on retired entries. Project their
+      // historical links only while packing, without copying the object graph.
+      historicalExpressionOwners.foreach { (id, owner) =>
+        val e = expressionBase(expressionTable(id).getValue)
+        if (e.getOwner == 0) changes.set(e.getOwner, owner)(e.setOwner)
+      }
+      historicalBlockParents.foreach { (id, parent) =>
+        val b = blockTable(id)
+        if (b.getParentGroup == 0) changes.set(b.getParentGroup, parent)(b.setParentGroup)
+      }
+      historicalGroupOwners.foreach { (id, owners) =>
+        val g = groupTable(id)
+        if (g.getOwnedFunc == 0 && g.getOwnedExpression == 0) {
+          changes.set(g.getOwnedFunc, owners._1)(g.setOwnedFunc)
+          changes.set(g.getOwnedExpression, owners._2)(g.setOwnedExpression)
+        }
+      }
+      if (retiredBlocks.nonEmpty) {
+        // Historical parent links would make the native reader resurrect these
+        // blocks. Keep their IDs in an unreferenced storage group on disk only.
+        val functions = data.getValues.zipWithIndex.filter(_._1.getType == ValueElem.Function)
+        val owner = functions.find(_._1.asFunction().getBody != 0).orElse(functions.headOption)
+          .getOrElse(throw new IllegalArgumentException("Retired blocks have no function context"))
+        val groupName = nextName(data.getValues.filter(_.getType == ValueElem.BlockGroup)
+          .map(_.asBlockGroup().getBase.getIdentifier).toSeq, "")
+        val storage = new BlockGroupT
+        storage.setBase(newValue(groupName.toString, ValueKind.BLOCK_GROUP))
+        storage.setOwnedFunc(owner._2 + 1L)
+        storage.setBlocks(retiredBlocks)
+        storage.setEntryBlock(retiredBlocks.head)
+        val entry = new ValueElemUnion; entry.setType(ValueElem.BlockGroup); entry.setValue(storage)
+        changes.set(data.getValues, data.getValues :+ entry)(data.setValues)
+        val storageId = data.getValues.length.toLong
+        retiredBlocks.foreach { id =>
+          val b = blockTable(id)
+          changes.set(b.getParentGroup, storageId)(b.setParentGroup)
+          changes.set(b.getExprs, Array.emptyLongArray)(b.setExprs)
+          changes.set(b.getPredecessors, Array.emptyLongArray)(b.setPredecessors)
+        }
+        val f = owner._1.asFunction()
+        changes.set(f.getBlockGroupId, math.max(f.getBlockGroupId, Math.addExact(groupName, 1L)))(f.setBlockGroupId)
+      }
+      data.getValues.iterator.filter(_.getType == ValueElem.Function).foreach { entry =>
+        val f = entry.asFunction()
+        if (f.getBody == 0 && f.getFuncKind == FuncKind.LAMBDA) {
+          changes.set(f.getFuncKind, FuncKind.DEFAULT)(f.setFuncKind)
+        }
+      }
+      val builder = new FlatBufferBuilder(1024)
+      val root = CHIRPackage.pack(builder, data)
+      if (hasIdentifier) CHIRPackage.finishCHIRPackageBuffer(builder, root) else builder.finish(root)
+      builder.sizedByteArray()
+    } finally changes.restore()
+  }
+
   override def write(output: Path): Unit = {
     prepareBodies()
-    val builder = new FlatBufferBuilder(1024)
-    // Keep table IDs stable, including retired entries. Native chir-dis still
-    // dereferences the owner fields of those entries, even when body/block lists
-    // no longer contain them. Restore historical links only in the wire copy.
-    val wire = CHIRPackageT.deserializeFromBinary(data.serializeToBinary())
-    historicalExpressionOwners.foreach { (id, owner) =>
-      val e = expressionBase(wire.getExprs()((id - 1).toInt).getValue)
-      if (e.getOwner == 0) e.setOwner(owner)
-    }
-    historicalBlockParents.foreach { (id, parent) =>
-      val b = wire.getValues()((id - 1).toInt).asBlock()
-      if (b.getParentGroup == 0) b.setParentGroup(parent)
-    }
-    historicalGroupOwners.foreach { (id, owners) =>
-      val g = wire.getValues()((id - 1).toInt).asBlockGroup()
-      if (g.getOwnedFunc == 0 && g.getOwnedExpression == 0) {
-        g.setOwnedFunc(owners._1); g.setOwnedExpression(owners._2)
-      }
-    }
-    val retiredBlocks = historicalBlockParents.keysIterator.filter(id => blockTable(id).getParentGroup == 0).toArray
-    if (retiredBlocks.nonEmpty) {
-      // Native deserialization also rebuilds group membership from parentGroup,
-      // so putting retired blocks back under their old group resurrects them.
-      // Keep their IDs/objects in a separate, unreferenced storage group instead.
-      // Clear their instruction lists so they cannot contribute CFG edges to a
-      // live block; retained expression/local payloads still have valid owners.
-      val functions = wire.getValues.zipWithIndex.filter(_._1.getType == ValueElem.Function)
-      val owner = functions.find(_._1.asFunction().getBody != 0).orElse(functions.headOption)
-        .getOrElse(throw new IllegalArgumentException("Retired blocks have no function context"))
-      val groupName = nextName(wire.getValues.filter(_.getType == ValueElem.BlockGroup)
-        .map(_.asBlockGroup().getBase.getIdentifier).toSeq, "")
-      val storage = new BlockGroupT
-      storage.setBase(newValue(groupName.toString, ValueKind.BLOCK_GROUP))
-      storage.setOwnedFunc(owner._2 + 1L)
-      storage.setBlocks(retiredBlocks)
-      storage.setEntryBlock(retiredBlocks.head)
-      val entry = new ValueElemUnion; entry.setType(ValueElem.BlockGroup); entry.setValue(storage)
-      wire.setValues(wire.getValues :+ entry)
-      val storageId = wire.getValues.length.toLong
-      retiredBlocks.foreach { id =>
-        val b = wire.getValues()((id - 1).toInt).asBlock()
-        b.setParentGroup(storageId)
-        b.setExprs(Array.emptyLongArray)
-        b.setPredecessors(Array.emptyLongArray)
-      }
-      val f = owner._1.asFunction()
-      f.setBlockGroupId(math.max(f.getBlockGroupId, Math.addExact(groupName, 1L)))
-    }
-    wire.getValues.filter(_.getType == ValueElem.Function).foreach { entry =>
-      val f = entry.asFunction()
-      if (f.getBody == 0 && f.getFuncKind == FuncKind.LAMBDA) f.setFuncKind(FuncKind.DEFAULT)
-    }
-    val root = CHIRPackage.pack(builder, wire)
-    if (hasIdentifier) CHIRPackage.finishCHIRPackageBuffer(builder, root) else builder.finish(root)
+    val bytes = serializedBytes()
     val target = output.toAbsolutePath
     val temporary = Files.createTempFile(target.getParent, ".chir-", ".tmp")
     try {
-      Files.write(temporary, builder.sizedByteArray())
+      Files.write(temporary, bytes)
       try Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
       catch { case _: AtomicMoveNotSupportedException => Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING) }
     } finally Files.deleteIfExists(temporary)
@@ -1259,6 +1277,8 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     val b = new BlockT
     b.setBase(newValue(s"#$nextBlockName", ValueKind.BLOCK))
     b.setIsLandingPadBlock(isLandingPad)
+    b.setExprs(Array.emptyLongArray); b.setPredecessors(Array.emptyLongArray)
+    b.setExceptionCatchList(Array.emptyLongArray)
     nextBlockName = Math.addExact(nextBlockName, 1L)
     blockView(appendValue(ValueElem.Block, b))
   }
@@ -1326,6 +1346,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     val found = (1L to length(data.getTypes).toLong).find(id => getType[CHIR.Type](id).contains(tpe))
     found.getOrElse {
       val t = new TypeT
+      t.setArgTys(Array.emptyLongArray)
       tpe match {
         case tpe: CHIR.RefType => t.setKind(CHIRTypeKind.REFTYPE); t.setArgTys(Array(ensureType(tpe.baseType)))
         case CHIR.BuiltinType.Unit => t.setKind(CHIRTypeKind.UNIT)
