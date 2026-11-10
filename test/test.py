@@ -10,6 +10,7 @@ from os.path import isfile
 from pathlib import Path
 
 from runner_tools import MissingArtifacts
+from test_identifier import TestIdentifier
 
 ROOT = Path(__file__).resolve().parent
 CONTRACT = ("discover", "build", "run", "run_command")
@@ -68,7 +69,7 @@ def write_run_sh(tdir, toolchain, cmd):
 
 async def process_testcase(test_id, discovered, workdir, args, toolchain, results):
     mod = discovered[test_id]
-    tdir = workdir / test_id.replace("::", "/")
+    tdir = workdir / test_id.path
     if not args.skip_build:
         rc = await mod.build(test_id, str(tdir))
         if rc != 0:
@@ -89,13 +90,13 @@ async def run_tests(args):
         for test_id in await mod.discover():
             discovered[test_id] = mod
 
-    explicit = list(args.test)
+    explicit = [TestIdentifier.from_str(t) for t in args.test]
     if args.tests:
-        explicit += read_id_list(args.tests)
+        explicit += [TestIdentifier.from_str(t) for t in read_id_list(args.tests)]
     if explicit:
         unknown = [t for t in explicit if t not in discovered]
         if unknown:
-            print(f"Unknown testcases: {', '.join(unknown)}", file=sys.stderr)
+            print(f"Unknown testcases: {', '.join(str(t) for t in unknown)}", file=sys.stderr)
             return 1
         ids = [t for t in explicit if t in discovered]
     else:
@@ -132,7 +133,7 @@ async def run_tests(args):
     for test_id, reason in failed:
         print(f"FAILED {test_id} ({reason})")
         if args.describe:
-            tdir = workdir / test_id.replace("::", "/")
+            tdir = workdir / test_id.path
             cmd = await discovered[test_id].run_command(test_id, str(tdir))
             print(f"  run: bash {ROOT / 'tool.sh'} bash -c {shlex.quote(cmd)}")
             print(f"  logs: {tdir / 'run.log'}, {tdir / 'run.err'}, {tdir / 'diff.log'}")
@@ -141,7 +142,7 @@ async def run_tests(args):
     if failed_ids:
         failed_list = Path(args.failed_list) if args.failed_list else workdir / "failed.txt"
         failed_list.parent.mkdir(parents=True, exist_ok=True)
-        failed_list.write_text("\n".join(failed_ids) + "\n")
+        failed_list.write_text("\n".join(str(t) for t in failed_ids) + "\n")
         print(f"Failed test list written to {failed_list}")
         return 1
     return 0

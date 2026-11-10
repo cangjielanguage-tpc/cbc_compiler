@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 
 from runner_tools import MissingArtifacts, java_cmd, run_cjc, run_in_toolchain
+from test_identifier import TestIdentifier
 
 SUITE = "asm"
 HERE = Path(__file__).resolve().parent
@@ -24,12 +25,13 @@ def load_excludes():
 
 
 def excluded(test_id, patterns):
-    base = test_id.split("::")[0]
     for pattern in patterns:
-        if "::" in pattern:
-            if fnmatch.fnmatch(test_id, pattern):
+        # A mode pattern has two `::` separators (suite + mode); a whole-test
+        # pattern has one (suite only).
+        if pattern.count("::") >= 2:
+            if fnmatch.fnmatch(str(test_id), pattern):
                 return True
-        elif fnmatch.fnmatch(base, pattern):
+        elif fnmatch.fnmatch(f"{test_id.suite_name}::{test_id.test_name}", pattern):
             return True
     return False
 
@@ -38,16 +40,15 @@ async def discover():
     patterns = load_excludes()
     ids = []
     for f in sorted(glob.glob(str(HERE / "**" / "*.asm"), recursive=True)):
-        base = os.path.relpath(f, HERE)[:-len(".asm")]
-        test_id = f"{SUITE}/{base}"
+        rel = os.path.relpath(f, HERE)[:-len(".asm")]
+        test_id = TestIdentifier(SUITE, rel, "")
         if not excluded(test_id, patterns):
             ids.append(test_id)
     return ids
 
 
 async def build(test_id, workdir):
-    base = test_id.split("::")[0]
-    rel = base.split("/", 1)[1]
+    rel = test_id.test_name
     name = Path(rel).name
     src_dir = HERE / Path(rel).parent
     wdir = Path(workdir)
@@ -81,15 +82,13 @@ async def build(test_id, workdir):
 
 
 async def run_command(test_id, workdir):
-    base = test_id.split("::")[0]
-    name = Path(base).name
+    name = Path(test_id.test_name).name
     wdir = Path(workdir)
     return f'LD_LIBRARY_PATH="{wdir}:$LD_LIBRARY_PATH" launcher "{wdir}/{name}.cbc"'
 
 
 async def run(test_id, workdir):
-    base = test_id.split("::")[0]
-    name = Path(base).name
+    name = Path(test_id.test_name).name
     wdir = Path(workdir)
     cbc = wdir / f"{name}.cbc"
     if not cbc.is_file():
@@ -109,7 +108,7 @@ async def run(test_id, workdir):
 
 
 def verify(test_id, wdir):
-    name = Path(test_id.split("::")[0]).name
+    name = Path(test_id.test_name).name
     expected = wdir / f"{name}.expected"
     actual = wdir / f"{name}.actual"
     exp_txt = expected.read_text() if expected.is_file() else None
