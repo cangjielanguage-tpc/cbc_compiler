@@ -109,6 +109,34 @@ class TBackingReadSuite extends AnyFunSuite {
     assert(overridden.tpe.paramTypes.isEmpty && f.sourceFile.contains("changed.cj"))
   }
 
+  test("enum-returning methods retain hash-map identity across repeated live reads") {
+    val p = fixture()
+    // Both the method and constructor return the enum itself. Constructor views
+    // may be recreated on read, but cannot become part of the method's identity.
+    p.data.getTypes()(4).asFuncType().getBase.setArgTys(Array(2L, 19L))
+    p.data.getTypes()(3).asFuncType().getBase.setArgTys(Array(19L))
+    val function = p.function(1)
+    val methods = scala.collection.mutable.HashMap(function -> "method")
+    val hash = function.hashCode()
+    for (_ <- 1 to 3) {
+      p.getDef[CHIR.EnumDef](3).get.ctors.foreach(_.tpe)
+      assert(function.hashCode() == hash)
+      assert(methods(function) == "method")
+    }
+  }
+
+  test("patch guard names use generic source names instead of mangled identifiers") {
+    val p = fixture()
+    val generic = p.data.getTypes()(10).asGenericType()
+    generic.setIdentifier("mangled.function.T")
+    generic.setSrcCodeIdentifier("T")
+    p.data.getTypes()(4).asFuncType().getBase.setArgTys(Array(11L, 2L))
+    val function = p.function(1)
+    val name = com.huawei.excelsior.jet.compiler.chir.patchgen.PatchableName.guardFlag(function)
+    assert(name.endsWith("$$T$GVF"))
+    assert(!name.contains("mangled.function"))
+  }
+
   private def fixture(): PackageImpl = {
     val data = TestData.fixtureData()
     def tpe(kind: Int, args: Long*): TypeT = {

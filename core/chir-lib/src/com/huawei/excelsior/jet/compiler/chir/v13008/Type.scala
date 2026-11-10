@@ -53,6 +53,7 @@ final class VArrayTypeImpl(t: VArrayType)(using provider: CHIRItemProvider) exte
 final class GenericTypeImpl(t: GenericType)(using provider: CHIRItemProvider) extends CHIR.GenericType {
   def identifier: String = t.identifier
   def upperBounds = t.upperBoundsVector.toTypeSeq[CHIR.Type]
+  override def srcCodeIdentifier: String = Option(t.srcCodeIdentifier).filter(_.nonEmpty).getOrElse(identifier)
 }
 
 final class FuncTypeImpl(f: FuncType)(using provider: CHIRItemProvider) extends CHIR.FuncType {

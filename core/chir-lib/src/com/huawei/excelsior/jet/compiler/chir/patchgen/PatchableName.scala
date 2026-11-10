@@ -3,6 +3,12 @@ package com.huawei.excelsior.jet.compiler.chir.patchgen
 import com.huawei.excelsior.jet.compiler.chir.CHIR.*
 
 private[chir] object PatchableName {
+  def syntheticConstructor(function: Func): Option[String] = {
+    if (Set(Func.Kind.ClassCtor, Func.Kind.PrimalClassCtor, Func.Kind.StructCtor, Func.Kind.PrimalStructCtor)(function.kind)) {
+      function.declaringDef.map(d => "$" + function.packageName + "$" + d.srcCodeIdentifier + "$$" + function.srcCodeIdentifier +
+        (if (function.tpe.paramTypes.isEmpty) "" else function.tpe.paramTypes.map(typeName).mkString("$$", "$_", "")) + "$CTOR")
+    } else None
+  }
   def guardFlag(function: Func): String = name(function, "$GVF")
   def guardMethod(function: Func): String = {
     "$" + function.packageName + "$Patch$GC" + name(function, "$GF").stripPrefix("$" + function.packageName)
@@ -22,7 +28,7 @@ private[chir] object PatchableName {
       val name = if (definition.srcCodeIdentifier.isEmpty) definition.identifier.stripPrefix("@")
         else definition.srcCodeIdentifier
       definition.packageName + "." + name
-    case t: GenericType => t.identifier
+    case t: GenericType => t.srcCodeIdentifier
     case t: RawArrayType => "RawArray<" + typeName(t.elementType) + ">"
     case t: CPointerType => "CPointer<" + typeName(t.elementType) + ">"
     case t: VArrayType => "VArray<" + typeName(t.elementType) + "," + t.size + ">"
