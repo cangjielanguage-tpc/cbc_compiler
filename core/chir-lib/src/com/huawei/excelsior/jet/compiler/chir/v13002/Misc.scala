@@ -59,6 +59,9 @@ final class InstanceVarImpl(m: MemberVarInfoT)(using provider: CHIRItemProvider)
   def attrs: Long = m.getAttributes
   def tpe: CHIR.Type = provider.getType[CHIR.Type](m.getType).get
   def name: String = m.getName
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
+    m.setAttributes(attributes.foldLeft(0L)((mask, a) => mask | (1L << a.ordinal)))
+
 }
 
 final class VTableImpl(v: VTableInTypeT)(using provider: CHIRItemProvider) extends CHIR.VTable {
@@ -75,6 +78,9 @@ final class VMethodImpl(v: VirtualMethodInfoT)(using provider: CHIRItemProvider)
   def originalType: CHIR.FuncType = provider.getType[CHIR.FuncType](v.getOriginalType).get
   def parentType: CHIR.Type = provider.getType[CHIR.Type](v.getParentType).get
   def returnType: CHIR.Type = provider.getType[CHIR.Type](v.getReturnType).get
+  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
+    v.setAttributes(attributes.foldLeft(0L)((mask, a) => mask | (1L << a.ordinal)))
+
 }
 
 final class EnumCtorImpl(e: EnumCtorInfoT)(using provider: CHIRItemProvider) extends CHIR.EnumCtor {
