@@ -186,7 +186,19 @@ class FuncImplSuite extends AnyFunSuite {
 
 }
 
-private[v13002] object TestData {
+private[chir] object TestData {
+  def operationFixtureData(): CHIRPackageT = {
+    val p = fixtureData()
+    def entry(kind: Int, args: Array[Long]): TypeElemUnion = {
+      val t = new TypeT; t.setKind(kind); t.setArgTys(args)
+      val u = new TypeElemUnion; u.setType(TypeElem.Type); u.setValue(t)
+      u
+    }
+    p.setTypes(p.getTypes ++ Array(entry(CHIRTypeKind.BOOLEAN, Array.emptyLongArray),
+      entry(CHIRTypeKind.TUPLE, Array(6L, 3L))))
+    p
+  }
+
   def fixtureData(): CHIRPackageT = {
     def base(tpe: Long, name: String, kind: Int): ValueT = {
       val b = new ValueT

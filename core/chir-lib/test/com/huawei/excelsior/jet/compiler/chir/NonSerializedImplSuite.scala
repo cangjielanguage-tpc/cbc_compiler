@@ -1,6 +1,6 @@
-package com.huawei.excelsior.jet.compiler.chir.v13002
+package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.jet.compiler.chir.{CHIR, AugmentedPackage, dsl}
+import com.huawei.excelsior.jet.compiler.chir.v13002.{PackageImpl, TestData}
 import java.nio.file.Files
 import org.scalatest.funsuite.AnyFunSuite
 
