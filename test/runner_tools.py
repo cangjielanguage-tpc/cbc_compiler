@@ -207,7 +207,7 @@ async def run_in_toolchain(cmd, cwd=None, log=None, stderr_log=None):
 
 
 async def run_cjc(input_file, output_file, output_type=None, additional_args=None, log=None):
-    args = ["--fobf-layout", "--fno-obf-export-symbols", "--fobf-line-number", "--fobf-source-path",
+    args = ["--fobf-layout", "--fno-obf-export-symbols", "--fobf-source-path",
             "--obf-sym-output-mapping", f"{output_file}.obf.map"]
     if output_type is not None:
         args += ["--output-type", output_type]
