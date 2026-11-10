@@ -104,7 +104,7 @@ async def run(test_id, workdir):
 
     (wdir / "run.log").write_text(stdout_txt)
     (wdir / "run.err").write_text(err_txt)
-    (wdir / f"{name}.actual").write_text(stdout_txt + (err_txt if err_txt.strip() else f"{res}\n"))
+    (wdir / f"{name}.actual").write_text(stdout_txt + f"{res}\n")
     return verify(test_id, wdir)
 
 

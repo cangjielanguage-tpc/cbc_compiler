@@ -155,6 +155,8 @@ def cmd_test(args):
         print(f"There is no envsetup.sh in {toolchain} (set via {source}), path probably points to wrong place", file=sys.stderr)
         return 1
     os.environ["TOOLCHAIN"] = toolchain
+    os.environ["CANGJIE_STDX_PATH"] = os.path.expanduser(os.environ.get(
+        "CANGJIE_STDX_PATH", f"{toolchain}/stdx/dynamic/stdx"))
     if args.jc_options:
         os.environ["CBC_JC_OPTIONS"] = args.jc_options
     print(f"CANGJIE_TOOLCHAIN: {toolchain}")
