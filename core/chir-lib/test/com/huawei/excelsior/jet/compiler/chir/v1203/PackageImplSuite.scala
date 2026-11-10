@@ -172,6 +172,97 @@ class PackageImplSuite extends AnyFunSuite {
     assert(p.expressionTable(2).asExpression().getOwner == 0)
   }
 
+  for (failPacking <- Seq(false, true)) {
+    test(s"wire overrides are restored after packing: fail=$failPacking") {
+      val p = fresh()
+      val f = p.function(1)
+      val group = f.body.get
+      val block = group.entryBlock
+      val jump = p.newGoto(block)
+      block.replaceTerminator(jump)
+      val spare = p.newBlock()
+      val spareJump = p.newGoto(spare)
+      spare.replaceTerminator(spareJump)
+      group.replaceBlocks(group.blocks :+ spare, block)
+      group.replaceBlocks(Seq(block), block)
+      val lambda = p.data.getValues()(7).asFunction()
+      lambda.setFuncKind(FuncKind.LAMBDA)
+      p.function(8).removeBody()
+      assert(p.validationIssues().isEmpty)
+      val values = p.data.getValues
+      val exprs = p.data.getExprs
+      val spareTable = p.blockTable(p.valueId(spare))
+      val instructions = spareTable.getExprs
+      val predecessors = spareTable.getPredecessors
+      val counter = values(0).asFunction().getBlockGroupId
+      val before = p.data.serializeToBinary()
+      val output = Files.createTempFile("wire-overrides-", ".chir")
+      val sentinel = Array[Byte](1, 2, 3)
+      try {
+        Files.write(output, sentinel)
+        if (failPacking) {
+          // Validation accepts the graph; the UTF-8 packer rejects this name
+          // after all serialization-only overrides have been applied.
+          p.data.setName("\ud800")
+          try intercept[IllegalArgumentException](p.write(output))
+          finally p.data.setName("fixture")
+          assert(Files.readAllBytes(output).sameElements(sentinel))
+        } else {
+          p.write(output)
+        }
+        assert(p.data.getValues eq values)
+        assert(p.data.getExprs eq exprs)
+        assert(p.expressionTable(2).asExpression().getOwner == 0)
+        assert(p.groupTable(9).getOwnedFunc == 0)
+        assert(spareTable.getParentGroup == 0)
+        assert(spareTable.getExprs eq instructions)
+        assert(spareTable.getPredecessors eq predecessors)
+        assert(values(0).asFunction().getBlockGroupId == counter)
+        assert(lambda.getFuncKind == FuncKind.LAMBDA)
+        assert(block.terminator eq jump)
+        assert(spare.terminator eq spareJump)
+        assert(p.data.serializeToBinary().sameElements(before))
+        p.write(output)
+        val first = Files.readAllBytes(output)
+        val saved = PackageImpl.read(output)
+        assert(saved.expressionTable(2).asExpression().getOwner == p.valueId(block))
+        assert(saved.blockTable(p.valueId(spare)).getParentGroup > values.length)
+        assert(saved.blockTable(p.valueId(spare)).getExprs.isEmpty)
+        assert(saved.data.getValues()(7).asFunction().getFuncKind == FuncKind.DEFAULT)
+        assert(saved.data.getValues()(0).asFunction().getBlockGroupId > counter)
+        p.write(output)
+        assert(Files.readAllBytes(output).sameElements(first))
+        assert(p.data.getValues eq values)
+        assert(p.data.serializeToBinary().sameElements(before))
+      } finally Files.delete(output)
+    }
+  }
+
+  test("direct packing emits empty vectors on inserted nodes") {
+    val p = fresh()
+    val group = p.function(1).body.get
+    val block = group.entryBlock
+    val condition = p.insert(block, CHIR.Operation.BooleanConstant(true))
+    val expressionId = p.valueTable(p.valueId(condition)).asLocalVar().getAssociatedExpr
+    val boolTypeId = p.typeId(condition.tpe)
+    val second = p.newBlock()
+    second.replaceTerminator(p.newGoto(second))
+    block.replaceTerminator(p.newBranch(condition, block, second))
+    group.replaceBlocks(group.blocks :+ second, block)
+    val output = Files.createTempFile("wire-vectors-", ".chir")
+    try {
+      p.write(output)
+      val raw = CHIRPackage.getRootAsCHIRPackage(ByteBuffer.wrap(Files.readAllBytes(output)))
+      val t = raw.types(new Type, (boolTypeId - 1).toInt).asInstanceOf[Type]
+      val e = raw.exprs(new Expression, (expressionId - 1).toInt).asInstanceOf[Expression]
+      val b = raw.values(new Block, (p.valueId(second) - 1).toInt).asInstanceOf[Block]
+      assert(t.argTysVector() != null)
+      assert(e.blockGroupsVector() != null)
+      assert(b.exceptionCatchListVector() != null)
+      assert(PackageImpl.read(output).validationIssues().isEmpty)
+    } finally Files.delete(output)
+  }
+
   test("new nodes may be staged but must be attached before writing") {
     val p = fresh()
     val block = p.newBlock()
