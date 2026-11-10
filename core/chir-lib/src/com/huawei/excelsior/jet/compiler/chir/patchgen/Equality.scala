@@ -12,7 +12,11 @@ object Equality {
     case t: BoxType => ("box", typeKey(t.baseType))
     case t: CustomType =>
       val d = t.typeDef
-      val kind = if (t.isInstanceOf[ClassType]) "class" else if (t.isInstanceOf[StructType]) "struct" else "enum"
+      val kind = t match {
+        case _: ClassType => "class"
+        case _: StructType => "struct"
+        case _ => "enum"
+      }
       (kind, d.identifier, d.packageName, d.srcCodeIdentifier, t.genericTypeParams.map(typeKey))
     case t: FuncType => ("func", t.paramTypes.map(typeKey), typeKey(t.returnType), t.isC, t.hasVarArg)
     case t: CPointerType => ("pointer", typeKey(t.elementType))
