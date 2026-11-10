@@ -2065,7 +2065,6 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.FillInStackTrace |
                CHIR.Intrinsic.Kind.Sleep |
                CHIR.Intrinsic.Kind.DecodeStackTrace |
-               CHIR.Intrinsic.Kind.AlignOf |
                CHIR.Intrinsic.Kind.DumpAllThreadsInfo |
                CHIR.Intrinsic.Kind.DumpCurrentThreadInfo |
                CHIR.Intrinsic.Kind.ExclusiveScope |
@@ -2080,12 +2079,6 @@ trait CHIRParser
                CHIR.Intrinsic.Kind.SetThreadObject |
                CHIR.Intrinsic.Kind.GetThreadObject =>
             state(e) = fakeIntrinsicResult(e)
-
-          // WORKAROUND(stdlib-to-cbc): fake size, but avoid 0/1/-1: callers like
-          // LibC.malloc divide the max element count by sizeOfType<T>, and a
-          // division by such a constant is not accepted by the CBC back end.
-          case CHIR.Intrinsic.Kind.SizeOf =>
-            state(e) = LConst(8)
 
           // WORKAROUND(stdlib-to-cbc): claim futures are always complete so
           // that hypothetical waits do not block.
@@ -2149,6 +2142,41 @@ trait CHIRParser
                IK.OverflowCheckedDiv | IK.OverflowCheckedMod | IK.OverflowCheckedPow |
                IK.OverflowCheckedInc | IK.OverflowCheckedDec | IK.OverflowCheckedNeg =>
             state(e) = lowerCheckedOverflowIntrinsic(e.kind, e, e.args.map(state.apply))
+
+          // Real implementation. For a concrete type with statically known layout
+          // (primitive and pointer-like C types) folds to a compile-time constant
+          // (natural alignment equals size; Unit is the zero-sized C type).
+          // Otherwise (type variables, C structs, etc.) loads the value from the
+          // TypeInfo object, which follows the ABI-fixed DYN_TypeInfo layout
+          // (packed(4)): instanceSize u32 at offset +12, align u8 at offset +28
+          // (see cbc-engine RuntimeTypes.h and TYPEINFO_INSTANCESIZE_OFFSET in
+          // asm_export.h), mirroring the cjnative backend.
+          case CHIR.Intrinsic.Kind.SizeOf | CHIR.Intrinsic.Kind.AlignOf =>
+            import SignatureType.*
+
+            val Seq(t) = e.instantiatedTypeArgs
+            val tSig = resolver.typeSig(t)
+            val resTpe = ValueType.fromSig(resolver.typeSig(e.resultTpe))
+
+            val constBytes = Wrapper.skip(tSig) match {
+              case Boolean | Int8 | UInt8 => 1L
+              case Int16 | UInt16 => 2L
+              case Int32 | UInt32 | Float32 => 4L
+              case Int64 | UInt64 | Float64 | AddrInt | AddrUInt => 8L
+              case Unit => 0L
+              case BString | _: CPointer => 8L
+              case _ => -1L
+            }
+
+            state(e) = if (constBytes >= 0) {
+              IntegralConst(resTpe)(constBytes)
+            } else {
+              val fieldSig = if (e.kind == CHIR.Intrinsic.Kind.SizeOf) UInt32 else UInt8
+              val offset = if (e.kind == CHIR.Intrinsic.Kind.SizeOf) 12 else 28
+              val ti = loadTypeInfo(tSig)
+              val loaded = LoadMemory(fieldSig.toAsm, fieldSig, atomic = false)(Add(ti, LConst(offset)))
+              BitFieldExtract(resTpe, 0, fieldSig.toAsm.sizeInBits, signExtension = false, loaded)
+            }
 
           case IK.OverflowThrowingInc   | IK.OverflowThrowingDec   | IK.OverflowThrowingNeg   |
                IK.OverflowSaturatingInc | IK.OverflowSaturatingDec | IK.OverflowSaturatingNeg |
