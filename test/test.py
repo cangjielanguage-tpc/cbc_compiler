@@ -22,6 +22,8 @@ def load_suites():
             continue
         mod_name = "testsuite_mod_" + f.stem
         spec = importlib.util.spec_from_file_location(mod_name, f)
+        if spec is None or spec.loader is None:
+            raise SystemExit(f"Cannot load testsuite module from {f}")
         mod = importlib.util.module_from_spec(spec)
         sys.modules[mod_name] = mod
         spec.loader.exec_module(mod)
