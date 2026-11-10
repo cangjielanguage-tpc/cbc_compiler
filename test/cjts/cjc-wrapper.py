@@ -46,7 +46,7 @@ def is_elf_object(path):
 
 def parse_args(args):
     """Split the cjc command line into (out, native_names, lib_paths)."""
-    out = ""
+    out = "main"  # cjc's default product name when -o / --output is absent
     native_names = []
     lib_paths = []
     i = 0
