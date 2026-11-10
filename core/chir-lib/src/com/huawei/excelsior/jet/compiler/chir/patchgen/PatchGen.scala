@@ -11,6 +11,8 @@ final class PatchGenException(message: String) extends RuntimeException(message)
 final class PatchGen(source: Option[Package], pkg: Package) {
   private val functions = pkg.values.collect { case f: Func => f }.toVector
   private val globals = pkg.values.collect { case g: GlobalVar => g }.toVector
+  private val globalsByName = globals.groupBy(_.srcCodeIdentifier).view.mapValues(_.head).toMap
+  private val functionsByName = functions.groupBy(_.srcCodeIdentifier)
   private val definitions = pkg.typeDefs.toVector
   private val imports = mutable.LinkedHashSet.empty[Long]
   private val deleted = mutable.LinkedHashSet.empty[Long]
@@ -82,21 +84,23 @@ final class PatchGen(source: Option[Package], pkg: Package) {
           if (!patchClass.exists(_.srcCodeIdentifier == d.srcCodeIdentifier)) importedTypes += found.get
         }
         val sourceFuncs = source.values.collect { case f: Func => f }.toVector
-        val currentFuncs = functions.map(f => functionKey(f) -> f).toMap
-        for (f <- sourceFuncs) {
+        val sourceKeys = sourceFuncs.map(f => (f, functionKey(f)))
+        val currentKeys = functions.map(f => (f, functionKey(f)))
+        val currentFuncs = currentKeys.map((f, key) => key -> f).toMap
+        for ((f, key) <- sourceKeys) {
           val initializer = f.packageName == pkg.name &&
             (f.kind == Func.Kind.GlobalVarInit || f.kind == Func.Kind.AnnoFactory || f.srcCodeIdentifier == prefix + "$GVI")
           val stub = f.declaringDef.exists(d => patchClass.exists(_.srcCodeIdentifier == d.srcCodeIdentifier))
           if (!initializer && !stub) {
-            val found = currentFuncs.get(functionKey(f))
+            val found = currentFuncs.get(key)
             if (found.nonEmpty || !(imported(f) || f.packageName != pkg.name)) {
               error(found.nonEmpty, s"func ${f.identifier.stripPrefix("@")} was not found in patched version")
               markFunction(f, found.get)
             }
           }
         }
-        val oldKeys = sourceFuncs.map(functionKey).toSet
-        fresh ++= functions.filter(f => GuardChecks.flag(f).nonEmpty && !oldKeys(functionKey(f)))
+        val oldKeys = sourceKeys.iterator.map(_._2).toSet
+        fresh ++= currentKeys.collect { case (f, key) if GuardChecks.flag(f).nonEmpty && !oldKeys(key) => f }
         val currentVars = globals.map(g => variableKey(g) -> g).toMap
         for (g <- source.values.collect { case g: GlobalVar => g }) {
           val found = currentVars.get(variableKey(g))
@@ -153,21 +157,26 @@ final class PatchGen(source: Option[Package], pkg: Package) {
       addAttribute(flag, Attribute.Imported)
       for (d <- guardClass.toSeq ++ patchClass.toSeq) d.replaceMethods(d.methods.filterNot(_.srcCodeIdentifier == method))
       val ctor = PatchableName.syntheticConstructor(f)
-      for (g <- functions if g.srcCodeIdentifier == method || ctor.contains(g.srcCodeIdentifier)) addAttribute(g, Attribute.Unreachable)
+      for (name <- (Seq(method) ++ ctor).distinct; g <- functionsByName.getOrElse(name, Seq.empty)) {
+        addAttribute(g, Attribute.Unreachable)
+      }
     }
   }
 
   private def generateMethods(): Unit = {
     val generated = mutable.ArrayBuffer.empty[Func]
+    val methods = patchClass.toSeq.flatMap(_.methods).groupBy(_.srcCodeIdentifier).view.mapValues(_.head).toMap
     for (f <- patches.distinct) {
       GuardChecks.remove(f)
       if (!isInit(f)) {
         error(patchClass.nonEmpty, "patch class is expected to be initialized")
-        val target = patchClass.get.methods.find(_.srcCodeIdentifier == PatchableName.guardMethod(f))
+        val methodName = PatchableName.guardMethod(f)
+        val target = methods.get(methodName)
         error(target.nonEmpty, "patch method is expected to be initialized")
         f.moveBody(target.get)
         generated += target.get
-        val flag = globals.find(_.srcCodeIdentifier == PatchableName.guardFlag(f))
+        val flagName = PatchableName.guardFlag(f)
+        val flag = globalsByName.get(flagName)
         error(flag.nonEmpty, "guard var flag is expected to be initialized")
         val block = guardInit.get.body.get.entryBlock
         val enabled = pkg.insert(block, Operation.BooleanConstant(true))
@@ -190,7 +199,9 @@ final class PatchGen(source: Option[Package], pkg: Package) {
       f.body.exists(g => g.blocks.size == 1 && g.entryBlock.nonTerminatorExpressions.isEmpty && g.entryBlock.terminator.isInstanceOf[Exit])
     for (f <- Seq(pkg.packageInitFunc, pkg.packageInitLiteralFunc); b <- f.body.toSeq.flatMap(_.blocks)) {
       val redundant = b.nonTerminatorExpressions.collect { case e: Apply if e.callee.isInstanceOf[Func] && empty(e.callee.asInstanceOf[Func]) => e }
-      b.replaceExpressions(b.nonTerminatorExpressions.filterNot(e => redundant.exists(_ eq e)), b.terminator)
+      val removed = new java.util.IdentityHashMap[Expression, java.lang.Boolean]()
+      redundant.foreach(e => removed.put(e, java.lang.Boolean.TRUE))
+      b.replaceExpressions(b.nonTerminatorExpressions.filterNot(removed.containsKey), b.terminator)
       for (e <- redundant) {
         val callee = e.callee.asInstanceOf[Func]
         callee.removeBody()
