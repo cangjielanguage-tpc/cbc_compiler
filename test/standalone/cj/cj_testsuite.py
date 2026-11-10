@@ -7,7 +7,7 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_tools import MissingArtifacts, java_cmd, run_cjc, run_in_toolchain
+from runner_tools import MissingArtifacts, run_cjc, run_in_toolchain
 
 SUITE = "cj"
 HERE = Path(__file__).resolve().parent
@@ -69,7 +69,6 @@ async def build(test_id, workdir):
     log_io = io.StringIO()
 
     toolchain = os.environ["TOOLCHAIN"]
-    compiler_jar = toolchain + "/tools/bin/cbc-compiler.jar"
     jc_options = os.environ.get("CBC_JC_OPTIONS", "")
 
     async with _copy_lock(f"{SUITE}/{base}"):
@@ -80,13 +79,23 @@ async def build(test_id, workdir):
         for aot_file in sorted(glob.glob(str(test_copy / "*.aot.cj"))):
             aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
             aot_so = test_copy / f"lib{aot_name}.so"
-            if not aot_so.exists():
-                res = await run_cjc(aot_file, str(aot_so), output_type="dylib", log=log_io)
-                log_io.write(f"\n[aot {aot_name}] exit {res}\n")
-                if res != 0:
-                    (wdir / "build.log").write_text(log_io.getvalue())
-                    return 1
+            res = await run_cjc(aot_file, str(aot_so), output_type="dylib", log=log_io)
+            log_io.write(f"\n[aot {aot_name}] exit {res}\n")
+            if res != 0:
+                (wdir / "build.log").write_text(log_io.getvalue())
+                return 1
             aot_sos.append(aot_name)
+
+        native_names = []
+        for c_file in sorted(glob.glob(str(test_copy / "*.c"))):
+            native_name = os.path.basename(c_file)[:-len(".c")]
+            native_so = test_copy / f"lib{native_name}.so"
+            res = await run_in_toolchain(["cc", "-shared", "-fPIC", "-o", str(native_so), c_file], log=log_io)
+            log_io.write(f"\n[native {native_name}] exit {res}\n")
+            if res != 0:
+                (wdir / "build.log").write_text(log_io.getvalue())
+                return 1
+            native_names.append(native_name)
 
     os.makedirs(wdir, exist_ok=True)
 
@@ -118,12 +127,11 @@ async def build(test_id, workdir):
         return 1
 
     aot_deps = [f"-cbcaotdeps={':'.join(aot_sos)}"] if aot_sos else []
-    java_cmd_list = [*java_cmd(None), "-jar", compiler_jar, f"-outputname={name}", f"{name}.chir"]
-    if jc_options:
-        java_cmd_list.append(jc_options)
-    java_cmd_list += aot_deps + int_chir_files
+    foreign_libs = [f"-foreignlibs={':'.join(native_names)}"] if native_names else []
+    cbc_cmd = ["cbc-compiler", f"-outputname={name}", f"{name}.chir",
+               f"+IgnoreSourceFileNameForCbc {jc_options}"] + aot_deps + foreign_libs + int_chir_files
     cbc_err = io.StringIO()
-    res = await run_in_toolchain(java_cmd_list, cwd=str(wdir), log=log_io, stderr_log=cbc_err)
+    res = await run_in_toolchain(cbc_cmd, cwd=str(wdir), log=log_io, stderr_log=cbc_err)
     log_io.write(f"\n[cbc {mode}] exit {res}\n")
     if cbc_err.getvalue().strip():
         log_io.write(cbc_err.getvalue())
