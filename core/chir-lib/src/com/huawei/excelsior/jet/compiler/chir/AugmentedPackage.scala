@@ -15,7 +15,7 @@ object AugmentedPackage {
   }
 }
 
-class AugmentedPackage(pkg: CHIR.Package, generatedFuncs: Seq[CHIR.Func]) extends ReadOnlyPackage {
+class AugmentedPackage(pkg: CHIR.Package, generatedFuncs: Seq[CHIR.Func]) extends CHIR.Package {
   private val generatedFuncsById = generatedFuncs.map(h => (h.id.toInt, h)).toMap
   private val generatedFuncsByName = generatedFuncs.map(h => (h.name, h)).toMap
 

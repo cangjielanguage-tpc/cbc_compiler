@@ -19,8 +19,11 @@ object CHIR {
   def read(input: Path, version: Int = defaultVersion): Package =
     CHIRConfig.newPackage(input.toString, version)
 
+  private def editingUnsupported(kind: String): Nothing =
+    shouldNotCallThis(s"This CHIR $kind does not support serialized edits")
+
   trait PackageOwned {
-    def ownerPackage: Package
+    def ownerPackage: Package = editingUnsupported("function")
   }
 
   trait Package {
@@ -34,15 +37,31 @@ object CHIR {
     def getDef(identifier: String): Option[CustomTypeDef]
 
     /** Create and register a goto expression in this package. */
-    def newGoto(destination: Block, debugLoc: Option[DebugLocation] = None): Goto
+    def newGoto(destination: Block, debugLoc: Option[DebugLocation] = None): Goto = editingUnsupported("package")
 
     /** Clean up unreachable blocks, validate, then save the complete schema.
       * Preserve table IDs, metadata and the input file-identifier convention.
       * Reject invalid graphs before replacing an existing output file.
       */
-    def write(output: Path): Unit
+    def write(output: Path): Unit = editingUnsupported("package")
 
+    /** Schema-independent operations used by IR transformations. */
+    def expressions(function: Func): Seq[Expression] = editingUnsupported("package")
+    def isInternal(function: Func): Boolean = editingUnsupported("package")
+    def insert(block: Block, operation: Operation, before: Option[Expression] = None): LocalVar =
+      editingUnsupported("package")
+    def replace(expression: Expression, operation: Operation): Unit = editingUnsupported("package")
+    def setOptimized(): Unit = editingUnsupported("package")
+  }
 
+  /** The small set of expressions needed by package transformations. */
+  enum Operation {
+    case Allocate(tpe: Type)
+    case StaticCast(value: Value, tpe: Type)
+    case BooleanConstant(value: Boolean)
+    case Tuple(values: Seq[Value], tpe: Type)
+    case Store(value: Value, location: Value)
+    case Apply(function: Func, args: Seq[Value])
   }
 
   trait HasAnnotations {
@@ -70,6 +89,7 @@ object CHIR {
 
   trait HasAttributes {
     def attributes: Seq[Attribute]
+    def replaceAttributes(attributes: Seq[Attribute]): Unit = editingUnsupported("function")
   }
 
   trait Value {
@@ -89,9 +109,6 @@ object CHIR {
     def retVal: Option[LocalVar]
     def sourceFile: Option[String]
 
-    /** Replace the complete attribute set; an empty sequence clears all attributes. */
-    def replaceAttributes(attributes: Seq[Attribute]): Unit
-
     override def equalityKey: Product =
       (classOf[Func], super.equalityKey, srcCodeIdentifier, packageName, kind, attributes)
 
@@ -102,23 +119,24 @@ object CHIR {
       * Mapped parameter types, return types, generic bounds and calling conventions
       * must match after generic substitution. Preserve the destination signature
       * and leave the source as a declaration. Composite destination types must
-      * exist. Nested groups, lambdas, spawn, generic instances and source self
-      * references are currently unsupported; package initializer bodies cannot move.
+      * exist. Patch constructor transfers adapt the return allocation and receiver.
+      * Nested groups, lambdas and generic instances are currently unsupported;
+      * package initializer bodies cannot move.
       * Cleanup and validation are automatic; nothing is serialized here.
       */
-    def moveBody(destination: Func): Unit
+    def moveBody(destination: Func): Unit = editingUnsupported("function")
 
     /** Remove the body and return local, leaving the signature and attributes intact.
       * Calling this on a declaration has no effect. Nothing is serialized here.
       */
-    def removeBody(): Unit
+    def removeBody(): Unit = editingUnsupported("function")
 
     // APIs currently called only by tests in this repository (excluding forwarders).
     /** Replace body and return local together. Reject foreign/unregistered
       * nodes and bodies still owned by another function. Use moveBody
       * for transfers that require parameter and generic-type substitution.
       */
-    def replaceBody(body: Option[BlockGroup], retVal: Option[LocalVar]): Unit
+    def replaceBody(body: Option[BlockGroup], retVal: Option[LocalVar]): Unit = editingUnsupported("function")
 
   }
 
@@ -150,7 +168,7 @@ object CHIR {
       * Reject duplicate/shared/foreign blocks. Complete cleanup and validation
       * run automatically before writing or moving a body.
       */
-    def replaceBlocks(blocks: Seq[Block], entryBlock: Block): Unit
+    def replaceBlocks(blocks: Seq[Block], entryBlock: Block): Unit = editingUnsupported("block group")
   }
 
   trait Block extends Value with PackageOwned {
@@ -162,8 +180,8 @@ object CHIR {
     /** Maintain ownership and predecessors, pruning unreachable blocks when
       * the attached body has complete control flow. Staged edits are allowed.
       */
-    def replaceTerminator(terminator: Terminator): Unit
-    def replaceExpressions(nonTerminators: Seq[Expression], terminator: Terminator): Unit
+    def replaceTerminator(terminator: Terminator): Unit = editingUnsupported("block")
+    def replaceExpressions(nonTerminators: Seq[Expression], terminator: Terminator): Unit = editingUnsupported("block")
   }
 
   // static field or global var
@@ -174,9 +192,6 @@ object CHIR {
     def packageName: String
     def tpe: Type
     def initializer: Option[Value]
-
-    /** Replace the complete attribute set; an empty sequence clears all attributes. */
-    def replaceAttributes(attributes: Seq[Attribute]): Unit
 
     final override def equals(other: Any): Boolean = other match {
       case that: GlobalVar =>
@@ -332,17 +347,18 @@ object CHIR {
   }
 
   trait GenericType extends Type {
+    def srcCodeIdentifier: String = identifier
     def identifier: String
     def upperBounds: Seq[Type]
 
     final override def equals(other: Any): Boolean = other match {
       case that: GenericType =>
         (this eq that) ||
-          (identifier == that.identifier && upperBounds == that.upperBounds)
+          identifier == that.identifier
       case _ => false
     }
 
-    final override def hashCode(): Int = (identifier, upperBounds).hashCode()
+    final override def hashCode(): Int = identifier.hashCode()
   }
 
   trait RefType extends Type {
@@ -410,6 +426,7 @@ object CHIR {
     def instanceVars: Seq[InstanceVar]
     def staticVars: Seq[GlobalVar]
     def methods: Seq[Func]
+    def replaceMethods(methods: Seq[Func]): Unit = editingUnsupported("definition")
     def vtables: Seq[VTable]
     def implementedInterfaces: Seq[ClassType]
 
@@ -430,7 +447,7 @@ object CHIR {
     def ctors: Seq[EnumCtor]
 
     override def equalityKey: Product =
-      (classOf[EnumDef], super.equalityKey, nonExhaustive, ctors)
+      (classOf[EnumDef], super.equalityKey, nonExhaustive)
   }
 
   trait ClassDef extends CustomTypeDef {
@@ -494,6 +511,12 @@ object CHIR {
 
   trait Expression {
     def debugLoc: Option[DebugLocation]
+  }
+
+  /** Read-only views for schema operations not lowered by the parser. */
+  trait OpaqueExpression extends Expression {
+    def operationKey: Product
+    def valueOperands: Seq[Value]
   }
 
   trait Cast extends Expression {
