@@ -7,8 +7,8 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_tools import MissingArtifacts, run_cjc, run_in_toolchain
-from test_identifier import TestIdentifier
+from runner_tools import run_cjc, run_in_toolchain
+from test_identifier import MissingArtifacts, TestIdentifier
 
 SUITE = "cj"
 HERE = Path(__file__).resolve().parent

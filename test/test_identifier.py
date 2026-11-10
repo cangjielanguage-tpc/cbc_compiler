@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 
 
+class MissingArtifacts(RuntimeError):
+    """Raised by a testsuite when a testcase is run without its build artifacts."""
+    pass
+
+
 @dataclass(frozen=True, order=True)
 class TestIdentifier:
     """A testcase: (suite_name, test_name, mode).
