@@ -2,8 +2,7 @@
 
 `test.py` is the async test runner. It discovers and drives pluggable test
 suites and compiles + executes test programs against a Cangjie toolchain
-(SDK distribution). It replaces `runner.py`, which is kept untouched.
-`runner.py`'s options are documented in [README.md](README.md).
+(SDK distribution).
 
 ## Suites
 
@@ -27,8 +26,12 @@ Current suites:
   `cbc-compiler` -> `launcher`. Each test runs in `default` and `O2` modes.
 - `standalone/asm/asm_testsuite.py` — CBC assembly (`*.asm`), assembled with
   `cbc-asm` and executed by `launcher`.
+- `hotfix/hotfix_testsuite.py` — the cj sources rebuilt as hotfix patches:
+  throw-stub build (hotfix plugin), patched CHIR, `patch-gen`, and a final
+  `cbc-compiler` step; single `default` mode. The run executes the stub
+  binary with the patch loaded via `CBCOPT` and `LD_PRELOAD`.
 
-`cjts/` and `hotfix/` are out of scope (see [README.md](README.md)).
+`cjts/` is out of scope.
 
 ## Prerequisites
 
@@ -51,6 +54,8 @@ the test source relative to the suite directory, without extension:
 - `cj/cast/cast::default`, `cj/cast/cast::O2` — the cj suite emits two IDs per
   test (one per mode).
 - `asm/simple` — a suite may emit a single ID (no mode suffix).
+- `hotfix/cast/cast::default` — the hotfix suite reuses the cj sources under
+  its own namespace; only `default` mode.
 
 ## Running
 
@@ -62,6 +67,7 @@ $ python3 test.py test --cangjie-home ~/tmp/cangjie     # run everything
 $ python3 test.py test --cangjie-home ~/tmp/cangjie \
     --test cj/cast/cast::default --test cj/foreign-gc/main::O2   # specific tests
 $ python3 test.py test --cangjie-home ~/tmp/cangjie --tests /tmp/smoke-ids.txt
+$ python3 test.py test --cangjie-home ~/tmp/cangjie --testsuite hotfix
 $ python3 test.py clean                                 # remove the workdir
 ```
 
@@ -72,6 +78,8 @@ $ python3 test.py clean                                 # remove the workdir
 - `--test <id>` — testcase ID to run (repeatable).
 - `--tests <file>` — file with testcase IDs, one per line (`#` comments and
   blank lines are skipped).
+- `--testsuite <name>` — suite to run (repeatable); when given, only the
+  named suites are discovered and run.
 - If any explicit IDs are given (`--test`/`--tests`), they replace the implicit
   per-suite `tests.cfg` filtering; only those IDs are run.
 - `--skip-build` — skip the build and start running. Aborts with a nonzero exit
@@ -95,7 +103,8 @@ $ python3 test.py clean                                 # remove the workdir
 The workdir is `<work-dir>/<id with "::" replaced by "/">`. For the cj suite
 that is `<work-dir>/cj/<testdir>/<name>/` with one shared source copy per test
 and `default/` / `O2/` subdirectories per mode. For the asm suite it is
-`<work-dir>/asm/<test>/`.
+`<work-dir>/asm/<test>/`. The hotfix suite mirrors the cj layout under
+`<work-dir>/hotfix/<testdir>/<name>/default/`.
 
 Per testcase (per mode for cj), the runner writes:
 
@@ -124,8 +133,8 @@ Each suite directory may contain a `tests.cfg` with one glob pattern per line
 `::` excludes the whole test (all modes); a pattern with `::mode` excludes only
 that mode.
 
-`standalone/cj/tests.cfg` and `standalone/asm/tests.cfg` hold the current
-excludes.
+`standalone/cj/tests.cfg`, `standalone/asm/tests.cfg` and `hotfix/tests.cfg`
+hold the current excludes.
 
 ## Typical workflow
 
