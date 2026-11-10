@@ -248,6 +248,14 @@ $ java -jar core/compiler/target/aot/aot.jar +GenCbcIntrinsics
 $ cp cbc-intrinsics.cbc <toolchain>/tools/lib/
 ```
 
+The compiler always appends the cbc engine helper package chir
+(`cbcengine-helper.chir`) to the compilation scope. It is looked up in
+`<cangjie-home>/tools/lib/`, where the toolchain home is taken from the
+`-cangjiehome=<path>` compiler argument and falls back to the `CANGJIE_HOME`
+environment variable. The file is produced by the cbc-engine launcher build
+(`tools/launcher/build-<arch>.sh`) and installed into the toolchain alongside
+the other cbc components.
+
 ### Development Container
 
 A dev container image with all the prerequisites preinstalled (JDK, sbt, flatc,

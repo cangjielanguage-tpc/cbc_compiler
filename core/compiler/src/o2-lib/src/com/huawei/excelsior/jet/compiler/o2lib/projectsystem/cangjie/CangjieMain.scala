@@ -15,7 +15,7 @@ import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.GenerationTarget.{EXE, STDLIB}
-import com.huawei.excelsior.jet.compiler.chir.{CHIRLoader, IntrinsicsPackage, IntrinsicsCHIRLoader}
+import com.huawei.excelsior.jet.compiler.chir.{CHIRLoader, EngineHelperChir, IntrinsicsPackage, IntrinsicsCHIRLoader}
 import com.huawei.excelsior.jet.compiler.debug.dwarf.Dwarf
 import com.huawei.excelsior.jet.compiler.delayed.DelayedIntrinsicsUsageTracker
 import com.huawei.excelsior.jet.compiler.driver.CompilationMode.O2
@@ -25,7 +25,7 @@ import com.huawei.excelsior.jet.compiler.o2lib.opt.{O2Env, VZCModule as VZC}
 import com.huawei.excelsior.jet.compiler.o2lib.be_386.opCodeModule
 import com.huawei.excelsior.jet.compiler.o2lib.fe.{CHIRSymLevelBuilderImpl, CangjieSymLevelBuilder, ExtraPassModule, pc, pcNamesModule as pcNames, pcOModule as pcO}
 import com.huawei.excelsior.jet.compiler.o2lib.jprof.JProf
-import com.huawei.excelsior.jet.compiler.o2lib.projectsystem.cangjie.Errors.{MULTIPLE_MAINS_ERROR, NO_MAIN_ERROR, WRONG_MAIN_EQUATION_ERROR, error}
+import com.huawei.excelsior.jet.compiler.o2lib.projectsystem.cangjie.Errors.{ENGINE_HELPER_CHIR_NOT_FOUND_ERROR, ENGINE_HELPER_CHIR_NOT_RESOLVED_ERROR, MULTIPLE_MAINS_ERROR, NO_MAIN_ERROR, WRONG_MAIN_EQUATION_ERROR, error}
 import com.huawei.excelsior.jet.compiler.o2lib.u.ErrMsg.*
 import com.huawei.excelsior.jet.compiler.o2lib.u.PDB.xPDBModule as xPDB
 import com.huawei.excelsior.jet.compiler.o2lib.u.PDB.xPDBModule.*
@@ -34,7 +34,7 @@ import com.huawei.excelsior.jet.compiler.o2lib.u.xiEnvModule.isProgressShowable
 import com.huawei.excelsior.jet.compiler.o2lib.u.{CompilationDriverModule, JStringsModule, ReplacementLibrary, xcFModule, xcMain0Module, xcMainModule, xcMakeModule, CacheAPIModule as CacheAPI, xiEnvModule as xiEnv, xiFilesModule as xfs}
 import com.huawei.excelsior.jet.compiler.o2lib.xmlib.FSModule as FS
 import com.huawei.excelsior.jet.compiler.options.BoolOption.*
-import com.huawei.excelsior.jet.compiler.options.StrOption.LibraryName
+import com.huawei.excelsior.jet.compiler.options.StrOption.{CangjieHome, LibraryName}
 import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironment
 import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironment.{methodByO2Object, typeToO2Class}
 import com.huawei.excelsior.jet.compiler.{Pass, Stage}
@@ -241,6 +241,7 @@ object CangjieMain {
         chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(IntrinsicsPackage.intrinsicsSourceName))
         IntrinsicsCHIRLoader().load(chirBuilder)
       } else {
+        loadEngineHelperChir(p, chirBuilder)
         for ((f, i) <- p.files.zipWithIndex) {
           printProgress(f, i, p.files.size)
           val src = xfs.sys.createFileDescriptor(f)
@@ -273,6 +274,26 @@ object CangjieMain {
     }
 
     xPDB.manager.mainPDB.flush()
+  }
+
+  /** Appends the cbc engine helper lib chir to the compilation scope.
+    * Cbc engine resolves implicit exception throwing from helper lib. */
+  private def loadEngineHelperChir(p: CangjieProject, chirBuilder: CHIRSymLevelBuilderImpl): Unit = {
+    val cangjieHome = Option(env.valueOfOrNull(CangjieHome)).filter(_.nonEmpty)
+    val helperChirFile = EngineHelperChir.resolveFile(cangjieHome)
+    if (helperChirFile.isEmpty) {
+      error(ENGINE_HELPER_CHIR_NOT_RESOLVED_ERROR)
+    }
+    val file = helperChirFile.get
+    if (!file.exists) {
+      error(ENGINE_HELPER_CHIR_NOT_FOUND_ERROR, XString(file.getPath))
+    }
+    val canonical = file.getCanonicalPath
+    val alreadyAmongInputs = p.files.exists(f => new java.io.File(f.toString).getCanonicalPath == canonical)
+    if (!alreadyAmongInputs) {
+      chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(canonical))
+      new CHIRLoader(canonical).load(chirBuilder)
+    }
   }
 
 
