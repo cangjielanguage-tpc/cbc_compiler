@@ -97,7 +97,7 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
     case ValueConvert(U64, F32, LConst(v)) if v <= 0 => false // no converters yet
     case ValueConvert(U64, F64, LConst(v)) if v <= 0 => false // no converters yet
     case ValueConvert(F32, U64, _) | ValueConvert(F64, U64, _) => false // no converters yet
-    
+
     case _ =>
       // Node has non empty list of value arguments and all fo them are compile-time value nodes
       // Also, node may have SymlevelNode argument (e.g. InstanceOf)
@@ -136,6 +136,7 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
       case x: EOPOperation => assertNull(x.obj); AnyNull(x.tpe)
 
       case x: MathIntrinsic => apply(x)
+      case x: PowI => apply(x)
 
       case x: BitFieldExtract => apply(x)
 
@@ -432,7 +433,17 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
         case D_REM1   => DConst(math.IEEEremainder(dL, dR))
         case D_REM    => DConst(dL % dR)
         case F_REM    => FConst(fL % fR)
+        case D_LOG10  => DConst(math.log10(dArg))
+        case D_LOG2   => DConst(math.log(dArg) / math.log(2.0))
+        case D_EXP2   => DConst(math.pow(2.0, dArg))
+        case D_TRUNC  => DConst(if (dArg < 0) math.ceil(dArg) else math.floor(dArg))
       }
+    }
+
+    @annotation.strictfp
+    private def apply(x: PowI): Node = x match {
+      case PowI(DConst(base), LConst(exp)) => DConst(math.pow(base, exp.toDouble))
+      case _ => x
     }
 
     private def apply(lea: Lea): Node = lea match {

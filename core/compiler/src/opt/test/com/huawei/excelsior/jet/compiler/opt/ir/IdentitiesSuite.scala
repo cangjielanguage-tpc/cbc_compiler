@@ -773,4 +773,39 @@ class IdentitiesSuite extends CompilerSuite with Identities with GlobalNodesBuil
     }
   }
 
+  test("math intrinsics identity") {
+    import Java.Lang.MathIntrinsic._
+
+    for ((kind, v, res) <- Seq(
+      (D_SQRT,  4.0,   math.sqrt(4.0)),
+      (D_EXP,   2.0,   math.exp(2.0)),
+      (D_LOG,   8.0,   math.log(8.0)),
+      (D_LOG10, 100.0, math.log10(100.0)),
+      (D_LOG2,  8.0,   math.log(8.0) / math.log(2.0)),
+      (D_EXP2,  3.0,   math.pow(2.0, 3.0)),
+      (D_CEIL,  2.1,   math.ceil(2.1)),
+      (D_FLOOR, 2.9,   math.floor(2.9)),
+      // negative values are rounded towards zero with ceil
+      (D_TRUNC, -2.5,  math.ceil(-2.5)),
+      (D_TRUNC, 2.5,   math.floor(2.5))
+    )) {
+      MathIntrinsic(kind)(dc(v)) should be (dc(res))
+    }
+
+    MathIntrinsic(F_SQRT)(fc(4.0f)) should be (fc(math.sqrt(4.0f.toDouble).toFloat))
+  }
+
+  test("powi identity") {
+    for ((base, exp, res) <- Seq(
+      (2.0,  10L, math.pow(2.0, 10.0)),
+      (2.0,  -2L, math.pow(2.0, -2.0)),
+      (10.0, 3L,  math.pow(10.0, 3.0))
+    )) {
+      PowI(dc(base), lc(exp)) should be (dc(res))
+    }
+
+    // non-constant base is not folded
+    PowI(darg, lc(10)) should not be a [DConst]
+  }
+
 }

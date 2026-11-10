@@ -372,5 +372,9 @@ enum RTSProc {
   case CJ_saturatingNegU64
   case CJ_saturatingPowI64
   case CJ_throwingPowI64
+  case JR_log10
+  case JR_log2
+  case JR_exp2
+  case JR_trunc
   ///////////////////////////////
 }

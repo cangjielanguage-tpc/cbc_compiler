@@ -60,7 +60,7 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
     * See [[MachineDescriptionCBC.extraVolatileRegistersOnAnyExit]].
     */
   protected def canGenerateWithVolatiles(n: Node) = n match {
-    case _: (Transfer | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Add | Sub | Mul | Pow | Neg | LogicalBinaryOp | IDivRemOp
+    case _: (Transfer | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Add | Sub | Mul | Pow | PowI | Neg | LogicalBinaryOp | IDivRemOp
       | DivisorCheck | FDiv | MathIntrinsic | Cmp | TypeTest | Shift | ReinterpretCast | ValueConvert | BitFieldExtract | New
       | BitcodeDeferred.New | NewArray | NewArrayGeneric | BitcodeDeferred.NewArray | Evacuate | AbstractNullCheck | SingletonObject | LoadTailParam
       | GetField | FieldChainRead | PutField | FieldChainWrite | ExtractEnrichment | DepriveOperation | EnrichOperation

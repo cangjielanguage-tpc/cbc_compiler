@@ -318,6 +318,14 @@ trait ForkedAssembler {
       .bits(_.w4(d).w4(s))
   }
 
+  def fpowi(w: AsmWidth, d: FR, b: FR, e: IR): Unit = instr {
+    analyzer.usePrim(e)
+    stream
+      .opc8(if Width(w) == W32 then Opcode.FPowi32 else Opcode.FPowi64)
+      .bits(_.w4(FILLER).w4(d))
+      .bits(_.w4(b).w4(e))
+  }
+
   def fadd(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Add, d, l, r)
   def fsub(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Sub, d, l, r)
   def fmul(w: AsmWidth, d: FR, l: FR, r: FR): Unit = floatOperation(w, FloatOperations.Mul, d, l, r)
@@ -1541,6 +1549,8 @@ object Assembler {
     case CopyTypeSlotGeneric
     case CopyToTypeSlotGeneric
     case CopyFromTypeSlotGeneric
+    case FPowi32
+    case FPowi64
   }
 
   enum RegSymGroup extends Ordinal {
@@ -1591,6 +1601,11 @@ object Assembler {
     case LOG
     case CEIL
     case FLOOR
+    case LOG10
+    case LOG2
+    case EXP
+    case EXP2
+    case TRUNC
   }
 
   @nowarn("msg=match may not be exhaustive")
