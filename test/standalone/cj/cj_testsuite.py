@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 
 from runner_tools import MissingArtifacts, run_cjc, run_in_toolchain
+from test_identifier import TestIdentifier
 
 SUITE = "cj"
 HERE = Path(__file__).resolve().parent
@@ -31,12 +32,13 @@ def load_excludes():
 
 
 def excluded(test_id, patterns):
-    base = test_id.split("::")[0]
     for pattern in patterns:
-        if "::" in pattern:
-            if fnmatch.fnmatch(test_id, pattern):
+        # A mode pattern has two `::` separators (suite + mode); a whole-test
+        # pattern has one (suite only).
+        if pattern.count("::") >= 2:
+            if fnmatch.fnmatch(str(test_id), pattern):
                 return True
-        elif fnmatch.fnmatch(base, pattern):
+        elif fnmatch.fnmatch(f"{test_id.suite_name}::{test_id.test_name}", pattern):
             return True
     return False
 
@@ -62,18 +64,18 @@ async def discover():
     for f in sorted(glob.glob(str(HERE / "**" / "*.cj"), recursive=True)):
         if f.endswith((".aot.cj", ".int.cj")):
             continue
-        base = os.path.relpath(f, HERE)[:-len(".cj")]
+        rel = os.path.relpath(f, HERE)[:-len(".cj")]
         for mode in MODES:
-            test_id = f"{SUITE}/{base}::{mode}"
+            test_id = TestIdentifier(SUITE, rel, mode)
             if not excluded(test_id, patterns):
                 ids.append(test_id)
     return ids
 
 
 async def build(test_id, workdir):
-    base, mode = test_id.split("::")
-    rel = base.split("/", 1)[1]
+    rel = test_id.test_name
     name = Path(rel).name
+    mode = test_id.mode
     test_src = HERE / Path(rel).parent
     test_copy = Path(workdir).parent  # per-test area, shared by default + O2
     wdir = Path(workdir)              # per-mode area
@@ -81,7 +83,7 @@ async def build(test_id, workdir):
     jc_options = os.environ.get("CBC_JC_OPTIONS", "")
 
     # Copy the source dir once (shared across modes), then compile its deps.
-    async with _copy_lock(base):
+    async with _copy_lock(test_id.test_name):
         if not test_copy.exists():
             shutil.copytree(test_src, test_copy, dirs_exist_ok=True)
 
@@ -155,15 +157,13 @@ async def build(test_id, workdir):
 
 
 async def run_command(test_id, workdir):
-    base = test_id.split("::")[0]
-    name = Path(base).name
+    name = Path(test_id.test_name).name
     wdir = Path(workdir)
     return f'LD_LIBRARY_PATH="{wdir.parent}:$LD_LIBRARY_PATH" launcher "{wdir}/{name}.cbc"'
 
 
 async def run(test_id, workdir):
-    base = test_id.split("::")[0]
-    name = Path(base).name
+    name = Path(test_id.test_name).name
     wdir = Path(workdir)
     cbc = wdir / f"{name}.cbc"
     if not cbc.is_file():
