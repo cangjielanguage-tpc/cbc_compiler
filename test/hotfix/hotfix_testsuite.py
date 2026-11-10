@@ -1,5 +1,4 @@
 import asyncio
-import asyncio.subprocess
 import difflib
 import fnmatch
 import glob
@@ -8,12 +7,11 @@ import os
 import shutil
 from pathlib import Path
 
-from test_identifier import MissingArtifacts, TestIdentifier
+from test_identifier import MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
 
 SUITE = "hotfix"
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent / "standalone" / "cj"
-TOOL_SH = HERE.parent / "tool.sh"
 TESTS_CFG = HERE / "tests.cfg"
 _copy_locks = {}
 
@@ -55,50 +53,6 @@ def _fail(log_io, wdir):
     return 1
 
 
-async def _run_async(cmd, cwd=None, env=None, log=None, stderr_log=None):
-    async def logger(log_file, stream):
-        while not stream.at_eof():
-            data = await stream.readline()
-            decoded = data.decode() if isinstance(data, bytes) else data
-            if log_file is not None:
-                log_file.write(decoded)
-
-    kwargs = {}
-    if log is not None:
-        kwargs["stdout"] = asyncio.subprocess.PIPE
-    if stderr_log is not None:
-        kwargs["stderr"] = asyncio.subprocess.PIPE
-    if env:
-        kwargs["env"] = env
-    process = await asyncio.create_subprocess_exec(*cmd, cwd=cwd, **kwargs)
-    readers = [t for t in [
-        asyncio.create_task(logger(log, process.stdout)) if log is not None else None,
-        asyncio.create_task(logger(stderr_log, process.stderr)) if stderr_log is not None else None,
-    ] if t is not None]
-    if readers:
-        await asyncio.gather(*readers)
-    return await process.wait()
-
-
-async def _run_tool(cmd, cwd=None, env=None, log=None, stderr_log=None):
-    # tool.sh wrapper with an explicit environment: the hotfix build steps
-    # need LD_LIBRARY_PATH/HOTFIX_GEN_THROW_STUBS beyond the inherited env.
-    return await _run_async([str(TOOL_SH)] + cmd, cwd=cwd, env=env,
-                            log=log, stderr_log=stderr_log)
-
-
-async def _run_cjc(input_file, output_file, output_type=None, additional_args=None,
-                   cwd=None, env=None, log=None):
-    args = ["--fobf-layout", "--fno-obf-export-symbols", "--fobf-source-path",
-            "--obf-sym-output-mapping", f"{output_file}.obf.map"]
-    if output_type is not None:
-        args += ["--output-type", output_type]
-    args += list(additional_args or [])
-    args += ["-o", output_file]
-    cmd = ["cjc", "--int-overflow", "wrapping", "-Woff", "unused", input_file] + args
-    return await _run_tool(cmd, cwd=cwd, env=env, log=log)
-
-
 def _build_env(test_copy):
     # tool.sh re-prepends CANGJIE_STDX_PATH to LD_LIBRARY_PATH, so only the
     # per-test dylib dir is added here. CBCOPT is a run-time option and must
@@ -112,8 +66,8 @@ def _build_env(test_copy):
 
 
 async def _chir_dis(chir, wdir, env, log_io):
-    res = await _run_tool(["chir-dis", str(chir)], cwd=str(wdir), env=env,
-                          log=log_io, stderr_log=log_io)
+    res = await run_in_toolchain(["chir-dis", str(chir)], cwd=str(wdir), env=env,
+                                 log=log_io, stderr_log=log_io)
     if res != 0:
         log_io.write(f"CHIR disassembly failed ({chir}): {res}\n")
     return res
@@ -149,7 +103,7 @@ async def build(test_id, workdir):
         for aot_file in sorted(test_copy.glob("*.aot.cj")):
             aot_name = aot_file.name[:-len(".aot.cj")]
             aot_so = aot_file.with_name(f"lib{aot_name}.so")
-            res = await _run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io)
+            res = await run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io)
             log_io.write(f"\n[aot {aot_name}] exit {res}\n")
             if res != 0:
                 return _fail(log_io, wdir)
@@ -160,7 +114,7 @@ async def build(test_id, workdir):
         for c_file in sorted(test_copy.glob("*.c")):
             native_name = c_file.stem
             native_so = c_file.with_name(f"lib{native_name}.so")
-            res = await _run_tool(
+            res = await run_in_toolchain(
                 ["cc", "-shared", "-fPIC", "-o", str(native_so), str(c_file)], log=log_io)
             log_io.write(f"\n[native {native_name}] exit {res}\n")
             if res != 0:
@@ -181,7 +135,7 @@ async def build(test_id, workdir):
         import_paths.append(temp_dir)
         for int_file in int_files:
             pkg = int_file.name[:-len(".int.cj")]
-            res = await _run_cjc(str(int_file), str(temp_dir / pkg), output_type="staticlib",
+            res = await run_cjc(str(int_file), str(temp_dir / pkg), output_type="staticlib",
                                  additional_args=["--save-temps", str(temp_dir)]
                                  + _import_flags(import_paths),
                                  log=log_io)
@@ -218,7 +172,7 @@ async def build(test_id, workdir):
     #    stubs; --save-temps keeps the package-named original CHIR.
     stub_env = env.copy()
     stub_env["HOTFIX_GEN_THROW_STUBS"] = "true"
-    res = await _run_cjc(str(test_copy / f"{name}.cj"), str(executable),
+    res = await run_cjc(str(test_copy / f"{name}.cj"), str(executable),
                          additional_args=common_args
                          + ["--plugin", str(plugin), "--save-temps", str(wdir)],
                          cwd=str(wdir), env=stub_env, log=log_io)
@@ -239,7 +193,7 @@ async def build(test_id, workdir):
 
     # 2) Run the stub binary: every patchable function must throw.
     stub_log = io.StringIO()
-    res = await _run_tool([str(executable)], cwd=str(wdir), env=env,
+    res = await run_in_toolchain([str(executable)], cwd=str(wdir), env=env,
                           log=stub_log, stderr_log=stub_log)
     (wdir / f"{name}.stub.actual").write_text(stub_log.getvalue())
     if res != 1 or "Exception: should not reach here" not in stub_log.getvalue().splitlines():
@@ -248,7 +202,7 @@ async def build(test_id, workdir):
 
     # 3) Patched build: full CHIR of the same source, plugin still attached.
     patched_chir = wdir / f"{name}_patched.chir"
-    res = await _run_cjc(str(test_copy / f"{name}.cj"), str(patched_chir),
+    res = await run_cjc(str(test_copy / f"{name}.cj"), str(patched_chir),
                          additional_args=common_args + ["--emit-chir", "--plugin", str(plugin)],
                          cwd=str(wdir), env=env, log=log_io)
     log_io.write(f"\n[cjc patched] exit {res}\n")
@@ -261,7 +215,7 @@ async def build(test_id, workdir):
     # 4) patch-gen diffs original vs patched CHIR into the patch CHIR.
     patch_name = f"diff{name}_patched"
     patch_chir = wdir / f"{patch_name}.chir"
-    res = await _run_tool(["patch-gen", str(chir), str(patched_chir)],
+    res = await run_in_toolchain(["patch-gen", str(chir), str(patched_chir)],
                           cwd=str(wdir), env=env, log=log_io, stderr_log=log_io)
     log_io.write(f"\n[patch-gen] exit {res}\n")
     if res != 0:
@@ -278,7 +232,7 @@ async def build(test_id, workdir):
                 f"+IgnoreSourceFileNameForCbc {jc_options}"]
                + aot_deps + foreign_libs + int_chir_files)
     cbc_err = io.StringIO()
-    res = await _run_tool(cbc_cmd, cwd=str(wdir), log=log_io, stderr_log=cbc_err)
+    res = await run_in_toolchain(cbc_cmd, cwd=str(wdir), log=log_io, stderr_log=cbc_err)
     log_io.write(f"\n[cbc] exit {res}\n")
     if cbc_err.getvalue().strip():
         log_io.write(cbc_err.getvalue())
@@ -310,7 +264,7 @@ async def run(test_id, workdir):
     cmd = await run_command(test_id, workdir)
     out_io = io.StringIO()
     err_io = io.StringIO()
-    res = await _run_tool(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io)
+    res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io)
     stdout_txt = out_io.getvalue()
     err_txt = err_io.getvalue()
 
