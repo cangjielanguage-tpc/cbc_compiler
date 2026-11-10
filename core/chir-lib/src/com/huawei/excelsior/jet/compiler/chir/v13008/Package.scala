@@ -115,13 +115,13 @@ object PackageImpl {
     e
   }
 
-  private[v13008] def location(e: ExpressionT): Option[CHIR.DebugLocation] = for {
-    base <- Option(e.getBase)
-    loc <- Option(base.getLoc)
-    first <- Option(loc.getBeginPos)
-    last <- Option(loc.getEndPos)
-    if first.getLine > 0 && last.getLine > 0
-  } yield CHIR.DebugLocation(first.getLine, last.getLine)
+  private[v13008] def location(e: ExpressionT): Option[CHIR.DebugLocation] = for (
+    base <- Option(e.getBase);
+    loc <- Option(base.getLoc);
+    first <- Option(loc.getBeginPos);
+    last <- Option(loc.getEndPos);
+    if (first.getLine > 0 && last.getLine > 0)
+  ) yield CHIR.DebugLocation(first.getLine, last.getLine)
 
   private def typeBase(x: Object): TypeT = x match {
     case t: TypeT => t
