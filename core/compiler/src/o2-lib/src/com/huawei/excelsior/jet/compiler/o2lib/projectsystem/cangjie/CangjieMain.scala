@@ -15,7 +15,7 @@ import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.GenerationTarget.{EXE, STDLIB}
-import com.huawei.excelsior.jet.compiler.chir.{CHIRLoader, IntrinsicsPackage, IntrinsicsCHIRLoader}
+import com.huawei.excelsior.jet.compiler.chir.{CHIRLoader, EngineHelperChir, IntrinsicsPackage, IntrinsicsCHIRLoader}
 import com.huawei.excelsior.jet.compiler.debug.dwarf.Dwarf
 import com.huawei.excelsior.jet.compiler.delayed.DelayedIntrinsicsUsageTracker
 import com.huawei.excelsior.jet.compiler.driver.CompilationMode.O2
@@ -251,6 +251,7 @@ object CangjieMain {
             shouldNotReachHere(s"Unknown input file format: ${src.getName}")
           }
         }
+        loadEngineHelperChir(p, chirBuilder)
       }
       chirBuilder.build()
 
@@ -273,6 +274,27 @@ object CangjieMain {
     }
 
     xPDB.manager.mainPDB.flush()
+  }
+
+  /** Appends the cbc engine helper lib chir to the compilation scope.
+    * Cbc engine resolves implicit exception throwing from helper lib. */
+  private def loadEngineHelperChir(p: CangjieProject, chirBuilder: CHIRSymLevelBuilderImpl): Unit = {
+    EngineHelperChir.resolveFile() match {
+      case Some(file) =>
+        if (!file.exists) {
+          sys.error(s"cbc engine helper chir was not found: ${file.getPath} " +
+            s"(install it to $$CANGJIE_HOME/tools/lib or set CBCENGINE_HELPER_CHIR)")
+        }
+        val canonical = file.getCanonicalPath
+        val alreadyAmongInputs = p.files.exists(f => new java.io.File(f.toString).getCanonicalPath == canonical)
+        if (!alreadyAmongInputs) {
+          chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(canonical))
+          new CHIRLoader(canonical).load(chirBuilder)
+        }
+      case None =>
+        xiEnv.info.print("cbc engine helper chir was not resolved (neither CBCENGINE_HELPER_CHIR nor CANGJIE_HOME is set); " +
+          "the image will not contain the engine helper package")
+    }
   }
 
 

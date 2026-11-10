@@ -19,6 +19,22 @@ object CHIRLoader {
   private val resolvers = mutable.HashMap.empty[String, scala.ref.Reference[CHIRResolver]]
 }
 
+/** The cbc engine helper package chir (cbcengine-helper.chir). It is appended
+  * to the compilation inputs of every image: the interpreted runtime resolves
+  * implicit exception throwing and spawn support from the helper package
+  * compiled into the image. */
+object EngineHelperChir {
+  val sourceName: String = "cbcengine-helper.chir"
+
+  /** Explicit CBCENGINE_HELPER_CHIR override wins; otherwise the helper chir
+    * is looked up next to cbc-intrinsics.cbc in the toolchain. */
+  def resolveFile(): Option[java.io.File] = {
+    val path = Option(System.getenv("CBCENGINE_HELPER_CHIR"))
+      .orElse(Option(System.getenv("CANGJIE_HOME")).map(home => s"$home/tools/lib/$sourceName"))
+    path.map(new java.io.File(_))
+  }
+}
+
 class CHIRLoader(source: String) {
   protected def genPackage(env: Environment): CHIR.Package = CHIR.newPackage(source, env.valueOf(CHIRVersion))
 
