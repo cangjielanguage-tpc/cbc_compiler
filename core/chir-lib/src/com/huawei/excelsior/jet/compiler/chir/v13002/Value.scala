@@ -50,7 +50,7 @@ final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider:
     pkg.valueId(this)
     pkg.valueId(destination)
     destination match {
-      case target: FuncImpl if target.provider eq provider => pkg.moveBody(f, target.f)
+      case target: FuncImpl if target.provider eq provider => pkg.moveBody(id, f, target.id, target.f)
       case _ => throw new IllegalArgumentException("Functions belong to another package")
     }
   }

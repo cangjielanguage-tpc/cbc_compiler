@@ -69,7 +69,9 @@ object PackageImpl {
       case e: LambdaT if e.getBody != 0 => Array(e.getBody)
       case _ => Array.emptyLongArray
     }
-    (ids(expressionBase(x).getBlockGroups) ++ extra).distinct
+    val groups = ids(expressionBase(x).getBlockGroups)
+    val all = if (extra.isEmpty) groups else groups ++ extra
+    if (all.length <= 1) all else all.distinct
   }
 
   private def nextName(names: Iterable[String], prefix: String, initial: Long = 0L): Long = names.foldLeft(initial) { (next, name) =>
@@ -165,6 +167,28 @@ object PackageImpl {
     def restore(): Unit = undo.reverseIterator.foreach(_())
   }
 
+  /** Keep loaded IDs stable and accumulate appended entries without table copies. */
+  private class AppendTable[A: ClassTag](initial: Array[A]) extends scala.collection.IndexedSeq[A] {
+    private var entries = if (initial == null) Array.empty[A] else initial
+    private val pending = mutable.ArrayBuffer.empty[A]
+    def length: Int = entries.length + pending.length
+    def apply(index: Int): A = {
+      if (index < entries.length) entries(index) else pending(index - entries.length)
+    }
+    override def iterator: Iterator[A] = entries.iterator ++ pending.iterator
+    def append(entry: A): Long = {
+      pending += entry
+      length.toLong
+    }
+    def array: Array[A] = {
+      if (pending.nonEmpty) {
+        entries = entries ++ pending
+        pending.clear()
+      }
+      entries
+    }
+  }
+
   private def index(id: Long): Int = {
     require(id > 0, "CHIR entity IDs start at 1")
     Math.toIntExact(id - 1)
@@ -252,7 +276,17 @@ object PackageImpl {
 final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.Package with CHIRItemProvider {
   def this(source: String) = this(PackageImpl.load(Files.readAllBytes(java.nio.file.Paths.get(source))))
 
-  private[v13002] val p: CHIRPackageT = loaded._1
+  private val model: CHIRPackageT = loaded._1
+  private val valueEntries = new PackageImpl.AppendTable(model.getValues)
+  private val expressionEntries = new PackageImpl.AppendTable(model.getExprs)
+  private[v13002] def p: CHIRPackageT = {
+    flushTables()
+    model
+  }
+  private def flushTables(): Unit = {
+    model.setValues(valueEntries.array)
+    model.setExprs(expressionEntries.array)
+  }
   private val hasIdentifier = loaded._2
   private given CHIRItemProvider = this
   import PackageImpl.*
@@ -265,27 +299,29 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
   private val expressionIds = new IdentityHashMap[CHIR.Expression, java.lang.Long]()
   private val typeIds = new IdentityHashMap[CHIR.Type, java.lang.Long]()
   private val definitionIds = new IdentityHashMap[CHIR.CustomTypeDef, java.lang.Long]()
-  private val originalExpressionCount = length(p.getExprs)
-  private val originalValueCount = length(p.getValues)
+  private val originalExpressionCount = expressionEntries.length
+  private val originalValueCount = valueEntries.length
   private val historicalExpressionOwners = mutable.LongMap.empty[Long]
   private val historicalBlockParents = mutable.LongMap.empty[Long]
   private val historicalGroupOwners = mutable.LongMap.empty[(Long, Long)]
+  private val insertedTypeObjects = new IdentityHashMap[CHIR.Type, java.lang.Long]()
+  private val insertedTypeIds = mutable.Map.empty[Product, Long]
   private var predecessorsDirty = false
   private var nextBlockName = nextName(valuesOf(ValueElem.Block).map(_.asBlock().getBase.getIdentifier), "#")
   private var nextGroupName = nextName(valuesOf(ValueElem.BlockGroup).map(_.asBlockGroup().getBase.getIdentifier), "")
   rememberOwners()
 
-  def name: String = p.getName
-  def values: Iterator[CHIR.Value] = (1L to length(p.getValues).toLong).iterator.map(value)
+  def name: String = model.getName
+  def values: Iterator[CHIR.Value] = (1L to valueEntries.length.toLong).iterator.map(value)
 
   def typeDefs: Iterator[CHIR.CustomTypeDef] =
-    (1L to length(p.getDefs).toLong).iterator.map(id => getDef[CHIR.CustomTypeDef](id).get)
+    (1L to length(model.getDefs).toLong).iterator.map(id => getDef[CHIR.CustomTypeDef](id).get)
 
   def function(idx: Int): CHIR.Func = getValue[CHIR.Func](idx).getOrElse(
     throw new IllegalArgumentException(s"Value $idx is not a function"))
 
-  def packageInitFunc: CHIR.Func = function(Math.toIntExact(p.getPackageInitFunc))
-  def packageInitLiteralFunc: CHIR.Func = function(Math.toIntExact(p.getPackageLiteralInitFunc))
+  def packageInitFunc: CHIR.Func = function(Math.toIntExact(model.getPackageInitFunc))
+  def packageInitLiteralFunc: CHIR.Func = function(Math.toIntExact(model.getPackageLiteralInitFunc))
 
   def getFunc(identifier: String): Option[CHIR.Func] = {
     val name = normalized(identifier)
@@ -304,22 +340,38 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
 
   def getType[T >: Null <: CHIR.Type: ClassTag](id: Long): Option[T] = {
     if (id <= 0) return None
-    val result = Some(typeViews.getOrElseUpdate(id,
-      createType(p.getTypes()((id - 1).toInt).getValue))).collect { case t: T => t }
-    result.foreach(t => if (!typeIds.containsKey(t)) typeIds.put(t, Long.box(id)))
-    result
+    var result = typeViews.getOrElse(id, null)
+    if (result == null) {
+      result = createType(model.getTypes()((id - 1).toInt).getValue)
+      typeViews(id) = result
+      if (!typeIds.containsKey(result)) typeIds.put(result, Long.box(id))
+    }
+    result match {
+      case t: T => Some(t)
+      case _ => None
+    }
   }
 
   def getDef[T >: Null <: CHIR.CustomTypeDef: ClassTag](id: Long): Option[T] = {
     if (id <= 0) return None
-    val result = Some(definitionViews.getOrElseUpdate(id,
-      createDefinition(p.getDefs()((id - 1).toInt).getValue))).collect { case d: T => d }
-    result.foreach(d => definitionIds.put(d, Long.box(id)))
-    result
+    var result = definitionViews.getOrElse(id, null)
+    if (result == null) {
+      result = createDefinition(model.getDefs()((id - 1).toInt).getValue)
+      definitionViews(id) = result
+      definitionIds.put(result, Long.box(id))
+    }
+    result match {
+      case d: T => Some(d)
+      case _ => None
+    }
   }
 
-  def getValue[T >: Null <: CHIR.Value: ClassTag](id: Long): Option[T] =
-    if (id <= 0) None else Some(value(id)).collect { case t: T => t }
+  def getValue[T >: Null <: CHIR.Value: ClassTag](id: Long): Option[T] = {
+    if (id <= 0) None else value(id) match {
+      case v: T => Some(v)
+      case _ => None
+    }
+  }
 
   private def value(id: Long): CHIR.Value = valueViews.getOrElseUpdate(id, {
     val entry = valueTable(id)
@@ -339,16 +391,9 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     }).asInstanceOf[T]
   }
 
-  private[v13002] def moveBody(source: FunctionT, destination: FunctionT): Unit = {
-    def functionId(function: FunctionT): Long = {
-      val tableIndex = p.getValues.indexWhere(v =>
-        v.getType == ValueElem.Function && (v.asFunction() eq function))
-      require(tableIndex >= 0, "Function is not registered in this package")
-      tableIndex.toLong + 1
-    }
-
-    val sourceId = functionId(source)
-    val targetId = functionId(destination)
+  private[v13002] def moveBody(sourceId: Long, source: FunctionT, targetId: Long, destination: FunctionT): Unit = {
+    require(valueTable(sourceId).getValue eq source, "Source function is not registered at this ID")
+    require(valueTable(targetId).getValue eq destination, "Destination function is not registered at this ID")
     val from = source
     val to = destination
     require(sourceId != targetId, "Source and destination must differ")
@@ -369,8 +414,8 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       case _ => throw new IllegalArgumentException("Parameter counts must match or differ by one leading parameter")
     }
     val removedParams = sourceParams.toSet -- mappedSourceParams.toSet
-    val sourceType = p.getTypes()(index(from.getBase.getBase.getType)).asFuncType()
-    val targetType = p.getTypes()(index(to.getBase.getBase.getType)).asFuncType()
+    val sourceType = model.getTypes()(index(from.getBase.getBase.getType)).asFuncType()
+    val targetType = model.getTypes()(index(to.getBase.getBase.getType)).asFuncType()
     require(sourceType.getHasVarArg == targetType.getHasVarArg &&
       sourceType.getIsCfuncType == targetType.getIsCfuncType, "Incompatible calling conventions")
     def value(id: Long): ValueElemUnion = valueTable(id)
@@ -383,15 +428,15 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       "Functions must have the same number of generic parameters")
     val ownerType = getDef[CHIR.CustomTypeDef](from.getBase.getDeclaredParent).map(d => typeId(d.tpe))
     val thisTypes = if (from.getBase.getDeclaredParent != to.getBase.getDeclaredParent && ownerType.nonEmpty) {
-      (1L to length(p.getTypes).toLong).filter(id => getType[CHIR.Type](id).contains(CHIR.BuiltinType.This))
+      (1L to length(model.getTypes).toLong).filter(id => getType[CHIR.Type](id).contains(CHIR.BuiltinType.This))
         .map(id => id -> ownerType.get).toMap
     } else Map.empty[Long, Long]
-    val remapType = new TypeRemapper(p, sourceGenerics.zip(targetGenerics).toMap ++ thisTypes)
+    val remapType = new TypeRemapper(model, sourceGenerics.zip(targetGenerics).toMap ++ thisTypes)
     sourceGenerics.zip(targetGenerics).foreach { (a, b) =>
-      require(p.getTypes()(index(a)).getType == TypeElem.GenericType &&
-        p.getTypes()(index(b)).getType == TypeElem.GenericType, "Expected generic types")
-      val sourceBounds = p.getTypes()(index(a)).asGenericType().getUpperBounds
-      val targetBounds = p.getTypes()(index(b)).asGenericType().getUpperBounds
+      require(model.getTypes()(index(a)).getType == TypeElem.GenericType &&
+        model.getTypes()(index(b)).getType == TypeElem.GenericType, "Expected generic types")
+      val sourceBounds = model.getTypes()(index(a)).asGenericType().getUpperBounds
+      val targetBounds = model.getTypes()(index(b)).asGenericType().getUpperBounds
       require(ids(sourceBounds).map(remapType.apply).sameElements(ids(targetBounds)),
         "Generic upper bounds must match after substitution")
     }
@@ -401,11 +446,11 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     }, "Corresponding parameter types must match after substitution")
 
     def returnType(f: FunctionT): Long =
-      p.getTypes()(index(f.getBase.getBase.getType)).asFuncType().getBase.getArgTys.last
+      model.getTypes()(index(f.getBase.getBase.getType)).asFuncType().getBase.getArgTys.last
 
     require(structConstructor || classConstructor || remapType(returnType(from)) == returnType(to),
       "Return types must match after substitution")
-    require(p.getPackageInitFunc != sourceId && p.getPackageLiteralInitFunc != sourceId,
+    require(model.getPackageInitFunc != sourceId && model.getPackageLiteralInitFunc != sourceId,
       "Cannot remove a package initializer body")
 
     // 2. Build the source-parameter-ID -> target-parameter-ID mapping.
@@ -459,7 +504,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       remapAnnotations(b.getBase.getBase, remapType.apply)
       changes.set(ids(b.getExceptionCatchList).map(remapType.apply))(b.setExceptionCatchList)
       ids(b.getExprs).foreach { id =>
-        remapExpressionTypes(p.getExprs()(index(id)).getValue, remapType.apply)
+        remapExpressionTypes(expressionEntries(index(id)).getValue, remapType.apply)
       }
     }
     changes.set(remapType(group.getBase.getType))(group.getBase.setType)
@@ -537,7 +582,8 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       "Non-terminator sequence contains a terminator")
     require(isTerminator(expressionBase(expressionTable(lastId).getValue)), "Expected a terminator")
     val replacement = (prefixIds :+ lastId).toArray
-    require(replacement.distinct.length == replacement.length, "Duplicate expressions")
+    val replacementIds = replacement.toSet
+    require(replacementIds.size == replacement.length, "Duplicate expressions")
     replacement.foreach { id =>
       val e = expressionBase(expressionTable(id).getValue)
       val owner = e.getOwner
@@ -548,7 +594,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
           "Result local points to another expression")
     }
     val previous = ids(table.getExprs)
-    previous.filterNot(replacement.contains).foreach(id => expressionBase(expressionTable(id).getValue).setOwner(0))
+    previous.filterNot(replacementIds).foreach(id => expressionBase(expressionTable(id).getValue).setOwner(0))
     replacement.foreach { id =>
       expressionBase(expressionTable(id).getValue).setOwner(blockId)
       historicalExpressionOwners(id) = blockId
@@ -560,7 +606,8 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
   private[v13002] def replaceBlocks(groupId: Long, blocks: Seq[CHIR.Block], entry: CHIR.Block): Unit = {
     val table = groupTable(groupId)
     val replacement = checkedBlocks(groupId, blocks, entry)
-    ids(table.getBlocks).filterNot(replacement.contains).foreach(blockTable(_).setParentGroup(0))
+    val replacementIds = replacement.toSet
+    ids(table.getBlocks).filterNot(replacementIds).foreach(blockTable(_).setParentGroup(0))
     replacement.foreach { id =>
       blockTable(id).setParentGroup(groupId)
       historicalBlockParents(id) = groupId
@@ -622,12 +669,13 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
   }
 
   private def referenceIssues(): Seq[ValidationIssue] = {
+    flushTables()
     val staged = mutable.ArrayBuffer.empty[ValidationIssue]
-    (originalExpressionCount.toLong + 1L to length(p.getExprs).toLong).foreach { id =>
+    (originalExpressionCount.toLong + 1L to expressionEntries.length.toLong).foreach { id =>
       if (expressionBase(expressionTable(id).getValue).getOwner == 0 && !historicalExpressionOwners.contains(id))
         staged += ValidationIssue("New expression has not been attached", Some(EntityRef(EntityTable.Expressions, id)))
     }
-    (originalValueCount.toLong + 1L to length(p.getValues).toLong).foreach { id =>
+    (originalValueCount.toLong + 1L to valueEntries.length.toLong).foreach { id =>
       val entry = valueTable(id)
       if (entry.getType == ValueElem.Block && entry.asBlock().getParentGroup == 0 && !historicalBlockParents.contains(id))
         staged += ValidationIssue("New block has not been attached", Some(EntityRef(EntityTable.Values, id)))
@@ -635,7 +683,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
         entry.asBlockGroup().getOwnedExpression == 0 && !historicalGroupOwners.contains(id))
         staged += ValidationIssue("New group has not been attached", Some(EntityRef(EntityTable.Values, id)))
     }
-    staged.toSeq ++ SchemaValidation.references(p)
+    staged.toSeq ++ SchemaValidation.references(model)
   }
 
   private def requireValid(problems: Seq[ValidationIssue]): Unit = {
@@ -712,10 +760,10 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       if (retiredBlocks.nonEmpty) {
         // Historical parent links would make the native reader resurrect these
         // blocks. Keep their IDs in an unreferenced storage group on disk only.
-        val functions = p.getValues.zipWithIndex.filter(_._1.getType == ValueElem.Function)
+        val functions = model.getValues.zipWithIndex.filter(_._1.getType == ValueElem.Function)
         val owner = functions.find(_._1.asFunction().getBody != 0).orElse(functions.headOption)
           .getOrElse(throw new IllegalArgumentException("Retired blocks have no function context"))
-        val groupName = nextName(p.getValues.filter(_.getType == ValueElem.BlockGroup)
+        val groupName = nextName(model.getValues.filter(_.getType == ValueElem.BlockGroup)
           .map(_.asBlockGroup().getBase.getIdentifier).toSeq, "")
         val storage = new BlockGroupT
         storage.setBase(newValue(groupName.toString, ValueKind.BLOCK_GROUP))
@@ -723,8 +771,8 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
         storage.setBlocks(retiredBlocks)
         storage.setEntryBlock(retiredBlocks.head)
         val entry = new ValueElemUnion; entry.setType(ValueElem.BlockGroup); entry.setValue(storage)
-        changes.set(p.getValues, p.getValues :+ entry)(p.setValues)
-        val storageId = p.getValues.length.toLong
+        changes.set(model.getValues, model.getValues :+ entry)(model.setValues)
+        val storageId = model.getValues.length.toLong
         retiredBlocks.foreach { id =>
           val b = blockTable(id)
           changes.set(b.getParentGroup, storageId)(b.setParentGroup)
@@ -734,14 +782,14 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
         val f = owner._1.asFunction()
         changes.set(f.getBlockGroupId, math.max(f.getBlockGroupId, Math.addExact(groupName, 1L)))(f.setBlockGroupId)
       }
-      p.getValues.iterator.filter(_.getType == ValueElem.Function).foreach { entry =>
+      model.getValues.iterator.filter(_.getType == ValueElem.Function).foreach { entry =>
         val f = entry.asFunction()
         if (f.getBody == 0 && f.getFuncKind == FuncKind.LAMBDA) {
           changes.set(f.getFuncKind, FuncKind.DEFAULT)(f.setFuncKind)
         }
       }
       val builder = new FlatBufferBuilder(1024)
-      val root = CHIRPackage.pack(builder, p)
+      val root = CHIRPackage.pack(builder, model)
       if (hasIdentifier) CHIRPackage.finishCHIRPackageBuffer(builder, root) else builder.finish(root)
       builder.sizedByteArray()
     } finally changes.restore()
@@ -760,13 +808,13 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
   }
 
   private[v13002] def valueTable(id: Long): ValueElemUnion = {
-    require(id > 0 && id <= length(p.getValues), s"Invalid value ID $id")
-    p.getValues()((id - 1).toInt)
+    require(id > 0 && id <= valueEntries.length, s"Invalid value ID $id")
+    valueEntries((id - 1).toInt)
   }
 
   private[v13002] def expressionTable(id: Long): ExpressionElemUnion = {
-    require(id > 0 && id <= length(p.getExprs), s"Invalid expression ID $id")
-    p.getExprs()((id - 1).toInt)
+    require(id > 0 && id <= expressionEntries.length, s"Invalid expression ID $id")
+    expressionEntries((id - 1).toInt)
   }
 
   private[v13002] def blockTable(id: Long): BlockT = {
@@ -790,15 +838,17 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
 
   private[v13002] def successorIds(e: ExpressionT): Array[Long] =
     if (!isTerminator(e)) Array.emptyLongArray
-    else ids(e.getOperands).filter(id => id > 0 && id <= length(p.getValues) && valueTable(id).getType == ValueElem.Block)
+    else ids(e.getOperands).filter(id => id > 0 && id <= valueEntries.length && valueTable(id).getType == ValueElem.Block)
 
   private[v13002] def rebuildPredecessors(): Unit = {
     val incoming = mutable.LongMap.empty[mutable.LinkedHashSet[Long]]
+    val members = mutable.LongMap.empty[Set[Long]]
     valuesOf(ValueElem.Block).foreach(_.asBlock().setPredecessors(Array.emptyLongArray))
-    (1L to length(p.getValues).toLong).foreach { id =>
+    (1L to valueEntries.length.toLong).foreach { id =>
       val v = valueTable(id)
       if (v.getType == ValueElem.Block && v.asBlock().getParentGroup != 0 &&
-        ids(groupTable(v.asBlock().getParentGroup).getBlocks).contains(id)) {
+        members.getOrElseUpdate(v.asBlock().getParentGroup,
+          ids(groupTable(v.asBlock().getParentGroup).getBlocks).toSet).contains(id)) {
         val exprs = ids(v.asBlock().getExprs)
         if (exprs.nonEmpty) successorIds(expressionBase(expressionTable(exprs.last).getValue)).foreach { successor =>
           incoming.getOrElseUpdate(successor, mutable.LinkedHashSet.empty) += id
@@ -809,11 +859,11 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
   }
 
   private def rememberOwners(): Unit = {
-    (1L to length(p.getExprs).toLong).foreach { id =>
+    (1L to expressionEntries.length.toLong).foreach { id =>
       val owner = expressionBase(expressionTable(id).getValue).getOwner
       if (owner != 0) historicalExpressionOwners(id) = owner
     }
-    (1L to length(p.getValues).toLong).foreach { id =>
+    (1L to valueEntries.length.toLong).foreach { id =>
       val v = valueTable(id)
       if (v.getType == ValueElem.Block && v.asBlock().getParentGroup != 0)
         historicalBlockParents(id) = v.asBlock().getParentGroup
@@ -844,23 +894,21 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
 
   private def isBoolean(valueId: Long): Boolean = {
     val id = valueBase(valueTable(valueId).getValue).getType
-    id > 0 && id <= length(p.getTypes) && typeBase(p.getTypes()((id - 1).toInt).getValue).getKind == CHIRTypeKind.BOOLEAN
+    id > 0 && id <= length(model.getTypes) && typeBase(model.getTypes()((id - 1).toInt).getValue).getKind == CHIRTypeKind.BOOLEAN
   }
 
   private def appendValue(tag: Byte, payload: Object): Long = {
     val entry = new ValueElemUnion; entry.setType(tag); entry.setValue(payload)
-    p.setValues(Option(p.getValues).getOrElse(Array.empty[ValueElemUnion]) :+ entry)
-    length(p.getValues).toLong
+    valueEntries.append(entry)
   }
 
   private def appendExpression(tag: Byte, payload: Object): Long = {
     val entry = new ExpressionElemUnion; entry.setType(tag); entry.setValue(payload)
-    p.setExprs(Option(p.getExprs).getOrElse(Array.empty[ExpressionElemUnion]) :+ entry)
-    length(p.getExprs).toLong
+    expressionEntries.append(entry)
   }
 
   private def valuesOf(tag: Byte): Seq[ValueElemUnion] =
-    if (p.getValues == null) Seq.empty else p.getValues.iterator.filter(_.getType == tag).toVector
+    valueEntries.iterator.filter(_.getType == tag).toVector
 
   private def normalized(name: String): String = if (name.startsWith("@")) name else "@" + name
 
@@ -1007,8 +1055,9 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       check(if (enclosing == 0) g.getOwnedFunc == functionId && g.getOwnedExpression == 0
         else g.getOwnedExpression == enclosing && g.getOwnedFunc == 0, "Incorrect block-group owner", ref)
       val members = ids(g.getBlocks)
+      val memberIds = members.toSet
       check(members.distinct.length == members.length, "Duplicate blocks in group", ref)
-      check(members.contains(g.getEntryBlock), "Entry block is not in group", ref)
+      check(memberIds.contains(g.getEntryBlock), "Entry block is not in group", ref)
       val expected = mutable.LongMap.empty[mutable.Set[Long]]
       val expressionIds = mutable.Set.empty[Long]
       val successors = mutable.LongMap.empty[Array[Long]]
@@ -1071,7 +1120,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
           .getOrElse(Array.emptyLongArray)
         successors(bid) = edges
         edges.foreach { destination =>
-          check(members.contains(destination), "Control-flow target is outside group", bref)
+          check(memberIds.contains(destination), "Control-flow target is outside group", bref)
           expected.getOrElseUpdate(destination, mutable.Set.empty) += bid
         }
       }
@@ -1083,7 +1132,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       val todo = mutable.Stack(g.getEntryBlock)
       while (todo.nonEmpty) {
         val bid = todo.pop()
-        if (members.contains(bid) && reachable.add(bid)) {
+        if (memberIds.contains(bid) && reachable.add(bid)) {
           val exprs = ids(pkg.blockTable(bid).getExprs)
           check(exprs.nonEmpty && isTerminator(expressionBase(pkg.expressionTable(exprs.last).getValue)),
             "Reachable block has no terminator", Some(EntityRef(Values, bid)))
@@ -1093,7 +1142,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
       expressionIds.toSet
     }
 
-    Option(p.getValues).toSeq.flatMap(_.toSeq).zipWithIndex.foreach { (v, i) =>
+    valueEntries.iterator.zipWithIndex.foreach { (v, i) =>
       if (v.getType == ValueElem.Function) {
         val id = i + 1L
         val ref = Some(EntityRef(Values, id))
@@ -1182,7 +1231,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     replacement.foreach { root =>
       require(root.getOwnedExpression == 0,
         "Body is owned by another function or expression; explicitly move/clone it first")
-      require(!p.getValues.exists { entry =>
+      require(!valueEntries.exists { entry =>
         entry.getType == ValueElem.Function &&
           (entry.asFunction() ne target) && entry.asFunction().getBody == bodyId
       }, "Another function still references the body")
@@ -1263,7 +1312,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
   def typeId(tpe: CHIR.Type): Long = {
     // Primitive type objects are shared singletons. Use the first equivalent
     // table entry as their canonical reference, without rewriting loaded IDs.
-    if (!typeIds.containsKey(tpe)) (1L to length(p.getTypes).toLong).foreach(getType[CHIR.Type])
+    if (!typeIds.containsKey(tpe)) (1L to length(model.getTypes).toLong).foreach(getType[CHIR.Type])
     registered(typeIds, tpe, "type")
   }
 
@@ -1334,24 +1383,31 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends CHIR.P
     }
   }
 
-  override def setOptimized(): Unit = p.setPhase(Phase.OPT)
+  override def setOptimized(): Unit = model.setPhase(Phase.OPT)
 
   private def ensureType(tpe: CHIR.Type): Long = {
-    val found = (1L to length(p.getTypes).toLong).find(id => getType[CHIR.Type](id).contains(tpe))
-    found.getOrElse {
-      val t = new TypeT
-      t.setArgTys(Array.emptyLongArray)
-      tpe match {
-        case tpe: CHIR.RefType => t.setKind(CHIRTypeKind.REFTYPE); t.setArgTys(Array(ensureType(tpe.baseType)))
-        case CHIR.BuiltinType.Unit => t.setKind(CHIRTypeKind.UNIT)
-        case CHIR.BuiltinType.Boolean => t.setKind(CHIRTypeKind.BOOLEAN)
-        case _ => throw new IllegalArgumentException("Missing type for inserted expression: " + tpe)
+    val cached = insertedTypeObjects.get(tpe)
+    if (cached != null) return cached.longValue()
+    val key = com.huawei.excelsior.jet.compiler.chir.patchgen.Equality.typeKey(tpe)
+    val id = insertedTypeIds.getOrElseUpdate(key, {
+      val found = (1L to length(model.getTypes).toLong).find(id => getType[CHIR.Type](id).contains(tpe))
+      found.getOrElse {
+        val t = new TypeT
+        t.setArgTys(Array.emptyLongArray)
+        tpe match {
+          case tpe: CHIR.RefType => t.setKind(CHIRTypeKind.REFTYPE); t.setArgTys(Array(ensureType(tpe.baseType)))
+          case CHIR.BuiltinType.Unit => t.setKind(CHIRTypeKind.UNIT)
+          case CHIR.BuiltinType.Boolean => t.setKind(CHIRTypeKind.BOOLEAN)
+          case _ => throw new IllegalArgumentException("Missing type for inserted expression: " + tpe)
+        }
+        val u = new TypeElemUnion
+        u.setType(TypeElem.Type); u.setValue(t)
+        model.setTypes(model.getTypes :+ u)
+        model.getTypes.length.toLong
       }
-      val u = new TypeElemUnion
-      u.setType(TypeElem.Type); u.setValue(t)
-      p.setTypes(p.getTypes :+ u)
-      p.getTypes.length.toLong
-    }
+    })
+    insertedTypeObjects.put(tpe, Long.box(id))
+    id
   }
 
   private def operation(operation: CHIR.Operation): (Byte, Object, Long) = {
