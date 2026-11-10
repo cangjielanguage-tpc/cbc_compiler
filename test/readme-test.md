@@ -1,6 +1,6 @@
-# CBC tests — `test.py` runner
+# CBC tests — `runner.py` runner
 
-`test.py` is the async test runner. It discovers and drives pluggable test
+`runner.py` is the async test runner. It discovers and drives pluggable test
 suites and compiles + executes test programs against a Cangjie toolchain
 (SDK distribution).
 
@@ -62,13 +62,13 @@ the test source relative to the suite directory, without extension:
 From the `test/` directory:
 
 ```bash
-$ python3 test.py test-discovery                       # list all testcase IDs
-$ python3 test.py test --cangjie-home ~/tmp/cangjie     # run everything
-$ python3 test.py test --cangjie-home ~/tmp/cangjie \
+$ python3 runner.py test-discovery                       # list all testcase IDs
+$ python3 runner.py test --cangjie-home ~/tmp/cangjie     # run everything
+$ python3 runner.py test --cangjie-home ~/tmp/cangjie \
     --test cj/cast/cast::default --test cj/foreign-gc/main::O2   # specific tests
-$ python3 test.py test --cangjie-home ~/tmp/cangjie --tests /tmp/smoke-ids.txt
-$ python3 test.py test --cangjie-home ~/tmp/cangjie --testsuite hotfix
-$ python3 test.py clean                                 # remove the workdir
+$ python3 runner.py test --cangjie-home ~/tmp/cangjie --tests /tmp/smoke-ids.txt
+$ python3 runner.py test --cangjie-home ~/tmp/cangjie --testsuite hotfix
+$ python3 runner.py clean                                 # remove the workdir
 ```
 
 ### `test` options
@@ -139,8 +139,8 @@ hold the current excludes.
 ## Typical workflow
 
 ```bash
-$ python3 test.py test-discovery | grep cj/cast      # find IDs
-$ python3 test.py test --cangjie-home ~/tmp/cangjie --test cj/cast/cast::default
-$ python3 test.py test --cangjie-home ~/tmp/cangjie --test cj/cast/cast::default --describe
-$ python3 test.py clean
+$ python3 runner.py test-discovery | grep cj/cast      # find IDs
+$ python3 runner.py test --cangjie-home ~/tmp/cangjie --test cj/cast/cast::default
+$ python3 runner.py test --cangjie-home ~/tmp/cangjie --test cj/cast/cast::default --describe
+$ python3 runner.py clean
 ```

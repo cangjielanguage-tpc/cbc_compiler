@@ -7,7 +7,7 @@ import os
 import shutil
 from pathlib import Path
 
-from test_identifier import MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
+from runner_lib import MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
 
 SUITE = "hotfix"
 HERE = Path(__file__).resolve().parent
