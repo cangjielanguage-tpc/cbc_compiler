@@ -56,7 +56,7 @@ trait InlineIRInfo extends Scales with SyncParamsAnalysis { this: Universe =>
 
       Return.unique match {
         // math intrinsic in std.math (potentially with non-trivial CFG)
-        case Some(Return(_, _, m: MathIntrinsic)) if m.args.forall(isFreeNode) &&
+        case Some(Return(_, _, m: (MathIntrinsic | PowI))) if m.args.forall(isFreeNode) &&
           rootDeclaringClass.isCangjiePackage && rootDeclaringClass.getName == CangjieSymLevelMaker.STD_MATH_PACKAGE_NAME =>
           return true
         case _ =>

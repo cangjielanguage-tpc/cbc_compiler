@@ -844,6 +844,10 @@ trait RTStructs { this: CompilerEnvironment =>
         case D_REM1 extends MathIntrinsic(RTSProc.JR_rem1)
         case D_REM extends MathIntrinsic(RTSProc.JR_drem)
         case F_REM extends MathIntrinsic(RTSProc.JR_frem)
+        case D_LOG10 extends MathIntrinsic(RTSProc.JR_log10)
+        case D_LOG2 extends MathIntrinsic(RTSProc.JR_log2)
+        case D_EXP2 extends MathIntrinsic(RTSProc.JR_exp2)
+        case D_TRUNC extends MathIntrinsic(RTSProc.JR_trunc)
 
         private def hasMethodInJLMath: Boolean = this match {
           case D_REM | F_REM | F_SQRT => false

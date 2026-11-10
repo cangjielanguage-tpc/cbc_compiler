@@ -272,6 +272,7 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: GetFlatThin => GetFlatThin.Proto
         case _: BoxedValue => BoxedValue.Proto
         case _: MathIntrinsic => MathIntrinsic.Proto
+        case _: PowI => PowI
         case _: DivisorCheck => DivisorCheck.Proto
         case _: MemAtomic => MemAtomic.Proto
         case _: IsComputableAtCompileTime => IsComputableAtCompileTime.Proto

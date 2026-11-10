@@ -446,6 +446,7 @@ trait Lowering extends PreLowering with TypeChecks with Allocators with Invokes 
     case CheckedOp(CheckedOp.Kind.DIV, _, _) => COMPLEX
     case dc: DivisorCheck if dc.trusted => COMPLEX
     case x: MathIntrinsic if procForMathIntrinsic(x).isDefined => COMPLEX
+    case x: PowI if procForPowI(x).isDefined => COMPLEX
 
     case _ => NONE
   }
@@ -518,6 +519,7 @@ trait Lowering extends PreLowering with TypeChecks with Allocators with Invokes 
       case x: GetFlatThin                     => lowerGetFlatThin(x)
       case x: BoxedValue                      => lowerBoxing(x)
       case x: MathIntrinsic                   => lowerMathIntrinsic(x)
+      case x: PowI                            => lowerPowI(x)
       case x: MemAtomic                       => lowerMemAtomic(x)
       case x: ValueConvert                    => lowerValueConvert(x)
       case x: WriteBarrier                    => lowerWriteBarrier(x)

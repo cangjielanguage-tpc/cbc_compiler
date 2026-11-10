@@ -154,7 +154,8 @@ trait ScalesArm64 extends Scales { self: Universe =>
           case D_ABS | F_ABS | D_SQRT | F_SQRT | F_POW => instrSize
 
           case D_SIN | D_COS | D_TAN | D_ATAN | D_LOG | D_RINT | D_ATAN2 | D_REM1 |
-               D_REM | F_REM | D_ASIN | D_ACOS | D_EXP | D_POW | D_CEIL | D_FLOOR  => directCallWeight(n.kind.argsCount)
+               D_REM | F_REM | D_ASIN | D_ACOS | D_EXP | D_POW | D_CEIL | D_FLOOR |
+               D_LOG10 | D_LOG2 | D_EXP2 | D_TRUNC  => directCallWeight(n.kind.argsCount)
         }
 
       case n: MemAtomic =>

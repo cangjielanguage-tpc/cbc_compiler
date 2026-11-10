@@ -1725,6 +1725,19 @@ trait SimpleNodes { self: Universe with Nodes =>
   }
 
   /////////////////////////////////////////
+  // PowI node.
+
+  class PowI private extends FloatingNodeWithFixedArgs(PowI) {
+    def base = arg(0)
+    def exp = arg(1)
+  }
+
+  object PowI extends FixedArgs[PowI](ValueType(AsmType.F64), ValueType(AsmType.I64))(ValueType(AsmType.F64)) {
+    def newInstance() = new PowI()
+    def unapply(n: PowI) = Some((n.base, n.exp))
+  }
+
+  /////////////////////////////////////////
   // CompareAndSwap node.
 
   class CAS private (proto: CAS.Proto) extends RawMemoryAccess(proto) with PutMemoryOperation with ProducesValue {

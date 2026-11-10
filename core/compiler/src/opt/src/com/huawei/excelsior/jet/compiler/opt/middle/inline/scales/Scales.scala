@@ -202,6 +202,8 @@ trait Scales { self: Universe =>
 
       case _: GetClass => directCallWeight(1)
 
+      case _: PowI => directCallWeight(2)
+
       case _: DivisorCheck => divisorCheckWeight
 
       case _: EscapeWriteBarrier.Instance => directCallWeight(2)

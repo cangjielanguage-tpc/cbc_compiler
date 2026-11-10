@@ -248,7 +248,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
     case _ if noCodeShouldBeGenerated(node) => true
 
     case _: (BlockEnd | CheckedOp | SaturatingOp | CheckedUnary | ArrayGet | ArrayPut | ArrayIndexCheck | ArrayLength | Transfer | FieldChainRead
-      | Add | Sub | IDivRemOp | Mul | Pow | Cmp | CondVal | FDiv | MathIntrinsic | LogicalBinaryOp | GetField | PutField
+      | Add | Sub | IDivRemOp | Mul | Pow | PowI | Cmp | CondVal | FDiv | MathIntrinsic | LogicalBinaryOp | GetField | PutField
       | BitcodeDeferred.FieldOp | Shift | GetStatic | PutStatic | ValueConvert | CheckedValueConvert | ReinterpretCast | LoadTailParam
       | New | BitcodeDeferred.New | NewArray | NewArrayGeneric | BitcodeDeferred.NewArray | DivisorCheck | Evacuate | BitFieldExtract
       | Clinit | PackageInit | PackageInitCheck | GCPoint | AbstractNullCheck | SingletonObject
@@ -295,7 +295,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       // AMD64 W32 & ARM64 are very flexible. AMD64 W64 has result on RDX (IR2), so we will generate mov
       resRegs(node)
 
-    case _: InterfaceCastCBC | AnyInstanceOf(_, _) | _: MathIntrinsic | _: ArithCommutativeOp | _: Sub | _: LogicalBinaryOp |
+    case _: InterfaceCastCBC | AnyInstanceOf(_, _) | _: MathIntrinsic | _: PowI | _: ArithCommutativeOp | _: Sub | _: LogicalBinaryOp |
          _: FDiv | _: Shift | _: CondVal | _: SingletonObject | _: ReinterpretCast | _: ValueConvert | _: CheckedValueConvert |
          _: BitFieldExtract | _: ArrayLength | _: GetField | _: FieldChainRead | _: GetStatic | _: CatchCBC |
          _: DepriveOperation | _: EnrichOperation | _: ExtractEnrichment | _: Neg | _: CheckedOp |
