@@ -6,8 +6,8 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_tools import MissingArtifacts, java_cmd, run_cjc, run_in_toolchain
-from test_identifier import TestIdentifier
+from runner_tools import java_cmd, run_cjc, run_in_toolchain
+from test_identifier import MissingArtifacts, TestIdentifier
 
 SUITE = "asm"
 HERE = Path(__file__).resolve().parent

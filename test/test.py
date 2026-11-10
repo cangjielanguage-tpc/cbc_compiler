@@ -9,8 +9,7 @@ import sys
 from os.path import isfile
 from pathlib import Path
 
-from runner_tools import MissingArtifacts
-from test_identifier import TestIdentifier
+from test_identifier import MissingArtifacts, TestIdentifier
 
 ROOT = Path(__file__).resolve().parent
 CONTRACT = ("discover", "build", "run", "run_command")
@@ -229,7 +228,15 @@ async def run_tests(args):
     toolchain = os.environ["TOOLCHAIN"]
 
     discovered = {}
-    for name, mod in load_suites():
+    suites = load_suites()
+    if args.testsuite:
+        known = {name for name, _ in suites}
+        unknown = [s for s in args.testsuite if s not in known]
+        if unknown:
+            print(f"Unknown testsuites: {', '.join(unknown)}", file=sys.stderr)
+            return 1
+        suites = [(name, mod) for name, mod in suites if name in args.testsuite]
+    for name, mod in suites:
         for test_id in await mod.discover():
             discovered[test_id] = mod
 
@@ -341,6 +348,8 @@ def main():
     parser_test.add_argument("--cangjie-home", help="Path to Cangjie toolchain (overrides CANGJIE_HOME env var)")
     parser_test.add_argument("--test", action="append", default=[], help="Testcase ID to run (repeatable)")
     parser_test.add_argument("--tests", help="File with testcase IDs, one per line (# comments allowed)")
+    parser_test.add_argument("--testsuite", action="append", metavar="NAME", default=[],
+                             help="Testsuite to run (repeatable); when given, only these suites run")
     parser_test.add_argument("--skip-build", action="store_true", help="Skip build, start running tests")
     parser_test.add_argument("--describe", action="store_true", help="Print run command and log paths for failed testcases")
     parser_test.add_argument("--status", choices=["auto", "plain", "interactive"], default="auto",
