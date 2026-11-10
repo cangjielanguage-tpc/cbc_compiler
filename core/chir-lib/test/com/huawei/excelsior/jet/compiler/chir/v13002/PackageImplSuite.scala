@@ -528,7 +528,7 @@ class PackageImplSuite extends AnyFunSuite {
       try {
         p.write(output)
         assert(CHIRPackage.CHIRPackageBufferHasIdentifier(ByteBuffer.wrap(Files.readAllBytes(output))) == expectedIdentifier)
-        assert(CHIR.read(output).isInstanceOf[PackageImpl])
+        assert(CHIR.read(output, 13002).isInstanceOf[PackageImpl])
       } finally Files.delete(output)
     }
   }
