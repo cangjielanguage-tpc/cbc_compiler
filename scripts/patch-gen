@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+jar=${PATCH_GEN_JAR:-"$script_dir/patch-gen.jar"}
+if [[ ! -f "$jar" ]]; then
+    jar="$script_dir/../core/cbc-patchgen/target/patch-gen.jar"
+fi
+exec java -jar "$jar" "$@"

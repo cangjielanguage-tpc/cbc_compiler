@@ -292,6 +292,15 @@ object Build {
       }.taskValue,
     )
 
+  lazy val patchGen = (project in file("core/cbc-patchgen"))
+    .dependsOn(chirLib)
+    .settings(commonSourceLayout)
+    .settings(compilerAssemblySettings())
+    .settings(
+      assembly / mainClass := Some("com.huawei.excelsior.jet.compiler.patchgen.Main"),
+      assembly / assemblyOutputPath := target.value / "patch-gen.jar",
+    )
+
   lazy val assembler = (project in file("core/assembler"))
     .dependsOn(xscalaVMDependent, commonJavaLib)
     .settings(commonSourceTestLayout, commonTestSettings)

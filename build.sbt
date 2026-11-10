@@ -28,3 +28,5 @@ lazy val chirLib                   = Build.chirLib
 lazy val cbcAsm                    = Build.cbcAsm
 
 inThisBuild(Build.thisBuildSettings)
+
+lazy val patchGen = Build.patchGen

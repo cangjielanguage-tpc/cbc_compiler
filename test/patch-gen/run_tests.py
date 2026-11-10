@@ -8,13 +8,12 @@ Pipeline per test (mirrors hotfix_tools build.py `run_patch_gen_tests_at_level`)
   3. run `patch-gen --test` on the base (and patched) CHIR;
   4. validate the generated patch with `chir-dis`;
   5. compare the patch-gen output (stdout+stderr, combined) against the
-     `<test>.expected` file. The exit code of patch-gen is NOT checked: tests
-     whose expected outcome is an error compare the error message.
+     `<test>.expected` file. Expected errors must exit unsuccessfully; successful cases must
+     produce a patch file and exit successfully.
 
-Unlike hotfix_tools this suite runs the Scala patch-gen (deployed as
-`tools/bin/patch-gen` in the toolchain), which needs the explicit `--test`
-flag to print the TEST-build info dump. Compile levels default to O0/O1
-(hotfix_tools default; O2 expected files are stale upstream).
+By default this suite runs the local Scala patch-gen from scripts/patch-gen.
+Build it first with sbt patchGen/assembly. The --test flag requests the
+declaration dump. Compile levels default to O0/O1, matching hotfix_tools.
 """
 
 import argparse
@@ -26,6 +25,7 @@ from pathlib import Path
 
 TEST_DIR = Path(__file__).resolve().parent
 TOOL_SH = TEST_DIR.parent / "tool.sh"
+LOCAL_PATCH_GEN = TEST_DIR.parents[1] / "scripts" / "patch-gen"
 
 
 def run(cmd, cwd, env, capture=False):
@@ -106,19 +106,25 @@ def main() -> int:
     parser.add_argument("--compile-level", nargs="+", choices=["O0", "O1", "O2"],
                         default=["O0", "O1"], help="optimization levels (default: O0 O1)")
     parser.add_argument("--patch-gen", default="",
-                        help="patch-gen binary to test (default: <toolchain>/tools/bin/patch-gen)")
+                        help="patch-gen binary to test (default: local scripts/patch-gen)")
     parser.add_argument("--native", action="store_true",
                         help="test a C++ TEST build, which has no --test option")
     args = parser.parse_args()
 
-    toolchain = os.path.expanduser(args.cangjie_home)
+    toolchain = str(Path(args.cangjie_home).expanduser().resolve()) if args.cangjie_home else ""
     if not toolchain or not Path(toolchain, "envsetup.sh").is_file():
         print(f"Error: toolchain not found at '{toolchain}' (--cangjie-home or $CANGJIE_HOME)")
         return 2
-    patch_gen = os.path.expanduser(args.patch_gen) if args.patch_gen \
-        else os.path.join(toolchain, "tools", "bin", "patch-gen")
+    patch_gen = str(Path(args.patch_gen or LOCAL_PATCH_GEN).expanduser().resolve())
     if not os.path.isfile(patch_gen):
         print(f"Error: patch-gen binary not found: {patch_gen}")
+        return 2
+
+    if Path(patch_gen) == LOCAL_PATCH_GEN and not (TEST_DIR.parents[1] / "core/cbc-patchgen/target/patch-gen.jar").is_file():
+        print("Error: build the Scala generator first with sbt 'patchGen/assembly'")
+        return 2
+    if args.native and Path(patch_gen) == LOCAL_PATCH_GEN:
+        print("Error: --native requires --patch-gen pointing to a C++ TEST build")
         return 2
 
     test_data = TEST_DIR / "test_data"
@@ -159,6 +165,7 @@ def main() -> int:
 
     plugin = os.path.join(toolchain, "tools", "lib", "libhotfix-plugin.so")
     failed = []
+    passed = 0
     for level in args.compile_level:
         print(f"\nRunning patch-gen functional tests with -{level}")
         for name in tests:
@@ -196,6 +203,14 @@ def main() -> int:
 
             (work / patch_chir).unlink(missing_ok=True)
             result = run(in_tool_env(env, generator_command), cwd=work, env=env, capture=True)
+            (work / f"{name}.{level}.actual").write_text(result.stdout)
+            expected = exp.read_text()
+            expected_success = expected.strip().startswith("global vars")
+            if (result.returncode == 0) != expected_success:
+                print(f"    Fail. Unexpected generator exit status: {result.returncode}")
+                print(result.stdout)
+                failed.append(f"{level}:{name}")
+                continue
             generated_patch = work / patch_chir
             if generated_patch.is_file():
                 dis = run(in_tool_env(env, ["chir-dis", generated_patch.name]),
@@ -211,8 +226,9 @@ def main() -> int:
                 failed.append(f"{level}:{name}")
                 continue
 
-            if canonicalize_dump(result.stdout) == canonicalize_dump(exp.read_text()):
+            if canonicalize_dump(result.stdout) == canonicalize_dump(expected):
                 print("    Passed")
+                passed += 1
             else:
                 print("    Fail. Output differs\n    --- expected ---\n    "
                       + exp.read_text().replace("\n", "\n    ")
@@ -226,7 +242,7 @@ def main() -> int:
         for t in failed:
             print(f"  {t}")
         return 1
-    print("All tests passed")
+    print(f"All {passed} tests passed")
     return 0
 
 
