@@ -9,7 +9,7 @@ import sys
 from os.path import isfile
 from pathlib import Path
 
-from test_identifier import MissingArtifacts, TestIdentifier
+from runner_lib import MissingArtifacts, TestIdentifier
 
 ROOT = Path(__file__).resolve().parent
 CONTRACT = ("discover", "build", "run", "run_command")
