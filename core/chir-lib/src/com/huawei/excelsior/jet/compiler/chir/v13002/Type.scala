@@ -59,8 +59,8 @@ final class FuncTypeImpl(f: FuncTypeT)(using provider: CHIRItemProvider) extends
   private def argsTypes = f.getBase.getArgTys.toTypeSeq[CHIR.Type]
   def paramTypes: Seq[CHIR.Type] = argsTypes.dropRight(1)
   def paramTypesWithoutReceiver: Seq[CHIR.Type] = paramTypes.tail
-  def receiverType: CHIR.Type = paramTypes.head
-  def returnType: CHIR.Type = argsTypes.last
+  def receiverType: CHIR.Type = provider.getType[CHIR.Type](f.getBase.getArgTys.head).get
+  def returnType: CHIR.Type = provider.getType[CHIR.Type](f.getBase.getArgTys.last).get
   def isC: Boolean = f.getIsCfuncType
   def hasVarArg: Boolean = f.getHasVarArg
 }
