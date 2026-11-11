@@ -4,8 +4,13 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+MACOS = sys.platform == "darwin"
+DYLIB_EXT = ".dylib" if MACOS else ".so"
+DYLIB_PATH_VAR = "DYLD_LIBRARY_PATH" if MACOS else "LD_LIBRARY_PATH"
 
 
 class MissingArtifacts(RuntimeError):
