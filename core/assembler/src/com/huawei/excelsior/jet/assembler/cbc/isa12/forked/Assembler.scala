@@ -778,6 +778,28 @@ trait ForkedAssembler {
       .sleb(scut4(offset))
   }
 
+  /** Loads the size in bytes of the instance described by the TypeInfo pointer
+    * `ti` into `dst` as a zero-extended 64-bit unsigned value.
+    * The TypeInfo operand is a raw pointer (not a GC reference).
+    */
+  def typeSize(dst: IR, ti: IR): Unit = instr {
+    analyzer.prim(dst)
+    stream
+      .opc8(Opcode.TypeSize)
+      .bits(_.w4(dst).w4(analyzer.usePrim(ti)))
+  }
+
+  /** Loads the alignment in bytes of the instance described by the TypeInfo
+    * pointer `ti` into `dst` as a zero-extended 64-bit unsigned value.
+    * The TypeInfo operand is a raw pointer (not a GC reference).
+    */
+  def typeAlign(dst: IR, ti: IR): Unit = instr {
+    analyzer.prim(dst)
+    stream
+      .opc8(Opcode.TypeAlign)
+      .bits(_.w4(dst).w4(analyzer.usePrim(ti)))
+  }
+
   def jmp(target: Label): Unit = doJmp(target)
   def bcc(op: BranchOp, lhs: IR, rhs: IR, width: AsmWidth, target: Label): Unit = doBcc(op, lhs, rhs, width, target)
   def bcc(op: BranchOp, lhs: FR, rhs: FR, width: AsmWidth, target: Label): Unit = doBcc(op, lhs, rhs, width, target)
@@ -1584,6 +1606,8 @@ object Assembler {
     case Bcc16
     case Scc16
     case FMathUn16
+    case TypeSize
+    case TypeAlign
   }
 
   enum RegSymGroup extends Ordinal {

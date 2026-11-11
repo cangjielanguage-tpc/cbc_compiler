@@ -1493,6 +1493,10 @@ private object InstructionParser {
   instr("st.raw.f32") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F32, s.int) }
   instr("st.raw.f64") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F64, s.int) }
 
+  // TypeInfo queries: the operand is a raw TypeInfo pointer (not a GC reference)
+  instr("ti.size")  { (a, s) => a.typeSize(s.ireg, s.ireg) }
+  instr("ti.align") { (a, s) => a.typeAlign(s.ireg, s.ireg) }
+
   // calls
   instr("call.direct")    { (a, s) => a.callDirect(s.method, s.params) }
   instr("call.virt")      { (a, s) => a.callVirt(s.method, s.params) }

@@ -2070,8 +2070,6 @@ trait CHIRParser
                CHIR.Intrinsic.Kind.ExclusiveScope |
                CHIR.Intrinsic.Kind.FutureInit |
                CHIR.Intrinsic.Kind.IsThreadObjectInited |
-               CHIR.Intrinsic.Kind.VectorCompare32 |
-               CHIR.Intrinsic.Kind.VectorIndexByte32 |
                CHIR.Intrinsic.Kind.FutureWait |
                CHIR.Intrinsic.Kind.FutureNotifyAll |
                CHIR.Intrinsic.Kind.SetThreadObject |
@@ -2153,11 +2151,9 @@ trait CHIRParser
           // Real implementation. For a concrete type with statically known layout
           // (primitive and pointer-like C types) folds to a compile-time constant
           // (natural alignment equals size; Unit is the zero-sized C type).
-          // Otherwise (type variables, C structs, etc.) loads the value from the
-          // TypeInfo object, which follows the ABI-fixed DYN_TypeInfo layout
-          // (packed(4)): instanceSize u32 at offset +12, align u8 at offset +28
-          // (see cbc-engine RuntimeTypes.h and TYPEINFO_INSTANCESIZE_OFFSET in
-          // asm_export.h), mirroring the cjnative backend.
+          // Otherwise (type variables, C structs, etc.) queries the size/alignment
+          // from the TypeInfo object via dedicated opcodes, so the bytecode does
+          // not depend on the engine-internal DYN_TypeInfo layout.
           case CHIR.Intrinsic.Kind.SizeOf | CHIR.Intrinsic.Kind.AlignOf =>
             import SignatureType.*
 
@@ -2178,11 +2174,12 @@ trait CHIRParser
             state(e) = if (constBytes >= 0) {
               IntegralConst(resTpe)(constBytes)
             } else {
-              val fieldSig = if (e.kind == CHIR.Intrinsic.Kind.SizeOf) UInt32 else UInt8
-              val offset = if (e.kind == CHIR.Intrinsic.Kind.SizeOf) 12 else 28
-              val ti = loadTypeInfo(tSig)
-              val loaded = LoadMemory(fieldSig.toAsm, fieldSig, atomic = false)(Add(ti, LConst(offset)))
-              BitFieldExtract(resTpe, 0, fieldSig.toAsm.sizeInBits, signExtension = false, loaded)
+              assert(resTpe == LongType, resTpe)
+              if (e.kind == CHIR.Intrinsic.Kind.SizeOf) {
+                TypeSize(loadTypeInfo(tSig))
+              } else {
+                TypeAlign(loadTypeInfo(tSig))
+              }
             }
 
           case IK.OverflowThrowingInc   | IK.OverflowThrowingDec   | IK.OverflowThrowingNeg   |
