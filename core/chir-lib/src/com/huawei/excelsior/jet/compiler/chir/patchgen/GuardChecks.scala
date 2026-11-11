@@ -7,25 +7,39 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR.*
   * package remove unreachable blocks. No expressions need cloning or renaming.
   */
 private[chir] object GuardChecks {
+  private object Branch {
+    def unapply(expression: Expression): Option[Value] = expression match {
+      case b: Branch => Some(b.condition)
+      case _ => None
+    }
+  }
+
+  private object LocalVar {
+    def unapply(value: Value): Option[Expression] = value match {
+      case v: LocalVar => Some(v.associatedExpr)
+      case _ => None
+    }
+  }
+
+  private object Not {
+    def unapply(expression: Expression): Option[Value] = expression match {
+      case u: Unary if u.kind == Unary.Kind.Not => Some(u.operand)
+      case _ => None
+    }
+  }
+
+  private object Load {
+    def unapply(expression: Expression): Option[Value] = expression match {
+      case l: Load => Some(l.location)
+      case _ => None
+    }
+  }
+
   def getFlag(function: Func): Option[GlobalVar] = {
     function.body.flatMap { body =>
       body.entryBlock.terminator match {
-        case b: Branch => b.condition match {
-          case v: LocalVar => v.associatedExpr match {
-            case u: Unary if u.kind == Unary.Kind.Not => u.operand match {
-              case v: LocalVar => v.associatedExpr match {
-                case l: Load => l.location match {
-                  case g: GlobalVar if g.srcCodeIdentifier == PatchableName.guardFlag(function) => Some(g)
-                  case _ => None
-                }
-                case _ => None
-              }
-              case _ => None
-            }
-            case _ => None
-          }
-          case _ => None
-        }
+        case Branch(LocalVar(Not(LocalVar(Load(g: GlobalVar)))))
+          if g.srcCodeIdentifier == PatchableName.guardFlag(function) => Some(g)
         case _ => None
       }
     }
