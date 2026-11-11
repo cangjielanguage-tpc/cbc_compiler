@@ -5,7 +5,7 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, java_cmd, run_cjc, run_in_toolchain
+from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
 
 SUITE = "asm"
 HERE = Path(__file__).resolve().parent
@@ -27,9 +27,6 @@ async def build(test_id, workdir):
     log_path = wdir / "build.log"
     shutil.copytree(src_dir, wdir, dirs_exist_ok=True)
 
-    toolchain = os.environ["TOOLCHAIN"]
-    asm_jar = toolchain + "/tools/bin/cbc-asm.jar"
-
     log_io = io.StringIO()
     aot_fail = False
     for aot_file in sorted(glob.glob(str(wdir / "*.aot.cj"))):
@@ -43,7 +40,7 @@ async def build(test_id, workdir):
     res = 1
     if not aot_fail:
         asm_err = io.StringIO()
-        res = await run_in_toolchain([*java_cmd(None), "-jar", asm_jar, str(wdir / f"{name}.asm")],
+        res = await run_in_toolchain(["cbc-asm", str(wdir / f"{name}.asm")],
                                      cwd=str(wdir), log=log_io, stderr_log=asm_err)
         log_io.write(f"\n[asm] exit {res}\n")
         if asm_err.getvalue().strip():

@@ -1,9 +1,6 @@
 import asyncio
 import asyncio.subprocess
 import os
-import re
-import shutil
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -74,48 +71,6 @@ async def run_cjc(input_file, output_file, output_type=None, additional_args=Non
     args += ["-o", output_file]
     cmd = ["cjc", "--int-overflow", "wrapping", "-Woff", "unused", input_file] + args
     return await run_in_toolchain(cmd, log=log, cwd=cwd, env=env)
-
-
-def java_cmd(cds_archive):
-    """Resolves the java executable path via JAVA_HOME or system PATH."""
-    java_home = os.getenv('JAVA_HOME')
-    if java_home:
-        base = os.path.join(java_home, 'bin', 'java')
-    else:
-        java_exec = shutil.which('java')
-        if java_exec:
-            base = java_exec
-        else:
-            raise EnvironmentError('JAVA_HOME environment variable is not set and java is not found in PATH')
-
-    java_version = _get_java_major_version(base)
-    args = [base]
-    if cds_archive and java_version and java_version >= 21:
-        args.extend([
-            '-XX:TieredStopAtLevel=1',
-            '-XX:+AutoCreateSharedArchive',
-            f'-XX:SharedArchiveFile={cds_archive}',
-        ])
-    return args
-
-
-def _get_java_major_version(java_exec):
-    """Get the major version of a Java executable, or None on failure."""
-    try:
-        result = subprocess.run(
-            [java_exec, '-version'],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        # Output format: java version "11.0.x" or openjdk version "21.x.x"
-        output = result.stderr
-        match = re.search(r'version"?(?:\s+"(\d+))', output)
-        if match:
-            return int(match.group(1))
-    except Exception:
-        pass
-    return None
 
 
 @dataclass(frozen=True, order=True)
