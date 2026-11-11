@@ -52,7 +52,7 @@ final class PatchGen(source: Option[Package], pkg: Package) {
 
   def createPatch(): Unit = {
     val triple = Seq(guardClass.nonEmpty, guardVar.nonEmpty, guardInit.nonEmpty)
-    error(triple.forall(identity) || triple.forall(x => !x),
+    error(ScalaCollections.uniqueValue(triple).nonEmpty,
       "triple (guard class, guard var and guard vars initializer) is expected to be initialized or not initialized")
     error(definitions.exists(d => imported(d) && d.srcCodeIdentifier == "Exception"), "unable to find Exception definition")
     mark()
