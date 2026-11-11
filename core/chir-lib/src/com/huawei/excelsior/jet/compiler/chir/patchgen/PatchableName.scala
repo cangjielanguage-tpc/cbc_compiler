@@ -3,11 +3,11 @@ package com.huawei.excelsior.jet.compiler.chir.patchgen
 import com.huawei.excelsior.jet.compiler.chir.CHIR.*
 
 private[chir] object PatchableName {
-  def syntheticConstructor(function: Func): Option[String] = {
-    if (Set(Func.Kind.ClassCtor, Func.Kind.PrimalClassCtor, Func.Kind.StructCtor, Func.Kind.PrimalStructCtor)(function.kind)) {
+  def syntheticConstructor(function: Func): Option[String] = function.kind match {
+    case Func.Kind.ClassCtor | Func.Kind.PrimalClassCtor | Func.Kind.StructCtor | Func.Kind.PrimalStructCtor =>
       function.declaringDef.map(d => "$" + function.packageName + "$" + d.srcCodeIdentifier + "$$" + function.srcCodeIdentifier +
         (if (function.tpe.paramTypes.isEmpty) "" else function.tpe.paramTypes.map(typeName).mkString("$$", "$_", "")) + "$CTOR")
-    } else None
+    case _ => None
   }
   def guardFlag(function: Func): String = name(function, "$GVF")
   def guardMethod(function: Func): String = {
