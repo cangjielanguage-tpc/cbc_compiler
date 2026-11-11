@@ -775,6 +775,20 @@ trait ForkedAssembler {
       .bits(_.w4(analyzer.usePrim(off)).w4(analyzer.usePrim(byte)))
   }
 
+  def typeSize(dst: IR, ti: IR): Unit = instr {
+    analyzer.prim(dst)
+    stream
+      .opc8(Opcode.TypeSize)
+      .bits(_.w4(dst).w4(analyzer.usePrim(ti)))
+  }
+
+  def typeAlign(dst: IR, ti: IR): Unit = instr {
+    analyzer.prim(dst)
+    stream
+      .opc8(Opcode.TypeAlign)
+      .bits(_.w4(dst).w4(analyzer.usePrim(ti)))
+  }
+
   def jmp(target: Label): Unit = doJmp(target)
   def bcc(op: BranchOp, lhs: IR, rhs: IR, width: AsmWidth, target: Label): Unit = doBcc(op, lhs, rhs, width, target)
   def bcc(op: BranchOp, lhs: FR, rhs: FR, width: AsmWidth, target: Label): Unit = doBcc(op, lhs, rhs, width, target)
@@ -1570,6 +1584,8 @@ object Assembler {
     case FPowi64
     case Vcmp32
     case Vidx32
+    case TypeSize
+    case TypeAlign
   }
 
   enum RegSymGroup extends Ordinal {

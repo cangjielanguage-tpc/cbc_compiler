@@ -288,6 +288,48 @@ trait SimpleNodes { self: Universe with Nodes =>
     def unapply(n: VectorIndexByte32): Option[(Node, Node, Node)] = Some((n.arr, n.off, n.target))
   }
 
+  /** Loads the size in bytes of the instance described by the TypeInfo pointer
+    * held in `ti` (a loadTypeInfo-derived node) as a zero-extended 64-bit
+    * unsigned value.
+    */
+  class TypeSize private (proto: TypeSize.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def ti = arg(0)
+  }
+
+  object TypeSize {
+    case class Proto private[TypeSize]()
+      extends FixedArgs[TypeSize](AddrType)(LongType) {
+      def newInstance() = new TypeSize(this)
+    }
+
+    def proto() = Prototype.intern(Proto())
+
+    def apply(ti: Node): Node = proto()(ti)
+
+    def unapply(n: TypeSize): Option[Node] = Some(n.ti)
+  }
+
+  /** Loads the alignment in bytes of the instance described by the TypeInfo
+    * pointer held in `ti` (a loadTypeInfo-derived node) as a zero-extended
+    * 64-bit unsigned value.
+    */
+  class TypeAlign private (proto: TypeAlign.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def ti = arg(0)
+  }
+
+  object TypeAlign {
+    case class Proto private[TypeAlign]()
+      extends FixedArgs[TypeAlign](AddrType)(LongType) {
+      def newInstance() = new TypeAlign(this)
+    }
+
+    def proto() = Prototype.intern(Proto())
+
+    def apply(ti: Node): Node = proto()(ti)
+
+    def unapply(n: TypeAlign): Option[Node] = Some(n.ti)
+  }
+
   class CheckedUnary(proto: CheckedUnary.Proto) extends NodeWithFixedArgs(proto) with SpinalNode with CanThrow with ProducesValue {
     def asmType = proto.asmType
     def kind = proto.kind

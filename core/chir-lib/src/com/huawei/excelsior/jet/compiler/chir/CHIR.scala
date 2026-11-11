@@ -463,6 +463,8 @@ object CHIR {
       case FuncRefeq
       case VectorCompare32
       case VectorIndexByte32
+      case SizeOf
+      case AlignOf
     }
   }
 

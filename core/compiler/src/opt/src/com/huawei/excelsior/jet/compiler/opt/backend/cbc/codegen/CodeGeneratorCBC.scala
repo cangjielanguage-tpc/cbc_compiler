@@ -315,6 +315,18 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       asm.vidx32(dst, arr, off, target)
     }
 
+    private def genTypeSize(x: TypeSize): Unit = {
+      val IReg(dst) = x
+      val IReg(ti)  = x.ti
+      asm.typeSize(dst, ti)
+    }
+
+    private def genTypeAlign(x: TypeAlign): Unit = {
+      val IReg(dst) = x
+      val IReg(ti)  = x.ti
+      asm.typeAlign(dst, ti)
+    }
+
     private def genCast(cast: Cast): Unit = {
       cast match {
         case ReinterpretCast(_, _, arg) =>
@@ -1423,6 +1435,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: ArithCommutativeOp         => genArithCommutativeOp(x)
         case x: VectorCompare32            => genVectorCompare32(x)
         case x: VectorIndexByte32          => genVectorIndexByte32(x)
+        case x: TypeSize                   => genTypeSize(x)
+        case x: TypeAlign                  => genTypeAlign(x)
         case x: BinaryOp                   => shouldNotReachHere(s"unexpected BinaryOp: $x")
         case x: Shift                      => genShift(x)
         case x: Cast                       => genCast(x)

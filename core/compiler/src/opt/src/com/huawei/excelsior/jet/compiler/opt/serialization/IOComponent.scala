@@ -153,6 +153,8 @@ trait IOComponent extends BinaryIO { self: Universe =>
     Pow.Proto,
     VectorCompare32.Proto,
     VectorIndexByte32.Proto,
+    TypeSize.Proto,
+    TypeAlign.Proto,
     // Add new prototypes above this line.
     "dummy last element for ease of rebase"
   )

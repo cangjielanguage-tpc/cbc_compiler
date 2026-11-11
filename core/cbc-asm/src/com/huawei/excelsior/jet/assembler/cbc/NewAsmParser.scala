@@ -1457,6 +1457,10 @@ private object InstructionParser {
   instr("vcmp.32") { (a, s) => a.vcmp32(s.ireg, s.ireg, s.ireg, s.ireg, s.ireg) }
   instr("vidx.32") { (a, s) => a.vidx32(s.ireg, s.ireg, s.ireg, s.ireg) }
 
+  // TypeInfo queries: the operand is a raw TypeInfo pointer (not a GC reference)
+  instr("ti.size")  { (a, s) => a.typeSize(s.ireg, s.ireg) }
+  instr("ti.align") { (a, s) => a.typeAlign(s.ireg, s.ireg) }
+
   // calls
   instr("call.direct")    { (a, s) => a.callDirect(s.method, s.params) }
   instr("call.virt")      { (a, s) => a.callVirt(s.method, s.params) }

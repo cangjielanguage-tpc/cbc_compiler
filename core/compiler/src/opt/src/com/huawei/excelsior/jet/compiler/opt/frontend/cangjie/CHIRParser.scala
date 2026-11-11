@@ -1975,6 +1975,36 @@ trait CHIRParser
             val value = state(e.args.head)
             val toTpe = ValueType.fromSig(resolver.typeSig(e.resultTpe))
             state(e) = ReinterpretCast(value.tpe, toTpe)(value)
+
+          // folds to a compile-time constant for basic types
+          // queries the info from the TypeInfo object for advanced types
+          case CHIR.Intrinsic.Kind.SizeOf | CHIR.Intrinsic.Kind.AlignOf =>
+            import SignatureType.*
+
+            val Seq(t) = e.instantiatedTypeArgs
+            val tSig = resolver.typeSig(t)
+            val resTpe = ValueType.fromSig(resolver.typeSig(e.resultTpe))
+
+            val constBytes = Wrapper.skip(tSig) match {
+              case Boolean | Int8 | UInt8 => 1L
+              case Int16 | UInt16 => 2L
+              case Int32 | UInt32 | Float32 => 4L
+              case Int64 | UInt64 | Float64 | AddrInt | AddrUInt => 8L
+              case Unit => 0L
+              case BString | _: CPointer => 8L
+              case _ => -1L
+            }
+
+            state(e) = if (constBytes >= 0) {
+              IntegralConst(resTpe)(constBytes)
+            } else {
+              assert(resTpe == LongType, resTpe)
+              if (e.kind == CHIR.Intrinsic.Kind.SizeOf) {
+                TypeSize(loadTypeInfo(tSig))
+              } else {
+                TypeAlign(loadTypeInfo(tSig))
+              }
+            }
         }
 
       case e: CHIR.Spawn =>

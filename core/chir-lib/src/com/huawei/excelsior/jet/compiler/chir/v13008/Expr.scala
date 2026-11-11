@@ -157,6 +157,8 @@ class IntrinsicImpl(in: IntrinsicBase)(implicit provider: CHIRItemProvider) exte
     case IntrinsicKind.FUNC_REFEQ => Intrinsic.Kind.FuncRefeq
     case IntrinsicKind.VECTOR_COMPARE_32 => Intrinsic.Kind.VectorCompare32
     case IntrinsicKind.VECTOR_INDEX_BYTE_32 => Intrinsic.Kind.VectorIndexByte32
+    case IntrinsicKind.SIZE_OF => Intrinsic.Kind.SizeOf
+    case IntrinsicKind.ALIGN_OF => Intrinsic.Kind.AlignOf
     case k => notImplemented(s"intrinsic ${IntrinsicKind.name(k)}")
   }
   def args: Seq[CHIR.Value] = operands
