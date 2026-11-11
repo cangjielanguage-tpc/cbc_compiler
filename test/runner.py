@@ -38,7 +38,7 @@ def load_suites() -> list[tuple[str, TestSuite]]:
     return suites
 
 
-def read_id_list(path):
+def read_id_list(path: str | Path) -> list[str]:
     ids = []
     with open(path) as fh:
         for line in fh:
@@ -49,13 +49,13 @@ def read_id_list(path):
     return ids
 
 
-def load_excludes():
+def load_excludes() -> list[str]:
     if not EXCLUDES_CFG.exists():
         return []
     return read_id_list(EXCLUDES_CFG)
 
 
-def excluded(test_id, patterns):
+def excluded(test_id: TestIdentifier, patterns: list[str]) -> bool:
     for pattern in patterns:
         # A mode pattern has two `::` separators (suite + mode); a whole-test
         # pattern has one (suite only).
@@ -67,7 +67,7 @@ def excluded(test_id, patterns):
     return False
 
 
-def autodetect_parallelism():
+def autodetect_parallelism() -> int:
     try:
         limit = len(os.sched_getaffinity(0))
     except (AttributeError, OSError):
@@ -75,7 +75,7 @@ def autodetect_parallelism():
     return max(1, limit // 4)
 
 
-def write_run_sh(tdir, test_id, toolchain):
+def write_run_sh(tdir: Path, test_id: TestIdentifier, toolchain: str) -> None:
     run_sh = tdir / "run.sh"
     run_sh.write_text(
         "#!/bin/bash\n"
@@ -86,7 +86,7 @@ def write_run_sh(tdir, test_id, toolchain):
     run_sh.chmod(0o755)
 
 
-def auto_status():
+def auto_status() -> str:
     # Default: interactive on a terminal, plain when captured/piped.
     return "interactive" if sys.stdout.isatty() else "plain"
 
@@ -99,19 +99,19 @@ class Permit:
     both the concurrency slot and its line.
     """
 
-    def __init__(self, reporter, index):
+    def __init__(self, reporter: "StatusReporter", index: int):
         self.reporter = reporter
         self.index = index
-        self.activity: tuple[str, str] | None = None
+        self.activity: tuple[str, TestIdentifier] | None = None
 
-    def set(self, phase, test_id):
+    def set(self, phase: str, test_id: TestIdentifier) -> None:
         if self.reporter.interactive:
             self.activity = (phase, test_id)
             self.reporter._render()
         else:
             print(self.reporter._fit(self.reporter._format(phase, test_id)), flush=True)
 
-    def release(self):
+    def release(self) -> None:
         self.activity = None
         self.reporter._pool.put_nowait(self)
         self.reporter._render()
@@ -135,7 +135,7 @@ class StatusReporter:
     math stays valid. Falls back to plain when stdout is not a terminal.
     """
 
-    def __init__(self, mode, parallelism, total):
+    def __init__(self, mode: str, parallelism: int, total: int) -> None:
         self.interactive = mode == "interactive" and sys.stdout.isatty()
         self.total = total
         self._finished = 0
@@ -150,13 +150,13 @@ class StatusReporter:
         # fixed for the whole run so lines never shift as the counter grows.
         ctr_max = f"[{total}/{total}]"
         self.prefix_width = max(len(f"failed {ctr_max}"), len("building"))
-        self.permits = [Permit(self, i) for i in range(self.n)]
+        self.permits: list[Permit] = [Permit(self, i) for i in range(self.n)]
         self._pool: asyncio.Queue[Permit] = asyncio.Queue()
         for permit in self.permits:
             self._pool.put_nowait(permit)
         self._drawn = False
 
-    def _fit(self, line):
+    def _fit(self, line: str) -> str:
         limit = self.width - 1
         if len(line) <= limit:
             return line
@@ -164,7 +164,7 @@ class StatusReporter:
         head = line[:max(0, limit - 3 - len(tail))]
         return head + "..." + tail
 
-    def _format(self, verb, test_id, finished=None):
+    def _format(self, verb: str, test_id: TestIdentifier, finished: int | None = None) -> str:
         if finished is None:
             body = verb
         else:
@@ -172,10 +172,10 @@ class StatusReporter:
         pad = " " * (self.prefix_width - len(body))
         return f"{body}{pad}- {test_id}"
 
-    async def acquire(self):
+    async def acquire(self) -> Permit:
         return await self._pool.get()
 
-    def _render(self, move_up=True):
+    def _render(self, move_up: bool = True) -> None:
         if not self.interactive:
             return
         if move_up and self._drawn and self.n > 1:
@@ -192,7 +192,7 @@ class StatusReporter:
         sys.stdout.flush()
         self._drawn = True
 
-    def log_result(self, test_id, ok):
+    def log_result(self, test_id: TestIdentifier, ok: bool) -> None:
         self._finished += 1
         verb = "done" if ok else "failed"
         line = self._format(verb, test_id, self._finished)
@@ -214,7 +214,7 @@ class StatusReporter:
         sys.stdout.write(self._fit(line) + "\n")
         self._render(move_up=False)
 
-    def finish(self):
+    def finish(self) -> None:
         if not self.interactive:
             return
         if self._drawn:
@@ -224,7 +224,10 @@ class StatusReporter:
         sys.stdout.flush()
 
 
-async def process_testcase(test_id, discovered: dict[TestIdentifier, TestSuite], workdir, args, toolchain, results, reporter, permit):
+async def process_testcase(test_id: TestIdentifier, discovered: dict[TestIdentifier, TestSuite],
+                           workdir: Path, args: argparse.Namespace, toolchain: str,
+                           results: list[tuple[TestIdentifier, str]], reporter: StatusReporter,
+                           permit: Permit) -> None:
     suite = discovered[test_id]
     tdir = workdir / test_id.path
     if not args.skip_build:
@@ -242,7 +245,7 @@ async def process_testcase(test_id, discovered: dict[TestIdentifier, TestSuite],
     reporter.log_result(test_id, ok)
 
 
-def dump_test_output(tdir, reason):
+def dump_test_output(tdir: Path, reason: str) -> None:
     names = ["build.log"] if reason.startswith("build") else ["run.log", "run.err"]
     for name in names:
         path = tdir / name
@@ -255,7 +258,7 @@ def dump_test_output(tdir, reason):
         sys.stdout.write(text)
 
 
-def print_timings(suites: list[tuple[str, TestSuite]]):
+def print_timings(suites: list[tuple[str, TestSuite]]) -> None:
     reported = []
     total = 0.0
     for name, suite in suites:
@@ -273,7 +276,7 @@ def print_timings(suites: list[tuple[str, TestSuite]]):
                 print(f"    {tag:<12} {secs:9.2f} s")
 
 
-async def run_tests(args):
+async def run_tests(args: argparse.Namespace) -> int:
     workdir = Path(args.work_dir) if args.work_dir else ROOT / "workdir"
     toolchain = os.environ["TOOLCHAIN"]
 
@@ -285,7 +288,7 @@ async def run_tests(args):
         if unknown:
             print(f"Unknown testsuites: {', '.join(unknown)}", file=sys.stderr)
             return 1
-        suites = [(name, mod) for name, mod in suites if name in args.testsuite]
+        suites = [(name, suite) for name, suite in suites if name in args.testsuite]
     for name, suite in suites:
         for test_id in await suite.discover():
             discovered[test_id] = suite
@@ -313,11 +316,11 @@ async def run_tests(args):
         return 0
 
     parallelism = max(1, int(args.parallelism)) if args.parallelism is not None else autodetect_parallelism()
-    results = []
+    results: list[tuple[TestIdentifier, str]] = []
     mode = auto_status() if args.status == "auto" else args.status
     reporter = StatusReporter(mode, parallelism, len(ids))
 
-    async def bounded(test_id):
+    async def bounded(test_id: TestIdentifier) -> None:
         permit = await reporter.acquire()
         try:
             await process_testcase(test_id, discovered, workdir, args, toolchain, results, reporter, permit)
@@ -363,7 +366,7 @@ async def run_tests(args):
     return 0
 
 
-def cmd_test(args):
+def cmd_test(args: argparse.Namespace) -> int:
     toolchain = args.cangjie_home or os.environ.get("CANGJIE_HOME")
     if not toolchain:
         print("No toolchain path specified. Use --cangjie-home or set CANGJIE_HOME environment variable.", file=sys.stderr)
@@ -381,7 +384,7 @@ def cmd_test(args):
     return asyncio.run(run_tests(args))
 
 
-def cmd_clean(args):
+def cmd_clean(args: argparse.Namespace) -> int:
     workdir = Path(args.work_dir) if args.work_dir else ROOT / "workdir"
     if workdir.exists():
         shutil.rmtree(workdir)
@@ -389,7 +392,7 @@ def cmd_clean(args):
     return 0
 
 
-async def discovery():
+async def discovery() -> None:
     patterns = load_excludes()
     for name, suite in load_suites():
         for test_id in sorted(await suite.discover()):
@@ -397,11 +400,12 @@ async def discovery():
                 print(test_id)
 
 
-def cmd_discovery_async(args):
-    return asyncio.run(discovery())
+def cmd_discovery_async(args: argparse.Namespace) -> int:
+    asyncio.run(discovery())
+    return 0
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(prog="CBC testsuite")
     subparsers = parser.add_subparsers(required=True)
 
