@@ -136,7 +136,7 @@ final class PatchGen(source: Option[Package], pkg: Package) {
     val changed = patches.map(_.id).toSet
     def visit(f: Func): Unit = {
       if (visited.add(f.id)) {
-        for (e <- pkg.expressions(f)) e match {
+        pkg.expressions(f).foreach {
           case e: Apply => e.callee match {
             case f: Func if pkg.isInternal(f) =>
               if (f.kind == Func.Kind.Lambda) deleted -= f.id else if (!changed(f.id)) imports -= f.id
@@ -220,7 +220,7 @@ final class PatchGen(source: Option[Package], pkg: Package) {
       val getter = functions.find(_.srcCodeIdentifier == prefix + accessor + "Getter$GF")
       val setter = functions.find(_.srcCodeIdentifier == prefix + accessor + "Setter$GF")
       error(getter.nonEmpty && setter.nonEmpty, "unable to find package init flag accessor")
-      for (e <- pkg.expressions(f)) e match {
+      pkg.expressions(f).foreach {
         case e: Load if e.location eq flag.get => pkg.replace(e, Operation.Apply(getter.get, Seq.empty))
         case e: Store if e.location eq flag.get => pkg.replace(e, Operation.Apply(setter.get, Seq(e.value)))
         case _ => ()
