@@ -1,6 +1,7 @@
 package com.huawei.excelsior.jet.compiler.chir.patchgen
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR.*
+import com.huawei.excelsior.jet.util.ScalaCollections
 import scala.collection.mutable
 
 final class PatchGenException(message: String) extends RuntimeException(message)
@@ -11,7 +12,7 @@ final class PatchGenException(message: String) extends RuntimeException(message)
 final class PatchGen(source: Option[Package], pkg: Package) {
   private val functions = pkg.values.collect { case f: Func => f }.toVector
   private val globals = pkg.values.collect { case g: GlobalVar => g }.toVector
-  private val globalsByName = globals.groupBy(_.srcCodeIdentifier).view.mapValues(_.head).toMap
+  private val globalsByName = ScalaCollections.groupMapReduce(globals)(_.srcCodeIdentifier)(identity)((first, _) => first)
   private val functionsByName = functions.groupBy(_.srcCodeIdentifier)
   private val definitions = pkg.typeDefs.toVector
   private val imports = mutable.LinkedHashSet.empty[Long]
@@ -165,7 +166,7 @@ final class PatchGen(source: Option[Package], pkg: Package) {
 
   private def generateMethods(): Unit = {
     val generated = mutable.ArrayBuffer.empty[Func]
-    val methods = patchClass.toSeq.flatMap(_.methods).groupBy(_.srcCodeIdentifier).view.mapValues(_.head).toMap
+    val methods = ScalaCollections.groupMapReduce(patchClass.toSeq.flatMap(_.methods))(_.srcCodeIdentifier)(identity)((first, _) => first)
     for (f <- patches.distinct) {
       GuardChecks.remove(f)
       if (!isInit(f)) {
