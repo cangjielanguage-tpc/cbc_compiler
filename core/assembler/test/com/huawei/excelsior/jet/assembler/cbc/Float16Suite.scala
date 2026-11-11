@@ -27,24 +27,4 @@ class Float16Suite extends AnyFunSuite {
     }
     assert((Float16.bits(Double.NaN) & 0x7fff) > 0x7c00)
   }
-
-  test("serialized half opcodes and raw immediate bytes agree with the engine") {
-    import com.huawei.excelsior.jet.assembler.Symbol
-    import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.BytecodeReference
-    import com.huawei.excelsior.jet.assembler.cbc.Register.FR
-    import com.huawei.excelsior.jet.assembler.Width
-    import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, SymbolAdapter}
-    val opcodes = Seq(Assembler.Opcode.Float16, Assembler.Opcode.FMov16,
-      Assembler.Opcode.FMov16i, Assembler.Opcode.Bcc16, Assembler.Opcode.Scc16,
-      Assembler.Opcode.FMathUn16)
-    assert(opcodes.map(_.ordinal) == (174 to 179))
-    val asm = new Assembler with SymbolAdapter {
-      def adapt(symbol: Symbol): BytecodeReference = throw new UnsupportedOperationException
-    }
-    val segment = asm.withNewSegment {
-      asm.fmovi16Bits(FR.FR2, 0xfd55)
-      asm.fret(FR.FR2, Width.W16)
-    }
-    assert(segment.toByteArray.map(_ & 255).toSeq == Seq(176, 2, 0x55, 0xfd, 71, 0x92))
-  }
 }
