@@ -153,7 +153,7 @@ final class PatchGen(source: Option[Package], pkg: Package) {
   private def removeNewGuards(): Unit = {
     for (f <- fresh) {
       val method = PatchableName.guardMethod(f)
-      val flag = GuardChecks.flag(f).get
+      val flag = GuardChecks.flag(f)
       GuardChecks.remove(f)
       addAttribute(flag, Attribute.Imported)
       for (d <- guardClass.toSeq ++ patchClass.toSeq) d.replaceMethods(d.methods.filterNot(_.srcCodeIdentifier == method))
