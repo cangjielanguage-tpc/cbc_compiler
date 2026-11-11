@@ -801,11 +801,11 @@ class IdentitiesSuite extends CompilerSuite with Identities with GlobalNodesBuil
       (2.0,  -2L, math.pow(2.0, -2.0)),
       (10.0, 3L,  math.pow(10.0, 3.0))
     )) {
-      PowI.proto(DoubleType)(dc(base), lc(exp)) should be (dc(res))
+      PowI(dc(base), lc(exp)) should be (dc(res))
     }
 
     // non-constant base is not folded
-    PowI.proto(DoubleType)(darg, lc(10)) should not be a [DConst]
+    PowI(darg, lc(10)) should not be a [DConst]
   }
 
 }

@@ -232,6 +232,8 @@ trait SimpleNodes { self: Universe with Nodes =>
 
     def proto(tpe: Type) = Prototype.intern(Proto(tpe))
 
+    def apply(base: Node, exp: Node) = proto(base.tpe)(base, exp)
+
     def unapply(n: PowI) = Some((n.base, n.exp))
   }
 
