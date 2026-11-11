@@ -457,6 +457,10 @@ object CHIR {
       case PowI
       case GetTypeForTypeParameter
       case BlackBox
+      case BitCast
+      case ObjectRefeq
+      case RawArrayRefeq
+      case FuncRefeq
     }
   }
 

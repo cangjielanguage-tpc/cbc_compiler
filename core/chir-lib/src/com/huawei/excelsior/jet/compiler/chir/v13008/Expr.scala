@@ -151,6 +151,10 @@ class IntrinsicImpl(in: IntrinsicBase)(implicit provider: CHIRItemProvider) exte
     case IntrinsicKind.POWI => Intrinsic.Kind.PowI
     case IntrinsicKind.BLACK_BOX => Intrinsic.Kind.BlackBox
     case IntrinsicKind.GET_TYPE_FOR_TYPE_PARAMETER => Intrinsic.Kind.GetTypeForTypeParameter
+    case IntrinsicKind.BIT_CAST => Intrinsic.Kind.BitCast
+    case IntrinsicKind.OBJECT_REFEQ => Intrinsic.Kind.ObjectRefeq
+    case IntrinsicKind.RAW_ARRAY_REFEQ => Intrinsic.Kind.RawArrayRefeq
+    case IntrinsicKind.FUNC_REFEQ => Intrinsic.Kind.FuncRefeq
     case k => notImplemented(s"intrinsic ${IntrinsicKind.name(k)}")
   }
   def args: Seq[CHIR.Value] = operands

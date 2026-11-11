@@ -1952,6 +1952,20 @@ trait CHIRParser
             val tvSig = resolver.typeSig(tv)
             val ti = loadTypeInfo(tvSig)
             state(e) = LoadMemory(sig.toAsm, sig, atomic = false)(ti)
+
+          // Reference identity comparisons over traceable references (Object,
+          // RawArray, lambda closures): a plain pointer equality test producing
+          // a 0/1 Bool, matching the cjnative pointer compare.
+          case CHIR.Intrinsic.Kind.ObjectRefeq |
+               CHIR.Intrinsic.Kind.RawArrayRefeq |
+               CHIR.Intrinsic.Kind.FuncRefeq =>
+            val Seq(l, r) = e.args
+            state(e) = CondVal(Cmp(TRefType, Condition.EQ)(state(l), state(r)))
+
+          case CHIR.Intrinsic.Kind.BitCast =>
+            val value = state(e.args.head)
+            val toTpe = ValueType.fromSig(resolver.typeSig(e.resultTpe))
+            state(e) = ReinterpretCast(value.tpe, toTpe)(value)
         }
 
       case e: CHIR.Spawn =>
