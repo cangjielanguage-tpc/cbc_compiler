@@ -92,7 +92,7 @@ ok2:
       @dead IR1, IR3
       ld.stack.rec IR3, $0
       ld.stack.rec IR4, $1
-      call.direct #rotate, IR3, IR4
+      call.direct #rotate, IR4, IR3
       @dead IR3, IR4
       ld.typed.f FR0, $1, #a
       movf2i.16 IR2, FR0
