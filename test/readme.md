@@ -9,8 +9,9 @@ Suites:
 - `asm` (CBC assembly via `cbc-asm`);
 - `hotfix` (cj sources rebuilt as hotfix patches).
 
-A new suite is a `<name>_testsuite.py` providing async
-`discover` / `build` / `run` / `run_command`.
+A new suite is a `<name>_testsuite.py` providing async `discover` / `build` /
+`run`; after running a test the runner writes a `run.sh` into the test's
+workdir which re-runs it via `python3 runner.py test --test <ID> --skip-build`.
 
 ## Running
 
@@ -39,5 +40,6 @@ python3 runner.py clean                                            # remove the 
 - Failed IDs are written to `<work-dir>/failed.txt` — feed it back via
   `--tests` to re-run only failures.
 - Per-test logs are in the workdir: `build.log`, `run.log`, `run.err`,
-  `diff.log`; `--describe` prints the exact run command.
+  `diff.log`. The generated `run.sh` re-runs the test through the runner and
+  can be executed by hand; `--describe` prints its path.
 - Exit codes: `0` all passed, `1` failures, `2` hard error.

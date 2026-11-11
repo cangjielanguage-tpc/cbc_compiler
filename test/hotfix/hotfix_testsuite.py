@@ -213,20 +213,6 @@ async def build(test_id, workdir):
     return 0 if res == 0 else 1
 
 
-async def run_command(test_id, workdir):
-    name = Path(test_id.test_name).name
-    wdir = Path(workdir).absolute()
-    test_copy = wdir.parent
-    preload = Path(os.environ["TOOLCHAIN"]) / "tools" / "lib" / "libcbc-preload.so"
-    # The stub binary is run directly (no launcher): the preload library
-    # restores in-process interpreter initialization for AOT binaries, and
-    # CBCOPT points the CBC runtime at the directory holding the patch.
-    return (f'LD_LIBRARY_PATH="{test_copy}:$LD_LIBRARY_PATH:{wdir}" '
-            f'CBCOPT="cbc.path={wdir}" '
-            f'LD_PRELOAD="{preload}" '
-            f'"{wdir}/{name}"')
-
-
 async def run(test_id, workdir):
     name = Path(test_id.test_name).name
     wdir = Path(workdir).absolute()
@@ -234,7 +220,15 @@ async def run(test_id, workdir):
     if not cbc.is_file():
         raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
-    cmd = await run_command(test_id, workdir)
+    test_copy = wdir.parent
+    preload = Path(os.environ["TOOLCHAIN"]) / "tools" / "lib" / "libcbc-preload.so"
+    # The stub binary is run directly (no launcher): the preload library
+    # restores in-process interpreter initialization for AOT binaries, and
+    # CBCOPT points the CBC runtime at the directory holding the patch.
+    cmd = (f'LD_LIBRARY_PATH="{test_copy}:$LD_LIBRARY_PATH:{wdir}" '
+           f'CBCOPT="cbc.path={wdir}" '
+           f'LD_PRELOAD="{preload}" '
+           f'"{wdir}/{name}"')
     out_io = io.StringIO()
     err_io = io.StringIO()
     res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io)

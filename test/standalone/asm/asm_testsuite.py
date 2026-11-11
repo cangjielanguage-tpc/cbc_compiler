@@ -53,12 +53,6 @@ async def build(test_id, workdir):
     return 0 if res == 0 else 1
 
 
-async def run_command(test_id, workdir):
-    name = Path(test_id.test_name).name
-    wdir = Path(workdir)
-    return f'LD_LIBRARY_PATH="{wdir}:$LD_LIBRARY_PATH" launcher "{wdir}/{name}.cbc"'
-
-
 async def run(test_id, workdir):
     name = Path(test_id.test_name).name
     wdir = Path(workdir)
@@ -66,7 +60,7 @@ async def run(test_id, workdir):
     if not cbc.is_file():
         raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
-    cmd = await run_command(test_id, workdir)
+    cmd = f'LD_LIBRARY_PATH="{wdir}:$LD_LIBRARY_PATH" launcher "{wdir}/{name}.cbc"'
     out_io = io.StringIO()
     err_io = io.StringIO()
     res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io)
