@@ -3,8 +3,10 @@ import asyncio.subprocess
 import os
 import sys
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Dict
 
 MACOS = sys.platform == "darwin"
 DYLIB_EXT = ".dylib" if MACOS else ".so"
@@ -130,3 +132,24 @@ class TestIdentifier:
     def path(self) -> str:
         # Filesystem-safe form for workdir subpaths: "::" -> "/".
         return str(self).replace("::", "/")
+
+
+class TestSuite(ABC):
+    """A testsuite: discovers its testcases, builds and runs each one."""
+
+    SUITE: str
+
+    def __init__(self):
+        self.timings: Dict[str, float] = {}
+
+    @abstractmethod
+    async def discover(self) -> list[TestIdentifier]:
+        ...
+
+    @abstractmethod
+    async def build(self, test_id: TestIdentifier, workdir: Path) -> int:
+        ...
+
+    @abstractmethod
+    async def run(self, test_id: TestIdentifier, workdir: Path) -> int:
+        ...

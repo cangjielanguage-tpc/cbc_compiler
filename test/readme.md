@@ -9,8 +9,9 @@ Suites:
 - `asm` (CBC assembly via `cbc-asm`);
 - `hotfix` (cj sources rebuilt as hotfix patches).
 
-A new suite is a `<name>_testsuite.py` providing async `discover` / `build` /
-`run`; after running a test the runner writes a `run.sh` into the test's
+A new suite is a `<name>_testsuite.py` defining one `TestSuite` subclass
+(from `runner_lib`) that implements async `discover` / `build` / `run`;
+after running a test the runner writes a `run.sh` into the test's
 workdir which re-runs it via `python3 runner.py test --test <ID> --skip-build`.
 
 ## Running

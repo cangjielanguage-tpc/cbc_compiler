@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import fnmatch
 import importlib.util
-import inspect
 import os
 import shlex
 import shutil
@@ -10,14 +9,13 @@ import sys
 from os.path import isfile
 from pathlib import Path
 
-from runner_lib import MissingArtifacts, TestIdentifier
+from runner_lib import MissingArtifacts, TestIdentifier, TestSuite
 
 ROOT = Path(__file__).resolve().parent
 EXCLUDES_CFG = ROOT / "excludes.cfg"
-CONTRACT = ("discover", "build", "run")
 
 
-def load_suites():
+def load_suites() -> list[tuple[str, TestSuite]]:
     suites = []
     for f in sorted(ROOT.glob("**/*_testsuite.py")):
         if "workdir" in f.parts:
@@ -29,11 +27,12 @@ def load_suites():
         mod = importlib.util.module_from_spec(spec)
         sys.modules[mod_name] = mod
         spec.loader.exec_module(mod)
-        for name in CONTRACT:
-            fn = getattr(mod, name, None)
-            if fn is None or not inspect.iscoroutinefunction(fn):
-                raise SystemExit(f"Suite {f.name} does not provide async function '{name}'")
-        suites.append((f.stem[: -len("_testsuite")], mod))
+        classes = [obj for obj in vars(mod).values()
+                   if isinstance(obj, type) and issubclass(obj, TestSuite) and obj is not TestSuite]
+        if len(classes) != 1:
+            raise SystemExit(f"Suite {f.name} must define exactly one TestSuite subclass, found {len(classes)}")
+        suite = classes[0]()
+        suites.append((suite.SUITE, suite))
     if not suites:
         raise SystemExit("No testsuites found (expected files named {name}_testsuite.py)")
     return suites
@@ -225,18 +224,18 @@ class StatusReporter:
         sys.stdout.flush()
 
 
-async def process_testcase(test_id, discovered, workdir, args, toolchain, results, reporter, permit):
-    mod = discovered[test_id]
+async def process_testcase(test_id, discovered: dict[TestIdentifier, TestSuite], workdir, args, toolchain, results, reporter, permit):
+    suite = discovered[test_id]
     tdir = workdir / test_id.path
     if not args.skip_build:
         permit.set("building", test_id)
-        rc = await mod.build(test_id, str(tdir))
+        rc = await suite.build(test_id, tdir)
         if rc != 0:
             results.append((test_id, f"build failed (exit {rc})"))
             reporter.log_result(test_id, False)
             return
     permit.set("running", test_id)
-    rc = await mod.run(test_id, str(tdir))
+    rc = await suite.run(test_id, tdir)
     write_run_sh(tdir, test_id, toolchain)
     ok = rc == 0
     results.append((test_id, "passed" if ok else "run failed"))
@@ -256,11 +255,11 @@ def dump_test_output(tdir, reason):
         sys.stdout.write(text)
 
 
-def print_timings(suites):
+def print_timings(suites: list[tuple[str, TestSuite]]):
     reported = []
     total = 0.0
-    for name, mod in suites:
-        timings = getattr(mod, "timings", None)
+    for name, suite in suites:
+        timings = suite.timings
         if not timings:
             continue
         suite_total = sum(timings.values())
@@ -278,7 +277,7 @@ async def run_tests(args):
     workdir = Path(args.work_dir) if args.work_dir else ROOT / "workdir"
     toolchain = os.environ["TOOLCHAIN"]
 
-    discovered = {}
+    discovered: dict[TestIdentifier, TestSuite] = {}
     suites = load_suites()
     if args.testsuite:
         known = {name for name, _ in suites}
@@ -287,9 +286,9 @@ async def run_tests(args):
             print(f"Unknown testsuites: {', '.join(unknown)}", file=sys.stderr)
             return 1
         suites = [(name, mod) for name, mod in suites if name in args.testsuite]
-    for name, mod in suites:
-        for test_id in await mod.discover():
-            discovered[test_id] = mod
+    for name, suite in suites:
+        for test_id in await suite.discover():
+            discovered[test_id] = suite
 
     patterns = load_excludes()
     excluded_ids = [t for t in discovered if excluded(t, patterns)]
@@ -392,8 +391,8 @@ def cmd_clean(args):
 
 async def discovery():
     patterns = load_excludes()
-    for name, mod in load_suites():
-        for test_id in sorted(await mod.discover()):
+    for name, suite in load_suites():
+        for test_id in sorted(await suite.discover()):
             if not excluded(test_id, patterns):
                 print(test_id)
 

@@ -4,75 +4,73 @@ import io
 import os
 import shutil
 from pathlib import Path
-from typing import Dict
 
-from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
+from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cjc, run_in_toolchain
 
-SUITE = "asm"
 HERE = Path(__file__).resolve().parent
-timings: Dict[str, float] = {}
 
 
-async def discover():
-    ids = []
-    for f in sorted(glob.glob(str(HERE / "**" / "*.asm"), recursive=True)):
-        rel = os.path.relpath(f, HERE)[:-len(".asm")]
-        ids.append(TestIdentifier(SUITE, rel, ""))
-    return ids
+class AsmTestSuite(TestSuite):
+    SUITE = "asm"
 
+    async def discover(self) -> list[TestIdentifier]:
+        ids = []
+        for f in sorted(glob.glob(str(HERE / "**" / "*.asm"), recursive=True)):
+            rel = os.path.relpath(f, HERE)[:-len(".asm")]
+            ids.append(TestIdentifier(self.SUITE, rel, ""))
+        return ids
 
-async def build(test_id, workdir):
-    rel = test_id.test_name
-    name = Path(rel).name
-    src_dir = HERE / Path(rel).parent
-    wdir = Path(workdir)
-    log_path = wdir / "build.log"
-    shutil.copytree(src_dir, wdir, dirs_exist_ok=True)
+    async def build(self, test_id: TestIdentifier, workdir: Path) -> int:
+        rel = test_id.test_name
+        name = Path(rel).name
+        src_dir = HERE / Path(rel).parent
+        wdir = workdir
+        log_path = wdir / "build.log"
+        shutil.copytree(src_dir, wdir, dirs_exist_ok=True)
 
-    log_io = io.StringIO()
-    aot_fail = False
-    for aot_file in sorted(glob.glob(str(wdir / "*.aot.cj"))):
-        aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
-        res = await run_cjc(aot_file, str(wdir / f"lib{aot_name}{DYLIB_EXT}"), output_type="dylib",
-                            log=log_io, timings=timings)
-        log_io.write(f"\n[aot {aot_name}] exit {res}\n")
-        if res != 0:
-            aot_fail = True
-            break
+        log_io = io.StringIO()
+        aot_fail = False
+        for aot_file in sorted(glob.glob(str(wdir / "*.aot.cj"))):
+            aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
+            res = await run_cjc(aot_file, str(wdir / f"lib{aot_name}{DYLIB_EXT}"), output_type="dylib",
+                                log=log_io, timings=self.timings)
+            log_io.write(f"\n[aot {aot_name}] exit {res}\n")
+            if res != 0:
+                aot_fail = True
+                break
 
-    res = 1
-    if not aot_fail:
-        asm_err = io.StringIO()
-        res = await run_in_toolchain(["cbc-asm", str(wdir / f"{name}.asm")],
-                                     cwd=str(wdir), log=log_io, stderr_log=asm_err,
-                                     timings=timings)
-        log_io.write(f"\n[asm] exit {res}\n")
-        if asm_err.getvalue().strip():
-            log_io.write(asm_err.getvalue())
+        res = 1
+        if not aot_fail:
+            asm_err = io.StringIO()
+            res = await run_in_toolchain(["cbc-asm", str(wdir / f"{name}.asm")],
+                                         cwd=str(wdir), log=log_io, stderr_log=asm_err,
+                                         timings=self.timings)
+            log_io.write(f"\n[asm] exit {res}\n")
+            if asm_err.getvalue().strip():
+                log_io.write(asm_err.getvalue())
 
-    log_path.write_text(log_io.getvalue())
-    return 0 if res == 0 else 1
+        log_path.write_text(log_io.getvalue())
+        return 0 if res == 0 else 1
 
+    async def run(self, test_id: TestIdentifier, workdir: Path) -> int:
+        name = Path(test_id.test_name).name
+        wdir = workdir
+        cbc = wdir / f"{name}.cbc"
+        if not cbc.is_file():
+            raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
-async def run(test_id, workdir):
-    name = Path(test_id.test_name).name
-    wdir = Path(workdir)
-    cbc = wdir / f"{name}.cbc"
-    if not cbc.is_file():
-        raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
+        cmd = f'{DYLIB_PATH_VAR}="{wdir}:${DYLIB_PATH_VAR}" launcher "{wdir}/{name}.cbc"'
+        out_io = io.StringIO()
+        err_io = io.StringIO()
+        res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io,
+                                     timings=self.timings, tag="launcher")
+        stdout_txt = out_io.getvalue()
+        err_txt = err_io.getvalue()
 
-    cmd = f'{DYLIB_PATH_VAR}="{wdir}:${DYLIB_PATH_VAR}" launcher "{wdir}/{name}.cbc"'
-    out_io = io.StringIO()
-    err_io = io.StringIO()
-    res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io,
-                                 timings=timings, tag="launcher")
-    stdout_txt = out_io.getvalue()
-    err_txt = err_io.getvalue()
-
-    (wdir / "run.log").write_text(stdout_txt)
-    (wdir / "run.err").write_text(err_txt)
-    (wdir / f"{name}.actual").write_text(stdout_txt + f"{res}\n")
-    return verify(test_id, wdir)
+        (wdir / "run.log").write_text(stdout_txt)
+        (wdir / "run.err").write_text(err_txt)
+        (wdir / f"{name}.actual").write_text(stdout_txt + f"{res}\n")
+        return verify(test_id, wdir)
 
 
 def verify(test_id, wdir):
