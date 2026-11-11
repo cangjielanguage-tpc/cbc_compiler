@@ -31,10 +31,12 @@ private[chir] object GuardChecks {
     }
   }
 
+  def hasFlag(function: Func): Boolean = flag(function).nonEmpty
+
   def remove(function: Func): Unit = {
     val pkg = function.ownerPackage
     val initializer = (function eq pkg.packageInitFunc) || (function eq pkg.packageInitLiteralFunc)
-    require(initializer || flag(function).nonEmpty, "guard var flag check was not found")
+    require(initializer || hasFlag(function), "guard var flag check was not found")
     val entry = function.body.get.entryBlock
     val branch = entry.terminator.asInstanceOf[Branch]
     require(branch.falseBlock.terminator.isInstanceOf[Branch], "guard check was not found")
