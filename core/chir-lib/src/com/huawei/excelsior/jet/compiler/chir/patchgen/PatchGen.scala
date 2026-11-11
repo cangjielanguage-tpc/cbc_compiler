@@ -139,7 +139,11 @@ final class PatchGen(source: Option[Package], pkg: Package) {
         pkg.expressions(f).foreach {
           case e: Apply => e.callee match {
             case f: Func if pkg.isInternal(f) =>
-              if (f.kind == Func.Kind.Lambda) deleted -= f.id else if (!changed(f.id)) imports -= f.id
+              if (f.kind == Func.Kind.Lambda) {
+                deleted -= f.id
+              } else if (!changed(f.id)) {
+                imports -= f.id
+              }
               visit(f)
             case _ =>
           }
