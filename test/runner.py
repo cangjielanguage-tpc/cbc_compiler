@@ -256,6 +256,24 @@ def dump_test_output(tdir, reason):
         sys.stdout.write(text)
 
 
+def print_timings(suites):
+    reported = []
+    total = 0.0
+    for name, mod in suites:
+        timings = getattr(mod, "timings", None)
+        if not timings:
+            continue
+        suite_total = sum(timings.values())
+        total += suite_total
+        reported.append((name, suite_total, timings))
+    if reported:
+        print(f"[Timings] Total: {total:9.2f} s")
+        for name, suite_total, timings in reported:
+            print(f"  {name + ':':<14} {suite_total:9.2f} s")
+            for tag, secs in sorted(timings.items(), key=lambda kv: -kv[1]):
+                print(f"    {tag:<12} {secs:9.2f} s")
+
+
 async def run_tests(args):
     workdir = Path(args.work_dir) if args.work_dir else ROOT / "workdir"
     toolchain = os.environ["TOOLCHAIN"]
@@ -333,6 +351,8 @@ async def run_tests(args):
             tdir = workdir / test_id.path
             print(f"  run: {tdir / 'run.sh'}")
             print(f"  logs: {tdir / 'run.log'}, {tdir / 'run.err'}, {tdir / 'diff.log'}")
+
+    print_timings(suites)
 
     failed_ids = [test_id for test_id, _ in failed]
     if failed_ids:
