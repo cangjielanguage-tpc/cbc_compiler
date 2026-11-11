@@ -223,6 +223,19 @@ async def process_testcase(test_id, discovered, workdir, args, toolchain, result
     reporter.log_result(test_id, ok)
 
 
+def dump_test_output(tdir, reason):
+    names = ["build.log"] if reason.startswith("build") else ["run.log", "run.err"]
+    for name in names:
+        path = tdir / name
+        if not path.is_file():
+            continue
+        print(f"--- {name} ---")
+        text = path.read_text(errors="replace")
+        if not text.endswith("\n"):
+            text += "\n"
+        sys.stdout.write(text)
+
+
 async def run_tests(args):
     workdir = Path(args.work_dir) if args.work_dir else ROOT / "workdir"
     toolchain = os.environ["TOOLCHAIN"]
@@ -287,6 +300,8 @@ async def run_tests(args):
     print(f"[Summary] {passed_count} passed, {len(failed)} failed")
     for test_id, reason in failed:
         print(f"FAILED {test_id} ({reason})")
+        if args.dump_on_error:
+            dump_test_output(workdir / test_id.path, reason)
         if args.describe:
             tdir = workdir / test_id.path
             cmd = await discovered[test_id].run_command(test_id, str(tdir))
@@ -352,6 +367,9 @@ def main():
                              help="Testsuite to run (repeatable); when given, only these suites run")
     parser_test.add_argument("--skip-build", action="store_true", help="Skip build, start running tests")
     parser_test.add_argument("--describe", action="store_true", help="Print run command and log paths for failed testcases")
+    parser_test.add_argument("--dump-on-error", action=argparse.BooleanOptionalAction, default=True,
+                             help="Dump failed test's stdout/stderr (run.log/run.err, or build.log for build "
+                             "failures) below its FAILED line; --no-dump-on-error disables")
     parser_test.add_argument("--status", choices=["auto", "plain", "interactive"], default="auto",
                              help="Progress display: plain (one line per phase) or interactive "
                              "(live N-line area); default: auto - interactive on a TTY, else plain")
