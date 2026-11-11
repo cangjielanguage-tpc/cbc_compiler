@@ -1,5 +1,4 @@
 import difflib
-import fnmatch
 import glob
 import io
 import os
@@ -10,39 +9,13 @@ from runner_lib import MissingArtifacts, TestIdentifier, java_cmd, run_cjc, run_
 
 SUITE = "asm"
 HERE = Path(__file__).resolve().parent
-TESTS_CFG = HERE / "tests.cfg"
-
-
-def load_excludes():
-    patterns = []
-    if TESTS_CFG.exists():
-        for line in TESTS_CFG.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#"):
-                patterns.append(line)
-    return patterns
-
-
-def excluded(test_id, patterns):
-    for pattern in patterns:
-        # A mode pattern has two `::` separators (suite + mode); a whole-test
-        # pattern has one (suite only).
-        if pattern.count("::") >= 2:
-            if fnmatch.fnmatch(str(test_id), pattern):
-                return True
-        elif fnmatch.fnmatch(f"{test_id.suite_name}::{test_id.test_name}", pattern):
-            return True
-    return False
 
 
 async def discover():
-    patterns = load_excludes()
     ids = []
     for f in sorted(glob.glob(str(HERE / "**" / "*.asm"), recursive=True)):
         rel = os.path.relpath(f, HERE)[:-len(".asm")]
-        test_id = TestIdentifier(SUITE, rel, "")
-        if not excluded(test_id, patterns):
-            ids.append(test_id)
+        ids.append(TestIdentifier(SUITE, rel, ""))
     return ids
 
 

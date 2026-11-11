@@ -1,6 +1,5 @@
 import asyncio
 import difflib
-import fnmatch
 import glob
 import io
 import os
@@ -12,34 +11,11 @@ from runner_lib import MissingArtifacts, TestIdentifier, run_cjc, run_in_toolcha
 SUITE = "hotfix"
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent / "standalone" / "cj"
-TESTS_CFG = HERE / "tests.cfg"
 _copy_locks = {}
 
 
 def _copy_lock(key):
     return _copy_locks.setdefault(key, asyncio.Lock())
-
-
-def load_excludes():
-    patterns = []
-    if TESTS_CFG.exists():
-        for line in TESTS_CFG.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#"):
-                patterns.append(line)
-    return patterns
-
-
-def excluded(test_id, patterns):
-    for pattern in patterns:
-        # A mode pattern has two `::` separators (suite + mode); a whole-test
-        # pattern has one (suite only).
-        if pattern.count("::") >= 2:
-            if fnmatch.fnmatch(str(test_id), pattern):
-                return True
-        elif fnmatch.fnmatch(f"{test_id.suite_name}::{test_id.test_name}", pattern):
-            return True
-    return False
 
 
 def _import_flags(paths):
@@ -74,15 +50,12 @@ async def _chir_dis(chir, wdir, env, log_io):
 
 
 async def discover():
-    patterns = load_excludes()
     ids = []
     for f in sorted(glob.glob(str(SRC / "**" / "*.cj"), recursive=True)):
         if f.endswith((".aot.cj", ".int.cj")):
             continue
         rel = os.path.relpath(f, SRC)[:-len(".cj")]
-        test_id = TestIdentifier(SUITE, rel, "default")
-        if not excluded(test_id, patterns):
-            ids.append(test_id)
+        ids.append(TestIdentifier(SUITE, rel, "default"))
     return ids
 
 

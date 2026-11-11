@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import fnmatch
 import importlib.util
 import inspect
 import os
@@ -12,6 +13,7 @@ from pathlib import Path
 from runner_lib import MissingArtifacts, TestIdentifier
 
 ROOT = Path(__file__).resolve().parent
+EXCLUDES_CFG = ROOT / "excludes.cfg"
 CONTRACT = ("discover", "build", "run", "run_command")
 
 
@@ -46,6 +48,24 @@ def read_id_list(path):
                 continue
             ids.append(line)
     return ids
+
+
+def load_excludes():
+    if not EXCLUDES_CFG.exists():
+        return []
+    return read_id_list(EXCLUDES_CFG)
+
+
+def excluded(test_id, patterns):
+    for pattern in patterns:
+        # A mode pattern has two `::` separators (suite + mode); a whole-test
+        # pattern has one (suite only).
+        if pattern.count("::") >= 2:
+            if fnmatch.fnmatch(str(test_id), pattern):
+                return True
+        elif fnmatch.fnmatch(f"{test_id.suite_name}::{test_id.test_name}", pattern):
+            return True
+    return False
 
 
 def autodetect_parallelism():
@@ -253,6 +273,13 @@ async def run_tests(args):
         for test_id in await mod.discover():
             discovered[test_id] = mod
 
+    patterns = load_excludes()
+    excluded_ids = [t for t in discovered if excluded(t, patterns)]
+    for test_id in excluded_ids:
+        del discovered[test_id]
+    if excluded_ids:
+        print(f"Skipped {len(excluded_ids)} testcases (excluded)")
+
     explicit = [TestIdentifier.from_str(t) for t in args.test]
     if args.tests:
         explicit += [TestIdentifier.from_str(t) for t in read_id_list(args.tests)]
@@ -345,9 +372,11 @@ def cmd_clean(args):
 
 
 async def discovery():
+    patterns = load_excludes()
     for name, mod in load_suites():
         for test_id in sorted(await mod.discover()):
-            print(test_id)
+            if not excluded(test_id, patterns):
+                print(test_id)
 
 
 def cmd_discovery_async(args):
@@ -368,8 +397,7 @@ def main():
     parser_test.add_argument("--skip-build", action="store_true", help="Skip build, start running tests")
     parser_test.add_argument("--describe", action="store_true", help="Print run command and log paths for failed testcases")
     parser_test.add_argument("--dump-on-error", action=argparse.BooleanOptionalAction, default=True,
-                             help="Dump failed test's stdout/stderr (run.log/run.err, or build.log for build "
-                             "failures) below its FAILED line; --no-dump-on-error disables")
+                             help="Dump failed test's stdout/stderr; --no-dump-on-error disables")
     parser_test.add_argument("--status", choices=["auto", "plain", "interactive"], default="auto",
                              help="Progress display: plain (one line per phase) or interactive "
                              "(live N-line area); default: auto - interactive on a TTY, else plain")
