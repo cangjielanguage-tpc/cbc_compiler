@@ -31,13 +31,13 @@ class GuardChecksSuite extends AnyFunSuite {
           "-O0", "--emit-chir", "-o", "input.chir")
         val pkg = CHIR.read(work.resolve("input.chir"), 13002)
         val functions = pkg.values.collect { case f: CHIR.Func => f }.toVector
-        val guarded = functions.filter(f => GuardChecks.flag(f).nonEmpty)
+        val guarded = functions.filter(f => GuardChecks.hasFlag(f))
         assert(guarded.nonEmpty)
         val sources = guarded.filter(f => f.kind == CHIR.Func.Kind.Default && f.srcCodeIdentifier == "foo")
         assert(sources.nonEmpty)
         for (function <- guarded) {
           GuardChecks.remove(function)
-          assert(GuardChecks.flag(function).isEmpty)
+          assert(!GuardChecks.hasFlag(function))
         }
         for (source <- sources) {
           val target = functions.find(f => f.srcCodeIdentifier == PatchableName.guardMethod(source) &&
@@ -49,7 +49,7 @@ class GuardChecksSuite extends AnyFunSuite {
         pkg.write(work.resolve("output.chir"))
         run(work, "chir-dis", "output.chir")
         val saved = CHIR.read(work.resolve("output.chir"), 13002)
-        assert(saved.values.collect { case f: CHIR.Func if GuardChecks.flag(f).nonEmpty => f }.isEmpty)
+        assert(saved.values.collect { case f: CHIR.Func if GuardChecks.hasFlag(f) => f }.isEmpty)
       } finally {
         val paths = Files.walk(work)
         try paths.sorted(java.util.Comparator.reverseOrder[Path]()).forEach(p => Files.delete(p))

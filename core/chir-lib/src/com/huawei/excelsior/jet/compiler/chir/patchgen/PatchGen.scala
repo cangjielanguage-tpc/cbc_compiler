@@ -101,7 +101,7 @@ final class PatchGen(source: Option[Package], pkg: Package) {
           }
         }
         val oldKeys = sourceKeys.iterator.map(_._2).toSet
-        fresh ++= currentKeys.collect { case (f, key) if GuardChecks.flag(f).nonEmpty && !oldKeys(key) => f }
+        fresh ++= currentKeys.collect { case (f, key) if GuardChecks.hasFlag(f) && !oldKeys(key) => f }
         val currentVars = globals.map(g => variableKey(g) -> g).toMap
         for (g <- source.values.collect { case g: GlobalVar => g }) {
           val found = currentVars.get(variableKey(g))
@@ -109,7 +109,7 @@ final class PatchGen(source: Option[Package], pkg: Package) {
           error(found.nonEmpty, s"$kind var ${g.identifier.stripPrefix("@")} was not found in patched version")
           importedVars += found.get
         }
-      case None => fresh ++= functions.filter(f => GuardChecks.flag(f).nonEmpty)
+      case None => fresh ++= functions.filter(f => GuardChecks.hasFlag(f))
     }
   }
 
@@ -118,8 +118,8 @@ final class PatchGen(source: Option[Package], pkg: Package) {
       if (!imported(old)) imports += next.id
       return
     }
-    val patchable = GuardChecks.flag(old).nonEmpty
-    error(patchable == GuardChecks.flag(next).nonEmpty,
+    val patchable = GuardChecks.hasFlag(old)
+    error(patchable == GuardChecks.hasFlag(next),
       s"function ${old.srcCodeIdentifier} must be patchable both in source and patched versions")
     error(next.body.nonEmpty, s"function ${old.srcCodeIdentifier} must have body both in source and patched versions")
     error(old.attributes == next.attributes,
