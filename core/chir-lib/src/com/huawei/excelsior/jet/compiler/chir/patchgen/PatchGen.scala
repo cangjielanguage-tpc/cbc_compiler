@@ -141,9 +141,9 @@ final class PatchGen(source: Option[Package], pkg: Package) {
             case f: Func if pkg.isInternal(f) =>
               if (f.kind == Func.Kind.Lambda) deleted -= f.id else if (!changed(f.id)) imports -= f.id
               visit(f)
-            case _ => ()
+            case _ =>
           }
-          case _ => ()
+          case _ =>
         }
       }
     }
@@ -223,7 +223,7 @@ final class PatchGen(source: Option[Package], pkg: Package) {
       pkg.expressions(f).foreach {
         case e: Load if e.location eq flag.get => pkg.replace(e, Operation.Apply(getter.get, Seq.empty))
         case e: Store if e.location eq flag.get => pkg.replace(e, Operation.Apply(setter.get, Seq(e.value)))
-        case _ => ()
+        case _ =>
       }
     }
   }
