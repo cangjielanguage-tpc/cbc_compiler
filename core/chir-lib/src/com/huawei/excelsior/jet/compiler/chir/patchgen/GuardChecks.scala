@@ -7,7 +7,7 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR.*
   * package remove unreachable blocks. No expressions need cloning or renaming.
   */
 private[chir] object GuardChecks {
-  def flag(function: Func): Option[GlobalVar] = {
+  def getFlag(function: Func): Option[GlobalVar] = {
     function.body.flatMap { body =>
       body.entryBlock.terminator match {
         case b: Branch => b.condition match {
@@ -31,7 +31,10 @@ private[chir] object GuardChecks {
     }
   }
 
-  def hasFlag(function: Func): Boolean = flag(function).nonEmpty
+  def flag(function: Func): GlobalVar =
+    getFlag(function).getOrElse(throw new IllegalArgumentException("guard var flag check was not found"))
+
+  def hasFlag(function: Func): Boolean = getFlag(function).nonEmpty
 
   def remove(function: Func): Unit = {
     val pkg = function.ownerPackage
