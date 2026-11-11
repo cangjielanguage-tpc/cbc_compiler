@@ -6,7 +6,7 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_lib import MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
+from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
 
 SUITE = "cj"
 HERE = Path(__file__).resolve().parent
@@ -63,7 +63,7 @@ async def build(test_id, workdir):
         aot_names = []
         for aot_file in sorted(test_copy.glob("*.aot.cj")):
             aot_name = aot_file.name[:-len(".aot.cj")]
-            aot_so = aot_file.with_name(f"lib{aot_name}.so")
+            aot_so = aot_file.with_name(f"lib{aot_name}{DYLIB_EXT}")
             res = await run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io)
             log_io.write(f"\n[aot {aot_name}] exit {res}\n")
             if res != 0:
@@ -74,7 +74,7 @@ async def build(test_id, workdir):
         native_names = []
         for c_file in sorted(test_copy.glob("*.c")):
             native_name = c_file.stem
-            native_so = c_file.with_name(f"lib{native_name}.so")
+            native_so = c_file.with_name(f"lib{native_name}{DYLIB_EXT}")
             res = await run_in_toolchain(
                 ["cc", "-shared", "-fPIC", "-o", str(native_so), str(c_file)], log=log_io)
             log_io.write(f"\n[native {native_name}] exit {res}\n")
@@ -135,7 +135,7 @@ async def run(test_id, workdir):
     if not cbc.is_file():
         raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
-    cmd = f'LD_LIBRARY_PATH="{wdir.parent}:$LD_LIBRARY_PATH" launcher "{wdir}/{name}.cbc"'
+    cmd = f'{DYLIB_PATH_VAR}="{wdir.parent}:${DYLIB_PATH_VAR}" launcher "{wdir}/{name}.cbc"'
     out_io = io.StringIO()
     err_io = io.StringIO()
     res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io)

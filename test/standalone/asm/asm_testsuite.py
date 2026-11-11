@@ -5,7 +5,7 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_lib import MissingArtifacts, TestIdentifier, java_cmd, run_cjc, run_in_toolchain
+from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, java_cmd, run_cjc, run_in_toolchain
 
 SUITE = "asm"
 HERE = Path(__file__).resolve().parent
@@ -34,7 +34,7 @@ async def build(test_id, workdir):
     aot_fail = False
     for aot_file in sorted(glob.glob(str(wdir / "*.aot.cj"))):
         aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
-        res = await run_cjc(aot_file, str(wdir / f"lib{aot_name}.so"), output_type="dylib", log=log_io)
+        res = await run_cjc(aot_file, str(wdir / f"lib{aot_name}{DYLIB_EXT}"), output_type="dylib", log=log_io)
         log_io.write(f"\n[aot {aot_name}] exit {res}\n")
         if res != 0:
             aot_fail = True
@@ -60,7 +60,7 @@ async def run(test_id, workdir):
     if not cbc.is_file():
         raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
-    cmd = f'LD_LIBRARY_PATH="{wdir}:$LD_LIBRARY_PATH" launcher "{wdir}/{name}.cbc"'
+    cmd = f'{DYLIB_PATH_VAR}="{wdir}:${DYLIB_PATH_VAR}" launcher "{wdir}/{name}.cbc"'
     out_io = io.StringIO()
     err_io = io.StringIO()
     res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io)

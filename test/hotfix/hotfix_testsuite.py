@@ -6,7 +6,7 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_lib import MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
+from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
 
 SUITE = "hotfix"
 HERE = Path(__file__).resolve().parent
@@ -30,14 +30,14 @@ def _fail(log_io, wdir):
 
 
 def _build_env(test_copy):
-    # tool.sh re-prepends CANGJIE_STDX_PATH to LD_LIBRARY_PATH, so only the
-    # per-test dylib dir is added here. CBCOPT is a run-time option and must
+    # tool.sh re-prepends CANGJIE_STDX_PATH to the dylib search path, so only
+    # the per-test dylib dir is added here. CBCOPT is a run-time option and must
     # not leak into the build; HOTFIX_GEN_THROW_STUBS is set per invocation.
     env = os.environ.copy()
     env.pop("HOTFIX_GEN_THROW_STUBS", None)
     env.pop("CBCOPT", None)
-    env["LD_LIBRARY_PATH"] = os.pathsep.join(filter(None, [
-        str(test_copy), os.environ.get("LD_LIBRARY_PATH", "")]))
+    env[DYLIB_PATH_VAR] = os.pathsep.join(filter(None, [
+        str(test_copy), os.environ.get(DYLIB_PATH_VAR, "")]))
     return env
 
 
@@ -75,7 +75,7 @@ async def build(test_id, workdir):
         aot_names = []
         for aot_file in sorted(test_copy.glob("*.aot.cj")):
             aot_name = aot_file.name[:-len(".aot.cj")]
-            aot_so = aot_file.with_name(f"lib{aot_name}.so")
+            aot_so = aot_file.with_name(f"lib{aot_name}{DYLIB_EXT}")
             res = await run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io)
             log_io.write(f"\n[aot {aot_name}] exit {res}\n")
             if res != 0:
@@ -86,7 +86,7 @@ async def build(test_id, workdir):
         native_names = []
         for c_file in sorted(test_copy.glob("*.c")):
             native_name = c_file.stem
-            native_so = c_file.with_name(f"lib{native_name}.so")
+            native_so = c_file.with_name(f"lib{native_name}{DYLIB_EXT}")
             res = await run_in_toolchain(
                 ["cc", "-shared", "-fPIC", "-o", str(native_so), str(c_file)], log=log_io)
             log_io.write(f"\n[native {native_name}] exit {res}\n")
@@ -138,7 +138,7 @@ async def build(test_id, workdir):
     if executable.is_file():
         executable.unlink()
 
-    plugin = Path(os.environ["TOOLCHAIN"]) / "tools" / "lib" / "libhotfix-plugin.so"
+    plugin = Path(os.environ["TOOLCHAIN"]) / "tools" / "lib" / f"libhotfix-plugin{DYLIB_EXT}"
     env = _build_env(test_copy)
 
     # 1) Stub build: the plugin replaces patchable function bodies with throw
@@ -221,11 +221,11 @@ async def run(test_id, workdir):
         raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
     test_copy = wdir.parent
-    preload = Path(os.environ["TOOLCHAIN"]) / "tools" / "lib" / "libcbc-preload.so"
+    preload = Path(os.environ["TOOLCHAIN"]) / "tools" / "lib" / f"libcbc-preload{DYLIB_EXT}"
     # The stub binary is run directly (no launcher): the preload library
     # restores in-process interpreter initialization for AOT binaries, and
     # CBCOPT points the CBC runtime at the directory holding the patch.
-    cmd = (f'LD_LIBRARY_PATH="{test_copy}:$LD_LIBRARY_PATH:{wdir}" '
+    cmd = (f'{DYLIB_PATH_VAR}="{test_copy}:${DYLIB_PATH_VAR}:{wdir}" '
            f'CBCOPT="cbc.path={wdir}" '
            f'LD_PRELOAD="{preload}" '
            f'"{wdir}/{name}"')
