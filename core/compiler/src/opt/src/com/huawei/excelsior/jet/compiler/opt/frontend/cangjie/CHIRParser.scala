@@ -1807,6 +1807,36 @@ trait CHIRParser
               case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_FLOOR)(x)
             }
 
+          case CHIR.Intrinsic.Kind.Log10 =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG10)(x)
+            }
+
+          case CHIR.Intrinsic.Kind.Log2 =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG2)(x)
+            }
+
+          case CHIR.Intrinsic.Kind.Exp =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_EXP)(x)
+            }
+
+          case CHIR.Intrinsic.Kind.Exp2 =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_EXP2)(x)
+            }
+
+          case CHIR.Intrinsic.Kind.Trunc =>
+            e.args.map(state.apply) match {
+              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_TRUNC)(x)
+            }
+
+          case CHIR.Intrinsic.Kind.PowI =>
+            e.args.map(state.apply) match {
+              case Seq(x, n) => state(e) = PowI(x, n)
+            }
+
           case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>
             e.args.map(state.apply) match {
               case Seq(x) =>

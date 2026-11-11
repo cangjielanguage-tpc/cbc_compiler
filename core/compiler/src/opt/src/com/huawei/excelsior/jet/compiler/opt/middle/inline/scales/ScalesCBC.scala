@@ -75,7 +75,7 @@ trait ScalesCBC extends Scales { self: Universe =>
       case _: If => ifWeight
       case n: Switch => n.cases.size * (intCmpWeight + ifWeight)
 
-      case _: Neg | _: Add | _: Sub | _: Mul | _: Pow | _: And | _: Or | _: Xor => instrSize
+      case _: Neg | _: Add | _: Sub | _: Mul | _: Pow | _: PowI | _: And | _: Or | _: Xor => instrSize
       case _: Shift => instrSize
       case _: MulH | _: UMulH => 0 // TODO: update after real implementation
       case IRem() | URem() => instrSize
@@ -144,7 +144,8 @@ trait ScalesCBC extends Scales { self: Universe =>
           case D_ABS | F_ABS | D_SQRT | F_SQRT | F_POW => instrSize
 
           case D_SIN | D_COS | D_TAN | D_ATAN | D_LOG | D_RINT | D_ATAN2 | D_REM1 |
-               D_REM | F_REM | D_ASIN | D_ACOS | D_EXP | D_POW | D_CEIL | D_FLOOR  => directCallWeight(n.kind.argsCount)
+               D_REM | F_REM | D_ASIN | D_ACOS | D_EXP | D_POW | D_CEIL | D_FLOOR |
+               D_LOG10 | D_LOG2 | D_EXP2 | D_TRUNC  => directCallWeight(n.kind.argsCount)
         }
 
       case n: MemAtomic =>

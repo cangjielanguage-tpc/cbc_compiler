@@ -1222,6 +1222,7 @@ private object InstructionParser {
   instr("fmul.32") { (a, s) => a.fmul(Width.W32, s.freg, s.freg, s.freg) }
   instr("fdiv.32") { (a, s) => a.fdiv(Width.W32, s.freg, s.freg, s.freg) }
   instr("fpow.32") { (a, s) => a.fpow(Width.W32, s.freg, s.freg, s.freg) }
+  instr("fpowi.32") { (a, s) => a.fpowi(Width.W32, s.freg, s.freg, s.ireg) }
 
   // 64-bit float arithmetic
   instr("fadd.64") { (a, s) => a.fadd(Width.W64, s.freg, s.freg, s.freg) }
@@ -1229,6 +1230,7 @@ private object InstructionParser {
   instr("fmul.64") { (a, s) => a.fmul(Width.W64, s.freg, s.freg, s.freg) }
   instr("fdiv.64") { (a, s) => a.fdiv(Width.W64, s.freg, s.freg, s.freg) }
   instr("fpow.64") { (a, s) => a.fpow(Width.W64, s.freg, s.freg, s.freg) }
+  instr("fpowi.64") { (a, s) => a.fpowi(Width.W64, s.freg, s.freg, s.ireg) }
 
   // float unary math
   instr("fsin.32")   { (a, s) => a.fmathunary(FloatMathOperaions.SIN, Width.W32, s.freg, s.freg) }
@@ -1242,6 +1244,18 @@ private object InstructionParser {
   instr("flog.64")   { (a, s) => a.fmathunary(FloatMathOperaions.LOG, Width.W64, s.freg, s.freg) }
   instr("fceil.64")  { (a, s) => a.fmathunary(FloatMathOperaions.CEIL, Width.W64, s.freg, s.freg) }
   instr("ffloor.64") { (a, s) => a.fmathunary(FloatMathOperaions.FLOOR, Width.W64, s.freg, s.freg) }
+
+  instr("flog10.32") { (a, s) => a.fmathunary(FloatMathOperaions.LOG10, Width.W32, s.freg, s.freg) }
+  instr("flog2.32")  { (a, s) => a.fmathunary(FloatMathOperaions.LOG2, Width.W32, s.freg, s.freg) }
+  instr("fexp.32")   { (a, s) => a.fmathunary(FloatMathOperaions.EXP, Width.W32, s.freg, s.freg) }
+  instr("fexp2.32")  { (a, s) => a.fmathunary(FloatMathOperaions.EXP2, Width.W32, s.freg, s.freg) }
+  instr("ftrunc.32") { (a, s) => a.fmathunary(FloatMathOperaions.TRUNC, Width.W32, s.freg, s.freg) }
+
+  instr("flog10.64") { (a, s) => a.fmathunary(FloatMathOperaions.LOG10, Width.W64, s.freg, s.freg) }
+  instr("flog2.64")  { (a, s) => a.fmathunary(FloatMathOperaions.LOG2, Width.W64, s.freg, s.freg) }
+  instr("fexp.64")   { (a, s) => a.fmathunary(FloatMathOperaions.EXP, Width.W64, s.freg, s.freg) }
+  instr("fexp2.64")  { (a, s) => a.fmathunary(FloatMathOperaions.EXP2, Width.W64, s.freg, s.freg) }
+  instr("ftrunc.64") { (a, s) => a.fmathunary(FloatMathOperaions.TRUNC, Width.W64, s.freg, s.freg) }
 
   // float unary
   instr("fneg.32")  { (a, s) => a.fneg(s.freg, s.freg, Width.W32) }

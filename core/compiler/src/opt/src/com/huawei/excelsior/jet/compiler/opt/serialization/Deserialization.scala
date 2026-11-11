@@ -690,6 +690,12 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
         case UMulH.Proto =>
           UMulH.proto(read.tpe())
 
+        case PowI.Proto =>
+          PowI.proto(read.tpe())
+
+        case Pow.Proto =>
+          Pow.proto(read.tpe())
+
         case CAS.Proto =>
           CAS(read.asmType())
 

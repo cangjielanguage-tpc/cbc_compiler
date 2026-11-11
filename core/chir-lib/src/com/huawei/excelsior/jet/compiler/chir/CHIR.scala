@@ -449,6 +449,12 @@ object CHIR {
       case Log
       case Ceil
       case Floor
+      case Log10
+      case Log2
+      case Exp
+      case Exp2
+      case Trunc
+      case PowI
       case GetTypeForTypeParameter
       case BlackBox
     }

@@ -141,6 +141,12 @@ class IntrinsicImpl(in: IntrinsicBase)(implicit provider: CHIRItemProvider) exte
     case IntrinsicKind.LOG => Intrinsic.Kind.Log
     case IntrinsicKind.CEIL => Intrinsic.Kind.Ceil
     case IntrinsicKind.FLOOR => Intrinsic.Kind.Floor
+    case IntrinsicKind.LOG10 => Intrinsic.Kind.Log10
+    case IntrinsicKind.LOG2 => Intrinsic.Kind.Log2
+    case IntrinsicKind.EXP => Intrinsic.Kind.Exp
+    case IntrinsicKind.EXP2 => Intrinsic.Kind.Exp2
+    case IntrinsicKind.TRUNC => Intrinsic.Kind.Trunc
+    case IntrinsicKind.POWI => Intrinsic.Kind.PowI
     case IntrinsicKind.BLACK_BOX => Intrinsic.Kind.BlackBox
     case IntrinsicKind.GET_TYPE_FOR_TYPE_PARAMETER => Intrinsic.Kind.GetTypeForTypeParameter
     case k => notImplemented(s"intrinsic ${IntrinsicKind.name(k)}")

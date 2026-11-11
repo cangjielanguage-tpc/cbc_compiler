@@ -621,7 +621,19 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case (D_LOG, FReg(dst), Seq(FReg(src))) => asm.fmathunary(LOG, width, dst, src)
         case (D_CEIL, FReg(dst), Seq(FReg(src))) => asm.fmathunary(CEIL, width, dst, src)
         case (D_FLOOR, FReg(dst), Seq(FReg(src))) => asm.fmathunary(FLOOR, width, dst, src)
+        case (D_LOG10, FReg(dst), Seq(FReg(src))) => asm.fmathunary(LOG10, width, dst, src)
+        case (D_LOG2, FReg(dst), Seq(FReg(src))) => asm.fmathunary(LOG2, width, dst, src)
+        case (D_EXP, FReg(dst), Seq(FReg(src))) => asm.fmathunary(EXP, width, dst, src)
+        case (D_EXP2, FReg(dst), Seq(FReg(src))) => asm.fmathunary(EXP2, width, dst, src)
+        case (D_TRUNC, FReg(dst), Seq(FReg(src))) => asm.fmathunary(TRUNC, width, dst, src)
         case (F_POW | D_POW,   FReg(dst), Seq(FReg(l), FReg(r))) => asm.fpow(width, dst, l, r)
+      }
+    }
+
+    private def genPowI(x: PowI): Unit = {
+      val width = widthOf(x)
+      (x, x.base, x.exp) match {
+        case (FReg(dst), FReg(b), IReg(e)) => asm.fpowi(width, dst, b, e)
       }
     }
 
@@ -1414,6 +1426,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: DivisorCheck               => genDivisorCheck(x)
         case x: GCPoint                    => genGCPoint(x)
         case x: MathIntrinsic              => genMathIntrinsic(x)
+        case x: PowI                       => genPowI(x)
         case x: LoadMemory                 => genLoadMemory(x)
         case x: StoreMemory                => genStoreMemory(x)
         case x: CopyStructure              => genCopyStructure(x)
