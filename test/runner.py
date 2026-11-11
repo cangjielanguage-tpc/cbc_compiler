@@ -14,7 +14,7 @@ from runner_lib import MissingArtifacts, TestIdentifier
 
 ROOT = Path(__file__).resolve().parent
 EXCLUDES_CFG = ROOT / "excludes.cfg"
-CONTRACT = ("discover", "build", "run", "run_command")
+CONTRACT = ("discover", "build", "run")
 
 
 def load_suites():
@@ -71,17 +71,18 @@ def excluded(test_id, patterns):
 def autodetect_parallelism():
     try:
         limit = len(os.sched_getaffinity(0))
-    except OSError:
+    except (AttributeError, OSError):
         limit = os.cpu_count() or 1
     return max(1, limit // 4)
 
 
-def write_run_sh(tdir, toolchain, cmd):
+def write_run_sh(tdir, test_id, toolchain):
     run_sh = tdir / "run.sh"
     run_sh.write_text(
         "#!/bin/bash\n"
-        f"export TOOLCHAIN={shlex.quote(toolchain)}\n"
-        f"exec bash {shlex.quote(str(ROOT / 'tool.sh'))} bash -c {shlex.quote(cmd)}\n"
+        f"cd {shlex.quote(str(ROOT))} || exit 1\n"
+        f"exec python3 runner.py test --test {shlex.quote(str(test_id))} --skip-build"
+        f" --cangjie-home {shlex.quote(str(Path(toolchain).absolute()))}\n"
     )
     run_sh.chmod(0o755)
 
@@ -236,8 +237,7 @@ async def process_testcase(test_id, discovered, workdir, args, toolchain, result
             return
     permit.set("running", test_id)
     rc = await mod.run(test_id, str(tdir))
-    cmd = await mod.run_command(test_id, str(tdir))
-    write_run_sh(tdir, toolchain, cmd)
+    write_run_sh(tdir, test_id, toolchain)
     ok = rc == 0
     results.append((test_id, "passed" if ok else "run failed"))
     reporter.log_result(test_id, ok)
@@ -331,8 +331,7 @@ async def run_tests(args):
             dump_test_output(workdir / test_id.path, reason)
         if args.describe:
             tdir = workdir / test_id.path
-            cmd = await discovered[test_id].run_command(test_id, str(tdir))
-            print(f"  run: bash {ROOT / 'tool.sh'} bash -c {shlex.quote(cmd)}")
+            print(f"  run: {tdir / 'run.sh'}")
             print(f"  logs: {tdir / 'run.log'}, {tdir / 'run.err'}, {tdir / 'diff.log'}")
 
     failed_ids = [test_id for test_id, _ in failed]
