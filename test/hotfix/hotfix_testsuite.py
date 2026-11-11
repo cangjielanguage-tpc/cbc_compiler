@@ -5,6 +5,7 @@ import io
 import os
 import shutil
 from pathlib import Path
+from typing import Dict
 
 from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, run_cjc, run_in_toolchain
 
@@ -12,6 +13,7 @@ SUITE = "hotfix"
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent / "standalone" / "cj"
 _copy_locks = {}
+timings: Dict[str, float] = {}
 
 
 def _copy_lock(key):
@@ -43,7 +45,7 @@ def _build_env(test_copy):
 
 async def _chir_dis(chir, wdir, env, log_io):
     res = await run_in_toolchain(["chir-dis", str(chir)], cwd=str(wdir), env=env,
-                                 log=log_io, stderr_log=log_io)
+                                 log=log_io, stderr_log=log_io, timings=timings)
     if res != 0:
         log_io.write(f"CHIR disassembly failed ({chir}): {res}\n")
     return res
@@ -76,7 +78,8 @@ async def build(test_id, workdir):
         for aot_file in sorted(test_copy.glob("*.aot.cj")):
             aot_name = aot_file.name[:-len(".aot.cj")]
             aot_so = aot_file.with_name(f"lib{aot_name}{DYLIB_EXT}")
-            res = await run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io)
+            res = await run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io,
+                                timings=timings)
             log_io.write(f"\n[aot {aot_name}] exit {res}\n")
             if res != 0:
                 return _fail(log_io, wdir)
@@ -88,7 +91,8 @@ async def build(test_id, workdir):
             native_name = c_file.stem
             native_so = c_file.with_name(f"lib{native_name}{DYLIB_EXT}")
             res = await run_in_toolchain(
-                ["cc", "-shared", "-fPIC", "-o", str(native_so), str(c_file)], log=log_io)
+                ["cc", "-shared", "-fPIC", "-o", str(native_so), str(c_file)],
+                log=log_io, timings=timings)
             log_io.write(f"\n[native {native_name}] exit {res}\n")
             if res != 0:
                 return _fail(log_io, wdir)
@@ -111,7 +115,7 @@ async def build(test_id, workdir):
             res = await run_cjc(str(int_file), str(temp_dir / pkg), output_type="staticlib",
                                  additional_args=["--save-temps", str(temp_dir)]
                                  + _import_flags(import_paths),
-                                 log=log_io)
+                                 log=log_io, timings=timings)
             log_io.write(f"\n[int {pkg}] exit {res}\n")
             if res != 0:
                 return _fail(log_io, wdir)
@@ -148,7 +152,7 @@ async def build(test_id, workdir):
     res = await run_cjc(str(test_copy / f"{name}.cj"), str(executable),
                          additional_args=common_args
                          + ["--plugin", str(plugin), "--save-temps", str(wdir)],
-                         cwd=str(wdir), env=stub_env, log=log_io)
+                         cwd=str(wdir), env=stub_env, log=log_io, timings=timings)
     log_io.write(f"\n[cjc stub] exit {res}\n")
     if res != 0:
         return _fail(log_io, wdir)
@@ -167,7 +171,7 @@ async def build(test_id, workdir):
     # 2) Run the stub binary: every patchable function must throw.
     stub_log = io.StringIO()
     res = await run_in_toolchain([str(executable)], cwd=str(wdir), env=env,
-                          log=stub_log, stderr_log=stub_log)
+                          log=stub_log, stderr_log=stub_log, timings=timings, tag="stub-run")
     (wdir / f"{name}.stub.actual").write_text(stub_log.getvalue())
     if res != 1 or "Exception: should not reach here" not in stub_log.getvalue().splitlines():
         log_io.write(f"Expected throw-stub exception with exit status 1, got {res}:\n{stub_log.getvalue()}")
@@ -177,7 +181,7 @@ async def build(test_id, workdir):
     patched_chir = wdir / f"{name}_patched.chir"
     res = await run_cjc(str(test_copy / f"{name}.cj"), str(patched_chir),
                          additional_args=common_args + ["--emit-chir", "--plugin", str(plugin)],
-                         cwd=str(wdir), env=env, log=log_io)
+                         cwd=str(wdir), env=env, log=log_io, timings=timings)
     log_io.write(f"\n[cjc patched] exit {res}\n")
     if res != 0:
         return _fail(log_io, wdir)
@@ -189,7 +193,7 @@ async def build(test_id, workdir):
     patch_name = f"diff{name}_patched"
     patch_chir = wdir / f"{patch_name}.chir"
     res = await run_in_toolchain(["patch-gen", str(chir), str(patched_chir)],
-                          cwd=str(wdir), env=env, log=log_io, stderr_log=log_io)
+                          cwd=str(wdir), env=env, log=log_io, stderr_log=log_io, timings=timings)
     log_io.write(f"\n[patch-gen] exit {res}\n")
     if res != 0:
         return _fail(log_io, wdir)
@@ -205,7 +209,8 @@ async def build(test_id, workdir):
                 f"+IgnoreSourceFileNameForCbc {jc_options}"]
                + aot_deps + foreign_libs + int_chir_files)
     cbc_err = io.StringIO()
-    res = await run_in_toolchain(cbc_cmd, cwd=str(wdir), log=log_io, stderr_log=cbc_err)
+    res = await run_in_toolchain(cbc_cmd, cwd=str(wdir), log=log_io, stderr_log=cbc_err,
+                                 timings=timings)
     log_io.write(f"\n[cbc] exit {res}\n")
     if cbc_err.getvalue().strip():
         log_io.write(cbc_err.getvalue())
@@ -231,7 +236,8 @@ async def run(test_id, workdir):
            f'"{wdir}/{name}"')
     out_io = io.StringIO()
     err_io = io.StringIO()
-    res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io)
+    res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io,
+                                 timings=timings, tag="run")
     stdout_txt = out_io.getvalue()
     err_txt = err_io.getvalue()
 
