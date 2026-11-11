@@ -19,10 +19,8 @@ object CHIRLoader {
   private val resolvers = mutable.HashMap.empty[String, scala.ref.Reference[CHIRResolver]]
 }
 
-/** The cbc engine helper package chir (cbcengine-helper.chir). It is appended
-  * to the compilation inputs of every image: the interpreted runtime resolves
-  * implicit exception throwing and spawn support from the helper package
-  * compiled into the image. */
+/** The cbc engine helper package chir (cbcengine-helper.chir). It is always appended
+  * to the compilation scope. */
 object EngineHelperChir {
   val sourceName: String = "cbcengine-helper.chir"
 
