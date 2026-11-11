@@ -965,6 +965,12 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
 
         case ZeroValueGeneric.Proto =>
           ZeroValueGeneric.proto()
+
+        case VectorCompare32.Proto =>
+          VectorCompare32.proto()
+
+        case VectorIndexByte32.Proto =>
+          VectorIndexByte32.proto()
       }
     }
 

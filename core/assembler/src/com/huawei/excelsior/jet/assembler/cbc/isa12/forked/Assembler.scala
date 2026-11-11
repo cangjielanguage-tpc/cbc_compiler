@@ -758,6 +758,23 @@ trait ForkedAssembler {
       .sleb(scut4(offset))
   }
 
+  def vcmp32(dst: IR, arr1: IR, off1: IR, arr2: IR, off2: IR): Unit = instr {
+    analyzer.prim(dst)
+    stream
+      .opc8(Opcode.Vcmp32)
+      .bits(_.w4(dst).w4(analyzer.useRef(arr1)))
+      .bits(_.w4(analyzer.usePrim(off1)).w4(analyzer.useRef(arr2)))
+      .bits(_.w4(analyzer.usePrim(off2)).w4(0))
+  }
+
+  def vidx32(dst: IR, arr: IR, off: IR, byte: IR): Unit = instr {
+    analyzer.prim(dst)
+    stream
+      .opc8(Opcode.Vidx32)
+      .bits(_.w4(dst).w4(analyzer.useRef(arr)))
+      .bits(_.w4(analyzer.usePrim(off)).w4(analyzer.usePrim(byte)))
+  }
+
   def jmp(target: Label): Unit = doJmp(target)
   def bcc(op: BranchOp, lhs: IR, rhs: IR, width: AsmWidth, target: Label): Unit = doBcc(op, lhs, rhs, width, target)
   def bcc(op: BranchOp, lhs: FR, rhs: FR, width: AsmWidth, target: Label): Unit = doBcc(op, lhs, rhs, width, target)
@@ -1551,6 +1568,8 @@ object Assembler {
     case CopyFromTypeSlotGeneric
     case FPowi32
     case FPowi64
+    case Vcmp32
+    case Vidx32
   }
 
   enum RegSymGroup extends Ordinal {

@@ -237,6 +237,57 @@ trait SimpleNodes { self: Universe with Nodes =>
     def unapply(n: PowI) = Some((n.base, n.exp))
   }
 
+  /** Compares 32 bytes at (arr1, off1) with 32 bytes at (arr2, off2).
+    * Byte offsets are relative to the raw array data start.
+    * The result is the index of the first differing byte (0..31), or 32 when
+    * all compared bytes are equal.
+    */
+  class VectorCompare32 private (proto: VectorCompare32.Proto)
+    extends FloatingNodeWithFixedArgs(proto) with StructurallyUnique {
+    def arr1 = arg(0)
+    def off1 = arg(1)
+    def arr2 = arg(2)
+    def off2 = arg(3)
+  }
+
+  object VectorCompare32 {
+    case class Proto private[VectorCompare32]()
+      extends FixedArgs[VectorCompare32](TRefType, LongType, TRefType, LongType)(LongType) {
+      def newInstance() = new VectorCompare32(this)
+    }
+
+    def proto() = Prototype.intern(Proto())
+
+    def apply(arr1: Node, off1: Node, arr2: Node, off2: Node): Node = proto()(arr1, off1, arr2, off2)
+
+    def unapply(n: VectorCompare32): Option[(Node, Node, Node, Node)] = Some((n.arr1, n.off1, n.arr2, n.off2))
+  }
+
+  /** Scans 32 bytes at (arr, off) searching for the byte value `target`.
+    * Byte offset is relative to the raw array data start.
+    * The result is the index of the first equal byte (0..31), or 32 when
+    * none of the scanned bytes matches.
+    */
+  class VectorIndexByte32 private (proto: VectorIndexByte32.Proto)
+    extends FloatingNodeWithFixedArgs(proto) with StructurallyUnique {
+    def arr = arg(0)
+    def off = arg(1)
+    def target = arg(2)
+  }
+
+  object VectorIndexByte32 {
+    case class Proto private[VectorIndexByte32]()
+      extends FixedArgs[VectorIndexByte32](TRefType, LongType, IntType)(LongType) {
+      def newInstance() = new VectorIndexByte32(this)
+    }
+
+    def proto() = Prototype.intern(Proto())
+
+    def apply(arr: Node, off: Node, target: Node): Node = proto()(arr, off, target)
+
+    def unapply(n: VectorIndexByte32): Option[(Node, Node, Node)] = Some((n.arr, n.off, n.target))
+  }
+
   class CheckedUnary(proto: CheckedUnary.Proto) extends NodeWithFixedArgs(proto) with SpinalNode with CanThrow with ProducesValue {
     def asmType = proto.asmType
     def kind = proto.kind

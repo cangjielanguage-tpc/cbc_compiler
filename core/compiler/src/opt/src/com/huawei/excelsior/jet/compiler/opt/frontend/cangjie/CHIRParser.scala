@@ -1905,6 +1905,15 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.CStringInit =>
             state(e) = state(e.args.head)
 
+          // String optimizer: 32-byte block compare/search over raw arrays.
+          case CHIR.Intrinsic.Kind.VectorCompare32 =>
+            val Seq(arr1, off1, arr2, off2) = e.args
+            state(e) = VectorCompare32(state(arr1), state(off1), state(arr2), state(off2))
+
+          case CHIR.Intrinsic.Kind.VectorIndexByte32 =>
+            val Seq(arr, off, target) = e.args
+            state(e) = VectorIndexByte32(state(arr), state(off), state(target))
+
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {
               case g: CHIR.GlobalVar =>

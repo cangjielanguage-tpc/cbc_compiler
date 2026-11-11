@@ -69,7 +69,8 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
       | LoadTypeInfoGeneric | GenericTypeArg
       | GetFieldSeqRef | GetStaticFieldSeqRef
       | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq
-      | CangjieReferenceNode) => true
+      | CangjieReferenceNode
+      | VectorCompare32 | VectorIndexByte32) => true
 
     case x: BitcodeDeferred.FieldOp => x.hasObj
 
