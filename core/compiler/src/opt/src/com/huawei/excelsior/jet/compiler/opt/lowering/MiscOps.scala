@@ -1050,12 +1050,6 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
   private [lowering] final def lowerMathIntrinsic(node: MathIntrinsic): Node =
     DirectCall(procForMathIntrinsic(node).get)(node.argsSeq: _*)
 
-  private [lowering] def procForPowI(node: PowI): Option[Method] =
-    Some(env.getRTSProc(RTSProc.JR_pow))
-
-  private [lowering] final def lowerPowI(node: PowI): Node =
-    DirectCall(procForPowI(node).get)(node.base, ValueConvert(I64, F64)(node.exp))
-
   private [lowering] def procForMemAtomic(node: MemAtomic): Option[Method] =
     Some(node.rtMethod())
 

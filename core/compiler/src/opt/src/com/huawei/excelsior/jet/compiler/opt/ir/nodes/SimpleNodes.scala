@@ -216,6 +216,25 @@ trait SimpleNodes { self: Universe with Nodes =>
     object SecondArg extends EdgeMatcher[Pow](1)
   }
 
+  /////////////////////////////////////////
+  // PowI node.
+
+  class PowI private (proto: PowI.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def base = arg(0)
+    def exp = arg(1)
+  }
+
+  object PowI {
+    case class Proto private[PowI](baseType: Type) extends FixedArgs[PowI](baseType, ValueType(AsmType.I64))(baseType) {
+      assert(baseType.isFloatingPointType)
+      def newInstance() = new PowI(this)
+    }
+
+    def proto(tpe: Type) = Prototype.intern(Proto(tpe))
+
+    def unapply(n: PowI) = Some((n.base, n.exp))
+  }
+
   class CheckedUnary(proto: CheckedUnary.Proto) extends NodeWithFixedArgs(proto) with SpinalNode with CanThrow with ProducesValue {
     def asmType = proto.asmType
     def kind = proto.kind
@@ -1722,19 +1741,6 @@ trait SimpleNodes { self: Universe with Nodes =>
 
     def apply(kind: Java.Lang.MathIntrinsic): Proto = Proto(kind)
     def unapply(node: MathIntrinsic) = Some(node.kind)
-  }
-
-  /////////////////////////////////////////
-  // PowI node.
-
-  class PowI private extends FloatingNodeWithFixedArgs(PowI) {
-    def base = arg(0)
-    def exp = arg(1)
-  }
-
-  object PowI extends FixedArgs[PowI](ValueType(AsmType.F64), ValueType(AsmType.I64))(ValueType(AsmType.F64)) {
-    def newInstance() = new PowI()
-    def unapply(n: PowI) = Some((n.base, n.exp))
   }
 
   /////////////////////////////////////////

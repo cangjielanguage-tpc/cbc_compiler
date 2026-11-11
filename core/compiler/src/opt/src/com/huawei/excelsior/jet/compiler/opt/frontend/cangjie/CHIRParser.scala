@@ -1834,7 +1834,7 @@ trait CHIRParser
 
           case CHIR.Intrinsic.Kind.PowI =>
             e.args.map(state.apply) match {
-              case Seq(x, n) => state(e) = PowI(x, n)
+              case Seq(x, n) => state(e) = PowI.proto(x.tpe)(x, n)
             }
 
           case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>

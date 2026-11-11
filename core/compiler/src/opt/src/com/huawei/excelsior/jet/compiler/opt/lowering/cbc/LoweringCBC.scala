@@ -108,8 +108,6 @@ trait LoweringCBC extends LoweringArch64 with PreLoweringCBC { self: Universe wi
     }
   }
 
-  override private [lowering] def procForPowI(node: PowI): Option[symlevel.Method] = None
-
   override def copyRecord(t: SignatureType, dst: Node, src: Node): Unit = copyRecordByFields(t, dst, src)
 
   override def decomposeNode(node: Node): Node = node match {
