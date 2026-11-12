@@ -89,6 +89,11 @@ final class EnumCtorImpl(e: EnumCtorInfoT)(using provider: CHIRItemProvider) ext
 }
 
 final class FuncSigImpl(f: FuncSigInfoT)(using provider: CHIRItemProvider) extends CHIR.FuncSig {
+  final def equalTo(that: CHIR.FuncSig): Boolean = that match {
+    case _: CHIR.Func | _: CHIR.VMethod => false
+    case _ => this.name == that.name && this.tpe == that.tpe && this.genericTypeParams == that.genericTypeParams
+  }
+
   def name: String = f.getFuncName
   def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](f.getFuncType).get
   def genericTypeParams: Seq[CHIR.Type] = f.getGenericTypeParams.toTypeSeq[CHIR.Type]
