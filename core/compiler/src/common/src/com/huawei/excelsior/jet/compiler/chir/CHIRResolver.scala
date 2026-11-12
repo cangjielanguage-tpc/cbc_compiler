@@ -15,12 +15,13 @@ import com.huawei.excelsior.jet.compiler.chir.EnumKind.ZeroSized
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.*
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.LocalTypeVariable
+import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.compiler.symlevel.{GenericInfo, MethodSignature, SignatureType, ClassType as SymClassType, Type as SymType}
 import com.huawei.excelsior.jet.compiler.types.Approximation.CC
 import com.huawei.excelsior.jet.compiler.types.CompiledType
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
-import com.huawei.excelsior.jet.util.ScalaCollections
+import com.huawei.excelsior.jet.util.{Closure, ScalaCollections}
 
 import scala.PartialFunction.{cond, condOpt}
 import scala.annotation.tailrec
@@ -515,12 +516,52 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   }
 
   def subType(x: SignatureType, y: SignatureType): Boolean = {
-    x == y || (!x.isInstanceOf[SignatureType.Box] && !y.isInstanceOf[SignatureType.Box] && {
-      // TODO: traverse extensions
-      (CompiledType(x), CompiledType(y)) match {
-        case (x: ReferenceType, y: ReferenceType) => x.compare(y) == CC.Less
-        case _ => false
-      }
-    })
+    x == y || (!x.isInstanceOf[SignatureType.Box] && !y.isInstanceOf[SignatureType.Box] && collectSuperTypes(x).contains(y))
+  }
+
+  private lazy val extensions: collection.Map[SignatureType, Seq[CHIR.ExtendDef]] = {
+    val cache = mutable.HashMap.empty[SignatureType, Seq[CHIR.ExtendDef]]
+
+    pkg.typeDefs.foreach {
+      case d: CHIR.ExtendDef =>
+        val key = typeSig(d.tpe).uninstantiated
+        val exts = cache.getOrElse(key, Seq.empty)
+        cache(key) = d +: exts
+      case _ =>
+    }
+
+    cache
+  }
+
+  def extensionsOf(t: SignatureType): Seq[CHIR.ExtendDef] = {
+    extensions.getOrElse(t.uninstantiated, Seq.empty)
+  }
+
+  def extendingInterfaces(t: SignatureType): Seq[SignatureType] = {
+    for {
+      ext <- extensionsOf(t)
+      (cparams, lparams) <- typeSig(ext.tpe).matchInstantiated(t).toSeq
+      interf <- ext.implementedInterfaces.map(typeSig).map(_.instantiate(cparams, lparams))
+    } yield interf
+  }
+
+  def collectSuperTypes(t: SignatureType): collection.Set[SignatureType] = {
+    def genericParams(x: SignatureType): Seq[SignatureType] = SignatureType.CangjieEnumWrapper.skip(x) match {
+      case x: SignatureType.InstantiatedType => x.instantiatedTypeParameters
+      case x: SignatureType.CangjieEnum => x.params
+      case _ => Seq.empty
+    }
+
+    def refineSuperTypes(x: SignatureType): Iterator[SignatureType] = {
+      val cparams = genericParams(x)
+      val lparams = Seq.empty
+
+      val refClass = asClassType(x)
+      Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
+        refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams)) ++
+        extendingInterfaces(x).iterator
+    }
+
+    Closure(t)(refineSuperTypes)
   }
 }

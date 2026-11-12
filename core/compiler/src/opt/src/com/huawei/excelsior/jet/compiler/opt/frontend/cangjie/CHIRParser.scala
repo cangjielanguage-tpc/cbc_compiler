@@ -1105,16 +1105,7 @@ trait CHIRParser
             case _ => SignatureType.fromSymType(declClass)
           }
 
-          def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
-            val cparams = genericParams(refType)
-            val lparams = Seq.empty
-
-            val refClass = asClassType(refType)
-            Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
-              refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
-          }
-
-          val refType = (Iterator(declType) ++ refineSuperTypes(declType)).find(t => asClassType(t) == declClass).get
+          val refType = (Iterator(declType) ++ resolver.collectSuperTypes(declType)).find(t => asClassType(t) == declClass).get
 
           val name = resolver.symName(func)
           val _target = calcMethodRef(declClass, refType, name, func)
