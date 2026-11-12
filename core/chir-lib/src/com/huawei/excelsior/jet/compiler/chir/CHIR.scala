@@ -1,26 +1,24 @@
 package com.huawei.excelsior.jet.compiler.chir
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path, Paths}
 
-/** CHIR read and editing interfaces. Loaded packages use generated mutable
-  * object-API tables as their single backing representation. Existing read
-  * signatures remain unchanged; ownership-aware edits maintain graph invariants.
+/** Schema-independent read interfaces. Mutation is provided separately by
+  * EditableCHIR, sharing the same backing model and node views.
   */
 object CHIR {
 
   val defaultVersion = CHIRConfig.defaultVersion
 
-  def newPackage(source: String, version: Int): Package = AugmentedPackage(CHIRConfig.newPackage(source, version))
+  def newPackage(source: String, version: Int): Package = AugmentedPackage(read(Paths.get(source), version))
 
   def newIntrinsicsPackage: Package = new IntrinsicsPackage
 
   /** Load the serialized package itself, without compiler-generated overlays. */
   def read(input: Path, version: Int = defaultVersion): Package =
-    CHIRConfig.newPackage(input.toString, version)
+    fromBytes(Files.readAllBytes(input), version)
 
-  trait PackageOwned {
-    def ownerPackage: Package
-  }
+  def fromBytes(bytes: Array[Byte], version: Int = defaultVersion): Package =
+    CHIRConfig.newPackage(bytes, version)
 
   trait Package {
     def name: String
@@ -31,32 +29,6 @@ object CHIR {
     def packageInitLiteralFunc: Func
     def getFunc(identifier: String): Option[Func]
     def getDef(identifier: String): Option[CustomTypeDef]
-
-    /** Create and register a goto expression in this package. */
-    def newGoto(destination: Block, debugLoc: Option[DebugLocation] = None): Goto
-
-    /** Clean up unreachable blocks, validate, then save the complete schema.
-      * Preserve table IDs, metadata and the input file-identifier convention.
-      * Reject invalid graphs before replacing an existing output file.
-      */
-    def write(output: Path): Unit
-
-    /** Schema-independent operations used by IR transformations. */
-    def expressions(function: Func): Seq[Expression]
-    def isInternal(function: Func): Boolean
-    def insert(block: Block, operation: Operation, before: Option[Expression] = None): LocalVar
-    def replace(expression: Expression, operation: Operation): Unit
-    def setOptimized(): Unit
-  }
-
-  /** The small set of expressions needed by package transformations. */
-  enum Operation {
-    case Allocate(tpe: Type)
-    case StaticCast(value: Value, tpe: Type)
-    case BooleanConstant(value: Boolean)
-    case Tuple(values: Seq[Value], tpe: Type)
-    case Store(value: Value, location: Value)
-    case Apply(function: Func, args: Seq[Value])
   }
 
   trait HasAnnotations {
@@ -89,13 +61,12 @@ object CHIR {
 
   trait HasAttributes {
     def attributes: Seq[Attribute]
-    def replaceAttributes(attributes: Seq[Attribute]): Unit
   }
 
   trait Value {
   }
 
-  trait Func extends Value with PackageOwned with FuncSig with HasDeclaringDef with HasAnnotations with HasAttributes {
+  trait Func extends Value with FuncSig with HasDeclaringDef with HasAnnotations with HasAttributes {
     def tpe: FuncType
     def id: Long
     def identifier: String
@@ -111,33 +82,6 @@ object CHIR {
 
     override def equalityKey: Product =
       (classOf[Func], super.equalityKey, srcCodeIdentifier, packageName, kind, attributes)
-
-    /** Move this function's body to another function in the same package,
-      * whether either function is a member or not. Equal parameter counts map
-      * positionally, including receivers. An extra leading destination parameter
-      * is left unused; a leading source parameter may be omitted only if unused.
-      * Mapped parameter types, return types, generic bounds and calling conventions
-      * must match after generic substitution. Preserve the destination signature
-      * and leave the source as a declaration. Composite destination types must
-      * exist. Patch constructor transfers adapt the return allocation and receiver.
-      * Nested groups, lambdas and generic instances are currently unsupported;
-      * package initializer bodies cannot move.
-      * Local transfer checks run before editing. Full cleanup and model
-      * validation run before writing; nothing is serialized here.
-      */
-    def moveBody(destination: Func): Unit
-
-    /** Remove the body and return local, leaving the signature and attributes intact.
-      * Calling this on a declaration has no effect. Nothing is serialized here.
-      */
-    def removeBody(): Unit
-
-    // APIs currently called only by tests in this repository (excluding forwarders).
-    /** Replace body and return local together. Reject foreign/unregistered
-      * nodes and bodies still owned by another function. Use moveBody
-      * for transfers that require parameter and generic-type substitution.
-      */
-    def replaceBody(body: Option[BlockGroup], retVal: Option[LocalVar]): Unit
 
   }
 
@@ -161,28 +105,16 @@ object CHIR {
     }
   }
 
-  trait BlockGroup extends Value with PackageOwned {
+  trait BlockGroup extends Value {
     def blocks: Seq[Block]
     def entryBlock: Block
-
-    /** Update membership and parents; entry must be a member.
-      * Reject duplicate/shared/foreign blocks. Cleanup, derived predecessors
-      * and full model validation run before writing.
-      */
-    def replaceBlocks(blocks: Seq[Block], entryBlock: Block): Unit
   }
 
-  trait Block extends Value with PackageOwned {
+  trait Block extends Value {
     def expressions: Seq[Expression]
     def nonTerminatorExpressions: Seq[Expression]
     def terminator: Terminator
     def isLandingPadBlock: Boolean
-
-    /** Update expressions and ownership, allowing staged edits. Predecessors
-      * are rebuilt and unreachable blocks are pruned before writing.
-      */
-    def replaceTerminator(terminator: Terminator): Unit
-    def replaceExpressions(nonTerminators: Seq[Expression], terminator: Terminator): Unit
   }
 
   // static field or global var
@@ -427,7 +359,6 @@ object CHIR {
     def instanceVars: Seq[InstanceVar]
     def staticVars: Seq[GlobalVar]
     def methods: Seq[Func]
-    def replaceMethods(methods: Seq[Func]): Unit
     def vtables: Seq[VTable]
     def implementedInterfaces: Seq[ClassType]
 
