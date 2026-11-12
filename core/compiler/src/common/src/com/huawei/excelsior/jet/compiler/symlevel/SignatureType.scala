@@ -342,6 +342,7 @@ sealed abstract class SignatureType extends Signature {
 
   final def containsTypeVariables: Boolean = Wrapper.skip(this) match {
     case _: TypeVariable        => true
+    case ThisTypeInfo           => true
     case sig: InstantiatedType  => sig.instantiatedTypeParameters exists (_.containsTypeVariables)
     case sig: ArraySlice        => sig.elemType.containsTypeVariables
     case sig: CangjieArray      => sig.elemType.containsTypeVariables
@@ -350,7 +351,7 @@ sealed abstract class SignatureType extends Signature {
     case sig: Tuple => sig.params exists (_.containsTypeVariables)
     case sig: SignatureType.Box => sig.base.containsTypeVariables
     case sig: CangjieEnum       => sig.params exists (_.containsTypeVariables)
-    case _: Primitive | ThisTypeInfo | BString | _: JavaArray | _: JBCReference | _: CangjieReference | _: Record => false
+    case _: Primitive | BString | _: JavaArray | _: JBCReference | _: CangjieReference | _: Record => false
     case sig: CPointer          => sig.pointee match {
       case p: MethodSignature =>
         assert(p.parameterTypes.forall(a => !a.containsTypeVariables) && !p.returnType.containsTypeVariables, sig)
