@@ -63,26 +63,27 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
   def symName(v: CHIR.CustomTypeDef | CHIR.CustomType | CHIR.GlobalVar | CHIR.FuncSig): String = {
     def typeDefName(v: CHIR.CustomTypeDef): String = {
       val srcName = v.srcCodeIdentifier
+      // Lambda implementation classes ($Cl/$Cw/$Cf) carry no package in their
+      // mangled identifier and no source name, so identically-named but
+      // structurally different lambdas from different packages would otherwise
+      // collapse into a single class. Qualify them by package, mirroring the
+      // package-qualified `.ti` symbol used by the native backend. Closure super
+      // classes ($Ci/$Cg) are intentionally left unqualified: their name already
+      // encodes the full functional type and they are shared across packages.
+      val suffix = if (isLambda(v.tpe)) {
+        s"$$pkg$$${pkg.name}$$"
+      } else {
+        ""
+      }
       // Private types are not externally visible, so their source identifier is not a
       // unique external name. Mimic the native backend and use the package-qualified
       // mangled identifier (e.g. `default:_CN7defaultU000000045ZxZt1PE`), which is what
       // the `.ti` symbol and the runtime type name are built from.
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
       if (isPrivate) {
-        s"${v.packageName}:${v.identifier.stripPrefix("@")}"
+        val prefix = if isLambda(v.tpe) then "" else s"${v.packageName}:"
+        prefix + v.identifier.stripPrefix("@") + suffix
       } else if (srcName.isEmpty || isGenericInstantiated(v)) {
-        // Lambda implementation classes ($Cl/$Cw/$Cf) carry no package in their
-        // mangled identifier and no source name, so identically-named but
-        // structurally different lambdas from different packages would otherwise
-        // collapse into a single class. Qualify them by package, mirroring the
-        // package-qualified `.ti` symbol used by the native backend. Closure super
-        // classes ($Ci/$Cg) are intentionally left unqualified: their name already
-        // encodes the full functional type and they are shared across packages.
-        val suffix = if (isLambda(v.tpe)) {
-          s"$$pkg$$${pkg.name}$$"
-        } else {
-          ""
-        }
         v.identifier.stripPrefix("@") + suffix
       } else {
         s"${v.packageName}:$srcName"
