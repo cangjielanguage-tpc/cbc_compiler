@@ -1,6 +1,8 @@
 import asyncio
 import asyncio.subprocess
 import os
+import platform
+import shlex
 import sys
 import time
 from abc import ABC, abstractmethod
@@ -101,6 +103,21 @@ async def run_cjc(input_file, output_file, output_type=None, additional_args=Non
     args += ["-o", output_file]
     cmd = ["cjc", "--int-overflow", "wrapping", "-Woff", "unused", input_file] + args
     return await run_in_toolchain(cmd, log=log, cwd=cwd, env=env, timings=timings, tag="cjc")
+
+
+async def run_cc(input_file: Path, output_file: Path, log=None, timings=None) -> int:
+    compiler = shlex.split(os.environ.get("CC") or "clang")
+    cmd = [*compiler, "-shared", "-fPIC", "-o", str(output_file), str(input_file)]
+    arch = platform.machine()
+    arch = {"amd64": "x86_64", "arm64": "aarch64"}.get(arch, arch)
+    target = f"{platform.system().lower()}_{arch}_cjnative"
+    builtins = Path(os.environ["TOOLCHAIN"]) / "lib" / target / "libclang_rt-builtins.a"
+    if builtins.is_file():
+        cmd.append(str(builtins))
+    result = await run_in_toolchain(cmd, log=log, stderr_log=log, timings=timings)
+    if result != 0 and log is not None:
+        log.write(f"cmd: {shlex.join(cmd)}\n")
+    return result
 
 
 @dataclass(frozen=True, order=True)

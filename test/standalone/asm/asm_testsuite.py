@@ -5,7 +5,7 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cjc, run_in_toolchain
+from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cc, run_cjc, run_in_toolchain
 
 HERE = Path(__file__).resolve().parent
 
@@ -29,18 +29,27 @@ class AsmTestSuite(TestSuite):
         shutil.copytree(src_dir, wdir, dirs_exist_ok=True)
 
         log_io = io.StringIO()
-        aot_fail = False
+        deps_failed = False
         for aot_file in sorted(glob.glob(str(wdir / "*.aot.cj"))):
             aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
             res = await run_cjc(aot_file, str(wdir / f"lib{aot_name}{DYLIB_EXT}"), output_type="dylib",
                                 log=log_io, timings=self.timings)
             log_io.write(f"\n[aot {aot_name}] exit {res}\n")
             if res != 0:
-                aot_fail = True
+                deps_failed = True
                 break
 
+        if not deps_failed:
+            for c_file in sorted(wdir.glob("*.c")):
+                native_so = c_file.with_name(f"lib{c_file.stem}{DYLIB_EXT}")
+                res = await run_cc(c_file, native_so, log=log_io, timings=self.timings)
+                log_io.write(f"\n[native {c_file.stem}] exit {res}\n")
+                if res != 0:
+                    deps_failed = True
+                    break
+
         res = 1
-        if not aot_fail:
+        if not deps_failed:
             asm_err = io.StringIO()
             res = await run_in_toolchain(["cbc-asm", str(wdir / f"{name}.asm")],
                                          cwd=str(wdir), log=log_io, stderr_log=asm_err,
