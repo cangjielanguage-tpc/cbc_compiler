@@ -42,6 +42,13 @@ object Type {
     asClassType(tpe.symType)
   }
 
+  def asClassTypeOpt(tpe: SignatureType)(implicit typeProvider: TypeProvider): Option[ClassType] = tpe match {
+    case _: SignatureType.CangjieReference | _: SignatureType.InstantiatedReference |
+         _: SignatureType.Record | _: SignatureType.InstantiatedRecord |
+         _: SignatureType.CangjieEnum => Some(asClassType(tpe))
+    case _ => None
+  }
+
   @deprecated def asClassType(tpe: ClassType): Type = asClassType(tpe.asInstanceOf[Type])
 }
 

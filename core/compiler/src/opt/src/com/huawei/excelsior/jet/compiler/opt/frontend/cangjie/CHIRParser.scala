@@ -25,7 +25,7 @@ import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsi
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CangjieEnumWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.{CallConv, CallKind, CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
-import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
+import com.huawei.excelsior.jet.compiler.symlevel.Type.{asClassType, asClassTypeOpt}
 import com.huawei.excelsior.jet.util.ScalaCollections.*
 import com.huawei.excelsior.jet.util.{Closure, Numbering, ScalaCollections}
 
@@ -1105,16 +1105,7 @@ trait CHIRParser
             case _ => SignatureType.fromSymType(declClass)
           }
 
-          def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
-            val cparams = genericParams(refType)
-            val lparams = Seq.empty
-
-            val refClass = asClassType(refType)
-            Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
-              refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
-          }
-
-          val refType = (Iterator(declType) ++ refineSuperTypes(declType)).find(t => asClassType(t) == declClass).get
+          val refType = (Iterator(declType) ++ resolver.collectSuperTypes(declType)).find(t => asClassType(t) == declClass).get
 
           val name = resolver.symName(func)
           val _target = calcMethodRef(declClass, refType, name, func)
@@ -1247,13 +1238,7 @@ trait CHIRParser
             (sig, Seq(sig))
         }
 
-        def findVTableSlots(receiverType: SignatureType): Iterator[(CHIRVTable.Entry, SignatureType, Int)] = {
-          val vtable = asClassType(receiverType).getCHIRVTable
-          assert(vtable != null, receiverType)
-
-          // TODO: traverse extensions for "receiverType" as well
-
-          val cparams = genericParams(receiverType)
+        def slotsInVTable(vtable: CHIRVTable, cparams: Seq[SignatureType]): Iterator[(CHIRVTable.Entry, SignatureType, Int)] = {
           vtable.extDefs.iterator.flatMap { extDef =>
             val extType = extDef.extType.instantiate(cparams, Seq.empty)
             val extcparams = genericParams(extType)
@@ -1263,6 +1248,27 @@ trait CHIRParser
             }
             Option.when(vnum >= 0)(extDef.funcTable(vnum), extType, vnum)
           }
+        }
+
+        def findVTableSlots(receiverType: SignatureType): Iterator[(CHIRVTable.Entry, SignatureType, Int)] = {
+          val ownSlots = asClassTypeOpt(receiverType).iterator flatMap { rcvType =>
+            slotsInVTable(rcvType.getCHIRVTable, genericParams(receiverType))
+          }
+
+          // Extensions may declare additional slots for the receiver itself or for any of its
+          // super types (superclasses and interfaces, including interfaces added by extensions);
+          // collectSuperTypes is the closure and contains the receiver itself
+          val extensionSlots = resolver.collectSuperTypes(receiverType).iterator
+            .flatMap { t =>
+              resolver.extensionsOf(t).iterator.flatMap { ext =>
+                resolver.typeSig(ext.tpe).matchInstantiated(t).toSeq.flatMap { case (cparams, _) =>
+                  val extClass = asClassType(resolver.symType(ext).get)
+                  slotsInVTable(extClass.getCHIRVTable, cparams)
+                }
+              }
+            }
+
+          ownSlots ++ extensionSlots
         }
 
         val slots = vtableTypes.iterator.flatMap(findVTableSlots).toSeq
