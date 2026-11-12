@@ -27,9 +27,6 @@ compiler/Driver/options/obfuscation/test_layout/obf_line_number3.info
 compiler/Driver/temporary_files/TMPDIR_illegal_1.cj
 compiler/Driver/temporary_files/TMPDIR_illegal_2.cj
 
-# cjc options: misalign when hotfix enabled
-compiler/Driver/options/help/test_showall.cj
-
 # environment: android-related
 compiler/Driver/options/toolchain/android_clang_search_lib.cj
 compiler/Driver/options/toolchain/android_clang_search_lib64.cj
@@ -50,10 +47,6 @@ API/std/sort/test_arraySort.cj
 API/std/sort/test_sort_stable.cj
 compiler/ConditionalCompilation/node/finalizer_on.cj
 
-# environment: SocketException: Socket is not connected
-API/std/socket/redesign/props/udp_props_readonly.cj
-API/std/socket/redesign/props/unix_datagram_props_readonly.cj
-API/std/socket/redesign/props/sockets_update_addr_on_connect.cj
 
 # environment: /usr/bin/env: ‘bash’: No such file or directory
 compiler/Driver/cross_compile/sysroot_option/sysroot_mock.cj
@@ -83,65 +76,6 @@ compiler/CHIR/AST2CHIR/SetGenericInfo
 # uses --sanitizer-coverage-* options for compilation which are not supported in CBC
 API/std/unittest/prop_test/coverage_guided
 
-# ignore tests that rely on particular level of optimization ("The func node in the line:12 and the column:1 was optimized by The opt: Redundant Return Removal")
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet01.cj
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet02.cj
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet03.cj
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet04.cj
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet05.cj
-
-# ignore tests that rely on particular level of optimization ("The function call to f1 in the line 33 and the column 5 was an invoke call.")
-compiler/CHIR/InvokeNodetest/testDevirt01.cj
-compiler/CHIR/InvokeNodetest/testDevirt09.cj
-compiler/CHIR/InvokeNodetest/testDevirt10.cj
-compiler/CHIR/InvokeNodetest/testDevirt11.cj
-compiler/CHIR/InvokeNodetest/testDevirt12.cj
-compiler/CHIR/InvokeNodetest/testDevirt13.cj
-compiler/CHIR/InvokeNodetest/testDevirt14.cj
-compiler/CHIR/InvokeNodetest/testDevirt15.cj
-compiler/CHIR/InvokeNodetest/testDevirt16.cj
-compiler/CHIR/InvokeNodetest/testDevirt17.cj
-compiler/CHIR/InvokeNodetest/testDevirt19.cj
-compiler/CHIR/InvokeNodetest/testDevirt20.cj
-compiler/CHIR/InvokeNodetest/testDevirt21.cj
-
-# tests that rely on particular optimization log ("was optimized by The opt: ...") / CHIROpt scan asserts
-compiler/CHIROpt/DeadCodeElimination/NothingType/NothingType05.cj
-compiler/CHIROpt/NoSideEffectMarker/testRoundOpt.cj
-compiler/CHIROpt/UselessAllocateElimination/finalizer1.cj
-compiler/CHIROpt/ValueRangeAnalysis/arcast.cj
-compiler/CHIROpt/lambda_reduce/GenericArrayInitLambdaOpt/generic_array_init_lambda_opt.cj
-compiler/CHIROpt/lambda_reduce/arary_init_lambda_opt.cj
-compiler/CHIROpt/lambda_reduce/inline_lambda_param.cj
-compiler/CHIROpt/match/testSwitch1_1.cj
-
-# ignore due to "invalid file or directory %enableSwitchOpt"
-compiler/CHIROpt/match/testSwitch1_2.cj
-compiler/CHIROpt/match/testSwitch1_3.cj
-compiler/CHIROpt/match/testSwitch1_4.cj
-compiler/CHIROpt/match/testSwitch2_1.cj
-compiler/CHIROpt/match/testSwitch2_3.cj
-compiler/CHIROpt/match/testSwitch2_4.cj
-compiler/CHIROpt/match/testSwitch2_5.cj
-compiler/CHIROpt/match/testSwitch2_6.cj
-compiler/CHIROpt/match/testSwitch2_7.cj
-compiler/CHIROpt/match/testSwitch2_8.cj
-compiler/CHIROpt/match/testSwitch3_1.cj
-compiler/CHIROpt/match/testSwitch3_2.cj
-compiler/CHIROpt/match/testSwitch3_3.cj
-compiler/CHIROpt/match/testSwitch3_4.cj
-compiler/CHIROpt/match/testSwitch3_5.cj
-compiler/CHIROpt/match/testSwitch4_1.cj
-compiler/CHIROpt/match/testSwitch4_2.cj
-compiler/CHIROpt/match/testSwitch4_3.cj
-compiler/CHIROpt/match/testSwitch4_4.cj
-compiler/CHIROpt/match/testSwitch4_5.cj
-compiler/CHIROpt/match/testSwitch4_6.cj
-compiler/CHIROpt/match/testSwitch4_7.cj
-compiler/CHIROpt/match/testSwitch4_8.cj
-compiler/CHIROpt/match/testSwitch4_9.cj
-compiler/CHIROpt/match/testSwitch4_10.cj
-
 # ignore tests that rely on particular level of optimization ("The binary node in the line:9 and the column:12 was optimized by The opt: Constant Folding")
 compiler/CHIROpt/O2Optimization
 
@@ -157,27 +91,11 @@ compiler/CHIROpt/FunctionInline
 # ignore tests that rely on particular level of optimization ("The deref node in the line:16 and the column:5 was optimized by The opt: Constant Propagation")
 compiler/CHIROpt/Optimizations/GlobalConstVars
 
-# ignore tests that rely on particular level of optimization ("incremental compilation triggered")
-compiler/CHIROpt/ValueRangeAnalysis/issue04/RangeAnalysis_Incr.cj
-
 # ignore tests that rely on particular level of optimization ("an exception was thrown while evaluating constant")
 compiler/ConstEval/testExceptionMod.cj
 
-# ignore due to "invalid file or directory %disableCHIROpt"
-compiler/CHIROpt/O2Optimization/testO2DisableCHIROpt.cj
-
-# ignore due to "invalid option: '--fchir-switch-opt'"
-compiler/CHIROpt/SanCovPass/traceCompareFail.cj
-
 # ignore due to "entrypoint not found" (multipackage, staticlib, dynamiclib tests)
-compiler/CHIR/AST2CHIR/BaseUseCase/extend/extend_imported_class/extend_imported_class.cj
-compiler/CHIR/AST2CHIR/BaseUseCase/if_expr/ifExpr_06/ifExpr_06.cj
-compiler/Sema/annotation/ifavailable/basecase.cj
 compiler/Sema/annotation/ifavailable/external_weak/external_weak.cj
-compiler/Sema/annotation/ifavailable/lambda_not_unit_return_type.cj
-compiler/Sema/annotation/ifavailable/level_syscap_check/test03.cj
-compiler/Sema/annotation/ifavailable/nested.cj
-compiler/Sema/APILevelChecker/level/api_weak/external_weak03.cj
 compiler/CHIR/CHIR2HLIR/module/import_01/main.cj
 
 # ignore due to complicated compilation process (dynamiclib + reflection)
@@ -221,10 +139,6 @@ API/std/reflect/typeInfo_staticMemberFunctionInfo_apply_struct.cj
 API/std/reflect/classTypeInfo_test.cj
 API/std/reflect/annotation_cjnative.cj
 
-
-# ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
-compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
-
 # ignore due to "can not find package XXX"
 compiler/CHIR/CHIR2HLIR/package/I4D1CM/test_serializers.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix20.cj
@@ -248,16 +162,12 @@ compiler/CHIR/ComplicatedCodeBugfix/Bugfix23.cj
 compiler/Sema/Extend/extend_enum2.cj
 
 # ignore due to demangling discrepancies in stracktraces (main::goo vs default::goo etc.)
-compiler/CodegenCJNative/demangle/decl/c_function_decl1.cj
 compiler/CodegenCJNative/demangle/decl/error_throw1.cj
 compiler/CodegenCJNative/demangle/decl/exception_throw1.cj
 compiler/CodegenCJNative/demangle/decl/extend_outer_decl1.cj
 compiler/CodegenCJNative/demangle/decl/extend_outer_decl2.cj
 compiler/CodegenCJNative/demangle/decl/function_decl2.cj
 compiler/CodegenCJNative/demangle/decl/generic_constraints/ge
-compiler/CodegenCJNative/demangle/decl/generic_constraints/ge
-compiler/CodegenCJNative/demangle/decl/generic_constraints/ge
-compiler/CodegenCJNative/demangle/decl/global_init1.cj
 compiler/CodegenCJNative/demangle/decl/nested_package/ma
 compiler/CodegenCJNative/demangle/decl/prop_decl1.cj
 compiler/CodegenCJNative/demangle/decl/prop_decl2.cj
@@ -306,18 +216,11 @@ compiler/DeMangle/Prop/propClass.cj
 compiler/Driver/options/trim_path/trim_path2.cj
 compiler/DeMangle/GenericType/genericTy.cj
 compiler/DeMangle/Operator/or.cj
-compiler/DeMangle/Filename/fileName.cj
 compiler/DeMangle/Filename/fileHashcodeTest2.cj
 compiler/DeMangle/Operator/ge.cj
 compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl2.cj
 compiler/DeMangle/Operator/lt.cj
 API/std/core/exclusiveScope/exception.cj
-
-# ignore due to frontend error
-compiler/CHIROpt/VarInitCheck/InitOrder/circular1.cj
-compiler/CHIROpt/VarInitCheck/varray.cj
-compiler/CHIROpt/VarInitCheck/varray_if.cj
-compiler/Sema/generics/generic_subst_perf.cj
 
 # ignore due to cjts misconfiguration (line 6: $1: unbound variable)
 compiler/CHIR/AST2CHIR/BaseUseCase/function/funcNode.cj
@@ -364,16 +267,6 @@ compiler/Driver/LTO/lto_test6_32.cj
 compiler/Driver/LTO/lto_test6_33.cj
 compiler/Driver/linkage/dynamic_linkage/t.cj
 
-# missing stdx.unittest.data / template APIs (undeclared Sample/Ema/Measurements/BenchRawMeasurement)
-API/std/unittest/gnuplot_svg_fix/fix_svg_test.cj
-API/std/unittest/new_bench/stats/bootstrap_test.cj
-API/std/unittest/new_bench/stats/ema_test.cj
-API/std/unittest/new_bench/stats/measurements_test.cj
-API/std/unittest/new_bench/stats/normal_dist_test.cj
-API/std/unittest/new_bench/stats/sample_test.cj
-API/std/unittest/new_bench/stats/statistics_sample_test.cj
-API/std/unittest/template_engine/template_test.cj
-
 # AOP aspect plugin library is missing ("No such file or directory: '/libstdx.collect_aspects.so'")
 compiler/Plugins/AOP_tests
 
@@ -409,10 +302,6 @@ compiler/Driver/options/obfuscation/test_layout/test4.info
 compiler/IncrementalCompilation
 compiler/CodegenCJNative/incremental/cfunc2/main.info
 
-# broken tests - test expect throwing of `ArithmeticException: pow` when cast should throw. issue-140
-compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
-compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
-
 # @C functions in cbc code
 compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_7.cj
 compiler/Sema/varray/varray_cffi/varray_inout05.cj
@@ -421,9 +310,6 @@ compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_1.cj
 compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_2.cj
 compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_6.cj
 compiler/FFI/CFFI/cfunc/empty_type/empty_type.cj
-
-# Usage of runtime library symbols from test
-compiler/Sema/concurrency/spawn10.cj
 
 # tries to link .a cangjie static library during test compilation
 API/std/unittest/mock/framework/expectation_failed_test.cj
