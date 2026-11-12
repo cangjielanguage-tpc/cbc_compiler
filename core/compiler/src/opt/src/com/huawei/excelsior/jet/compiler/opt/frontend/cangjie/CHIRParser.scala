@@ -2453,7 +2453,8 @@ trait CHIRParser
         case refType: (SignatureType.InstantiatedType | SignatureType.CangjieEnum) =>
           val cparams = genericParams(refType)
           val lparams = Seq.empty[SignatureType] //FIXME
-          declType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig, MethodSignature.equalInstantiated(cparams, lparams))
+          declType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig,
+            (x, y) => x.instantiate(cparams, lparams) == y.instantiate(cparams, lparams))
         case _ =>
           // TODO: generic extend funcs
           declType.findDeclaredMethodOrNull(xstr(name), sig)

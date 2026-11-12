@@ -13,9 +13,9 @@ import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.*
 import com.huawei.excelsior.jet.compiler.symlevel.TypeKind.*
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.compiler.symlevel.impl.fake.FakeType
-import org.scalatest.matchers.{MatchResult, Matcher}
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-class SignatureSuite extends CompilerSuite {
+class SignatureSuite extends CompilerSuite with ScalaCheckPropertyChecks {
 
   def resolve(name: String): Type = {
     val tkind = if (name.head == 'R') TypeKind.RECORD else TypeKind.CLASS
@@ -65,91 +65,6 @@ class SignatureSuite extends CompilerSuite {
         x should not be y
         y should not be x
       }
-    }
-  }
-
-  for (((x, y, inst, shouldEqual), pos) <- Seq(
-    tp(Primitive(INT), Primitive(INT), Seq(Void), true),
-    tp(Primitive(INT), Primitive(LONG), Seq(), false),
-
-    tp(LocalTypeVariable(0), LocalTypeVariable(0), Seq(Int32, Int32), true),
-    tp(LocalTypeVariable(0), LocalTypeVariable(1), Seq(Int32, Int32), true),
-    tp(LocalTypeVariable(0), LocalTypeVariable(1), Seq(Int32, Int64), false),
-
-  ) ++ {
-    val classI32 = InstantiatedReference("foo", Seq(Int32))
-    val classT1 = InstantiatedReference("foo", Seq(LocalTypeVariable(1)))
-    val recordI32 = InstantiatedRecord("foo", Seq(Int32))
-    val recordT1 = InstantiatedRecord("foo", Seq(LocalTypeVariable(1)))
-    Seq(
-      tp(LocalTypeVariable(1), classI32, Seq(Void, classI32), true),
-      tp(LocalTypeVariable(1), classI32, Seq(Void, NullableWrapper(classI32)), false),
-      tp(LocalTypeVariable(1), NullableWrapper(classI32), Seq(Void, NullableWrapper(classI32)), true),
-
-      tp(LocalTypeVariable(0), classT1, Seq(classT1, Int32), true),
-      tp(LocalTypeVariable(0), classT1, Seq(NullableWrapper(classT1), Int32), false),
-      tp(LocalTypeVariable(0), NullableWrapper(classT1), Seq(NullableWrapper(classT1), Int32), true),
-
-      tp(classT1, classI32, Seq(classT1, Int32), true),
-      tp(NullableWrapper(classT1), classI32, Seq(classT1, Int32), false),
-      tp(NullableWrapper(classT1), NullableWrapper(classI32), Seq(classT1, Int32), true),
-
-      tp(LocalTypeVariable(1), recordI32, Seq(Void, recordI32), true),
-      tp(LocalTypeVariable(0), recordT1, Seq(recordT1, Int32), true),
-      tp(recordT1, recordI32, Seq(recordT1, Int32), true),
-
-      tp(ArraySlice(LocalTypeVariable(1)), ArraySlice(recordI32), Seq(Void, recordI32), true),
-      tp(ArraySlice(LocalTypeVariable(0)), ArraySlice(recordT1), Seq(recordT1, Int32), true),
-      tp(ArraySlice(recordT1), ArraySlice(recordI32), Seq(recordT1, Int32), true),
-
-      tp(CangjieArray(LocalTypeVariable(1)), CangjieArray(recordI32), Seq(Void, recordI32), true),
-      tp(CangjieArray(LocalTypeVariable(0)), CangjieArray(recordT1), Seq(recordT1, Int32), true),
-      tp(CangjieArray(recordT1), CangjieArray(recordI32), Seq(recordT1, Int32), true),
-    )
-  }) {
-    test(s"$x equals $y with instantiations [${inst.mkString(",")}]") {
-      if (shouldEqual) {
-        x should beEqualInstantiated (inst, y)
-        y should beEqualInstantiated (inst, x)
-      } else {
-        x shouldNot beEqualInstantiated (inst, y)
-        y shouldNot beEqualInstantiated (inst, x)
-      }
-    }
-  }
-
-  for (((x, y, inst, shouldEqual), pos) <- Seq(
-    tp(MethodSignature()(LocalTypeVariable(0)), MethodSignature()(LocalTypeVariable(0)), Seq(Int32, Int32), true),
-    tp(MethodSignature()(LocalTypeVariable(0)), MethodSignature()(LocalTypeVariable(1)), Seq(Int32, Int32), true),
-    tp(MethodSignature()(LocalTypeVariable(0)), MethodSignature()(LocalTypeVariable(1)), Seq(Int32, Int64), false),
-    tp(MethodSignature(LocalTypeVariable(0))(Void), MethodSignature(LocalTypeVariable(0))(Void), Seq(Int32, Int32), true),
-    tp(MethodSignature(LocalTypeVariable(0))(Void), MethodSignature(LocalTypeVariable(1))(Void), Seq(Int32, Int32), true),
-    tp(MethodSignature(LocalTypeVariable(0))(Void), MethodSignature(LocalTypeVariable(1))(Void), Seq(Int32, Int64), false),
-  )) {
-    test(s"$x equals $y with instantiations [${inst.mkString(",")}]") {
-      if (shouldEqual) {
-        x should beEqualInstantiated (inst, y)
-        y should beEqualInstantiated (inst, x)
-      } else {
-        x shouldNot beEqualInstantiated (inst, y)
-        y shouldNot beEqualInstantiated (inst, x)
-      }
-    }
-  }
-
-  def beEqualInstantiated(instantiatedTypes: Seq[SignatureType], expected: SignatureType) = new Matcher[SignatureType] {
-    def apply(actual: SignatureType) = {
-      MatchResult(SignatureType.equalInstantiatedLegacy(instantiatedTypes)(actual, expected),
-        "{0} was not equal to {1} with {2}", "{0} was equal to {1} with {2}",
-        Vector(actual, expected, instantiatedTypes.mkString("[", ",", "]")))
-    }
-  }
-
-  def beEqualInstantiated(instantiatedTypes: Seq[SignatureType], expected: MethodSignature) = new Matcher[MethodSignature] {
-    def apply(actual: MethodSignature) = {
-      MatchResult(MethodSignature.equalInstantiatedLegacy(instantiatedTypes)(actual, expected),
-        "{0} was not equal to {1} with {2}", "{0} was equal to {1} with {2}",
-        Vector(actual, expected, instantiatedTypes.mkString("[", ",", "]")))
     }
   }
 
@@ -279,5 +194,178 @@ class SignatureSuite extends CompilerSuite {
   ))
   test(s"$sig contains type variables") {
     sig.containsTypeVariables shouldBe res
+  }
+
+  for ((x, cparams, lparams, expected) <- Seq[(SignatureType, Seq[SignatureType], Seq[SignatureType], SignatureType)](
+    // No type variables: returned unchanged
+    (Int32, Seq(Record("Roo")), Seq(Int32), Int32),
+    (BString, Seq(Record("Roo")), Seq(Int32), BString),
+    (Record("Roo"), Seq(Record("Rar")), Seq(Int32), Record("Roo")),
+    (CangjieReference("C"), Seq(Record("Roo")), Seq(Int32), CangjieReference("C")),
+    (ThisTypeInfo, Seq(Record("Roo")), Seq(Int32), ThisTypeInfo),
+
+    // No parameters: signature is returned as is
+    (LocalTypeVariable(0), Seq.empty, Seq.empty, LocalTypeVariable(0)),
+    (InstantiatedReference("C", Seq(LocalTypeVariable(0))), Seq.empty, Seq.empty,
+      InstantiatedReference("C", Seq(LocalTypeVariable(0)))),
+
+    // Type variables are substituted by the corresponding parameters
+    (LocalTypeVariable(0), Seq.empty, Seq(Int32), Int32),
+    (LocalTypeVariable(1), Seq.empty, Seq(Void, Int64), Int64),
+    (ClassTypeVariable(0), Seq(Record("Roo")), Seq.empty, Record("Roo")),
+
+    // Out of bounds type variables are preserved
+    (LocalTypeVariable(0), Seq(Record("Roo")), Seq.empty, LocalTypeVariable(0)),
+    (ClassTypeVariable(0), Seq.empty, Seq(Int32), ClassTypeVariable(0)),
+
+    // Composite types are instantiated recursively
+    (InstantiatedReference("C", Seq(LocalTypeVariable(0), ClassTypeVariable(0))), Seq(Record("Roo")), Seq(Int32),
+      InstantiatedReference("C", Seq(Int32, Record("Roo")))),
+    (InstantiatedRecord("S", Seq(LocalTypeVariable(0))), Seq.empty, Seq(Record("Roo")), InstantiatedRecord("S", Seq(Record("Roo")))),
+    (CangjieArray(LocalTypeVariable(0)), Seq.empty, Seq(Int32), CangjieArray(Int32)),
+    (VArray(LocalTypeVariable(0), 5), Seq.empty, Seq(Int32), VArray(Int32, 5)),
+    (Tuple(Seq(LocalTypeVariable(0), ClassTypeVariable(0))), Seq(Record("Roo")), Seq(Int32), Tuple(Seq(Int32, Record("Roo")))),
+    (PackedTuple(Seq(LocalTypeVariable(0))), Seq.empty, Seq(Int32), PackedTuple(Seq(Int32))),
+    (ZeroSizedEnum("EZ", Seq(LocalTypeVariable(0))), Seq.empty, Seq(Int32), ZeroSizedEnum("EZ", Seq(Int32))),
+    (PrimitiveBasedEnum("EP", Seq(LocalTypeVariable(0))), Seq.empty, Seq(Int32), PrimitiveBasedEnum("EP", Seq(Int32))),
+    (ClassBasedEnum("EC", Seq(ClassTypeVariable(0))), Seq(Record("Roo")), Seq.empty, ClassBasedEnum("EC", Seq(Record("Roo")))),
+    (UnionBasedEnum("EU", Seq(LocalTypeVariable(0))), Seq.empty, Seq(Int32), UnionBasedEnum("EU", Seq(Int32))),
+    (OptionLikeEnum("EO", Seq(LocalTypeVariable(0)), LocalTypeVariable(1)), Seq.empty, Seq(Int32, CangjieReference("C")),
+      OptionLikeEnum("EO", Seq(Int32), CangjieReference("C"))),
+
+    // Box is removed when the instantiated type is a reference, kept otherwise
+    (Box(LocalTypeVariable(0)), Seq.empty, Seq(Int32), Box(Int32)),
+    (Box(LocalTypeVariable(0)), Seq.empty, Seq(CangjieReference("C")), CangjieReference("C")),
+    (Box(InstantiatedReference("C", Seq(LocalTypeVariable(0)))), Seq.empty, Seq(Int32), InstantiatedReference("C", Seq(Int32))),
+
+    (CPointer(LocalTypeVariable(0)), Seq.empty, Seq(Int32), CPointer(Int32)),
+    (CPointer(InstantiatedRecord("S", Seq(LocalTypeVariable(0)))), Seq.empty, Seq(Int32),
+      CPointer(InstantiatedRecord("S", Seq(Int32)))),
+    (CPointer(InstantiatedRecord("S", Seq(ClassTypeVariable(0)))), Seq(Record("Roo")), Seq.empty,
+      CPointer(InstantiatedRecord("S", Seq(Record("Roo"))))),
+  )) {
+    test(s"instantiate $x with cparams=$cparams lparams=$lparams") {
+      x.instantiate(cparams, lparams) shouldBe expected
+    }
+  }
+
+  for ((sig, cparams, lparams, expected) <- Seq[(MethodSignature, Seq[SignatureType], Seq[SignatureType], MethodSignature)](
+    // Top-level type variables instantiated to non-reference types are boxed
+    (MethodSignature()(LocalTypeVariable(0)), Seq.empty, Seq(Int32), MethodSignature()(Box(Int32))),
+    (MethodSignature()(LocalTypeVariable(0)), Seq.empty, Seq(Record("Roo")), MethodSignature()(Box(Record("Roo")))),
+    (MethodSignature(LocalTypeVariable(0), Int64)(ClassTypeVariable(0)), Seq(CangjieReference("C")), Seq(Int32),
+      MethodSignature(Box(Int32), Int64)(CangjieReference("C"))),
+
+    // Top-level type variables instantiated to references are not boxed
+    (MethodSignature()(LocalTypeVariable(0)), Seq.empty, Seq(CangjieReference("C")), MethodSignature()(CangjieReference("C"))),
+    (MethodSignature()(LocalTypeVariable(0)), Seq.empty, Seq(InstantiatedReference("C", Seq(Int32))),
+      MethodSignature()(InstantiatedReference("C", Seq(Int32)))),
+
+    // Nullable options are boxed even though they are references
+    (MethodSignature()(LocalTypeVariable(0)), Seq.empty, Seq(OptionLikeEnum("EO", Seq.empty, CangjieReference("C"))),
+      MethodSignature()(Box(OptionLikeEnum("EO", Seq.empty, CangjieReference("C"))))),
+
+    // Type variable substituted by another type variable is not boxed
+    (MethodSignature()(LocalTypeVariable(0)), Seq.empty, Seq(LocalTypeVariable(1)), MethodSignature()(LocalTypeVariable(1))),
+
+    // Nested type variables are substituted without boxing
+    (MethodSignature()(InstantiatedReference("C", Seq(LocalTypeVariable(0)))), Seq.empty, Seq(Int32),
+      MethodSignature()(InstantiatedReference("C", Seq(Int32)))),
+
+    // No parameters: signature is returned as is
+    (MethodSignature(LocalTypeVariable(0), Int64)(Void), Seq.empty, Seq.empty, MethodSignature(LocalTypeVariable(0), Int64)(Void)),
+  )) {
+    test(s"instantiate $sig with cparams=$cparams lparams=$lparams") {
+      sig.instantiate(cparams, lparams) shouldBe expected
+    }
+  }
+
+  for ((x, expected) <- Seq[(SignatureType, SignatureType)](
+    // No type parameters: returned unchanged
+    (Int32, Int32),
+    (BString, BString),
+    (Record("Roo"), Record("Roo")),
+    (CangjieReference("C"), CangjieReference("C")),
+    (ThisTypeInfo, ThisTypeInfo),
+    (LocalTypeVariable(3), LocalTypeVariable(3)),
+    (ClassTypeVariable(3), ClassTypeVariable(3)),
+
+    // Instantiated type parameters are erased to class type variables by position
+    (InstantiatedReference("C", Seq(Int32, Record("Roo"))),
+      InstantiatedReference("C", Seq(ClassTypeVariable(0), ClassTypeVariable(1)))),
+    (InstantiatedRecord("S", Seq(Int32)), InstantiatedRecord("S", Seq(ClassTypeVariable(0)))),
+    (Tuple(Seq(Int32, Int64)), Tuple(Seq(ClassTypeVariable(0), ClassTypeVariable(1)))),
+    (PackedTuple(Seq(Int32)), PackedTuple(Seq(ClassTypeVariable(0)))),
+    (ZeroSizedEnum("EZ", Seq(Int32, Int64)), ZeroSizedEnum("EZ", Seq(ClassTypeVariable(0), ClassTypeVariable(1)))),
+    (PrimitiveBasedEnum("EP", Seq(Int32)), PrimitiveBasedEnum("EP", Seq(ClassTypeVariable(0)))),
+    (ClassBasedEnum("EC", Seq(Record("Roo"))), ClassBasedEnum("EC", Seq(ClassTypeVariable(0)))),
+    (UnionBasedEnum("EU", Seq(Int32)), UnionBasedEnum("EU", Seq(ClassTypeVariable(0)))),
+
+    // Element or pointee type is replaced with a class type variable
+    (Box(Int32), Box(ClassTypeVariable(0))),
+    (CangjieArray(Int32), CangjieArray(ClassTypeVariable(0))),
+    (VArray(Int32, 5), VArray(ClassTypeVariable(0), 5)),
+    (CPointer(Int32), CPointer(ClassTypeVariable(0))),
+    (CPointer(MethodSignature(Int32)(Int64)), CPointer(ClassTypeVariable(0))),
+    (OptionLikeEnum("EO", Seq(Int32), CangjieReference("C")), OptionLikeEnum("EO", Seq(ClassTypeVariable(0)), ClassTypeVariable(0))),
+  )) {
+    test(s"uninstantiated $x") {
+      x.uninstantiated shouldBe expected
+    }
+  }
+
+  import SignatureGenerators.*
+
+  test("SignatureType.uninstantiated is idempotent") {
+    forAll(genSig(3)) { (x: SignatureType) =>
+      x.uninstantiated.uninstantiated shouldBe x.uninstantiated
+    }
+  }
+
+  test("variable-free SignatureType is not changed by instantiate") {
+    forAll(genSig(3), genInstantiationParams) { (x: SignatureType, params: (Seq[SignatureType], Seq[SignatureType])) =>
+      whenever(!x.containsTypeVariables) {
+        val (cparams, lparams) = params
+        x.instantiate(cparams, lparams) shouldBe x
+      }
+    }
+  }
+
+  test("substituting each SignatureType variable by itself is identity") {
+    forAll(genSig(3)) { (x: SignatureType) =>
+      x.instantiate(identityCParams, identityLParams) shouldBe x
+    }
+  }
+
+  test("sequential SignatureType instantiation equals instantiation of substituted parameters") {
+    forAll(genSig(3), genTotalInstantiationParams, genInstantiationParams) {
+      (x: SignatureType, p1: (Seq[SignatureType], Seq[SignatureType]), p2: (Seq[SignatureType], Seq[SignatureType])) =>
+        val (c1, l1) = p1
+        val (c2, l2) = p2
+        x.instantiate(c1, l1).instantiate(c2, l2) shouldBe
+          x.instantiate(c1.map(_.instantiate(c2, l2)), l1.map(_.instantiate(c2, l2)))
+    }
+  }
+
+  test("uninstantiated followed by instantiate restores the original InstantiatedType") {
+    forAll(genInstantiatedType) { (x: SignatureType.InstantiatedType) =>
+      x.uninstantiated.instantiate(x.instantiatedTypeParameters, Seq.empty) shouldBe x
+    }
+  }
+
+  test("substituting each MethodSignature variable by itself is identity") {
+    forAll(genMethodSignature(3)) { (m: MethodSignature) =>
+      m.instantiate(identityCParams, identityLParams) shouldBe m
+    }
+  }
+
+  test("sequential MethodSignature instantiation equals instantiation of substituted parameters") {
+    forAll(genMethodSignature(3), genTotalInstantiationParams, genInstantiationParams) {
+      (m: MethodSignature, p1: (Seq[SignatureType], Seq[SignatureType]), p2: (Seq[SignatureType], Seq[SignatureType])) =>
+        val (c1, l1) = p1
+        val (c2, l2) = p2
+        m.instantiate(c1, l1).instantiate(c2, l2) shouldBe
+          m.instantiate(c1.map(_.instantiate(c2, l2)), l1.map(_.instantiate(c2, l2)))
+    }
   }
 }
