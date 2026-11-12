@@ -55,16 +55,16 @@ def load_excludes() -> list[str]:
     return read_id_list(EXCLUDES_CFG)
 
 
+def matches(test_id: TestIdentifier, pattern: str) -> bool:
+    # A mode pattern has two `::` separators (suite + mode); a whole-test
+    # pattern has one (suite only).
+    if pattern.count("::") >= 2:
+        return fnmatch.fnmatch(str(test_id), pattern)
+    return fnmatch.fnmatch(f"{test_id.suite_name}::{test_id.test_name}", pattern)
+
+
 def excluded(test_id: TestIdentifier, patterns: list[str]) -> bool:
-    for pattern in patterns:
-        # A mode pattern has two `::` separators (suite + mode); a whole-test
-        # pattern has one (suite only).
-        if pattern.count("::") >= 2:
-            if fnmatch.fnmatch(str(test_id), pattern):
-                return True
-        elif fnmatch.fnmatch(f"{test_id.suite_name}::{test_id.test_name}", pattern):
-            return True
-    return False
+    return any(matches(test_id, pattern) for pattern in patterns)
 
 
 def autodetect_parallelism() -> int:
@@ -300,15 +300,25 @@ async def run_tests(args: argparse.Namespace) -> int:
     if excluded_ids:
         print(f"Skipped {len(excluded_ids)} testcases (excluded)")
 
-    explicit = [TestIdentifier.from_str(t) for t in args.test]
+    explicit = list(args.test)
     if args.tests:
-        explicit += [TestIdentifier.from_str(t) for t in read_id_list(args.tests)]
+        explicit += read_id_list(args.tests)
     if explicit:
-        unknown = [t for t in explicit if t not in discovered]
+        selected: list[TestIdentifier] = []
+        seen: set[TestIdentifier] = set()
+        unknown: list[str] = []
+        for entry in explicit:
+            matched = [t for t in sorted(discovered) if str(t).startswith(entry)]
+            if not matched:
+                unknown.append(entry)
+            for t in matched:
+                if t not in seen:
+                    seen.add(t)
+                    selected.append(t)
         if unknown:
-            print(f"Unknown testcases: {', '.join(str(t) for t in unknown)}", file=sys.stderr)
+            print(f"Unknown testcases: {', '.join(unknown)}", file=sys.stderr)
             return 1
-        ids = [t for t in explicit if t in discovered]
+        ids = selected
     else:
         ids = sorted(discovered)
     if not ids:
@@ -412,8 +422,9 @@ def main() -> None:
     parser_test = subparsers.add_parser("test", help="Build and run testcases")
     parser_test.set_defaults(func=cmd_test)
     parser_test.add_argument("--cangjie-home", help="Path to Cangjie toolchain (overrides CANGJIE_HOME env var)")
-    parser_test.add_argument("--test", action="append", default=[], help="Testcase ID to run (repeatable)")
-    parser_test.add_argument("--tests", help="File with testcase IDs, one per line (# comments allowed)")
+    parser_test.add_argument("--test", action="append", default=[],
+                             help="Testcase ID prefix to run (repeatable); every test whose ID starts with it runs")
+    parser_test.add_argument("--tests", help="File with testcase ID prefixes, one per line (# comments allowed)")
     parser_test.add_argument("--testsuite", action="append", metavar="NAME", default=[],
                              help="Testsuite to run (repeatable); when given, only these suites run")
     parser_test.add_argument("--skip-build", action="store_true", help="Skip build, start running tests")
