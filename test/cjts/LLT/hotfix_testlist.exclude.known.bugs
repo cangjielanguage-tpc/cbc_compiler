@@ -420,23 +420,6 @@ compiler/FFI/CFFI/type_cast/type_cast_8.cj
 compiler/FFI/CFFI/unsafe/unsafe.cj
 compiler/Sema/varray/varray_cffi/varray_inout04.cj
 
-# bug 201 (cbc-compiler crashes with None.get: static interface func from extended interface calls other interface func)
-Runtime/CJNative/Class/Define/class_function_04.cj
-compiler/CHIR/AST2CHIR/BaseUseCase/extend/extend_03.cj
-compiler/CHIR/CHIR2HLIR/typeAlias/typealias_use_20.cj
-compiler/CHIR/UG/CallExpr/apply_like_07.cj
-compiler/CHIR/UG/ClosureConversion/staticFunc04.cj
-compiler/Sema/Extend/default_implement/default_implement_05.cj
-compiler/Sema/Extend/default_implement/default_implement_06.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_01.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_03.cj
-compiler/Sema/Extend/interface_default_implement/static_default_impl_04.cj
-compiler/Sema/Extend/visibility_between_extend/call_other_extend_interface.cj
-compiler/Sema/interface/interface_default_impl/static_defaule_impl_class.cj
-compiler/Sema/interface/use_interface_default_impl_03/use_interface_def_imple_008.cj
-compiler/CodegenCJNative/class/virtualcall_need_wrapper2.cj
-compiler/Sema/interface/use_interface_default_impl_02/use_interface_def_imple_024.cj
-
 # bug 203 (sigsegv on partially constructed TypeInfo: class with functional type field that references same class in signature)
 API/std/unittest/custom_assertions/nested_expect_inside_assert.cj
 API/std/unittest/custom_assertions/nested_expect_inside_expect.cj
@@ -468,12 +451,6 @@ API/std/unittest/mock/compiler/createMock/generic.cj
 API/std/unittest/mock/compiler/createMock/usePrivateTypes.cj
 API/std/unittest/mock/compiler/createSpy/generic.cj
 API/std/unittest/mock/compiler/createSpy/indirectSpyingGeneric.cj
-
-# bug 206 (mut generic struct interface -- could not find VTable slot for bar(BOXi32)BOXi32)
-API/std/unittest/mock/compiler/ensurePreparedToMock/generics_with_O2.cj
-compiler/CHIR/UG/OpenGeneric/extend.cj
-compiler/CHIR/UG/OpenGeneric/inter.cj
-compiler/CHIR/UG/OpenGeneric/mut.cj
 
 # bug 253 (finalizers don't run)
 Runtime/CJNative/GC/gc_wcollector_finalizer.cj
