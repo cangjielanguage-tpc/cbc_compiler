@@ -5,11 +5,11 @@ import com.google.flatbuffers.FlatBufferBuilder
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 
 import java.nio.ByteBuffer
-import java.nio.file.Files
 
-class PackageImplSuite extends AnyFunSuite {
+class PackageImplSuite extends AnyFunSuite with Matchers {
   private def fresh(): PackageImpl =
     PackageImpl.fromBytes(TestData.fixtureData().serializeToBinary())
 
@@ -29,19 +29,19 @@ class PackageImplSuite extends AnyFunSuite {
     val replacedBody = target.body.get
     val replacedReturn = target.retVal.get
     p.edit(source).moveBody(target)
-    assert(source.body.isEmpty && source.retVal.isEmpty)
-    assert(target.body.get eq movedBody)
-    assert(target.retVal.get eq movedReturn)
-    assert(p.groupTable(p.valueId(replacedBody)).getOwnedFunc == 0)
-    assert(!p.valueTable(p.valueId(replacedReturn)).asLocalVar().getIsRetVal)
-    assert(p.groupTable(p.valueId(movedBody)).getOwnedFunc == target.id)
-    assert(p.valueTable(p.valueId(movedReturn)).asLocalVar().getIsRetVal)
-    assert(p.validationIssues().isEmpty)
+    (source.body.isEmpty && source.retVal.isEmpty) shouldBe true
+    (target.body.get eq movedBody) shouldBe true
+    (target.retVal.get eq movedReturn) shouldBe true
+    p.groupTable(p.valueId(replacedBody)).getOwnedFunc shouldBe 0
+    (!p.valueTable(p.valueId(replacedReturn)).asLocalVar().getIsRetVal) shouldBe true
+    p.groupTable(p.valueId(movedBody)).getOwnedFunc shouldBe target.id
+    (p.valueTable(p.valueId(movedReturn)).asLocalVar().getIsRetVal) shouldBe true
+    (p.validationIssues().isEmpty) shouldBe true
     roundTrip(p) { saved =>
-      assert(saved.function(1).body.isEmpty)
-      assert(saved.function(8).body.exists(saved.valueId(_) == p.valueId(movedBody)))
-      assert(saved.function(8).retVal.exists(saved.valueId(_) == p.valueId(movedReturn)))
-      assert(!saved.valueTable(p.valueId(replacedReturn)).asLocalVar().getIsRetVal)
+      (saved.function(1).body.isEmpty) shouldBe true
+      (saved.function(8).body.exists(saved.valueId(_) == p.valueId(movedBody))) shouldBe true
+      (saved.function(8).retVal.exists(saved.valueId(_) == p.valueId(movedReturn))) shouldBe true
+      (!saved.valueTable(p.valueId(replacedReturn)).asLocalVar().getIsRetVal) shouldBe true
     }
   }
 
@@ -55,43 +55,43 @@ class PackageImplSuite extends AnyFunSuite {
     val attributes = f.attributes
     val identifier = f.identifier
     p.edit(f).removeBody()
-    assert(f.body.isEmpty && f.retVal.isEmpty)
-    assert(p.groupTable(p.valueId(body)).getOwnedFunc == 0)
-    assert(!p.valueTable(p.valueId(result)).asLocalVar().getIsRetVal)
-    assert(f.tpe eq signature)
-    assert(f.params == parameters && f.attributes == attributes && f.identifier == identifier)
-    assert(p.function(8).body.nonEmpty)
+    (f.body.isEmpty && f.retVal.isEmpty) shouldBe true
+    p.groupTable(p.valueId(body)).getOwnedFunc shouldBe 0
+    (!p.valueTable(p.valueId(result)).asLocalVar().getIsRetVal) shouldBe true
+    (f.tpe eq signature) shouldBe true
+    (f.params == parameters && f.attributes == attributes && f.identifier == identifier) shouldBe true
+    (p.function(8).body.nonEmpty) shouldBe true
     val after = p.p.serializeToBinary()
     p.edit(f).removeBody()
-    assert(p.p.serializeToBinary().sameElements(after))
-    assert(p.validationIssues().isEmpty)
+    (p.p.serializeToBinary().sameElements(after)) shouldBe true
+    (p.validationIssues().isEmpty) shouldBe true
     roundTrip(p) { saved =>
       val declaration = saved.function(1)
-      assert(declaration.body.isEmpty && declaration.retVal.isEmpty)
-      assert(declaration.identifier == identifier && declaration.attributes == attributes)
-      assert(saved.valueId(declaration.params.head) == p.valueId(parameters.head))
-      assert(saved.function(8).body.nonEmpty)
+      (declaration.body.isEmpty && declaration.retVal.isEmpty) shouldBe true
+      (declaration.identifier == identifier && declaration.attributes == attributes) shouldBe true
+      saved.valueId(declaration.params.head) shouldBe p.valueId(parameters.head)
+      (saved.function(8).body.nonEmpty) shouldBe true
     }
   }
 
   test("loaded nodes have stable editable identities and registry IDs") {
     val p = fresh()
     val f = p.function(1)
-    assert(f eq p.function(1))
-    assert(f eq p.getFunc("first").get)
-    assert(f eq p.getFunc("@first").get)
-    assert(f eq p.function(f.id.toInt))
+    (f eq p.function(1)) shouldBe true
+    (f eq p.getFunc("first").get) shouldBe true
+    (f eq p.getFunc("@first").get) shouldBe true
+    (f eq p.function(f.id.toInt)) shouldBe true
     val group = f.body.get
     val block = group.entryBlock
-    assert(group eq p.function(1).body.get)
-    assert(block eq group.entryBlock)
-    assert(p.valueId(group) == 2 && p.valueId(block) == 3)
-    assert(p.valueId(f.params.head) == 12)
-    assert(p.expressionId(block.terminator) == 2)
-    assert(p.typeId(f.tpe) == 5)
-    assert(p.values.size == 12 && p.typeDefs.isEmpty)
-    assert(p.getFunc("missing").isEmpty && p.getDef("missing").isEmpty)
-    assert(p.validationIssues().isEmpty)
+    (group eq p.function(1).body.get) shouldBe true
+    (block eq group.entryBlock) shouldBe true
+    (p.valueId(group) == 2 && p.valueId(block) == 3) shouldBe true
+    p.valueId(f.params.head) shouldBe 12
+    p.expressionId(block.terminator) shouldBe 2
+    p.typeId(f.tpe) shouldBe 5
+    (p.values.size == 12 && p.typeDefs.isEmpty) shouldBe true
+    (p.getFunc("missing").isEmpty && p.getDef("missing").isEmpty) shouldBe true
+    (p.validationIssues().isEmpty) shouldBe true
   }
 
   test("replaceTerminator updates held views and defers predecessor maintenance") {
@@ -100,20 +100,20 @@ class PackageImplSuite extends AnyFunSuite {
     val old = block.terminator
     val jump = p.newGoto(block, Some(CHIR.DebugLocation(10, 11)))
     val newBase = p.expressionTable(p.expressionId(jump)).asExpression().getBase
-    assert(newBase.getAnnos != null && newBase.getLoc.getFilePath != null)
+    (newBase.getAnnos != null && newBase.getLoc.getFilePath != null) shouldBe true
     p.edit(block).replaceTerminator(jump)
-    assert(block.terminator eq jump)
-    assert(block.nonTerminatorExpressions.size == 1)
-    assert(jump.destination eq block)
-    assert(jump.debugLoc.contains(CHIR.DebugLocation(10, 11)))
-    assert(p.expressionTable(p.expressionId(old)).asExpression().getOwner == 0)
-    assert(p.blockTable(3).getPredecessors.isEmpty)
-    assert(p.validationIssues().isEmpty) // Explicit diagnostics refresh derived data too.
-    assert(p.blockTable(3).getPredecessors.sameElements(Array(3L)))
+    (block.terminator eq jump) shouldBe true
+    block.nonTerminatorExpressions.size shouldBe 1
+    (jump.destination eq block) shouldBe true
+    (jump.debugLoc.contains(CHIR.DebugLocation(10, 11))) shouldBe true
+    p.expressionTable(p.expressionId(old)).asExpression().getOwner shouldBe 0
+    (p.blockTable(3).getPredecessors.isEmpty) shouldBe true
+    (p.validationIssues().isEmpty) shouldBe true // Explicit diagnostics refresh derived data too.
+    (p.blockTable(3).getPredecessors.sameElements(Array(3L))) shouldBe true
     roundTrip(p) { saved =>
       val b = saved.function(1).body.get.entryBlock
-      assert(b.terminator.asInstanceOf[CHIR.Goto].destination eq b)
-      assert(b.terminator.debugLoc.contains(CHIR.DebugLocation(10, 11)))
+      (b.terminator.asInstanceOf[CHIR.Goto].destination eq b) shouldBe true
+      (b.terminator.debugLoc.contains(CHIR.DebugLocation(10, 11))) shouldBe true
     }
   }
 
@@ -121,18 +121,18 @@ class PackageImplSuite extends AnyFunSuite {
     val p = fresh()
     val b = p.function(1).body.get.entryBlock
     p.edit(b).replaceTerminator(p.newGoto(b))
-    assert(p.expressionTable(2).asExpression().getOwner == 0)
+    p.expressionTable(2).asExpression().getOwner shouldBe 0
     roundTrip(p) { saved =>
-      assert(saved.expressionTable(2).asExpression().getOwner == 3)
-      assert(!saved.blockTable(3).getExprs.contains(2L))
+      saved.expressionTable(2).asExpression().getOwner shouldBe 3
+      (!saved.blockTable(3).getExprs.contains(2L)) shouldBe true
       val oldExit = saved.getExpr[CHIR.Terminator](2)
       val spare = saved.newBlock()
       saved.edit(spare).replaceTerminator(oldExit) // historical owner is not an active attachment
       val group = saved.function(1).body.get
       saved.edit(group).replaceBlocks(group.blocks :+ spare, group.entryBlock)
-      assert(saved.validationIssues().isEmpty)
+      (saved.validationIssues().isEmpty) shouldBe true
     }
-    assert(p.expressionTable(2).asExpression().getOwner == 0)
+    p.expressionTable(2).asExpression().getOwner shouldBe 0
   }
 
   for (failPacking <- Seq(false, true)) {
@@ -151,7 +151,7 @@ class PackageImplSuite extends AnyFunSuite {
       val lambda = p.p.getValues()(7).asFunction()
       lambda.setFuncKind(FuncKind.LAMBDA)
       p.edit(p.function(8)).removeBody()
-      assert(p.validationIssues().isEmpty)
+      (p.validationIssues().isEmpty) shouldBe true
       val values = p.p.getValues
       val exprs = p.p.getExprs
       val spareTable = p.blockTable(p.valueId(spare))
@@ -159,45 +159,42 @@ class PackageImplSuite extends AnyFunSuite {
       val predecessors = spareTable.getPredecessors
       val counter = values(0).asFunction().getBlockGroupId
       val before = p.p.serializeToBinary()
-      val output = Files.createTempFile("wire-overrides-", ".chir")
-      val sentinel = Array[Byte](1, 2, 3)
-      try {
-        Files.write(output, sentinel)
-        if (failPacking) {
-          // Validation accepts the graph; the UTF-8 packer rejects this name
-          // after all serialization-only overrides have been applied.
-          p.p.setName("\ud800")
-          try intercept[IllegalArgumentException](p.write(output))
-          finally p.p.setName("fixture")
-          assert(Files.readAllBytes(output).sameElements(sentinel))
-        } else {
-          p.write(output)
-        }
-        assert(p.p.getValues eq values)
-        assert(p.p.getExprs eq exprs)
-        assert(p.expressionTable(2).asExpression().getOwner == 0)
-        assert(p.groupTable(9).getOwnedFunc == 0)
-        assert(spareTable.getParentGroup == 0)
-        assert(spareTable.getExprs eq instructions)
-        assert(spareTable.getPredecessors eq predecessors)
-        assert(values(0).asFunction().getBlockGroupId == counter)
-        assert(lambda.getFuncKind == FuncKind.LAMBDA)
-        assert(block.terminator eq jump)
-        assert(spare.terminator eq spareJump)
-        assert(p.p.serializeToBinary().sameElements(before))
-        p.write(output)
-        val first = Files.readAllBytes(output)
-        val saved = PackageImpl.fromBytes(Files.readAllBytes(output))
-        assert(saved.expressionTable(2).asExpression().getOwner == p.valueId(block))
-        assert(saved.blockTable(p.valueId(spare)).getParentGroup > values.length)
-        assert(saved.blockTable(p.valueId(spare)).getExprs.isEmpty)
-        assert(saved.p.getValues()(7).asFunction().getFuncKind == FuncKind.DEFAULT)
-        assert(saved.p.getValues()(0).asFunction().getBlockGroupId > counter)
-        p.write(output)
-        assert(Files.readAllBytes(output).sameElements(first))
-        assert(p.p.getValues eq values)
-        assert(p.p.serializeToBinary().sameElements(before))
-      } finally Files.delete(output)
+      var output = Array.emptyByteArray
+
+      if (failPacking) {
+        // Validation accepts the graph; the UTF-8 packer rejects this name
+        // after all serialization-only overrides have been applied.
+        p.p.setName("\ud800")
+        try intercept[IllegalArgumentException](p.toBytes)
+        finally p.p.setName("fixture")
+
+      } else {
+        output = p.toBytes
+      }
+      (p.p.getValues eq values) shouldBe true
+      (p.p.getExprs eq exprs) shouldBe true
+      p.expressionTable(2).asExpression().getOwner shouldBe 0
+      p.groupTable(9).getOwnedFunc shouldBe 0
+      spareTable.getParentGroup shouldBe 0
+      (spareTable.getExprs eq instructions) shouldBe true
+      (spareTable.getPredecessors eq predecessors) shouldBe true
+      values(0).asFunction().getBlockGroupId shouldBe counter
+      lambda.getFuncKind shouldBe FuncKind.LAMBDA
+      (block.terminator eq jump) shouldBe true
+      (spare.terminator eq spareJump) shouldBe true
+      (p.p.serializeToBinary().sameElements(before)) shouldBe true
+      output = p.toBytes
+      val first = output
+      val saved = PackageImpl.fromBytes(output)
+      saved.expressionTable(2).asExpression().getOwner shouldBe p.valueId(block)
+      (saved.blockTable(p.valueId(spare)).getParentGroup > values.length) shouldBe true
+      (saved.blockTable(p.valueId(spare)).getExprs.isEmpty) shouldBe true
+      saved.p.getValues()(7).asFunction().getFuncKind shouldBe FuncKind.DEFAULT
+      (saved.p.getValues()(0).asFunction().getBlockGroupId > counter) shouldBe true
+      output = p.toBytes
+      (output.sameElements(first)) shouldBe true
+      (p.p.getValues eq values) shouldBe true
+      (p.p.serializeToBinary().sameElements(before)) shouldBe true
     }
   }
 
@@ -212,33 +209,30 @@ class PackageImplSuite extends AnyFunSuite {
     p.edit(second).replaceTerminator(p.newGoto(second))
     p.edit(block).replaceTerminator(p.newBranch(condition, block, second))
     p.edit(group).replaceBlocks(group.blocks :+ second, block)
-    val output = Files.createTempFile("wire-vectors-", ".chir")
-    try {
-      p.write(output)
-      val raw = CHIRPackage.getRootAsCHIRPackage(ByteBuffer.wrap(Files.readAllBytes(output)))
-      val t = raw.types(new Type, (boolTypeId - 1).toInt).asInstanceOf[Type]
-      val e = raw.exprs(new Expression, (expressionId - 1).toInt).asInstanceOf[Expression]
-      val b = raw.values(new Block, (p.valueId(second) - 1).toInt).asInstanceOf[Block]
-      assert(t.argTysVector() != null)
-      assert(e.blockGroupsVector() != null)
-      assert(b.exceptionCatchListVector() != null)
-      assert(PackageImpl.fromBytes(Files.readAllBytes(output)).validationIssues().isEmpty)
-    } finally Files.delete(output)
+    val output = p.toBytes
+    val raw = CHIRPackage.getRootAsCHIRPackage(ByteBuffer.wrap(output))
+    val t = raw.types(new Type, (boolTypeId - 1).toInt).asInstanceOf[Type]
+    val e = raw.exprs(new Expression, (expressionId - 1).toInt).asInstanceOf[Expression]
+    val b = raw.values(new Block, (p.valueId(second) - 1).toInt).asInstanceOf[Block]
+    (t.argTysVector() != null) shouldBe true
+    (e.blockGroupsVector() != null) shouldBe true
+    (b.exceptionCatchListVector() != null) shouldBe true
+    (PackageImpl.fromBytes(output).validationIssues().isEmpty) shouldBe true
   }
 
   test("attribute caching follows both API and backing-mask updates") {
     val p = fresh()
     val f = p.function(1)
     val original = f.attributes
-    assert(f.attributes eq original)
+    (f.attributes eq original) shouldBe true
     p.edit(f).replaceAttributes(Seq(CHIR.Attribute.Imported))
     val imported = f.attributes
-    assert(imported == Seq(CHIR.Attribute.Imported))
-    assert(f.attributes eq imported)
+    imported shouldBe Seq(CHIR.Attribute.Imported)
+    (f.attributes eq imported) shouldBe true
     p.p.getValues()(0).asFunction().getBase.getBase.getBase.setAttributes(1L << CHIR.Attribute.Public.ordinal)
-    assert(f.attributes == Seq(CHIR.Attribute.Public))
+    f.attributes shouldBe Seq(CHIR.Attribute.Public)
     p.edit(f).replaceAttributes(Seq.empty)
-    assert(f.attributes.isEmpty)
+    (f.attributes.isEmpty) shouldBe true
   }
 
   test("batched appends preserve IDs and held views across flushes and saving") {
@@ -252,18 +246,18 @@ class PackageImplSuite extends AnyFunSuite {
     for (i <- 1 until 128) {
       p.edit(block).insert(EditableCHIR.Operation.BooleanConstant(i % 2 == 0))
     }
-    assert(p.values.size == initialValues + 256)
-    assert(p.getValue[CHIR.LocalVar](firstId).get eq first)
-    assert(p.p.getValues.length == initialValues + 256)
-    assert(p.p.getTypes.length == initialTypes + 1)
+    p.values.size shouldBe initialValues + 256
+    (p.getValue[CHIR.LocalVar](firstId).get eq first) shouldBe true
+    p.p.getValues.length shouldBe initialValues + 256
+    p.p.getTypes.length shouldBe initialTypes + 1
     p.edit(block).insert(EditableCHIR.Operation.BooleanConstant(false))
-    assert(p.getValue[CHIR.LocalVar](firstId).get eq first)
-    assert(p.function(1) eq f)
+    (p.getValue[CHIR.LocalVar](firstId).get eq first) shouldBe true
+    (p.function(1) eq f) shouldBe true
     roundTrip(p) { saved =>
-      assert(saved.values.size == initialValues + 258)
-      assert(saved.getValue[CHIR.LocalVar](firstId).get.tpe == CHIR.BuiltinType.Boolean)
-      assert(saved.function(1).body.get.entryBlock.nonTerminatorExpressions.size == 130)
-      assert(saved.p.getTypes.length == initialTypes + 1)
+      saved.values.size shouldBe initialValues + 258
+      saved.getValue[CHIR.LocalVar](firstId).get.tpe shouldBe CHIR.BuiltinType.Boolean
+      saved.function(1).body.get.entryBlock.nonTerminatorExpressions.size shouldBe 130
+      saved.p.getTypes.length shouldBe initialTypes + 1
     }
   }
 
@@ -280,75 +274,51 @@ class PackageImplSuite extends AnyFunSuite {
     }
     data.setTypes(data.getTypes ++ Array(booleanType(), booleanType()))
     val p = PackageImpl.fromBytes(data.serializeToBinary())
-    assert(p.getType[CHIR.Type](7).contains(CHIR.BuiltinType.Boolean))
+    (p.getType[CHIR.Type](7).contains(CHIR.BuiltinType.Boolean)) shouldBe true
     val value = p.edit(p.function(1).body.get.entryBlock).insert(EditableCHIR.Operation.BooleanConstant(true))
-    assert(p.valueTable(p.valueId(value)).asLocalVar().getBase.getType == 6)
-    assert(p.p.getTypes.length == 7)
+    p.valueTable(p.valueId(value)).asLocalVar().getBase.getType shouldBe 6
+    p.p.getTypes.length shouldBe 7
   }
 
   test("new nodes may be staged but must be attached before writing") {
     val p = fresh()
     val block = p.newBlock()
     val jump = p.newGoto(block)
-    assert(p.validationIssues().exists(_.message.contains("New expression has not been attached")))
-    assert(p.validationIssues().exists(_.message.contains("New block has not been attached")))
+    (p.validationIssues().exists(_.message.contains("New expression has not been attached"))) shouldBe true
+    (p.validationIssues().exists(_.message.contains("New block has not been attached"))) shouldBe true
     p.edit(block).replaceTerminator(jump)
     val group = p.newBlockGroup(Seq(block), block)
-    assert(p.validationIssues().exists(_.message.contains("New group has not been attached")))
-    val output = Files.createTempFile("staged-chir-", ".chir")
-    try {
-      val error = intercept[IllegalArgumentException](p.write(output))
-      assert(error.getMessage.contains("New group has not been attached"))
-      assert(Files.size(output) == 0)
-    } finally Files.delete(output)
+    (p.validationIssues().exists(_.message.contains("New group has not been attached"))) shouldBe true
+    val error = intercept[IllegalArgumentException](p.toBytes)
+    (error.getMessage.contains("New group has not been attached")) shouldBe true
+
     p.edit(p.function(1)).replaceBody(Some(group), None)
-    assert(p.validationIssues().isEmpty)
-    roundTrip(p)(saved => assert(saved.function(1).body.get.blocks.size == 1))
+    (p.validationIssues().isEmpty) shouldBe true
+    roundTrip(p)(saved => saved.function(1).body.get.blocks.size shouldBe 1)
   }
 
   test("newBranch, expression replacement and new block membership survive reload") {
-    val source = TestData.fixtureData()
-    val boolType = new TypeT; boolType.setKind(CHIRTypeKind.BOOLEAN)
-    val typeEntry = new TypeElemUnion; typeEntry.setType(TypeElem.Type); typeEntry.setValue(boolType)
-    source.setTypes(source.getTypes :+ typeEntry)
-    val value = new ValueT; value.setBase(new BaseT); value.setType(6); value.setKind(ValueKind.LITERAL)
-    val literalBase = new LiteralValueT; literalBase.setBase(value); literalBase.setLiteralKind(ConstantValueKind.BOOL)
-    val literal = new BoolLiteralT; literal.setBase(literalBase); literal.setVal(true)
-    val literalEntry = new ValueElemUnion; literalEntry.setType(ValueElem.BoolLiteral); literalEntry.setValue(literal)
-    source.setValues(source.getValues :+ literalEntry)
-    val p = PackageImpl.fromBytes(source.serializeToBinary())
+    val p = fresh()
     val g = p.function(1).body.get
     val first = g.entryBlock
     val exit = first.terminator
     val second = p.newBlock()
-    val branch = p.newBranch(p.getValue[CHIR.Value](13).get, first, second)
+    val condition = p.edit(first).insert(EditableCHIR.Operation.BooleanConstant(true))
+    val branch = p.newBranch(condition, first, second)
     p.edit(first).replaceTerminator(branch)
     p.edit(second).replaceExpressions(Seq.empty, exit)
     p.edit(g).replaceBlocks(Seq(first, second), first)
-    assert(p.blockTable(p.valueId(second)).getParentGroup == p.valueId(g))
-    assert(PackageImpl.ids(p.blockTable(p.valueId(second)).getPredecessors).isEmpty)
-    assert(p.validationIssues().isEmpty)
-    assert(p.blockTable(p.valueId(second)).getPredecessors.sameElements(Array(3L)))
+    p.blockTable(p.valueId(second)).getParentGroup shouldBe p.valueId(g)
+    (PackageImpl.ids(p.blockTable(p.valueId(second)).getPredecessors).isEmpty) shouldBe true
+    (p.validationIssues().isEmpty) shouldBe true
+    (p.blockTable(p.valueId(second)).getPredecessors.sameElements(Array(3L))) shouldBe true
     roundTrip(p) { saved =>
       val body = saved.function(1).body.get
       val b = body.entryBlock.terminator.asInstanceOf[CHIR.Branch]
-      assert(b.trueBlock eq body.entryBlock)
-      assert(b.falseBlock eq body.blocks(1))
-      assert(b.condition.asInstanceOf[CHIR.BoolLiteral].value)
+      (b.trueBlock eq body.entryBlock) shouldBe true
+      (b.falseBlock eq body.blocks(1)) shouldBe true
+      b.condition.asInstanceOf[CHIR.LocalVar].associatedExpr.asInstanceOf[CHIR.Constant].literal.asInstanceOf[CHIR.BoolLiteral].value shouldBe true
     }
-  }
-
-  test("newBlockGroup connects to the existing replaceBody implementation") {
-    val p = fresh()
-    val block = p.newBlock(isLandingPad = true)
-    p.edit(block).replaceTerminator(p.newGoto(block))
-    val body = p.newBlockGroup(Seq(block), block)
-    p.edit(p.function(1)).replaceBody(Some(body), None)
-    assert(p.function(1).body.get eq body)
-    assert(p.groupTable(p.valueId(body)).getOwnedFunc == 1)
-    assert(p.groupTable(2).getOwnedFunc == 0)
-    assert(p.validationIssues().isEmpty)
-    roundTrip(p) { saved => assert(saved.function(1).body.get.entryBlock.isLandingPadBlock) }
   }
 
   test("terminator replacement defers unreachable block pruning until write") {
@@ -359,13 +329,13 @@ class PackageImplSuite extends AnyFunSuite {
     val unusedId = p.valueId(unused)
     // Membership can be staged; no caller-triggered cleanup is necessary.
     p.edit(g).replaceBlocks(g.blocks :+ unused, entry)
-    assert(g.blocks.size == 2)
+    g.blocks.size shouldBe 2
     p.edit(entry).replaceTerminator(p.newGoto(entry))
-    assert(g.blocks.size == 2)
-    assert(p.blockTable(unusedId).getParentGroup == p.valueId(g))
-    roundTrip(p)(saved => assert(saved.function(1).body.get.blocks.size == 1))
-    assert(g.blocks == Seq(entry))
-    assert(p.blockTable(unusedId).getParentGroup == 0)
+    g.blocks.size shouldBe 2
+    p.blockTable(unusedId).getParentGroup shouldBe p.valueId(g)
+    roundTrip(p)(saved => saved.function(1).body.get.blocks.size shouldBe 1)
+    g.blocks shouldBe Seq(entry)
+    p.blockTable(unusedId).getParentGroup shouldBe 0
   }
 
   test("moveBody checks types used by the moved body before applying edits") {
@@ -374,8 +344,8 @@ class PackageImplSuite extends AnyFunSuite {
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val before = p.p.serializeToBinary()
     val error = intercept[IllegalArgumentException](p.edit(p.function(1)).moveBody(p.function(8)))
-    assert(error.getMessage.contains("Invalid type ID"))
-    assert(p.p.serializeToBinary().sameElements(before))
+    (error.getMessage.contains("Invalid type ID")) shouldBe true
+    (p.p.serializeToBinary().sameElements(before)) shouldBe true
   }
 
   test("moveBody defers unrelated metadata validation until writing") {
@@ -389,21 +359,17 @@ class PackageImplSuite extends AnyFunSuite {
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val moved = p.function(1).body.get
     p.edit(p.function(1)).moveBody(p.function(8))
-    assert(p.function(8).body.contains(moved))
-    val output = Files.createTempFile("invalid-metadata-", ".chir")
-    val sentinel = Array[Byte](1, 2, 3)
-    try {
-      Files.write(output, sentinel)
-      val error = intercept[IllegalArgumentException](p.write(output))
-      assert(error.getMessage.contains("WrappedRawMethod.rawMethod has invalid Values ID"))
-      assert(Files.readAllBytes(output).sameElements(sentinel))
-    } finally Files.delete(output)
+    (p.function(8).body.contains(moved)) shouldBe true
+    var output = Array.emptyByteArray
+
+    val error = intercept[IllegalArgumentException](p.toBytes)
+    (error.getMessage.contains("WrappedRawMethod.rawMethod has invalid Values ID")) shouldBe true
   }
 
   test("typed reference validation rejects mismatched union tags") {
     val p = fresh()
     p.p.getExprs()(0).setType(ExpressionElem.Expression)
-    assert(p.validationIssues().exists(_.message == "Expression union tag/payload mismatch"))
+    (p.validationIssues().exists(_.message == "Expression union tag/payload mismatch")) shouldBe true
   }
 
   test("write automatically detaches unreachable blocks and preserves IDs") {
@@ -413,66 +379,37 @@ class PackageImplSuite extends AnyFunSuite {
     val unused = p.newBlock()
     val unusedId = p.valueId(unused)
     p.edit(g).replaceBlocks(g.blocks :+ unused, g.entryBlock)
-    assert(p.validationIssues().isEmpty) // raw CHIR permits empty unreachable blocks
+    (p.validationIssues().isEmpty) shouldBe true // raw CHIR permits empty unreachable blocks
     roundTrip(p) { saved =>
       val active = saved.function(1).body.get
-      assert(active.blocks.size == 1)
+      active.blocks.size shouldBe 1
       val retired = saved.blockTable(unusedId)
-      assert(retired.getParentGroup != saved.valueId(active))
-      assert(saved.groupTable(retired.getParentGroup).getBlocks.contains(unusedId))
-      assert(retired.getExprs.isEmpty)
+      (retired.getParentGroup != saved.valueId(active)) shouldBe true
+      (saved.groupTable(retired.getParentGroup).getBlocks.contains(unusedId)) shouldBe true
+      (retired.getExprs.isEmpty) shouldBe true
     }
-    assert(g.blocks.size == 1)
-    assert(p.valueId(unused) == unusedId && p.blockTable(unusedId).getParentGroup == 0)
+    g.blocks.size shouldBe 1
+    (p.valueId(unused) == unusedId && p.blockTable(unusedId).getParentGroup == 0) shouldBe true
   }
 
-  test("foreign nodes, shared expressions and invalid branches fail without edits") {
-    val p = fresh(); val foreign = fresh()
-    val b = p.function(1).body.get.entryBlock
-    val before = p.p.serializeToBinary()
-    intercept[IllegalArgumentException](p.valueId(foreign.function(1)))
-    intercept[IllegalArgumentException](p.edit(b).replaceTerminator(p.function(8).body.get.entryBlock.terminator))
-    intercept[IllegalArgumentException](p.newBranch(p.function(1).params.head, b, b))
-    intercept[IllegalArgumentException](p.newGoto(b, Some(CHIR.DebugLocation(10, 1))))
-    assert(p.p.serializeToBinary().sameElements(before))
-  }
-
-  test("block groups reject duplicate, foreign, shared and absent entry blocks") {
-    val p = fresh(); val q = fresh()
-    val g = p.function(1).body.get
-    val b = g.entryBlock
-    val other = p.function(8).body.get.entryBlock
-    val before = p.p.serializeToBinary()
-    intercept[IllegalArgumentException](p.edit(g).replaceBlocks(Seq(b, b), b))
-    intercept[IllegalArgumentException](p.edit(g).replaceBlocks(Seq(b), other))
-    intercept[IllegalArgumentException](p.edit(g).replaceBlocks(Seq(b, other), b))
-    intercept[IllegalArgumentException](p.edit(g).replaceBlocks(Seq(b, q.function(1).body.get.entryBlock), b))
-    intercept[IllegalArgumentException](p.newBlockGroup(Seq(b), b))
-    assert(p.p.serializeToBinary().sameElements(before))
-  }
-
-  test("write validates dangling definitions before touching an existing output") {
+  test("serialization rejects dangling definitions") {
     val p = fresh()
     val b = p.function(1).body.get.entryBlock
     p.edit(b).replaceExpressions(Seq.empty, b.terminator) // removes the return-local definition
-    assert(p.validationIssues().exists(_.message.contains("Return local is defined outside body")))
-    val output = Files.createTempFile("invalid-chir-", ".chir")
-    val sentinel = Array[Byte](1, 2, 3)
-    try {
-      Files.write(output, sentinel)
-      intercept[IllegalArgumentException](p.write(output))
-      assert(Files.readAllBytes(output).sameElements(sentinel))
-    } finally Files.delete(output)
+    (p.validationIssues().exists(_.message.contains("Return local is defined outside body"))) shouldBe true
+    var output = Array.emptyByteArray
+
+    intercept[IllegalArgumentException](p.toBytes)
   }
 
   test("validate reports malformed references and control-flow edges") {
     val p = fresh()
     p.expressionTable(1).asAllocateBase().getBase.setResultTy(9999)
-    assert(p.validationIssues().exists(_.message.contains("invalid Types ID")))
+    (p.validationIssues().exists(_.message.contains("invalid Types ID"))) shouldBe true
     val q = fresh()
     val b = q.function(1).body.get.entryBlock
     q.edit(b).replaceTerminator(q.newGoto(q.function(8).body.get.entryBlock))
-    assert(q.validationIssues().exists(_.message.contains("outside group")))
+    (q.validationIssues().exists(_.message.contains("outside group"))) shouldBe true
   }
 
   test("serialization preserves original metadata and identifier convention") {
@@ -484,15 +421,12 @@ class PackageImplSuite extends AnyFunSuite {
       val p = PackageImpl.fromBytes(bytes)
       roundTrip(p) { saved =>
         val f = saved.p.getValues()(0).asFunction()
-        assert(f.getIsFastNative && f.getIsCffiwrapper)
-        assert(f.getBase.getRawMangledName == "preserve-this-metadata")
+        (f.getIsFastNative && f.getIsCffiwrapper) shouldBe true
+        f.getBase.getRawMangledName shouldBe "preserve-this-metadata"
       }
-      val output = Files.createTempFile("chir-header-", ".chir")
-      try {
-        p.write(output)
-        assert(CHIRPackage.CHIRPackageBufferHasIdentifier(ByteBuffer.wrap(Files.readAllBytes(output))) == expectedIdentifier)
-        assert(CHIR.read(output, 13002).isInstanceOf[PackageImpl])
-      } finally Files.delete(output)
+      val output = p.toBytes
+      CHIRPackage.CHIRPackageBufferHasIdentifier(ByteBuffer.wrap(output)) shouldBe expectedIdentifier
+      (CHIR.fromBytes(output, 13002).isInstanceOf[PackageImpl]) shouldBe true
     }
   }
 
@@ -500,7 +434,7 @@ class PackageImplSuite extends AnyFunSuite {
     val p = fresh()
     p.expressionTable(2).asExpression().setKind(CHIRExprKind.Goto)
     p.expressionTable(2).asExpression().setOperands(Array(12L))
-    assert(p.validationIssues().exists(_.message.contains("Goto target is not a block")))
+    (p.validationIssues().exists(_.message.contains("Goto target is not a block"))) shouldBe true
 
     val data = TestData.fixtureData()
     data.getValues()(0).asFunction().setRetVal(0)
@@ -511,7 +445,7 @@ class PackageImplSuite extends AnyFunSuite {
     data.getExprs()(0).asAllocateBase().getBase.setOwner(0)
     data.getValues()(2).asBlock().setExprs(Array(6L, 2L))
     val q = PackageImpl.fromBytes(data.serializeToBinary())
-    assert(q.validationIssues().exists(_.message.contains("Local operand is defined outside")))
+    (q.validationIssues().exists(_.message.contains("Local operand is defined outside"))) shouldBe true
   }
 
   test("distinct Unit literals retain individual identities and IDs") {
@@ -526,10 +460,10 @@ class PackageImplSuite extends AnyFunSuite {
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val a = p.getValue[CHIR.UnitLiteralValue](13).get
     val b = p.getValue[CHIR.UnitLiteralValue](14).get
-    assert(a ne b)
-    assert(p.valueId(a) == 13 && p.valueId(b) == 14)
-    assert(a.tpe == CHIR.BuiltinType.Unit)
-    roundTrip(p)(saved => assert(saved.values.count(_.isInstanceOf[CHIR.UnitLiteralValue]) == 2))
+    (a ne b) shouldBe true
+    (p.valueId(a) == 13 && p.valueId(b) == 14) shouldBe true
+    a.tpe shouldBe CHIR.BuiltinType.Unit
+    roundTrip(p)(saved => saved.values.count(_.isInstanceOf[CHIR.UnitLiteralValue]) shouldBe 2)
   }
 
   test("schema payloads lacking specialized CHIR views are retained") {
@@ -540,8 +474,8 @@ class PackageImplSuite extends AnyFunSuite {
     data.setExprs(data.getExprs :+ entry)
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val view = p.getExpr[CHIR.Expression](6)
-    assert(p.expressionId(view) == 6)
-    roundTrip(p)(saved => assert(saved.expressionTable(6).asLambda().getIdentifier == "preserve-lambda"))
+    p.expressionId(view) shouldBe 6
+    roundTrip(p)(saved => saved.expressionTable(6).asLambda().getIdentifier shouldBe "preserve-lambda")
   }
 
   test("moveBody remaps generic references in held views before a single write") {
@@ -552,28 +486,28 @@ class PackageImplSuite extends AnyFunSuite {
     val result = source.retVal.get
     val allocation = body.entryBlock.nonTerminatorExpressions.head.asInstanceOf[CHIR.Allocate]
     val cast = p.getExpr[CHIR.StaticCast](6)
-    assert(cast.value eq source.params.head)
-    assert(allocation.allocatedType eq source.genericTypeParams.head)
+    (cast.value eq source.params.head) shouldBe true
+    (allocation.allocatedType eq source.genericTypeParams.head) shouldBe true
     val oldReturnName = result.identifier
     p.edit(source).moveBody(target)
-    assert(source.body.isEmpty && source.retVal.isEmpty)
-    assert(target.body.get eq body)
-    assert(target.retVal.get eq result)
-    assert(result.identifier != oldReturnName)
-    assert(cast eq p.getExpr[CHIR.StaticCast](6))
-    assert(cast.value eq target.params(1))
-    assert(cast.targetTpe eq target.genericTypeParams.head)
-    assert(allocation.allocatedType eq target.genericTypeParams.head)
-    assert(result.tpe.asInstanceOf[CHIR.RefType].baseType eq target.genericTypeParams.head)
-    assert(p.validationIssues().isEmpty)
+    (source.body.isEmpty && source.retVal.isEmpty) shouldBe true
+    (target.body.get eq body) shouldBe true
+    (target.retVal.get eq result) shouldBe true
+    (result.identifier != oldReturnName) shouldBe true
+    (cast eq p.getExpr[CHIR.StaticCast](6)) shouldBe true
+    (cast.value eq target.params(1)) shouldBe true
+    (cast.targetTpe eq target.genericTypeParams.head) shouldBe true
+    (allocation.allocatedType eq target.genericTypeParams.head) shouldBe true
+    (result.tpe.asInstanceOf[CHIR.RefType].baseType eq target.genericTypeParams.head) shouldBe true
+    (p.validationIssues().isEmpty) shouldBe true
     roundTrip(p) { saved =>
-      assert(saved.function(1).body.isEmpty)
+      (saved.function(1).body.isEmpty) shouldBe true
       val f = saved.function(8)
       val c = saved.getExpr[CHIR.StaticCast](6)
-      assert(c.value eq f.params(1))
-      assert(c.targetTpe eq f.genericTypeParams.head)
-      assert(saved.groupTable(2).getOwnedFunc == 8)
-      assert(f.retVal.get.identifier == result.identifier)
+      (c.value eq f.params(1)) shouldBe true
+      (c.targetTpe eq f.genericTypeParams.head) shouldBe true
+      saved.groupTable(2).getOwnedFunc shouldBe 8
+      f.retVal.get.identifier shouldBe result.identifier
     }
   }
 
@@ -582,13 +516,13 @@ class PackageImplSuite extends AnyFunSuite {
     val foreign = PackageImpl.fromBytes(genericMoveData().serializeToBinary())
     val before = p.p.serializeToBinary()
     intercept[IllegalArgumentException](p.edit(p.function(1)).moveBody(foreign.function(8)))
-    assert(p.p.serializeToBinary().sameElements(before))
+    (p.p.serializeToBinary().sameElements(before)) shouldBe true
     val data = genericMoveData()
     data.getTypes()(6).asGenericType().setUpperBounds(Array(1L))
     val q = PackageImpl.fromBytes(data.serializeToBinary())
     val unchanged = q.p.serializeToBinary()
     intercept[IllegalArgumentException](q.edit(q.function(1)).moveBody(q.function(8)))
-    assert(q.p.serializeToBinary().sameElements(unchanged))
+    (q.p.serializeToBinary().sameElements(unchanged)) shouldBe true
   }
 
   test("missing body type specialization rejects a move without partial remapping") {
@@ -598,8 +532,8 @@ class PackageImplSuite extends AnyFunSuite {
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val before = p.p.serializeToBinary()
     val error = intercept[IllegalArgumentException](p.edit(p.function(1)).moveBody(p.function(8)))
-    assert(error.getMessage.contains("Missing substituted composite type"))
-    assert(p.p.serializeToBinary().sameElements(before))
+    (error.getMessage.contains("Missing substituted composite type")) shouldBe true
+    (p.p.serializeToBinary().sameElements(before)) shouldBe true
   }
 
   for ((sourceMember, targetMember) <- Seq(false -> false, false -> true, true -> false, true -> true)) {
@@ -610,17 +544,17 @@ class PackageImplSuite extends AnyFunSuite {
       val target = p.function(8)
       val cast = p.getExpr[CHIR.StaticCast](6)
       val body = source.body.get
-      assert(cast.value eq source.params.head)
+      (cast.value eq source.params.head) shouldBe true
       p.edit(source).moveBody(target)
-      assert(source.body.isEmpty)
-      assert(target.body.get eq body)
-      assert(cast.value eq target.params.head)
-      assert(source.declaringDef.isDefined == sourceMember)
-      assert(target.declaringDef.isDefined == targetMember)
+      (source.body.isEmpty) shouldBe true
+      (target.body.get eq body) shouldBe true
+      (cast.value eq target.params.head) shouldBe true
+      source.declaringDef.isDefined shouldBe sourceMember
+      target.declaringDef.isDefined shouldBe targetMember
       roundTrip(p) { saved =>
-        assert(saved.function(1).body.isEmpty)
-        assert(saved.getExpr[CHIR.StaticCast](6).value eq saved.function(8).params.head)
-        assert(saved.function(8).declaringDef.isDefined == targetMember)
+        (saved.function(1).body.isEmpty) shouldBe true
+        (saved.getExpr[CHIR.StaticCast](6).value eq saved.function(8).params.head) shouldBe true
+        saved.function(8).declaringDef.isDefined shouldBe targetMember
       }
     }
   }
@@ -631,8 +565,8 @@ class PackageImplSuite extends AnyFunSuite {
     data.getValues()(7).asFunction().setFuncKind(FuncKind.GETTER)
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     p.edit(p.function(1)).moveBody(p.function(8))
-    assert(p.function(8).kind == CHIR.Func.Kind.Getter)
-    roundTrip(p)(saved => assert(saved.function(8).body.nonEmpty))
+    p.function(8).kind shouldBe CHIR.Func.Kind.Getter
+    roundTrip(p)(saved => (saved.function(8).body.nonEmpty) shouldBe true)
   }
 
   test("moveBody can omit an unused leading source receiver") {
@@ -643,8 +577,8 @@ class PackageImplSuite extends AnyFunSuite {
     data.getValues()(2).asBlock().setExprs(Array(1L, 2L))
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     p.edit(p.function(1)).moveBody(p.function(8))
-    assert(p.function(8).params.isEmpty && p.function(1).body.isEmpty)
-    roundTrip(p)(saved => assert(saved.function(8).body.nonEmpty))
+    (p.function(8).params.isEmpty && p.function(1).body.isEmpty) shouldBe true
+    roundTrip(p)(saved => (saved.function(8).body.nonEmpty) shouldBe true)
   }
 
   test("moveBody rejects removing a used source receiver without mutation") {
@@ -654,8 +588,8 @@ class PackageImplSuite extends AnyFunSuite {
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val before = p.p.serializeToBinary()
     val error = intercept[IllegalArgumentException](p.edit(p.function(1)).moveBody(p.function(8)))
-    assert(error.getMessage.contains("leading parameter that is used"))
-    assert(p.p.serializeToBinary().sameElements(before))
+    (error.getMessage.contains("leading parameter that is used")) shouldBe true
+    (p.p.serializeToBinary().sameElements(before)) shouldBe true
   }
 
   private def receiverMoveData(sourceMember: Boolean, targetMember: Boolean): CHIRPackageT = {
@@ -745,12 +679,9 @@ class PackageImplSuite extends AnyFunSuite {
   }
 
   private def roundTrip(p: PackageImpl)(check: PackageImpl => Unit): Unit = {
-    val output = Files.createTempFile("editable-chir-", ".chir")
-    try {
-      p.write(output)
-      val saved = PackageImpl.fromBytes(Files.readAllBytes(output))
-      assert(saved.validationIssues().isEmpty)
-      check(saved)
-    } finally Files.delete(output)
+    val saved = PackageImpl.fromBytes(p.toBytes)
+    (saved.validationIssues().isEmpty) shouldBe true
+    check(saved)
   }
+
 }

@@ -149,11 +149,15 @@ object Build {
 
   lazy val commonSourceTestLayout = Seq(commonSourceLayout, commonTestLayout)
 
-  lazy val chirLibTest = taskKey[Unit]("Run CHIR library unit and native integration tests")
+  lazy val chirLibTest = taskKey[Unit]("Run CHIR library unit tests")
 
   lazy val all = (project in projectRoot)
     .settings(
-      chirLibTest := (chirLib / Test / test).value,
+      chirLibTest := {
+        (chirLib / Test / test).value
+        (chirLib / Test / packageBin).value
+        ()
+      },
       chirLibTest / aggregate := false,
       addCommandAlias("test", "tests/test"),
       addCommandAlias("jar", "compiler/copyAotJar"),
@@ -233,6 +237,7 @@ object Build {
   lazy val chirLib = (project in file("core/chir-lib"))
     .dependsOn(commonJavaLib)
     .settings(flatbuffersSettings)
+    .settings(Test / packageBin / artifactPath := target.value / "chir-lib-tests.jar")
     .settings(commonSourceTestLayout)
     .settings(commonTestSettings)
     .settings(

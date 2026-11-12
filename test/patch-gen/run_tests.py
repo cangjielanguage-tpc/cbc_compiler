@@ -109,7 +109,11 @@ def main() -> int:
                         help="patch-gen binary to test (default: local scripts/patch-gen)")
     parser.add_argument("--native", action="store_true",
                         help="test a C++ TEST build, which has no --test option")
+    parser.add_argument("--checker-classpath", default="",
+                        help="classpath containing the model checker and patch-gen classes")
     args = parser.parse_args()
+    checker_classpath = args.checker_classpath or os.pathsep.join(str(TEST_DIR.parents[1] / p) for p in
+        ["core/chir-lib/target/chir-lib-tests.jar", "core/cbc-patchgen/target/patch-gen.jar"])
 
     toolchain = str(Path(args.cangjie_home).expanduser().resolve()) if args.cangjie_home else ""
     if not toolchain or not Path(toolchain, "envsetup.sh").is_file():
@@ -127,9 +131,17 @@ def main() -> int:
         print("Error: --native requires --patch-gen pointing to a C++ TEST build")
         return 2
 
+    if not args.native and shutil.which("java") is None:
+        print("Error: Java must be available on PATH")
+        return 2
+
     test_data = TEST_DIR / "test_data"
     all_tests = sorted(p.stem for p in test_data.glob("*.cj") if not p.stem.endswith("_patched"))
     tests = [t for t in all_tests if any(t.startswith(f) for f in args.filter)] if args.filter else all_tests
+    if not args.native and "O0" in args.compile_level and any(t in ("func1", "class1") for t in tests):
+        if any(not Path(p).exists() for p in checker_classpath.split(os.pathsep)):
+            print("Error: build the model checker with sbt chirLibTest 'patchGen/assembly', or set --checker-classpath")
+            return 2
     if args.filter:
         missing = [f for f in args.filter if not any(t.startswith(f) for t in all_tests)]
         if missing:
@@ -200,6 +212,18 @@ def main() -> int:
                     failed.append(f"{level}:{name}")
                     continue
                 generator_command.append(f"lib{name}_patched.chir")
+
+            if not args.native and name in ("func1", "class1") and level == "O0":
+                checked = work / f"{name}.checked.chir"
+                checker = run(in_tool_env(env, ["java", "-cp", checker_classpath,
+                    "com.huawei.excelsior.jet.compiler.chir.patchgen.GuardChecksCheck",
+                    str(work / f"lib{name}_patched.chir"), str(checked)]), cwd=work, env=env, capture=True)
+                dis = run(in_tool_env(env, ["chir-dis", str(checked)]), cwd=work, env=env, capture=True) if checker.returncode == 0 else None
+                if checker.returncode != 0 or dis.returncode != 0:
+                    print("    Fail. Model integration checker failed")
+                    print(checker.stdout if checker.returncode else dis.stdout)
+                    failed.append(f"{level}:{name}:model-checker")
+                    continue
 
             (work / patch_chir).unlink(missing_ok=True)
             result = run(in_tool_env(env, generator_command), cwd=work, env=env, capture=True)

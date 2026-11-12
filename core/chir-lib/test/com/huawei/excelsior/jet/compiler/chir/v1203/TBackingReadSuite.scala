@@ -3,110 +3,111 @@ package com.huawei.excelsior.jet.compiler.chir.v1203
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.v1203.PackageFormat.*
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 
 /** Verify existing read contracts against the shared mutable object model. */
-class TBackingReadSuite extends AnyFunSuite {
+class TBackingReadSuite extends AnyFunSuite with Matchers {
   test("type getters read live T fields, including generic and composite types") {
     val p = fixture()
-    assert(p.getType[CHIR.CPointerType](14).get.elementType == CHIR.BuiltinType.Int64)
-    assert(p.getType[CHIR.BoxType](15).get.baseType == CHIR.BuiltinType.Int64)
-    assert(p.getType[CHIR.TupleType](16).get.fieldTypes == Seq(CHIR.BuiltinType.Int64, CHIR.BuiltinType.Unit))
+    p.getType[CHIR.CPointerType](14).get.elementType shouldBe CHIR.BuiltinType.Int64
+    p.getType[CHIR.BoxType](15).get.baseType shouldBe CHIR.BuiltinType.Int64
+    p.getType[CHIR.TupleType](16).get.fieldTypes shouldBe Seq(CHIR.BuiltinType.Int64, CHIR.BuiltinType.Unit)
     val generic = p.getType[CHIR.GenericType](11).get
     val array = p.getType[CHIR.RawArrayType](12).get
     val fixed = p.getType[CHIR.VArrayType](13).get
     val function = p.getType[CHIR.FuncType](5).get
-    assert(generic.identifier == "T" && generic.upperBounds == Seq(CHIR.BuiltinType.Unit))
-    assert(array.dimension == 2 && fixed.size == 4)
-    assert(array.elementType == CHIR.BuiltinType.Int64 && fixed.elementType == array.elementType)
-    assert(function.paramTypes == Seq(CHIR.BuiltinType.Unit))
-    assert(function.paramTypesWithoutReceiver.isEmpty && function.receiverType == CHIR.BuiltinType.Unit)
-    assert(function.returnType == CHIR.BuiltinType.Unit && !function.isC && !function.hasVarArg)
+    (generic.identifier == "T" && generic.upperBounds == Seq(CHIR.BuiltinType.Unit)) shouldBe true
+    (array.dimension == 2 && fixed.size == 4) shouldBe true
+    (array.elementType == CHIR.BuiltinType.Int64 && fixed.elementType == array.elementType) shouldBe true
+    function.paramTypes shouldBe Seq(CHIR.BuiltinType.Unit)
+    (function.paramTypesWithoutReceiver.isEmpty && function.receiverType == CHIR.BuiltinType.Unit) shouldBe true
+    (function.returnType == CHIR.BuiltinType.Unit && !function.isC && !function.hasVarArg) shouldBe true
     p.data.getTypes()(10).asGenericType().setUpperBounds(Array(6L))
     p.data.getTypes()(11).asRawArrayType().setDims(3)
     p.data.getTypes()(12).asVArrayType().setSize(9)
     p.data.getTypes()(4).asFuncType().getBase.setArgTys(Array(6L, 7L))
     p.data.getTypes()(4).asFuncType().setIsCfuncType(true)
     p.data.getTypes()(4).asFuncType().setHasVarArg(true)
-    assert(generic.upperBounds == Seq(CHIR.BuiltinType.Int64))
-    assert(array.dimension == 3 && fixed.size == 9)
-    assert(function.paramTypes == Seq(CHIR.BuiltinType.Int64))
-    assert(function.returnType == CHIR.BuiltinType.Float64 && function.isC && function.hasVarArg)
+    generic.upperBounds shouldBe Seq(CHIR.BuiltinType.Int64)
+    (array.dimension == 3 && fixed.size == 9) shouldBe true
+    function.paramTypes shouldBe Seq(CHIR.BuiltinType.Int64)
+    (function.returnType == CHIR.BuiltinType.Float64 && function.isC && function.hasVarArg) shouldBe true
   }
 
   test("literal, parameter and global getters use the same mutable T nodes") {
     val p = fixture()
     val global = p.getValue[CHIR.GlobalVar](13).get
-    assert(global.id == 13 && global.identifier == "@global" && global.srcCodeIdentifier == "global")
-    assert(global.packageName == "fixture" && global.tpe == CHIR.BuiltinType.Int64)
-    assert(global.initializer.get eq p.getValue[CHIR.IntLiteral](14).get)
-    assert(p.getValue[CHIR.IntLiteral](14).get.value == 42)
-    assert(p.getValue[CHIR.FloatLiteral](15).get.value == 1.5)
-    assert(p.getValue[CHIR.BoolLiteral](16).get.value)
-    assert(p.getValue[CHIR.RuneLiteral](17).get.value == 65)
-    assert(p.getValue[CHIR.StringLiteral](18).get.value == "text")
-    assert(p.getValue[CHIR.NullLiteral](19).get.tpe == CHIR.BuiltinType.Unit)
-    assert(p.getValue[CHIR.UnitLiteralValue](20).get.tpe == CHIR.BuiltinType.Unit)
+    (global.id == 13 && global.identifier == "@global" && global.srcCodeIdentifier == "global") shouldBe true
+    (global.packageName == "fixture" && global.tpe == CHIR.BuiltinType.Int64) shouldBe true
+    (global.initializer.get eq p.getValue[CHIR.IntLiteral](14).get) shouldBe true
+    p.getValue[CHIR.IntLiteral](14).get.value shouldBe 42
+    p.getValue[CHIR.FloatLiteral](15).get.value shouldBe 1.5
+    (p.getValue[CHIR.BoolLiteral](16).get.value) shouldBe true
+    p.getValue[CHIR.RuneLiteral](17).get.value shouldBe 65
+    p.getValue[CHIR.StringLiteral](18).get.value shouldBe "text"
+    p.getValue[CHIR.NullLiteral](19).get.tpe shouldBe CHIR.BuiltinType.Unit
+    p.getValue[CHIR.UnitLiteralValue](20).get.tpe shouldBe CHIR.BuiltinType.Unit
     val parameter = p.function(1).params.head
     p.data.getValues()(11).asParameter().getBase.setIdentifier("%renamed")
     p.data.getValues()(11).asParameter().getBase.setType(6)
     p.data.getValues()(13).asIntLiteral().setVal(100)
     p.data.getValues()(12).asGlobalVar().getBase.setPackageName("changed")
-    assert(parameter.identifier == "%renamed" && parameter.tpe == CHIR.BuiltinType.Int64)
-    assert(p.getValue[CHIR.IntLiteral](14).get.value == 100)
-    assert(global.packageName == "changed")
+    (parameter.identifier == "%renamed" && parameter.tpe == CHIR.BuiltinType.Int64) shouldBe true
+    p.getValue[CHIR.IntLiteral](14).get.value shouldBe 100
+    global.packageName shouldBe "changed"
   }
 
   test("definition, member, vtable and enum constructor read APIs remain available") {
     val p = fixture()
     val cls = p.getDef[CHIR.ClassDef](1).get
-    assert(cls.identifier == "@C" && cls.srcCodeIdentifier == "C" && cls.packageName == "fixture")
-    assert(cls.isClass && cls.superClass.isEmpty)
-    assert(cls.tpe.typeDef eq cls)
-    assert(p.getDef("C").contains(cls) && p.getDef("@C").contains(cls))
-    assert(cls.instanceVars.head.name == "field" && cls.instanceVars.head.tpe == CHIR.BuiltinType.Int64)
-    assert(cls.instanceVars.head.attributes.contains(CHIR.Attribute.Public))
-    assert(cls.staticVars.head eq p.getValue[CHIR.GlobalVar](13).get)
-    assert(cls.methods.head eq p.function(1))
-    assert(cls.implementedInterfaces.head eq cls.tpe)
+    (cls.identifier == "@C" && cls.srcCodeIdentifier == "C" && cls.packageName == "fixture") shouldBe true
+    (cls.isClass && cls.superClass.isEmpty) shouldBe true
+    (cls.tpe.typeDef eq cls) shouldBe true
+    (p.getDef("C").contains(cls) && p.getDef("@C").contains(cls)) shouldBe true
+    (cls.instanceVars.head.name == "field" && cls.instanceVars.head.tpe == CHIR.BuiltinType.Int64) shouldBe true
+    (cls.instanceVars.head.attributes.contains(CHIR.Attribute.Public)) shouldBe true
+    (cls.staticVars.head eq p.getValue[CHIR.GlobalVar](13).get) shouldBe true
+    (cls.methods.head eq p.function(1)) shouldBe true
+    (cls.implementedInterfaces.head eq cls.tpe) shouldBe true
     val table = cls.vtables.head
     val method = table.vMethods.head
-    assert(table.srcParentType eq cls.tpe)
-    assert(method.name == "method" && method.instance == p.function(1))
-    assert(method.tpe eq p.function(1).tpe)
-    assert(method.originalType == method.tpe && method.parentType == cls.tpe)
-    assert(method.returnType == CHIR.BuiltinType.Unit)
-    assert(method.genericTypeParams.head eq p.getType[CHIR.GenericType](11).get)
-    assert(method.attributes.contains(CHIR.Attribute.Public))
+    (table.srcParentType eq cls.tpe) shouldBe true
+    (method.name == "method" && method.instance == p.function(1)) shouldBe true
+    (method.tpe eq p.function(1).tpe) shouldBe true
+    (method.originalType == method.tpe && method.parentType == cls.tpe) shouldBe true
+    method.returnType shouldBe CHIR.BuiltinType.Unit
+    (method.genericTypeParams.head eq p.getType[CHIR.GenericType](11).get) shouldBe true
+    (method.attributes.contains(CHIR.Attribute.Public)) shouldBe true
     val struct = p.getDef[CHIR.StructDef](2).get
     val enumeration = p.getDef[CHIR.EnumDef](3).get
     val extension = p.getDef[CHIR.ExtendDef](4).get
-    assert(struct.tpe.typeDef eq struct)
-    assert(enumeration.tpe.typeDef eq enumeration)
-    assert(enumeration.nonExhaustive && enumeration.ctors.head.tpe.returnType == CHIR.BuiltinType.Unit)
-    assert(extension.tpe == CHIR.BuiltinType.Int64 && extension.genericTypeParams.head.identifier == "T")
+    (struct.tpe.typeDef eq struct) shouldBe true
+    (enumeration.tpe.typeDef eq enumeration) shouldBe true
+    (enumeration.nonExhaustive && enumeration.ctors.head.tpe.returnType == CHIR.BuiltinType.Unit) shouldBe true
+    (extension.tpe == CHIR.BuiltinType.Int64 && extension.genericTypeParams.head.identifier == "T") shouldBe true
     val heldField = cls.instanceVars.head
     p.data.getDefs()(0).asClassDef().getBase.getInstanceMemberVars()(0).setName("renamed")
     p.data.getDefs()(0).asClassDef().getBase.getVtable()(0).getVirtualMethods()(0).setFuncName("renamedMethod")
-    assert(heldField.name == "renamed" && method.name == "renamedMethod")
+    (heldField.name == "renamed" && method.name == "renamedMethod") shouldBe true
   }
 
   test("function source, attributes and annotation getters observe T changes") {
     val p = fixture()
     val f = p.function(1)
-    assert(f.sourceFile.contains("fixture.cj"))
-    assert(f.declaringDef.contains(p.getDef[CHIR.ClassDef](1).get))
-    assert(f.attributes.contains(CHIR.Attribute.Public))
+    (f.sourceFile.contains("fixture.cj")) shouldBe true
+    (f.declaringDef.contains(p.getDef[CHIR.ClassDef](1).get)) shouldBe true
+    (f.attributes.contains(CHIR.Attribute.Public)) shouldBe true
     val auto = f.annotations.collectFirst { case x: CHIR.IsAutoEnvClass => x }.get
     val overridden = f.annotations.collectFirst { case x: CHIR.OverrideSrcFuncType => x }.get
     val wrapped = f.annotations.collectFirst { case x: CHIR.WrappedRawMethod => x }.get
-    assert(auto.value && overridden.tpe == f.tpe && wrapped.rawMethod == f)
+    (auto.value && overridden.tpe == f.tpe && wrapped.rawMethod == f) shouldBe true
     val base = p.data.getValues()(0).asFunction().getBase.getBase.getBase
     base.setAttributes(0)
     base.getAnnos()(0).asisAutoEnvClass().setValue(false)
     base.getAnnos()(1).asoverrideSrcFuncType().setType(4)
     base.getLoc.setFilePath("changed.cj")
-    assert(f.attributes.isEmpty && !auto.value)
-    assert(overridden.tpe.paramTypes.isEmpty && f.sourceFile.contains("changed.cj"))
+    (f.attributes.isEmpty && !auto.value) shouldBe true
+    (overridden.tpe.paramTypes.isEmpty && f.sourceFile.contains("changed.cj")) shouldBe true
   }
 
   test("enum-returning methods retain hash-map identity across repeated live reads") {
@@ -120,8 +121,8 @@ class TBackingReadSuite extends AnyFunSuite {
     val hash = function.hashCode()
     for (_ <- 1 to 3) {
       p.getDef[CHIR.EnumDef](3).get.ctors.foreach(_.tpe)
-      assert(function.hashCode() == hash)
-      assert(methods(function) == "method")
+      function.hashCode() shouldBe hash
+      methods(function) shouldBe "method"
     }
   }
 
@@ -133,8 +134,8 @@ class TBackingReadSuite extends AnyFunSuite {
     p.data.getTypes()(4).asFuncType().getBase.setArgTys(Array(11L, 2L))
     val function = p.function(1)
     val name = com.huawei.excelsior.jet.compiler.chir.patchgen.PatchableName.guardFlag(function)
-    assert(name.endsWith("$$T$GVF"))
-    assert(!name.contains("mangled.function"))
+    (name.endsWith("$$T$GVF")) shouldBe true
+    (!name.contains("mangled.function")) shouldBe true
   }
 
   private def fixture(): PackageImpl = {
