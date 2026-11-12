@@ -446,6 +446,7 @@ compiler/FFI/CFFI/import/import004/import004.cj
 
 # Usage of runtime library symbols from test
 compiler/Sema/concurrency/spawn10.cj
+Runtime/CJNative/DFX/heap_snapshot_coverage.cj
 
 # tries to link .a cangjie static library during test compilation
 API/std/unittest/mock/compiler/createMock/usePrivateTypesOtherPackage.cj
@@ -460,3 +461,15 @@ API/std/unittest/mock/framework/runtime_failure_report_test.cj
 API/std/unittest/mock/framework/stub_base_test.cj
 API/std/unittest/mock/framework/verification_failed_report_test.cj
 API/std/unittest/mock/framework/verify_misconfiguration_test.cj
+
+# Python script calls raw cjc (not cjc-wrapper)
+compiler/Driver/options/trim_path/trim_path4.cj
+compiler/Driver/options/trim_path/trim_path5.cj
+
+# Runtime API tests
+Runtime/CJNative/RuntimeApi/runtime_api_followup.cj
+Runtime/CJNative/RuntimeApi/runtime_api_task_loader.cj
+Runtime/CJNative/RuntimeApi/runtime_api_validation.cj
+
+# %run %run typo in test command
+compiler/CHIR/CHIR2HLIR/generic/generic_external_use_internal/main.cj
