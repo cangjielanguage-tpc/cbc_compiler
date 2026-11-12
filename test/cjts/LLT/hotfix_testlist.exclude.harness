@@ -7,7 +7,6 @@
 Tools/cjdb
 
 # also fail on CJNATIVE
-API/std/unittest/report_bench_html/report_html_colon_name.cj
 API/std/argOpt/test_argopt.cj
 
 # flaky, expect number of native threads (may be wrong in case of auxiliary native threads)
@@ -324,18 +323,9 @@ compiler/Sema/generics/generic_subst_perf.cj
 compiler/CHIR/AST2CHIR/BaseUseCase/function/funcNode.cj
 
 # broken/misconfigured tests or harness environment (missing keywords, missing generated file, stdin-driven, expected-output mismatch)
-compiler/CHIROpt/DeadCodeElimination/UselessFunction/UselessFunction2.cj
-compiler/CHIROpt/ValueRangeAnalysis/VArray.cj
-compiler/CHIROpt/ValueRangeAnalysis/VArray2.cj
-compiler/CHIROpt/VarInitCheck/var_circular_dependency.cj
-compiler/CHIROpt/lambda_reduce/thread_lambda_inline.cj
-compiler/Sema/APILevelChecker/hide/mix_macro1.cj
 API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
 
 # driver mangles cjc args ("No such directory: '-lstdx.syntax'") / driver warning noise breaks expected-output compare
-compiler/CHIR/CHIR2HLIR/package/scanDepPkg/test.cj
-compiler/CHIR/CHIR2HLIR/package/scanDepPkgNoModule/test.cj
-compiler/Sema/class/class7.cj
 compiler/Sema/effect/err_handle_00.cj
 compiler/Sema/effect/err_resume_non_unit.cj
 compiler/Sema/effect/err_resume_throwing_non_exception.cj
@@ -345,10 +335,6 @@ compiler/Sema/effect/invalid_try_handle_block.cj
 compiler/Sema/effect/non_matching_types.cj
 compiler/Sema/effect/return_in_try_handle.cj
 compiler/Sema/effect/wrong_return_type_try.cj
-compiler/Sema/function/unsafe_func_can_only_be_called.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_1_2.cj
-compiler/Sema/toplevel/reftype.cj
-compiler/Sema/tuple/tuple2.cj
 
 # stdx packages are not built/available in the hotfix toolchain ("can not find package 'stdx.*'")
 API/stdx
@@ -403,8 +389,6 @@ API/std/libast/exprs/try_expr/test_handlers_001.cj
 API/std/libast/patterns/commandtypepattern/test_dump_001.cj
 API/std/libast/patterns/commandtypepattern/test_dump_002.cj
 API/std/libast/walker/test_all_exprs_break_traverse_001.cj
-compiler/IncrementalCompilation/DeclLevel/GlobalFunc/ToForeign_Full.cj
-compiler/IncrementalCompilation/DeclLevel/GlobalFunc/ToForeign_Full_2.cj
 compiler/Macro/debug/call_eh.cj
 compiler/Macro/parse/import.cj
 compiler/Macro/parse/import_debug_macro.cj
@@ -423,8 +407,6 @@ compiler/Driver/options/obfuscation/test_layout/test4.info
 
 # incremental compilation: not supported by hotfix toolchain
 compiler/IncrementalCompilation
-compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_1.cj
-compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_2.cj
 compiler/CodegenCJNative/incremental/cfunc2/main.info
 
 # broken tests - test expect throwing of `ArithmeticException: pow` when cast should throw. issue-140
@@ -439,24 +421,11 @@ compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_1.cj
 compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_2.cj
 compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_6.cj
 compiler/FFI/CFFI/cfunc/empty_type/empty_type.cj
-compiler/FFI/CFFI/dock/cfunc_record/main.cj
-compiler/FFI/CFFI/import/import002/import002.cj
-compiler/FFI/CFFI/import/import003/import003.cj
-compiler/FFI/CFFI/import/import004/import004.cj
 
 # Usage of runtime library symbols from test
 compiler/Sema/concurrency/spawn10.cj
 
 # tries to link .a cangjie static library during test compilation
-API/std/unittest/mock/compiler/createMock/usePrivateTypesOtherPackage.cj
-API/std/unittest/mock/compiler/createSpy/indirectSpying.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package_separate.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_same_package_separate.cj
-API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
 API/std/unittest/mock/framework/expectation_failed_test.cj
-API/std/unittest/mock/framework/listeners_test.cj
-API/std/unittest/mock/framework/runtime_failure_report_test.cj
-API/std/unittest/mock/framework/stub_base_test.cj
 API/std/unittest/mock/framework/verification_failed_report_test.cj
 API/std/unittest/mock/framework/verify_misconfiguration_test.cj

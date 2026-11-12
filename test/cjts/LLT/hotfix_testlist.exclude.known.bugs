@@ -322,14 +322,6 @@ compiler/Sema/Extend/default_implement/default_implement_04.cj
 # ignore due to timeouts and environmental problems
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
 compiler/Sema/join_meet/join_perf.cj
-API/std/unittest/mock/framework/exhaustive_ordered_verify_test.cj
-API/std/unittest/mock/framework/exhaustive_unordered_verify_test.cj
-API/std/unittest/mock/framework/interface_test.cj
-API/std/unittest/mock/framework/lifetime_test.cj
-API/std/unittest/mock/framework/partial_unordered_verify_test.cj
-API/std/unittest/mock/framework/stub_misconfiguration_test.cj
-API/std/unittest/mock/framework/suppressed_runtime_failure_test.cj
-API/std/unittest/mock/framework/verification_failed_reason_test.cj
 
 # bug 124: not implemented: cast from Option<Array<Int64>>.None to Option<Int64>
 compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
