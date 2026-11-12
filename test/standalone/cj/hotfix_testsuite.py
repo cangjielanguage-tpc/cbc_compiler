@@ -9,7 +9,7 @@ from pathlib import Path
 from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cjc, run_in_toolchain
 
 HERE = Path(__file__).resolve().parent
-SRC = HERE.parent / "standalone" / "cj"
+SRC = HERE
 
 
 def _import_flags(paths):
