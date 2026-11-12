@@ -19,6 +19,20 @@ object CHIRLoader {
   private val resolvers = mutable.HashMap.empty[String, scala.ref.Reference[CHIRResolver]]
 }
 
+/** The cbc engine helper package chir (cbcengine-helper.chir). It is always appended
+  * to the compilation scope. */
+object EngineHelperChir {
+  private val sourceName: String = "cbcengine-helper.chir"
+
+  /** The helper chir is looked up next to cbc-intrinsics.cbc in the toolchain:
+    * the explicit `-cangjiehome` compiler argument wins over the CANGJIE_HOME
+    * environment variable. */
+  def resolveFile(cangjieHome: Option[String]): Option[java.io.File] = {
+    val home = cangjieHome.orElse(Option(System.getenv("CANGJIE_HOME")))
+    home.map(h => new java.io.File(s"$h/tools/lib/$sourceName"))
+  }
+}
+
 class CHIRLoader(source: String) {
   protected def genPackage(env: Environment): CHIR.Package = CHIR.newPackage(source, env.valueOf(CHIRVersion))
 

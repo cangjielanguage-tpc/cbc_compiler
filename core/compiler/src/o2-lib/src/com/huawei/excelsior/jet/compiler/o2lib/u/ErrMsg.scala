@@ -174,6 +174,8 @@ enum ErrMsg(val no: Int, val format: String) {
   case ErrMsg2004 extends ErrMsg(2004, "multiple definition of \"main\": %S and %S")
   case ErrMsg2005 extends ErrMsg(2005, "-main equation is set to wrong main module: %S")
   case ErrMsg2006 extends ErrMsg(2006, "%s directive is not supported for Cangjie projects")
+  case ErrMsg2007 extends ErrMsg(2007, "cbc engine helper chir was not resolved: pass -cangjiehome=<path> or set CANGJIE_HOME")
+  case ErrMsg2008 extends ErrMsg(2008, "cbc engine helper chir was not found: %S (install it to $CANGJIE_HOME/tools/lib or pass -cangjiehome=<path>)")
 
   // Cangjie bitcode errors
   case ErrMsg2501 extends ErrMsg(2501, "function %S has too many parameters")
