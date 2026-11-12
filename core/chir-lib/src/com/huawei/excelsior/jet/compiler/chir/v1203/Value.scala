@@ -1,19 +1,18 @@
 package com.huawei.excelsior.jet.compiler.chir.v1203
 
-import com.huawei.excelsior.jet.compiler.chir.CHIR
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, EditableCHIR}
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Func
 import com.huawei.excelsior.jet.compiler.chir.v1203.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v1203.CHIRUtils.{toTypeSeq, toValueSeq}
 
-final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider: CHIRItemProvider) extends CHIR.Func
+final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider: CHIRItemProvider) extends EditableCHIR.Func
   with HasAnnotationsImpl with HasAttributesImpl with HasDeclaringDefImpl {
   def gv: GlobalValueT = f.getBase
   private def v = gv.getBase
   def base: BaseT = v.getBase
   def attrs: Long = base.getAttributes
-
-  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = {
-    val mask = attributes.foldLeft(0L)((bits, attribute) => bits | (1L << attribute.ordinal))
+  protected def setAttributes(mask: Long): Unit = {
+    provider.asInstanceOf[PackageImpl].valueId(this)
     base.setAttributes(mask)
   }
 
@@ -38,70 +37,78 @@ final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider:
     case FuncKind.DEFAULT_PARAMETER_FUNC => Func.Kind.DefaultParameter
     case FuncKind.INSTANCEVAR_INIT => Func.Kind.InstanceVarInit
   }
+
+  def expressions: Seq[CHIR.Expression] = provider.asInstanceOf[PackageImpl].expressions(this)
+  def isInternal: Boolean = {
+    Option(base.getAnnos).toSeq.flatten.exists { a => a.getValue match {
+      case a: LinkTypeInfoT => a.getLinkage == Linkage.INTERNAL
+      case _ => false
+    } }
+  }
+
   def genericTypeParams = f.getGenericTypeParams.toTypeSeq[CHIR.GenericType]
-  def body: Option[CHIR.BlockGroup] = provider.getValue[CHIR.BlockGroup](f.getBody)
+  protected[chir] def pkg: EditableCHIR.Package = provider.asInstanceOf[PackageImpl]
+  def moveBody(destination: CHIR.Func): Unit = {
+    val model = provider.asInstanceOf[PackageImpl]
+    val targetId = model.valueId(destination)
+    model.moveBody(model.valueId(this), f, targetId, model.valueTable(targetId).asFunction())
+  }
+
+  def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit = {
+    val model = provider.asInstanceOf[PackageImpl]
+    model.replaceFunctionBody(model.valueId(this), body, retVal)
+  }
+
+  def body: Option[EditableCHIR.BlockGroup] = provider.getValue[EditableCHIR.BlockGroup](f.getBody)
   def params = f.getParams.toValueSeq[CHIR.Parameter]
   def retVal: Option[CHIR.LocalVar] = provider.getValue[CHIR.LocalVar](f.getRetVal)
   def sourceFile: Option[String] = Option(base).flatMap(b => Option(b.getLoc)).flatMap(l => Option(l.getFilePath))
-  def ownerPackage: CHIR.Package = provider.asInstanceOf[PackageImpl]
-
-  def moveBody(destination: CHIR.Func): Unit = {
-    val pkg = provider.asInstanceOf[PackageImpl]
-    pkg.valueId(this)
-    pkg.valueId(destination)
-    destination match {
-      case target: FuncImpl if target.provider eq provider => pkg.moveBody(id, f, target.id, target.f)
-      case _ => throw new IllegalArgumentException("Functions belong to another package")
-    }
-  }
-
-  def removeBody(): Unit =
-    provider.asInstanceOf[PackageImpl].replaceFunctionBody(id, None, None)
-
-  // APIs currently called only by tests in this repository (excluding forwarders).
-  def replaceBody(body: Option[CHIR.BlockGroup], retVal: Option[CHIR.LocalVar]): Unit =
-    provider.asInstanceOf[PackageImpl].replaceFunctionBody(id, body, retVal)
 }
 
 final class BlockGroupImpl private[v1203] (
-  val ownerPackage: PackageImpl,
+  private[v1203] val ownerPackage: PackageImpl,
   private[v1203] val id: Long
-) extends CHIR.BlockGroup {
-  private def table = ownerPackage.groupTable(id)
-  def blocks: Seq[CHIR.Block] = PackageImpl.ids(table.getBlocks).toSeq.map(ownerPackage.blockView)
-  def entryBlock: CHIR.Block = ownerPackage.blockView(table.getEntryBlock)
+) extends EditableCHIR.BlockGroup {
   def replaceBlocks(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block): Unit =
     ownerPackage.replaceBlocks(id, blocks, entryBlock)
+
+  private def table = ownerPackage.groupTable(id)
+  def blocks: Seq[EditableCHIR.Block] = PackageImpl.ids(table.getBlocks).toSeq.map(ownerPackage.blockView)
+  def entryBlock: EditableCHIR.Block = ownerPackage.blockView(table.getEntryBlock)
 }
 
-final class BlockImpl private[v1203] (val ownerPackage: PackageImpl, private[v1203] val id: Long) extends CHIR.Block {
+final class BlockImpl private[v1203] (private[v1203] val ownerPackage: PackageImpl, private[v1203] val id: Long) extends EditableCHIR.Block {
+  def replaceExpressions(expressions: Seq[CHIR.Expression], terminator: CHIR.Terminator): Unit =
+    ownerPackage.replaceExpressions(id, expressions, terminator)
+
+  def insert(operation: EditableCHIR.Operation, before: Option[CHIR.Expression]): CHIR.LocalVar =
+    ownerPackage.insert(this, operation, before)
+
   private def b = ownerPackage.blockTable(id)
-  def expressions: Seq[CHIR.Expression] =
-    PackageImpl.ids(b.getExprs).toSeq.map(ownerPackage.getExpr[CHIR.Expression])
-  def nonTerminatorExpressions: Seq[CHIR.Expression] = expressions.lastOption match {
+  def expressions: Seq[EditableCHIR.Expression] =
+    PackageImpl.ids(b.getExprs).toSeq.map(ownerPackage.getExpr[EditableCHIR.Expression])
+
+  def nonTerminatorExpressions: Seq[EditableCHIR.Expression] = expressions.lastOption match {
     case Some(_: CHIR.Terminator) => expressions.init
     case _ => expressions
   }
-  def terminator: CHIR.Terminator = expressions.lastOption match {
-    case Some(t: CHIR.Terminator) => t
+
+  def terminator: CHIR.Terminator & EditableCHIR.Expression = expressions.lastOption match {
+    case Some(t: CHIR.Terminator) => t.asInstanceOf[CHIR.Terminator & EditableCHIR.Expression]
     case _ => throw new IllegalStateException(s"Block $id has no terminator")
   }
+
   def isLandingPadBlock: Boolean = b.getIsLandingPadBlock
-  def replaceTerminator(terminator: CHIR.Terminator): Unit =
-    replaceExpressions(nonTerminatorExpressions, terminator)
-  def replaceExpressions(nonTerminators: Seq[CHIR.Expression], terminator: CHIR.Terminator): Unit =
-    ownerPackage.replaceExpressions(id, nonTerminators, terminator)
 }
 
-final class GlobalVarImpl(g: GlobalVarT, val id: Long)(using val provider: CHIRItemProvider) extends CHIR.GlobalVar
+final class GlobalVarImpl(g: GlobalVarT, val id: Long)(using val provider: CHIRItemProvider) extends EditableCHIR.GlobalVar
   with HasAnnotationsImpl with HasAttributesImpl with HasDeclaringDefImpl {
   def gv: GlobalValueT = g.getBase
   private def v = gv.getBase
   def base: BaseT = v.getBase
   def attrs: Long = base.getAttributes
-
-  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit = {
-    val mask = attributes.foldLeft(0L)((bits, attribute) => bits | (1L << attribute.ordinal))
+  protected def setAttributes(mask: Long): Unit = {
+    provider.asInstanceOf[PackageImpl].valueId(this)
     base.setAttributes(mask)
   }
 

@@ -4,16 +4,21 @@ import com.huawei.excelsior.jet.compiler.chir.*
 import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRUtils.{toTypeSeq, toValueSeq}
 
-abstract class CustomTypeDefImpl(d: CustomTypeDefT)(using val provider: CHIRItemProvider) extends CHIR.CustomTypeDef
+abstract class CustomTypeDefImpl(private[v13008] val d: CustomTypeDefT)(using val provider: CHIRItemProvider) extends EditableCHIR.CustomTypeDef
   with HasAnnotationsImpl with HasAttributesImpl {
   def base: BaseT = d.getBase
   def attrs: Long = base.getAttributes
-  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
-    base.setAttributes(attributes.foldLeft(0L)((mask, a) => mask | (1L << a.ordinal)))
-  def replaceMethods(methods: Seq[CHIR.Func]): Unit = {
-    val pkg = provider.asInstanceOf[PackageImpl]
-    d.setMethods(methods.map(pkg.valueId).toArray)
+  protected def setAttributes(mask: Long): Unit = {
+    provider.asInstanceOf[PackageImpl].definitionId(this)
+    base.setAttributes(mask)
   }
+
+  def replaceMethods(methods: Seq[CHIR.Func]): Unit = {
+    val model = provider.asInstanceOf[PackageImpl]
+    model.definitionId(this)
+    d.setMethods(methods.map(model.valueId).toArray)
+  }
+
   def packageName: String = d.getPackageName
   def identifier: String = d.getIdentifier
   def srcCodeIdentifier: String = d.getSrcCodeIdentifier

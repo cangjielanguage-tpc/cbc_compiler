@@ -1,6 +1,6 @@
 package com.huawei.excelsior.jet.compiler.patchgen
 
-import com.huawei.excelsior.jet.compiler.chir.CHIR
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, EditableCHIR}
 import com.huawei.excelsior.jet.compiler.chir.patchgen.{PatchGen, PatchGenException}
 import java.nio.file.{Files, Paths}
 
@@ -28,10 +28,10 @@ object Main {
         "Usage: patch-gen [--chir-version <version>] [--test] <source.chir> [patched.chir]")
       for (path <- paths) require(Files.isReadable(Paths.get(path)), "CHIR file does not exist: " + path)
       val source = if (paths.size == 2) Some(CHIR.read(Paths.get(paths.head), version)) else None
-      val pkg = CHIR.read(Paths.get(paths.last), version)
-      new PatchGen(source, pkg).createPatch()
+      val editable = EditableCHIR.read(Paths.get(paths.last), version)
+      new PatchGen(source, editable).createPatch()
       val output = Paths.get("diff" + Paths.get(paths.last).getFileName.toString)
-      pkg.write(output)
+      editable.write(output)
       if (test) {
         val saved = CHIR.read(output, version)
         def imported(v: CHIR.HasAttributes): Boolean = v.attributes.contains(CHIR.Attribute.Imported)

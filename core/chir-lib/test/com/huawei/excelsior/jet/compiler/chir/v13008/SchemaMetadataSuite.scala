@@ -1,11 +1,23 @@
 package com.huawei.excelsior.jet.compiler.chir.v13008
 
+import com.huawei.excelsior.jet.compiler.chir.EditableCHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRFormat.*
 import java.nio.file.Files
 import org.scalatest.funsuite.AnyFunSuite
 
 class SchemaMetadataSuite extends AnyFunSuite {
+  for (phase <- Seq(Phase.RAW, Phase.PLUGIN, Phase.OPT)) {
+    test(s"editing and saving preserves input phase $phase") {
+      val data = TestData.fixtureData()
+      data.setPhase(phase)
+      val p = PackageImpl.fromBytes(data.serializeToBinary())
+      p.function(1).moveBody(p.function(8))
+      assert(CHIRPackageT.deserializeFromBinary(p.toBytes).getPhase == phase)
+      assert(CHIRPackageT.deserializeFromBinary(p.toBytes).getPhase == phase)
+    }
+  }
+
   test("match-case annotations remain live and survive body transfer and serialization") {
     val data = TestData.fixtureData()
     val marker = new MatchCaseIdT
@@ -23,7 +35,7 @@ class SchemaMetadataSuite extends AnyFunSuite {
     val raw = p.p.getValues()(0).asFunction().getBase.getBase.getBase.getAnnos()(0).getValue.asInstanceOf[MatchCaseIdT]
     raw.setId(42)
     assert(held.id == 42)
-    function.moveBody(p.function(8))
+    p.edit(function).moveBody(p.function(8))
     assert(p.validationIssues().isEmpty)
     val output = Files.createTempFile("chir-v13008-match-", ".chir")
     try {
@@ -31,7 +43,7 @@ class SchemaMetadataSuite extends AnyFunSuite {
       val saved = CHIR.read(output, 13008)
       assert(saved.function(1).annotations.collectFirst { case m: CHIR.MatchCaseId => m.id }.contains(42L))
       assert(saved.function(1).body.isEmpty && saved.function(8).body.nonEmpty)
-      val image = PackageImpl.read(output)
+      val image = PackageImpl.fromBytes(Files.readAllBytes(output))
       val moved = image.p.getExprs()(0).asAllocateBase().getBase.getBase.getAnnos()(0)
       assert(moved.getValue.asInstanceOf[MatchCaseIdT].getId == -1L)
     } finally Files.delete(output)
@@ -67,16 +79,16 @@ class SchemaMetadataSuite extends AnyFunSuite {
       val p = PackageImpl.fromBytes(data.serializeToBinary())
       val block = p.function(1).body.get.entryBlock
       val held = block.terminator.asInstanceOf[CHIR.MultiBranch]
-      p.insert(block, CHIR.Operation.BooleanConstant(true))
+      p.edit(block).insert(EditableCHIR.Operation.BooleanConstant(true))
       assert(held.caseValues == Seq(0L) && held.defaultBlock == block)
       assert(p.validationIssues().isEmpty)
       val output = Files.createTempFile("chir-v13008-branch-", ".chir")
       try {
         p.write(output)
-        val saved = PackageImpl.read(output)
+        val saved = PackageImpl.fromBytes(Files.readAllBytes(output))
         assert(saved.p.getExprs()(1).asMultiBranch().getSourceExpr == source)
         saved.write(output)
-        assert(PackageImpl.read(output).p.getExprs()(1).asMultiBranch().getSourceExpr == source)
+        assert(PackageImpl.fromBytes(Files.readAllBytes(output)).p.getExprs()(1).asMultiBranch().getSourceExpr == source)
       } finally Files.delete(output)
     }
   }

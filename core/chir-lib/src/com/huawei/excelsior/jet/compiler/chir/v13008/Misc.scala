@@ -1,6 +1,6 @@
 package com.huawei.excelsior.jet.compiler.chir.v13008
 
-import com.huawei.excelsior.jet.compiler.chir.CHIR
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, EditableCHIR}
 import com.huawei.excelsior.jet.compiler.chir.CHIR.{HasAnnotations, HasAttributes, HasDeclaringDef}
 import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v13008.CHIRUtils.toTypeSeq
@@ -40,7 +40,11 @@ final class MatchCaseIdImpl(m: MatchCaseIdT) extends CHIR.MatchCaseId {
   def id: Long = m.getId
 }
 
-trait HasAttributesImpl extends HasAttributes {
+trait HasAttributesImpl extends EditableCHIR.HasAttributes {
+  protected def setAttributes(mask: Long): Unit
+  final def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
+    setAttributes(attributes.foldLeft(0L)((bits, a) => bits | (1L << a.ordinal)))
+
   def attrs: Long
   private var cachedMask = 0L
   private var cachedAttributes: Seq[CHIR.Attribute] = Seq.empty
@@ -60,13 +64,11 @@ trait HasDeclaringDefImpl extends HasDeclaringDef {
   def declaringDef: Option[CHIR.CustomTypeDef] = provider.getDef[CHIR.CustomTypeDef](gv.getDeclaredParent)
 }
 
-final class InstanceVarImpl(m: MemberVarInfoT)(using provider: CHIRItemProvider) extends CHIR.InstanceVar with HasAttributesImpl {
+final class InstanceVarImpl private[v13008] (private[v13008] val m: MemberVarInfoT)(using val provider: CHIRItemProvider) extends CHIR.InstanceVar with HasAttributesImpl {
   def attrs: Long = m.getAttributes
+  protected def setAttributes(mask: Long): Unit = m.setAttributes(mask)
   def tpe: CHIR.Type = provider.getType[CHIR.Type](m.getType).get
   def name: String = m.getName
-  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
-    m.setAttributes(attributes.foldLeft(0L)((mask, a) => mask | (1L << a.ordinal)))
-
 }
 
 final class VTableImpl(v: VTableInTypeT)(using provider: CHIRItemProvider) extends CHIR.VTable {
@@ -74,8 +76,9 @@ final class VTableImpl(v: VTableInTypeT)(using provider: CHIRItemProvider) exten
   def vMethods: Seq[CHIR.VMethod] = Option(v.getVirtualMethods).toSeq.flatten.map(VMethodImpl(_))
 }
 
-final class VMethodImpl(v: VirtualMethodInfoT)(using provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl {
+final class VMethodImpl private[v13008] (private[v13008] val v: VirtualMethodInfoT)(using val provider: CHIRItemProvider) extends CHIR.VMethod with HasAttributesImpl {
   def attrs: Long = v.getAttributes
+  protected def setAttributes(mask: Long): Unit = v.setAttributes(mask)
   def name: String = v.getFuncName
   def tpe: CHIR.FuncType = provider.getType[CHIR.FuncType](v.getSigType).get
   def instance: CHIR.Func = provider.getValue[CHIR.Func](v.getInstance).get
@@ -83,9 +86,6 @@ final class VMethodImpl(v: VirtualMethodInfoT)(using provider: CHIRItemProvider)
   def originalType: CHIR.FuncType = provider.getType[CHIR.FuncType](v.getOriginalType).get
   def parentType: CHIR.Type = provider.getType[CHIR.Type](v.getParentType).get
   def returnType: CHIR.Type = provider.getType[CHIR.Type](v.getReturnType).get
-  def replaceAttributes(attributes: Seq[CHIR.Attribute]): Unit =
-    v.setAttributes(attributes.foldLeft(0L)((mask, a) => mask | (1L << a.ordinal)))
-
 }
 
 final class EnumCtorImpl(e: EnumCtorInfoT)(using provider: CHIRItemProvider) extends CHIR.EnumCtor {

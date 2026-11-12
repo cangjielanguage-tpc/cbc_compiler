@@ -1,6 +1,7 @@
 package com.huawei.excelsior.jet.compiler.chir.patchgen
 
 import com.huawei.excelsior.jet.compiler.chir.CHIR.*
+import com.huawei.excelsior.jet.compiler.chir.EditableCHIR
 
 /** The plugin's entry guard is Load(flag), Not, Branch(user code, patch dispatch).
   * Keep the entry block and its return allocation, bypass dispatch, and let the
@@ -50,8 +51,9 @@ private[chir] object GuardChecks {
 
   def hasFlag(function: Func): Boolean = getFlag(function).nonEmpty
 
-  def remove(function: Func): Unit = {
-    val pkg = function.ownerPackage
+  def remove(function: EditableCHIR.Func): Unit = {
+    val editable = function.pkg
+    val pkg = editable
     val initializer = (function eq pkg.packageInitFunc) || (function eq pkg.packageInitLiteralFunc)
     require(initializer || hasFlag(function), "guard var flag check was not found")
     val entry = function.body.get.entryBlock
@@ -63,6 +65,6 @@ private[chir] object GuardChecks {
     val load = condition.asInstanceOf[Unary].operand.asInstanceOf[LocalVar].associatedExpr
     require((prefix.last eq condition) && (prefix(prefix.size - 2) eq load),
       "expected Load(guardVar) and Not at the end of the entry block")
-    entry.replaceExpressions(prefix.dropRight(2), function.ownerPackage.newGoto(branch.trueBlock, branch.debugLoc))
+    entry.replaceExpressions(prefix.dropRight(2), editable.newGoto(branch.trueBlock, branch.debugLoc))
   }
 }

@@ -15,7 +15,7 @@ final class TryAllocateImpl(allocation: AllocateBaseT)(implicit provider: CHIRIt
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(mapOperands(e))
 }
 
-class ApplyImpl(a: ApplyBaseT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Apply {
+class ApplyImpl(a: ApplyBaseT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Apply {
   private def fc = a.getBase
   def e: ExpressionT = fc.getBase
   def callee: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
@@ -32,7 +32,7 @@ final class TryApplyImpl(e: ApplyBaseT)(implicit provider: CHIRItemProvider) ext
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(super.args)
 }
 
-class BinaryImpl(b: BinaryExpressionBaseT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Binary {
+class BinaryImpl(b: BinaryExpressionBaseT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Binary {
   def e = b.getBase
   def operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.size >= 2) // at least left and right operands should be here
   def kind: Binary.Kind = e.getKind match {
@@ -54,6 +54,7 @@ class BinaryImpl(b: BinaryExpressionBaseT)(implicit provider: CHIRItemProvider) 
     case CHIRExprKind.Equal => Binary.Kind.Eq
     case CHIRExprKind.NotEqual => Binary.Kind.NotEq
   }
+
   def overflowStrategy: CHIR.OverflowStrategy = mapOverflowStrategy(b.getOverflowStrategy)
   def leftOperand: CHIR.Value = operands.head
   def rightOperand: CHIR.Value = operands(1)
@@ -65,7 +66,7 @@ final class TryBinaryImpl(e: BinaryExpressionBaseT)(implicit provider: CHIRItemP
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-final class BranchImpl(b: BranchT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Branch {
+final class BranchImpl(b: BranchT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Branch {
   def e: ExpressionT = b.getBase
   def condition: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def trueBlock: CHIR.Block = mapOperands(e).apply(1).asInstanceOf[CHIR.Block]
@@ -73,28 +74,28 @@ final class BranchImpl(b: BranchT)(implicit provider: CHIRItemProvider) extends 
   def successors: Seq[CHIR.Block] = Seq(trueBlock, falseBlock)
 }
 
-final class DebugImpl(d: DebugT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Debug {
+final class DebugImpl(d: DebugT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Debug {
   def e: ExpressionT = d.getBase
 }
 
-final class FieldImpl(f: FieldT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Field {
+final class FieldImpl(f: FieldT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Field {
   def e: ExpressionT = f.getBase
   def base: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def path: Seq[Long] = Option(f.getPath).toSeq.flatten
 }
 
-final class GetElementRefImpl(g: GetElementRefT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetElementRef {
+final class GetElementRefImpl(g: GetElementRefT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetElementRef {
   def e: ExpressionT = g.getBase
   def base: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def path: Seq[Long] = Option(g.getPath).toSeq.flatten
 }
 
-final class GetRTTIStaticImpl(g: GetRTTIStaticT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetRTTIStatic {
+final class GetRTTIStaticImpl(g: GetRTTIStaticT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetRTTIStatic {
   def e: ExpressionT = g.getBase
   def rttiType: CHIR.Type = provider.getType[CHIR.Type](g.getRttiType).get
 }
 
-final class InstanceOfImpl(i: InstanceOfT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.InstanceOf {
+final class InstanceOfImpl(i: InstanceOfT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.InstanceOf {
   def e: ExpressionT = i.getBase
   def obj: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def testType: CHIR.Type = provider.getType[CHIR.Type](i.getTargetType).get
@@ -102,7 +103,7 @@ final class InstanceOfImpl(i: InstanceOfT)(implicit provider: CHIRItemProvider) 
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.getResultLocalVar).get
 }
 
-class IntrinsicImpl(in: IntrinsicBaseT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Intrinsic {
+class IntrinsicImpl(in: IntrinsicBaseT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Intrinsic {
   def e = in.getBase.getBase
   private def operands: Seq[CHIR.Value] = mapOperands(e)
   def kind: Intrinsic.Kind = in.getIntrinsicKind match {
@@ -148,6 +149,7 @@ class IntrinsicImpl(in: IntrinsicBaseT)(implicit provider: CHIRItemProvider) ext
     case IntrinsicKind.GET_TYPE_FOR_TYPE_PARAMETER => Intrinsic.Kind.GetTypeForTypeParameter
     case k => notImplemented(s"intrinsic ${IntrinsicKind.name(k)}")
   }
+
   def args: Seq[CHIR.Value] = operands
   def instantiatedTypeArgs = in.getBase.getInstantiatedTypeArgs.toTypeSeq[CHIR.Type]
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.getResultTy).get
@@ -159,7 +161,7 @@ final class TryIntrinsicImpl(e: IntrinsicBaseT)(implicit provider: CHIRItemProvi
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(super.args)
 }
 
-class InvokeImpl(i: InvokeBaseT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Invoke {
+class InvokeImpl(i: InvokeBaseT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Invoke {
   private def fc = i.getBase
   def e: ExpressionT = fc.getBase
   def callee: CHIR.Func = mapOperands(e).apply(0).asInstanceOf[CHIR.Func]
@@ -177,7 +179,7 @@ final class TryInvokeImpl(e: InvokeBaseT)(implicit provider: CHIRItemProvider) e
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(super.args)
 }
 
-final class MultiBranchImpl(m: MultiBranchT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.MultiBranch {
+final class MultiBranchImpl(m: MultiBranchT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.MultiBranch {
   def e: ExpressionT = m.getBase
   def condition: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def defaultBlock: CHIR.Block = mapOperands(e).apply(1).asInstanceOf[CHIR.Block]
@@ -188,6 +190,7 @@ final class MultiBranchImpl(m: MultiBranchT)(implicit provider: CHIRItemProvider
       case t: CHIR.Block => t
     }.ensuring(_.size == blocks.size)
   }
+
   def caseValues: Seq[Long] = Option(m.getCaseValues).toSeq.flatten
   def successors: Seq[CHIR.Block] = defaultBlock +: normalBlocks
 }
@@ -208,7 +211,7 @@ final class TryNumericCastImpl(e: NumericCastBaseT)(implicit provider: CHIRItemP
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-class RawArrayAllocateImpl(r: RawArrayAllocateBaseT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RawArrayAllocate {
+class RawArrayAllocateImpl(r: RawArrayAllocateBaseT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RawArrayAllocate {
   def e: ExpressionT = r.getBase
   def operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty) // at least size should be here
   def elementType: CHIR.Type = provider.getType[CHIR.Type](r.getElementType).get
@@ -219,7 +222,7 @@ final class TryRawArrayAllocateImpl(e: RawArrayAllocateBaseT)(implicit provider:
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-class SpawnImpl(s: SpawnBaseT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Spawn {
+class SpawnImpl(s: SpawnBaseT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Spawn {
   def e: ExpressionT = s.getBase
   def operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty)  // at least obj should be here
   def obj: CHIR.Value = operands.head
@@ -232,14 +235,14 @@ final class TrySpawnImpl(e: SpawnBaseT)(implicit provider: CHIRItemProvider) ext
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-final class StoreElementRefImpl(s: StoreElementRefT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.StoreElementRef {
+final class StoreElementRefImpl(s: StoreElementRefT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.StoreElementRef {
   def e: ExpressionT = s.getBase
   def value: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def location: CHIR.Value = mapOperands(e).apply(1).asInstanceOf[CHIR.Value]
   def path: Seq[Long] = Option(s.getPath).toSeq.flatten
 }
 
-class UnaryImpl(u: UnaryExpressionBaseT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Unary {
+class UnaryImpl(u: UnaryExpressionBaseT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Unary {
   def e: ExpressionT = u.getBase
   def operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty) // at least operand should be here
   def operand: CHIR.Value = operands.head
@@ -248,6 +251,7 @@ class UnaryImpl(u: UnaryExpressionBaseT)(implicit provider: CHIRItemProvider) ex
     case CHIRExprKind.Not => Unary.Kind.Not
     case CHIRExprKind.Neg | CHIRExprKind.TryNeg => Unary.Kind.Neg
   }
+
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.getResultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.getResultLocalVar).get
   def overflowStrategy: CHIR.OverflowStrategy = mapOverflowStrategy(u.getOverflowStrategy)
@@ -257,17 +261,18 @@ final class TryUnaryImpl(e: UnaryExpressionBaseT)(implicit provider: CHIRItemPro
   def successors: Seq[CHIR.Block] = takeLastTwoBlocks(operands)
 }
 
-final class GotoImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Goto {
+final class GotoImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Goto {
   def destination: CHIR.Block = mapOperands(e).apply(0).asInstanceOf[CHIR.Block]
   def successors: Seq[CHIR.Block] = Seq(destination)
 }
 
-final class RaiseExceptionImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RaiseException {
+final class RaiseExceptionImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RaiseException {
   private def operands: Seq[CHIR.Value] = mapOperands(e).ensuring(_.nonEmpty)
   def exceptionValue: CHIR.Value = operands.head
   def exceptionBlock: Option[CHIR.Block] = operands.tail.headOption.collect {
     case t: CHIR.Block => t
   }
+
   def successors: Seq[CHIR.Block] = exceptionBlock.toSeq
 }
 
@@ -289,22 +294,22 @@ final class CastToConcreteImpl(val e: ExpressionT)(implicit val provider: CHIRIt
 final class CastToGenericImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends CastImpl with CHIR.CastToGeneric {
 }
 
-final class LoadImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Load {
+final class LoadImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Load {
   def location: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
 }
 
-final class StoreImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Store {
+final class StoreImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Store {
   def value: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def location: CHIR.Value = mapOperands(e).apply(1).asInstanceOf[CHIR.Value]
 }
 
-final class VArrayImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.VArray {
+final class VArrayImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.VArray {
   def elementValues: Seq[CHIR.Value] = mapOperands(e)
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.getResultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.getResultLocalVar).get
 }
 
-final class VArrayBuilderImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.VArrayBuilder {
+final class VArrayBuilderImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.VArrayBuilder {
   def size: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def initValue: CHIR.Value = mapOperands(e).apply(1).asInstanceOf[CHIR.Value]
   def initializer: CHIR.Value = mapOperands(e).apply(2).asInstanceOf[CHIR.Value]
@@ -312,40 +317,42 @@ final class VArrayBuilderImpl(val e: ExpressionT)(implicit provider: CHIRItemPro
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.getResultLocalVar).get
 }
 
-final class RawArrayLiteralInitImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RawArrayLiteralInit {
+final class RawArrayLiteralInitImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RawArrayLiteralInit {
   def array: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def elementValues = mapOperands(e).drop(1)
 }
 
-final class RawArrayInitByValueImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RawArrayInitByValue {
+final class RawArrayInitByValueImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.RawArrayInitByValue {
   def array: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def size: CHIR.Value = mapOperands(e).apply(1).asInstanceOf[CHIR.Value]
   def initValue: CHIR.Value = mapOperands(e).apply(2).asInstanceOf[CHIR.Value]
 }
 
-final class ConstantImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Constant {
+final class ConstantImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Constant {
   def literal: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.getResultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.getResultLocalVar).get
 }
 
-final class TupleImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Tuple {
+final class TupleImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Tuple {
   def elementValues: Seq[CHIR.Value] = mapOperands(e)
   def resultTpe: CHIR.Type = provider.getType[CHIR.Type](e.getResultTy).get
   def resultVar: CHIR.LocalVar = provider.getValue[CHIR.LocalVar](e.getResultLocalVar).get
 }
 
-final class GetRTTIImpl(val e: ExpressionT)(implicit provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetRTTI {
+final class GetRTTIImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetRTTI {
   def obj: CHIR.Value = mapOperands(e).apply(0).asInstanceOf[CHIR.Value]
 }
 
-final class GetExceptionImpl(val e: ExpressionT) extends ExpressionImpl with CHIR.GetException {
+final class GetExceptionImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.GetException {
 }
 
-final class ExitImpl(val e: ExpressionT) extends ExpressionImpl with CHIR.Exit {
+final class ExitImpl(val e: ExpressionT)(implicit val provider: CHIRItemProvider) extends ExpressionImpl with CHIR.Exit {
 }
 
-trait ExpressionImpl extends CHIR.Expression {
+trait ExpressionImpl extends EditableCHIR.Expression {
+  def provider: CHIRItemProvider
+  final def replace(operation: EditableCHIR.Operation): Unit = provider.asInstanceOf[PackageImpl].replace(this, operation)
   def e: ExpressionT
   def debugLoc: Option[CHIR.DebugLocation] = PackageImpl.location(e)
 

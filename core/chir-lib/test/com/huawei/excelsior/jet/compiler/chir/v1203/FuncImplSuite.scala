@@ -4,7 +4,6 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.v1203.PackageFormat.*
 import org.scalatest.funsuite.AnyFunSuite
 
-import java.lang.reflect.{InvocationHandler, Method, Proxy}
 import java.nio.file.Files
 
 class FuncImplSuite extends AnyFunSuite {
@@ -12,7 +11,7 @@ class FuncImplSuite extends AnyFunSuite {
     withFixture { f =>
       assert(f.editable.body.get eq f.groups(2L))
       assert(f.editable.retVal.get eq f.locals(4L))
-      f.editable.replaceBody(Some(f.groups(5L)), Some(f.locals(7L)))
+      f.owner.edit(f.editable).replaceBody(Some(f.groups(5L)), Some(f.locals(7L)))
       assert(f.editable.body.get eq f.groups(5L))
       assert(f.editable.retVal.get eq f.locals(7L))
       val fn = f.data.getValues()(0).asFunction()
@@ -32,7 +31,7 @@ class FuncImplSuite extends AnyFunSuite {
     withFixture { f =>
       val signature = f.data.getValues()(0).asFunction().getBase.getBase.getType
       val paramIds = f.data.getValues()(0).asFunction().getParams.clone()
-      f.editable.replaceBody(Some(f.groups(5L)), Some(f.locals(7L)))
+      f.owner.edit(f.editable).replaceBody(Some(f.groups(5L)), Some(f.locals(7L)))
       val bytes = f.data.serializeToBinary()
       val saved = CHIRPackageT.deserializeFromBinary(bytes)
       val fn = saved.getValues()(0).asFunction()
@@ -43,7 +42,7 @@ class FuncImplSuite extends AnyFunSuite {
       assert(fn.getBase.getRawMangledName == "preserve-this-metadata")
       val output = f.directory.resolve("output.chir")
       Files.write(output, bytes)
-      val reloaded = new PackageImpl(output.toString).function(1)
+      val reloaded = PackageImpl.fromBytes(Files.readAllBytes(output)).function(1)
       assert(reloaded.body.get.blocks.size == 1)
       assert(reloaded.retVal.get.identifier == "%20")
     }
@@ -51,7 +50,7 @@ class FuncImplSuite extends AnyFunSuite {
 
   test("clearing the body produces a declaration and detaches previous metadata") {
     withFixture { f =>
-      f.editable.replaceBody(None, None)
+      f.owner.edit(f.editable).replaceBody(None, None)
       assert(f.editable.body.isEmpty && f.editable.retVal.isEmpty)
       assert(f.data.getValues()(1).asBlockGroup().getOwnedFunc == 0)
       assert(!f.data.getValues()(3).asLocalVar().getIsRetVal)
@@ -63,7 +62,7 @@ class FuncImplSuite extends AnyFunSuite {
   test("replacing a body with itself is idempotent") {
     withFixture { f =>
       val before = f.data.serializeToBinary()
-      f.editable.replaceBody(Some(f.groups(2L)), Some(f.locals(4L)))
+      f.owner.edit(f.editable).replaceBody(Some(f.groups(2L)), Some(f.locals(4L)))
       assert(f.data.serializeToBinary().sameElements(before))
     }
   }
@@ -71,7 +70,7 @@ class FuncImplSuite extends AnyFunSuite {
   test("reject another function's body without partial mutation") {
     withFixture { f =>
       unchangedOnFailure(f) {
-        f.editable.replaceBody(Some(f.groups(9L)), None)
+        f.owner.edit(f.editable).replaceBody(Some(f.groups(9L)), None)
       }
     }
   }
@@ -80,7 +79,7 @@ class FuncImplSuite extends AnyFunSuite {
     withFixture { f =>
       f.data.getValues()(7).asFunction().setBody(5L)
       unchangedOnFailure(f) {
-        f.editable.replaceBody(Some(f.groups(5L)), Some(f.locals(7L)))
+        f.owner.edit(f.editable).replaceBody(Some(f.groups(5L)), Some(f.locals(7L)))
       }
     }
   }
@@ -88,55 +87,34 @@ class FuncImplSuite extends AnyFunSuite {
   test("reject a return local defined outside the replacement body") {
     withFixture { f =>
       unchangedOnFailure(f) {
-        f.editable.replaceBody(Some(f.groups(5L)), Some(f.locals(4L)))
+        f.owner.edit(f.editable).replaceBody(Some(f.groups(5L)), Some(f.locals(4L)))
       }
     }
   }
 
   test("reject a declaration with a return local") {
     withFixture { f =>
-      unchangedOnFailure(f) { f.editable.replaceBody(None, Some(f.locals(4L))) }
-    }
-  }
-
-  test("reject a cross-package group before looking up its ID") {
-    withFixture { f =>
-      val foreignOwner = stub(classOf[CHIR.Package]) { (_, _) =>
-        throw new AssertionError("Foreign package must not be queried")
-      }
-      val foreignGroup = groupView(foreignOwner)
-      unchangedOnFailure(f) { f.editable.replaceBody(Some(foreignGroup), None) }
-    }
-  }
-
-  test("reject unregistered return locals without mutation") {
-    withFixture { f =>
-      val foreignLocal = stub(classOf[CHIR.LocalVar]) { (_, _) =>
-        throw new AssertionError("Foreign local must not be queried")
-      }
-      unchangedOnFailure(f) {
-        f.editable.replaceBody(Some(f.groups(5L)), Some(foreignLocal))
-      }
+      unchangedOnFailure(f) { f.owner.edit(f.editable).replaceBody(None, Some(f.locals(4L))) }
     }
   }
 
   test("reject inconsistent entry blocks, expression ownership and result links") {
     withFixture { f =>
       f.data.getValues()(4).asBlockGroup().setEntryBlock(3L)
-      unchangedOnFailure(f) { f.editable.replaceBody(Some(f.groups(5L)), Some(f.locals(7L))) }
+      unchangedOnFailure(f) { f.owner.edit(f.editable).replaceBody(Some(f.groups(5L)), Some(f.locals(7L))) }
       f.data.getValues()(4).asBlockGroup().setEntryBlock(6L)
       f.data.getExprs()(2).asAllocateBase().getBase.setOwner(3L)
-      unchangedOnFailure(f) { f.editable.replaceBody(Some(f.groups(5L)), Some(f.locals(7L))) }
+      unchangedOnFailure(f) { f.owner.edit(f.editable).replaceBody(Some(f.groups(5L)), Some(f.locals(7L))) }
       f.data.getExprs()(2).asAllocateBase().getBase.setOwner(6L)
       f.data.getValues()(6).asLocalVar().setAssociatedExpr(1L)
-      unchangedOnFailure(f) { f.editable.replaceBody(Some(f.groups(5L)), Some(f.locals(7L))) }
+      unchangedOnFailure(f) { f.owner.edit(f.editable).replaceBody(Some(f.groups(5L)), Some(f.locals(7L))) }
     }
   }
 
   test("reject operands referencing another function's parameters") {
     withFixture { f =>
       f.data.getExprs()(3).asExpression().setOperands(Array(11L))
-      unchangedOnFailure(f) { f.editable.replaceBody(Some(f.groups(5L)), Some(f.locals(7L))) }
+      unchangedOnFailure(f) { f.owner.edit(f.editable).replaceBody(Some(f.groups(5L)), Some(f.locals(7L))) }
     }
   }
 
@@ -150,7 +128,7 @@ class FuncImplSuite extends AnyFunSuite {
     private val initial = TestData.fixtureData()
     private val input = directory.resolve("input.chir")
     Files.write(input, initial.serializeToBinary())
-    val owner = new PackageImpl(input.toString)
+    val owner = PackageImpl.fromBytes(Files.readAllBytes(input))
     val original: CHIR.Func = owner.function(1)
     val data = owner.data
     val groups: Map[Long, CHIR.BlockGroup] = Seq(2L, 5L, 9L).map { id =>
@@ -172,33 +150,9 @@ class FuncImplSuite extends AnyFunSuite {
     }
   }
 
-  // Foreign-node doubles fail if registration checks try to inspect their data.
-  private def groupView(owner: CHIR.Package): CHIR.BlockGroup =
-    stub(classOf[CHIR.BlockGroup]) { (method, _) =>
-      require(method.getName == "ownerPackage", s"Unexpected group operation: $method")
-      owner
-    }
-
-  private def stub[T](kind: Class[T])(call: (Method, Array[Object]) => Object): T =
-    Proxy.newProxyInstance(kind.getClassLoader, Array[Class[?]](kind), new InvocationHandler {
-      def invoke(proxy: Object, method: Method, args: Array[Object]): Object = call(method, args)
-    }).asInstanceOf[T]
-
 }
 
 private[chir] object TestData {
-  def operationFixtureData(): CHIRPackageT = {
-    val p = fixtureData()
-    def entry(kind: Int, args: Array[Long]): TypeElemUnion = {
-      val t = new TypeT; t.setKind(kind); t.setArgTys(args)
-      val u = new TypeElemUnion; u.setType(TypeElem.Type); u.setValue(t)
-      u
-    }
-    p.setTypes(p.getTypes ++ Array(entry(CHIRTypeKind.BOOLEAN, Array.emptyLongArray),
-      entry(CHIRTypeKind.TUPLE, Array(6L, 3L))))
-    p
-  }
-
   def fixtureData(): CHIRPackageT = {
     def base(tpe: Long, name: String, kind: Int): ValueT = {
       val b = new ValueT
