@@ -3,7 +3,7 @@
 # Excludes here contain harness-related issues that would not be fixed by hotfix development team
 ###############################################################################################
 
-# no debugger support in near future
+# bug 262 (cjdb support)
 Tools/cjdb
 
 # also fail on CJNATIVE
@@ -34,7 +34,7 @@ compiler/Driver/options/help/test_showall.cj
 compiler/Driver/options/toolchain/android_clang_search_lib.cj
 compiler/Driver/options/toolchain/android_clang_search_lib64.cj
 
-# environment: TimeOut
+# bug 263 (environment: TimeOut)
 API/std/sort/test_sort_array.cj
 API/std/sort/test_sort_unstable.cj
 API/std/sort/test_unstableSort.cj
