@@ -1,25 +1,81 @@
 package com.huawei.excelsior.jet.compiler.chir
 
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 
 /** Run shared editing contracts against every schema backend. */
-class EditingApiSuite extends AnyFunSuite {
-  private def fixture(version: Int): EditableCHIR.Package = {
-    val editable = EditableCHIR.empty("fixture", version)
-    val function = editable.newFunction("@first", Seq(CHIR.BuiltinType.Unit), CHIR.BuiltinType.Unit)
-    editable.newFunction("@second", Seq(CHIR.BuiltinType.Unit), CHIR.BuiltinType.Unit)
-    val block = editable.newBlock()
-    block.replaceTerminator(editable.newExit())
-    val body = editable.newBlockGroup(Seq(block), block)
-    function.replaceBody(Some(body), None)
-    val result = block.insert(EditableCHIR.Operation.Allocate(CHIR.BuiltinType.Unit))
-    function.replaceBody(Some(body), Some(result))
-    editable
-  }
-
-  private val backends = Seq(1203, 13002, 13008).map(version => version -> (() => fixture(version)))
+class EditingApiSuite extends AnyFunSuite with Matchers {
+  private val backends = Seq(1203, 13002, 13008).map(version => version -> (() => SharedTestData.editableFixture(version)))
 
   for ((version, fresh) <- backends) {
+    test(s"$version new blocks and groups replace a body and survive saving") {
+      val pkg = fresh()
+      val entry = pkg.newBlock()
+      val next = pkg.newBlock()
+      entry.replaceTerminator(pkg.newGoto(next))
+      next.replaceTerminator(pkg.newGoto(next))
+      val body = pkg.newBlockGroup(Seq(entry, next), entry)
+      val function = pkg.getFunc("@first").get
+      function.removeBody()
+      function.replaceBody(Some(body), None)
+      val condition = entry.insert(EditableCHIR.Operation.BooleanConstant(true))
+      entry.replaceTerminator(pkg.newBranch(condition, entry, next))
+      body.replaceBlocks(Seq(next, entry), entry)
+      function.replaceAttributes(Seq(CHIR.Attribute.Public))
+      val saved = EditableCHIR.fromBytes(pkg.toBytes, version).getFunc("@first").get
+      saved.attributes shouldBe Seq(CHIR.Attribute.Public)
+      val group = saved.body.get
+      val branch = group.entryBlock.terminator.asInstanceOf[CHIR.Branch]
+      (branch.trueBlock eq group.entryBlock) shouldBe true
+      (branch.falseBlock eq group.blocks.head) shouldBe true
+      branch.condition.asInstanceOf[CHIR.LocalVar].associatedExpr.asInstanceOf[CHIR.Constant]
+        .literal.asInstanceOf[CHIR.BoolLiteral].value shouldBe true
+    }
+
+    test(s"$version constructing a group connects to body replacement") {
+      val pkg = fresh()
+      val function = pkg.getFunc("@first").get
+      val block = pkg.newBlock()
+      block.replaceTerminator(pkg.newGoto(block))
+      val group = pkg.newBlockGroup(Seq(block), block)
+      function.replaceBody(Some(group), None)
+      (function.body.get eq group) shouldBe true
+      EditableCHIR.fromBytes(pkg.toBytes, version).getFunc("@first").get.body.get.blocks.size shouldBe 1
+    }
+
+    test(s"$version rejects foreign nodes, invalid branches and shared instructions atomically") {
+      val pkg = fresh()
+      val foreign = fresh()
+      val function = pkg.getFunc("@first").get
+      val block = function.body.get.entryBlock
+      val other = pkg.newBlock()
+      other.replaceTerminator(pkg.newExit())
+      pkg.getFunc("@second").get.replaceBody(Some(pkg.newBlockGroup(Seq(other), other)), None)
+      val before = pkg.toBytes
+      intercept[IllegalArgumentException](pkg.edit(foreign.getFunc("@first").get))
+      intercept[IllegalArgumentException](block.replaceTerminator(other.terminator))
+      intercept[IllegalArgumentException](pkg.newBranch(function.params.head, block, block))
+      intercept[IllegalArgumentException](pkg.newGoto(block, Some(CHIR.DebugLocation(10, 1))))
+      pkg.toBytes shouldBe before
+    }
+
+    test(s"$version block groups reject duplicate, foreign, shared and absent entry blocks") {
+      val pkg = fresh()
+      val group = pkg.getFunc("@first").get.body.get
+      val block = group.entryBlock
+      val other = pkg.newBlock()
+      other.replaceTerminator(pkg.newExit())
+      pkg.getFunc("@second").get.replaceBody(Some(pkg.newBlockGroup(Seq(other), other)), None)
+      val foreign = fresh().getFunc("@first").get.body.get.entryBlock
+      val before = pkg.toBytes
+      intercept[IllegalArgumentException](group.replaceBlocks(Seq(block, block), block))
+      intercept[IllegalArgumentException](group.replaceBlocks(Seq(block), other))
+      intercept[IllegalArgumentException](group.replaceBlocks(Seq(block, other), block))
+      intercept[IllegalArgumentException](group.replaceBlocks(Seq(block, foreign), block))
+      intercept[IllegalArgumentException](pkg.newBlockGroup(Seq(block), block))
+      pkg.toBytes shouldBe before
+    }
+
     test(s"$version editable nodes retain identity when viewed through the read API") {
       val editable = fresh()
       val function: EditableCHIR.Func = editable.getFunc("@first").get
@@ -27,15 +83,15 @@ class EditingApiSuite extends AnyFunSuite {
       val group: EditableCHIR.BlockGroup = function.body.get
       val block: EditableCHIR.Block = group.entryBlock
       val expression: EditableCHIR.Expression = block.terminator
-      assert(function eq readFunction)
-      assert(editable.edit(readFunction) eq function)
-      assert(editable.edit(readFunction.body.get) eq group)
-      assert(editable.edit(readFunction.body.get.entryBlock) eq block)
-      assert(editable.edit(readFunction.body.get.entryBlock.terminator) eq expression)
+      (function eq readFunction) shouldBe true
+      (editable.edit(readFunction) eq function) shouldBe true
+      (editable.edit(readFunction.body.get) eq group) shouldBe true
+      (editable.edit(readFunction.body.get.entryBlock) eq block) shouldBe true
+      (editable.edit(readFunction.body.get.entryBlock.terminator) eq expression) shouldBe true
       block.replaceTerminator(editable.newGoto(block))
-      assert(readFunction.body.get.entryBlock.terminator.asInstanceOf[CHIR.Goto].destination eq block)
+      (readFunction.body.get.entryBlock.terminator.asInstanceOf[CHIR.Goto].destination eq block) shouldBe true
       function.removeBody()
-      assert(readFunction.body.isEmpty)
+      (readFunction.body.isEmpty) shouldBe true
     }
 
     test(s"$version refuses editable views of another package's nodes") {
@@ -51,7 +107,7 @@ class EditingApiSuite extends AnyFunSuite {
       intercept[IllegalArgumentException](editable.edit(block.terminator))
       intercept[IllegalArgumentException](editable.edit(variable))
       intercept[IllegalArgumentException](editable.edit(function: CHIR.HasAttributes))
-      assert(editable.getFunc("@first").get.body.nonEmpty)
+      (editable.getFunc("@first").get.body.nonEmpty) shouldBe true
     }
 
     test(s"$version rejects a foreign goto destination without changing the body") {
@@ -60,7 +116,7 @@ class EditingApiSuite extends AnyFunSuite {
       val block = p.getFunc("@first").get.body.get.entryBlock
       val before = block.expressions
       intercept[IllegalArgumentException](editable.newGoto(fresh().getFunc("@first").get.body.get.entryBlock))
-      assert(block.expressions == before)
+      block.expressions shouldBe before
     }
 
     test(s"$version rejects unregistered groups without evaluating their contents") {
@@ -73,7 +129,7 @@ class EditingApiSuite extends AnyFunSuite {
       }
       intercept[IllegalArgumentException](editable.edit(group))
       intercept[IllegalArgumentException](function.replaceBody(Some(group), None))
-      assert(function.body == body)
+      function.body shouldBe body
     }
 
     test(s"$version rejects unregistered locals without evaluating their contents") {
@@ -87,13 +143,13 @@ class EditingApiSuite extends AnyFunSuite {
         def associatedExpr: CHIR.Expression = throw new AssertionError("Unregistered local must not be queried")
       }
       intercept[IllegalArgumentException](function.replaceBody(function.body, Some(local)))
-      assert(function.retVal == result)
+      function.retVal shouldBe result
     }
 
     test(s"$version rejects synthetic functions without evaluating their generated body") {
       val editable = fresh()
       val function = CHIR.newIntrinsicsPackage.values.collectFirst { case f: CHIR.Func => f }.get
-      assert(function.params.isEmpty)
+      (function.params.isEmpty) shouldBe true
       intercept[IllegalArgumentException](editable.edit(function).removeBody())
       intercept[IllegalArgumentException](editable.edit(function).replaceAttributes(Seq(CHIR.Attribute.Public)))
     }
@@ -104,15 +160,15 @@ class EditingApiSuite extends AnyFunSuite {
       val global = editable.newGlobalVar("@global", CHIR.BuiltinType.Unit)
       editable.edit(function).replaceAttributes(Seq(CHIR.Attribute.Public, CHIR.Attribute.NoInline, CHIR.Attribute.Public))
       global.replaceAttributes(Seq(CHIR.Attribute.Private, CHIR.Attribute.Mut))
-      assert(function.attributes == Seq(CHIR.Attribute.Public, CHIR.Attribute.NoInline))
-      assert(global.attributes == Seq(CHIR.Attribute.Private, CHIR.Attribute.Mut))
+      function.attributes shouldBe Seq(CHIR.Attribute.Public, CHIR.Attribute.NoInline)
+      global.attributes shouldBe Seq(CHIR.Attribute.Private, CHIR.Attribute.Mut)
       val saved = EditableCHIR.fromBytes(editable.toBytes, version)
-      assert(saved.getFunc("@first").get.attributes == function.attributes)
+      saved.getFunc("@first").get.attributes shouldBe function.attributes
       val savedGlobal = saved.values.collectFirst { case g: CHIR.GlobalVar => g }.get
-      assert(savedGlobal.attributes == global.attributes)
+      savedGlobal.attributes shouldBe global.attributes
       saved.edit(savedGlobal).replaceAttributes(Seq.empty)
-      assert(savedGlobal.attributes.isEmpty)
-      assert(global.attributes.nonEmpty)
+      (savedGlobal.attributes.isEmpty) shouldBe true
+      (global.attributes.nonEmpty) shouldBe true
     }
 
     test(s"$version moves a body through held views and preserves the destination signature") {
@@ -124,12 +180,12 @@ class EditingApiSuite extends AnyFunSuite {
       val signature = to.tpe
       val parameters = to.params
       editable.edit(from).moveBody(to)
-      assert(from.body.isEmpty && to.body.contains(body))
-      assert(to.tpe eq signature)
-      assert(to.params == parameters)
+      (from.body.isEmpty && to.body.contains(body)) shouldBe true
+      (to.tpe eq signature) shouldBe true
+      to.params shouldBe parameters
       val saved = CHIR.fromBytes(editable.toBytes, version)
-      assert(saved.getFunc("@first").get.body.isEmpty)
-      assert(saved.getFunc("@second").get.body.nonEmpty)
+      (saved.getFunc("@first").get.body.isEmpty) shouldBe true
+      (saved.getFunc("@second").get.body.nonEmpty) shouldBe true
     }
 
     test(s"$version supports every transformation operation and saving") {
@@ -149,13 +205,13 @@ class EditingApiSuite extends AnyFunSuite {
       block.insert(EditableCHIR.Operation.Store(tuple, location))
       val call = block.insert(EditableCHIR.Operation.Apply(p.getFunc("@second").get, Seq(function.params.head)))
       editable.edit(flag.associatedExpr).replace(EditableCHIR.Operation.BooleanConstant(false))
-      assert(!flag.associatedExpr.asInstanceOf[CHIR.Constant].literal.asInstanceOf[CHIR.BoolLiteral].value)
-      assert(call.associatedExpr.asInstanceOf[CHIR.Apply].callee eq p.getFunc("@second").get)
-      assert(function.expressions.exists(_ eq call.associatedExpr))
-      assert(!function.isInternal)
+      (!flag.associatedExpr.asInstanceOf[CHIR.Constant].literal.asInstanceOf[CHIR.BoolLiteral].value) shouldBe true
+      (call.associatedExpr.asInstanceOf[CHIR.Apply].callee eq p.getFunc("@second").get) shouldBe true
+      (function.expressions.exists(_ eq call.associatedExpr)) shouldBe true
+      (!function.isInternal) shouldBe true
       val saved = CHIR.fromBytes(editable.toBytes, version)
-      assert(saved.getFunc("@first").get.body.get.entryBlock.expressions.size == block.expressions.size)
-      assert(saved.getFunc("@first").get.body.get.blocks.flatMap(_.expressions).exists(_.isInstanceOf[CHIR.Apply]))
+      saved.getFunc("@first").get.body.get.entryBlock.expressions.size shouldBe block.expressions.size
+      (saved.getFunc("@first").get.body.get.blocks.flatMap(_.expressions).exists(_.isInstanceOf[CHIR.Apply])) shouldBe true
     }
   }
 }
