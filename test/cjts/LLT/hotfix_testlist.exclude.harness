@@ -3,11 +3,10 @@
 # Excludes here contain harness-related issues that would not be fixed by hotfix development team
 ###############################################################################################
 
-# no debugger support in near future
+# bug 262 (cjdb support)
 Tools/cjdb
 
 # also fail on CJNATIVE
-API/std/unittest/report_bench_html/report_html_colon_name.cj
 API/std/argOpt/test_argopt.cj
 
 # flaky, expect number of native threads (may be wrong in case of auxiliary native threads)
@@ -28,14 +27,11 @@ compiler/Driver/options/obfuscation/test_layout/obf_line_number3.info
 compiler/Driver/temporary_files/TMPDIR_illegal_1.cj
 compiler/Driver/temporary_files/TMPDIR_illegal_2.cj
 
-# cjc options: misalign when hotfix enabled
-compiler/Driver/options/help/test_showall.cj
-
 # environment: android-related
 compiler/Driver/options/toolchain/android_clang_search_lib.cj
 compiler/Driver/options/toolchain/android_clang_search_lib64.cj
 
-# environment: TimeOut
+# bug 263 (environment: TimeOut)
 API/std/sort/test_sort_array.cj
 API/std/sort/test_sort_unstable.cj
 API/std/sort/test_unstableSort.cj
@@ -51,10 +47,6 @@ API/std/sort/test_arraySort.cj
 API/std/sort/test_sort_stable.cj
 compiler/ConditionalCompilation/node/finalizer_on.cj
 
-# environment: SocketException: Socket is not connected
-API/std/socket/redesign/props/udp_props_readonly.cj
-API/std/socket/redesign/props/unix_datagram_props_readonly.cj
-API/std/socket/redesign/props/sockets_update_addr_on_connect.cj
 
 # environment: /usr/bin/env: ‘bash’: No such file or directory
 compiler/Driver/cross_compile/sysroot_option/sysroot_mock.cj
@@ -84,65 +76,6 @@ compiler/CHIR/AST2CHIR/SetGenericInfo
 # uses --sanitizer-coverage-* options for compilation which are not supported in CBC
 API/std/unittest/prop_test/coverage_guided
 
-# ignore tests that rely on particular level of optimization ("The func node in the line:12 and the column:1 was optimized by The opt: Redundant Return Removal")
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet01.cj
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet02.cj
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet03.cj
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet04.cj
-compiler/CHIR/RemoveRedundantRet/testRemoveRedundantRet05.cj
-
-# ignore tests that rely on particular level of optimization ("The function call to f1 in the line 33 and the column 5 was an invoke call.")
-compiler/CHIR/InvokeNodetest/testDevirt01.cj
-compiler/CHIR/InvokeNodetest/testDevirt09.cj
-compiler/CHIR/InvokeNodetest/testDevirt10.cj
-compiler/CHIR/InvokeNodetest/testDevirt11.cj
-compiler/CHIR/InvokeNodetest/testDevirt12.cj
-compiler/CHIR/InvokeNodetest/testDevirt13.cj
-compiler/CHIR/InvokeNodetest/testDevirt14.cj
-compiler/CHIR/InvokeNodetest/testDevirt15.cj
-compiler/CHIR/InvokeNodetest/testDevirt16.cj
-compiler/CHIR/InvokeNodetest/testDevirt17.cj
-compiler/CHIR/InvokeNodetest/testDevirt19.cj
-compiler/CHIR/InvokeNodetest/testDevirt20.cj
-compiler/CHIR/InvokeNodetest/testDevirt21.cj
-
-# tests that rely on particular optimization log ("was optimized by The opt: ...") / CHIROpt scan asserts
-compiler/CHIROpt/DeadCodeElimination/NothingType/NothingType05.cj
-compiler/CHIROpt/NoSideEffectMarker/testRoundOpt.cj
-compiler/CHIROpt/UselessAllocateElimination/finalizer1.cj
-compiler/CHIROpt/ValueRangeAnalysis/arcast.cj
-compiler/CHIROpt/lambda_reduce/GenericArrayInitLambdaOpt/generic_array_init_lambda_opt.cj
-compiler/CHIROpt/lambda_reduce/arary_init_lambda_opt.cj
-compiler/CHIROpt/lambda_reduce/inline_lambda_param.cj
-compiler/CHIROpt/match/testSwitch1_1.cj
-
-# ignore due to "invalid file or directory %enableSwitchOpt"
-compiler/CHIROpt/match/testSwitch1_2.cj
-compiler/CHIROpt/match/testSwitch1_3.cj
-compiler/CHIROpt/match/testSwitch1_4.cj
-compiler/CHIROpt/match/testSwitch2_1.cj
-compiler/CHIROpt/match/testSwitch2_3.cj
-compiler/CHIROpt/match/testSwitch2_4.cj
-compiler/CHIROpt/match/testSwitch2_5.cj
-compiler/CHIROpt/match/testSwitch2_6.cj
-compiler/CHIROpt/match/testSwitch2_7.cj
-compiler/CHIROpt/match/testSwitch2_8.cj
-compiler/CHIROpt/match/testSwitch3_1.cj
-compiler/CHIROpt/match/testSwitch3_2.cj
-compiler/CHIROpt/match/testSwitch3_3.cj
-compiler/CHIROpt/match/testSwitch3_4.cj
-compiler/CHIROpt/match/testSwitch3_5.cj
-compiler/CHIROpt/match/testSwitch4_1.cj
-compiler/CHIROpt/match/testSwitch4_2.cj
-compiler/CHIROpt/match/testSwitch4_3.cj
-compiler/CHIROpt/match/testSwitch4_4.cj
-compiler/CHIROpt/match/testSwitch4_5.cj
-compiler/CHIROpt/match/testSwitch4_6.cj
-compiler/CHIROpt/match/testSwitch4_7.cj
-compiler/CHIROpt/match/testSwitch4_8.cj
-compiler/CHIROpt/match/testSwitch4_9.cj
-compiler/CHIROpt/match/testSwitch4_10.cj
-
 # ignore tests that rely on particular level of optimization ("The binary node in the line:9 and the column:12 was optimized by The opt: Constant Folding")
 compiler/CHIROpt/O2Optimization
 
@@ -158,27 +91,11 @@ compiler/CHIROpt/FunctionInline
 # ignore tests that rely on particular level of optimization ("The deref node in the line:16 and the column:5 was optimized by The opt: Constant Propagation")
 compiler/CHIROpt/Optimizations/GlobalConstVars
 
-# ignore tests that rely on particular level of optimization ("incremental compilation triggered")
-compiler/CHIROpt/ValueRangeAnalysis/issue04/RangeAnalysis_Incr.cj
-
 # ignore tests that rely on particular level of optimization ("an exception was thrown while evaluating constant")
 compiler/ConstEval/testExceptionMod.cj
 
-# ignore due to "invalid file or directory %disableCHIROpt"
-compiler/CHIROpt/O2Optimization/testO2DisableCHIROpt.cj
-
-# ignore due to "invalid option: '--fchir-switch-opt'"
-compiler/CHIROpt/SanCovPass/traceCompareFail.cj
-
 # ignore due to "entrypoint not found" (multipackage, staticlib, dynamiclib tests)
-compiler/CHIR/AST2CHIR/BaseUseCase/extend/extend_imported_class/extend_imported_class.cj
-compiler/CHIR/AST2CHIR/BaseUseCase/if_expr/ifExpr_06/ifExpr_06.cj
-compiler/Sema/annotation/ifavailable/basecase.cj
 compiler/Sema/annotation/ifavailable/external_weak/external_weak.cj
-compiler/Sema/annotation/ifavailable/lambda_not_unit_return_type.cj
-compiler/Sema/annotation/ifavailable/level_syscap_check/test03.cj
-compiler/Sema/annotation/ifavailable/nested.cj
-compiler/Sema/APILevelChecker/level/api_weak/external_weak03.cj
 compiler/CHIR/CHIR2HLIR/module/import_01/main.cj
 
 # ignore due to complicated compilation process (dynamiclib + reflection)
@@ -222,10 +139,6 @@ API/std/reflect/typeInfo_staticMemberFunctionInfo_apply_struct.cj
 API/std/reflect/classTypeInfo_test.cj
 API/std/reflect/annotation_cjnative.cj
 
-
-# ignore due to frontend fail "static member cannot depend on generic parameter 'Generics-T'"
-compiler/CHIROpt/VarInitCheck/InitOrder/circular6.cj
-
 # ignore due to "can not find package XXX"
 compiler/CHIR/CHIR2HLIR/package/I4D1CM/test_serializers.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix20.cj
@@ -249,16 +162,12 @@ compiler/CHIR/ComplicatedCodeBugfix/Bugfix23.cj
 compiler/Sema/Extend/extend_enum2.cj
 
 # ignore due to demangling discrepancies in stracktraces (main::goo vs default::goo etc.)
-compiler/CodegenCJNative/demangle/decl/c_function_decl1.cj
 compiler/CodegenCJNative/demangle/decl/error_throw1.cj
 compiler/CodegenCJNative/demangle/decl/exception_throw1.cj
 compiler/CodegenCJNative/demangle/decl/extend_outer_decl1.cj
 compiler/CodegenCJNative/demangle/decl/extend_outer_decl2.cj
 compiler/CodegenCJNative/demangle/decl/function_decl2.cj
 compiler/CodegenCJNative/demangle/decl/generic_constraints/ge
-compiler/CodegenCJNative/demangle/decl/generic_constraints/ge
-compiler/CodegenCJNative/demangle/decl/generic_constraints/ge
-compiler/CodegenCJNative/demangle/decl/global_init1.cj
 compiler/CodegenCJNative/demangle/decl/nested_package/ma
 compiler/CodegenCJNative/demangle/decl/prop_decl1.cj
 compiler/CodegenCJNative/demangle/decl/prop_decl2.cj
@@ -307,35 +216,19 @@ compiler/DeMangle/Prop/propClass.cj
 compiler/Driver/options/trim_path/trim_path2.cj
 compiler/DeMangle/GenericType/genericTy.cj
 compiler/DeMangle/Operator/or.cj
-compiler/DeMangle/Filename/fileName.cj
 compiler/DeMangle/Filename/fileHashcodeTest2.cj
 compiler/DeMangle/Operator/ge.cj
 compiler/CodegenCJNative/demangle/decl/generic_constraints/generic_constraints_func_decl2.cj
 compiler/DeMangle/Operator/lt.cj
 API/std/core/exclusiveScope/exception.cj
 
-# ignore due to frontend error
-compiler/CHIROpt/VarInitCheck/InitOrder/circular1.cj
-compiler/CHIROpt/VarInitCheck/varray.cj
-compiler/CHIROpt/VarInitCheck/varray_if.cj
-compiler/Sema/generics/generic_subst_perf.cj
-
 # ignore due to cjts misconfiguration (line 6: $1: unbound variable)
 compiler/CHIR/AST2CHIR/BaseUseCase/function/funcNode.cj
 
 # broken/misconfigured tests or harness environment (missing keywords, missing generated file, stdin-driven, expected-output mismatch)
-compiler/CHIROpt/DeadCodeElimination/UselessFunction/UselessFunction2.cj
-compiler/CHIROpt/ValueRangeAnalysis/VArray.cj
-compiler/CHIROpt/ValueRangeAnalysis/VArray2.cj
-compiler/CHIROpt/VarInitCheck/var_circular_dependency.cj
-compiler/CHIROpt/lambda_reduce/thread_lambda_inline.cj
-compiler/Sema/APILevelChecker/hide/mix_macro1.cj
 API/std/collection/concurrent/test_concurrent_hashmap_init_bugfix.cj
 
 # driver mangles cjc args ("No such directory: '-lstdx.syntax'") / driver warning noise breaks expected-output compare
-compiler/CHIR/CHIR2HLIR/package/scanDepPkg/test.cj
-compiler/CHIR/CHIR2HLIR/package/scanDepPkgNoModule/test.cj
-compiler/Sema/class/class7.cj
 compiler/Sema/effect/err_handle_00.cj
 compiler/Sema/effect/err_resume_non_unit.cj
 compiler/Sema/effect/err_resume_throwing_non_exception.cj
@@ -345,10 +238,6 @@ compiler/Sema/effect/invalid_try_handle_block.cj
 compiler/Sema/effect/non_matching_types.cj
 compiler/Sema/effect/return_in_try_handle.cj
 compiler/Sema/effect/wrong_return_type_try.cj
-compiler/Sema/function/unsafe_func_can_only_be_called.cj
-compiler/Sema/generics/generic_static_functions/access_by_parameter_interface_1_2.cj
-compiler/Sema/toplevel/reftype.cj
-compiler/Sema/tuple/tuple2.cj
 
 # stdx packages are not built/available in the hotfix toolchain ("can not find package 'stdx.*'")
 API/stdx
@@ -378,16 +267,6 @@ compiler/Driver/LTO/lto_test6_32.cj
 compiler/Driver/LTO/lto_test6_33.cj
 compiler/Driver/linkage/dynamic_linkage/t.cj
 
-# missing stdx.unittest.data / template APIs (undeclared Sample/Ema/Measurements/BenchRawMeasurement)
-API/std/unittest/gnuplot_svg_fix/fix_svg_test.cj
-API/std/unittest/new_bench/stats/bootstrap_test.cj
-API/std/unittest/new_bench/stats/ema_test.cj
-API/std/unittest/new_bench/stats/measurements_test.cj
-API/std/unittest/new_bench/stats/normal_dist_test.cj
-API/std/unittest/new_bench/stats/sample_test.cj
-API/std/unittest/new_bench/stats/statistics_sample_test.cj
-API/std/unittest/template_engine/template_test.cj
-
 # AOP aspect plugin library is missing ("No such file or directory: '/libstdx.collect_aspects.so'")
 compiler/Plugins/AOP_tests
 
@@ -403,8 +282,6 @@ API/std/libast/exprs/try_expr/test_handlers_001.cj
 API/std/libast/patterns/commandtypepattern/test_dump_001.cj
 API/std/libast/patterns/commandtypepattern/test_dump_002.cj
 API/std/libast/walker/test_all_exprs_break_traverse_001.cj
-compiler/IncrementalCompilation/DeclLevel/GlobalFunc/ToForeign_Full.cj
-compiler/IncrementalCompilation/DeclLevel/GlobalFunc/ToForeign_Full_2.cj
 compiler/Macro/debug/call_eh.cj
 compiler/Macro/parse/import.cj
 compiler/Macro/parse/import_debug_macro.cj
@@ -423,13 +300,7 @@ compiler/Driver/options/obfuscation/test_layout/test4.info
 
 # incremental compilation: not supported by hotfix toolchain
 compiler/IncrementalCompilation
-compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_1.cj
-compiler/Driver/options/ltovisiblepkgs/compile_test_incremental_2.cj
 compiler/CodegenCJNative/incremental/cfunc2/main.info
-
-# broken tests - test expect throwing of `ArithmeticException: pow` when cast should throw. issue-140
-compiler/CHIR/CHIR2HLIR/overflow/int8/power_max.cj
-compiler/CHIR/CHIR2HLIR/overflow/int8/power_min.cj
 
 # @C functions in cbc code
 compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_7.cj
@@ -439,24 +310,355 @@ compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_1.cj
 compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_2.cj
 compiler/FFI/CFFI/cfunc/call_in_cj/call_in_cj_6.cj
 compiler/FFI/CFFI/cfunc/empty_type/empty_type.cj
-compiler/FFI/CFFI/dock/cfunc_record/main.cj
-compiler/FFI/CFFI/import/import002/import002.cj
-compiler/FFI/CFFI/import/import003/import003.cj
-compiler/FFI/CFFI/import/import004/import004.cj
-
-# Usage of runtime library symbols from test
-compiler/Sema/concurrency/spawn10.cj
 
 # tries to link .a cangjie static library during test compilation
-API/std/unittest/mock/compiler/createMock/usePrivateTypesOtherPackage.cj
-API/std/unittest/mock/compiler/createSpy/indirectSpying.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_other_package_separate.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/extendMethods/extend_same_package_separate.cj
-API/std/unittest/mock/compiler/misc/privateMethodWithPrivateTypeDefaultParam.cj
 API/std/unittest/mock/framework/expectation_failed_test.cj
-API/std/unittest/mock/framework/listeners_test.cj
-API/std/unittest/mock/framework/runtime_failure_report_test.cj
-API/std/unittest/mock/framework/stub_base_test.cj
 API/std/unittest/mock/framework/verification_failed_report_test.cj
 API/std/unittest/mock/framework/verify_misconfiguration_test.cj
+
+# bug 259 (`std.ast` diagnostics mismatch)
+API/std/deriving/diagnostics-illegal-target.cj
+API/std/libast/annotation/test_exception_002.cj
+API/std/libast/decls/classdecl/test_error_001.cj
+API/std/libast/decls/extend_decl/test_exception_002.cj
+API/std/libast/decls/funcdecl/test_error_001.cj
+API/std/libast/decls/funcdecl/test_error_002.cj
+API/std/libast/decls/funcdecl/test_exception_001.cj
+API/std/libast/decls/funcparam/test_exception_001.cj
+API/std/libast/decls/primaryctordecl/test_exception_001.cj
+API/std/libast/decls/vardecl/test_error_001.cj
+API/std/libast/decls/vardecl/test_exception_001.cj
+API/std/libast/diag_report/test_fileid_exception.cj
+API/std/libast/diag_report/test_rang_exception.cj
+API/std/libast/exprs/array_litreral/test_exception_001.cj
+API/std/libast/exprs/as_expr/test_exception_001.cj
+API/std/libast/exprs/assign_expr/test_exception_001.cj
+API/std/libast/exprs/binary_expr/test_exception_001.cj
+API/std/libast/exprs/call_expr/test_exception_001.cj
+API/std/libast/exprs/do_while_expr/test_exception_001.cj
+API/std/libast/exprs/for_in_expr/test_exception_001.cj
+API/std/libast/exprs/for_in_expr/test_exception_002.cj
+API/std/libast/exprs/if_expr/test_exception_001.cj
+API/std/libast/exprs/if_expr/test_exception_002.cj
+API/std/libast/exprs/inc_or_dec_expr/test_exception_001.cj
+API/std/libast/exprs/is_expr/test_exception_001.cj
+API/std/libast/exprs/jump_expr/test_exception_001.cj
+API/std/libast/exprs/jump_expr/test_exception_002.cj
+API/std/libast/exprs/lambda_expr/test_exception_001.cj
+API/std/libast/exprs/let_pattern_expr/enhanced_condition/test_dump_001.cj
+API/std/libast/exprs/let_pattern_expr/test_exception_001.cj
+API/std/libast/exprs/lit_const_expr/test_exception_001.cj
+API/std/libast/exprs/macro_expand_expr/test_exception_001.cj
+API/std/libast/exprs/match_expr/test_exception_001.cj
+API/std/libast/exprs/match_expr/test_exception_002.cj
+API/std/libast/exprs/match_expr/test_exception_003.cj
+API/std/libast/exprs/match_expr/test_exception_004.cj
+API/std/libast/exprs/match_expr/test_exception_005.cj
+API/std/libast/exprs/member_access/test_exception_001.cj
+API/std/libast/exprs/optional_expr/test_exception_001.cj
+API/std/libast/exprs/paren_expr/test_exception_001.cj
+API/std/libast/exprs/primitive_type_expr/test_exception_001.cj
+API/std/libast/exprs/quote_expr/test_exception_001.cj
+API/std/libast/exprs/range_expr/test_exception_001.cj
+API/std/libast/exprs/ref_expr/test_exception_001.cj
+API/std/libast/exprs/return_expr/test_exception_001.cj
+API/std/libast/exprs/spawn_expr/test_exception_001.cj
+API/std/libast/exprs/subscript_expr/test_exception_001.cj
+API/std/libast/exprs/synchronized_expr/test_exception_001.cj
+API/std/libast/exprs/throw_expr/test_exception_001.cj
+API/std/libast/exprs/trailing_closure_expr/test_exception_001.cj
+API/std/libast/exprs/try_expr/test_exception_001.cj
+API/std/libast/exprs/tuple_literal/test_exception_001.cj
+API/std/libast/exprs/type_conv_expr/test_exception_001.cj
+API/std/libast/exprs/unary_expr/test_exception_001.cj
+API/std/libast/exprs/varray_expr/test_exception_001.cj
+API/std/libast/exprs/while_expr/test_exception_001.cj
+API/std/libast/exprs/wildcard_expr/test_exception_001.cj
+API/std/libast/parse/parseDeclFragment_error_01.cj
+API/std/libast/parse/parseDeclFragment_error_02.cj
+API/std/libast/parse/parseDecl_error_01.cj
+API/std/libast/parse/parseDecl_error_02.cj
+API/std/libast/parse/parseExprFragment_error_01.cj
+API/std/libast/parse/parseExprFragment_error_02.cj
+API/std/libast/parse/parseExpr_error_01.cj
+API/std/libast/parse/parseExpr_error_02.cj
+API/std/libast/parse/parseExpr_error_03.cj
+API/std/libast/parse/parseProgram_error_01.cj
+API/std/libast/parse/parseProgram_error_02.cj
+API/std/libast/patterns/varorenumpattern/test_exception_001.cj
+API/std/libast/patterns/wildcardPattern/test_exception_001.cj
+API/std/libast/program/cangjieLex/test_lex_lambdaExpr_inMacro_002.cj
+API/std/libast/program/cangjieLex/test_lex_lambdaExpr_inMacro_005.cj
+API/std/libast/program/parse/test_exception_001.cj
+API/std/libast/program/parse/test_exception_002.cj
+API/std/libast/program/parse/test_exception_003.cj
+API/std/libast/program/parse/test_exception_004.cj
+API/std/libast/program/parse/test_exception_005.cj
+API/std/libast/program/parse/test_parse_006.cj
+API/std/libast/tokens/checkTokens/test_set_BitAnds.cj
+API/std/libast/tokens/checkTokens/test_set_Block.cj
+API/std/libast/tokens/checkTokens/test_set_Colon.cj
+API/std/libast/tokens/checkTokens/test_set_Commas.cj
+API/std/libast/tokens/pos/test_invalid_pos_error.cj
+API/std/libast/types/functype/test_exception_001.cj
+API/std/libast/types/parentype/test_exception_001.cj
+API/std/libast/types/prefixtype/test_exception_001.cj
+API/std/libast/types/primitivetype/test_exception_001.cj
+API/std/libast/types/qualifiedtype/test_exception_001.cj
+API/std/libast/types/reftype/test_exception_001.cj
+API/std/libast/types/reftype/test_parse_004.cj
+API/std/libast/types/tupletype/test_exception_001.cj
+API/std/libast/types/varraytype/test_exception_001.cj
+API/std/unittest/options_validation/option_validator_scope.cj
+compiler/Macro/feature/support_tuple_left_value/negative/unary/unary_nest_tuple_1.cj
+compiler/Macro/feature/support_tuple_left_value/negative/unary/unary_nest_tuple_2.cj
+compiler/Macro/feature/support_tuple_left_value/negative/unary/unary_tuple_1.cj
+compiler/Macro/feature/support_tuple_left_value/negative/unary/unary_tuple_2.cj
+compiler/Parser/ar/support_tuple_left_value/libast/negative/add_assign.cj
+compiler/Parser/ar/support_tuple_left_value/libast/negative/add_assign_right_tuple.cj
+compiler/Parser/ar/support_tuple_left_value/libast/negative/right_expression.cj
+compiler/Parser/ar/support_tuple_left_value/libast/negative/unary/unary_nest_tuple_1.cj
+compiler/Parser/ar/support_tuple_left_value/libast/negative/unary/unary_nest_tuple_2.cj
+compiler/Parser/ar/support_tuple_left_value/libast/negative/unary/unary_tuple_1.cj
+compiler/Parser/ar/support_tuple_left_value/libast/negative/unary/unary_tuple_2.cj
+compiler/Parser/const/const_ast_func2.cj
+compiler/Parser/const/const_ast_func3.cj
+compiler/Parser/const/const_ast_primaryctor4.cj
+compiler/Parser/const/const_ast_variable4.cj
+compiler/Parser/const/const_ast_variable5.cj
+compiler/Parser/others/quest.cj
+
+# bug 260 (`stdlib` / `std.unittest` exception message rewording)
+API/std/collection/test_ArrayQueue.cj
+API/std/collection/test_LinkedList.cj
+API/std/collection/test_TreeSet.cj
+API/std/collection/test_tree_map_coverage.cj
+API/std/core/StringBuilder/test_init.cj
+API/std/core/StringBuilder/test_reset.cj
+API/std/core/test_char_extension.cj
+API/std/core/test_cstring.cj
+API/std/core/test_range.cj
+API/std/database/sql/sql_exception_test.cj
+API/std/database/sql/sql_pool_test.cj
+API/std/database/sql/test_driverManager.cj
+API/std/env/common/test_env_variable_failure.cj
+API/std/env/unix/test_env_info.cj
+API/std/fs/test_directory_linux.cj
+API/std/fs/test_file_linux.cj
+API/std/fs/test_file_unix.cj
+API/std/io/BufferedInputStream/BufferedInputStream_InvalidCapacity.cj
+API/std/io/BufferedOutputStream/BufferedOutputStream_InvaildCapacity.cj
+API/std/io/ByteBuffer/ByteBuffer_capacity2.cj
+API/std/io/ByteBuffer/ByteBuffer_reserve1.cj
+API/std/io/ByteBuffer/ByteBuffer_reserve2.cj
+API/std/io/ChainedInputStream/ChainedInputStream_ArrayIsEmpty.cj
+API/std/io/ChainedInputStream/ChainedInputStream_read_fail.cj
+API/std/io/MultiOutputStream/MultiOutputStream_ArrayIsEmpty.cj
+API/std/io/StringReader/StringReader_UTF8_readChar_InvaildChar.cj
+API/std/io/StringReader/StringReader_readln.cj
+API/std/math/numeric/bigint/test_logical.cj
+API/std/math/numeric/bigint/test_math.cj
+API/std/math/numeric/bigint/test_prop.cj
+API/std/math/numeric/bigint/test_toInt.cj
+API/std/math/numeric/decimal/test_float32_init.cj
+API/std/overflow/throwing_shift_test.cj
+API/std/process/unix/test_process_terminate.cj
+API/std/random/test_random_next_int_bool.cj
+API/std/random/test_random_next_uint.cj
+API/std/random/test_special_situation.cj
+API/std/reflect/dynloading_cjnative_test2.cj
+API/std/socket/addr/addr8.cj
+API/std/socket/connect_after_failed_bind.cj
+API/std/socket/raw_socket/accept.cj
+API/std/socket/redesign/functional/common_negative_duration.cj
+API/std/socket/redesign/functional/udp_disconnect_unconnected_socket.cj
+API/std/socket/redesign/functional/unix_datagram_disconnect_unconnected_socket.cj
+API/std/socket/redesign/functional/unix_negative_duration.cj
+API/std/socket/test_tcp_address.cj
+API/std/socket/test_udp_reuseport_reuseaddress2.cj
+API/std/socket/unix/connect_after_failed_bind.cj
+API/std/socket/unix/illegal_buffer_sizes.cj
+API/std/sync/multi_condition_monitor/test_timeout.cj
+API/std/time/datetime/test_parse_check_input.cj
+API/std/time/datetime/test_parse_format_check_input.cj
+API/std/time/datetime/test_static_of.cj
+API/std/time/datetime/test_static_ofEpoch.cj
+API/std/time/datetime/test_timezone_security.cj
+API/std/time/datetime/test_toString.cj
+API/std/time/format/test_time_format.cj
+API/std/time/test_dayofweek.cj
+API/std/time/test_duration.cj
+API/std/time/test_monotime.cj
+API/std/time/test_month.cj
+API/std/time/timezone/test_base.cj
+API/std/time/timezone/test_load.cj
+API/std/time/timezone/test_loadfrompaths.cj
+API/std/time/timezone/test_loadfromtzdata.cj
+API/std/unittest/api/json/json_test_jsonnumber.cj
+API/std/unittest/api/json/json_test_tojsonstring.cj
+API/std/unittest/api/json/test_jsonvalue_parse_fastpath_01.cj
+API/std/unittest/delta_comparison/invalid_args/float32.cj
+API/std/unittest/delta_comparison/invalid_args/float64.cj
+API/std/unittest/delta_comparison/invalid_args/relative/float32.cj
+API/std/unittest/delta_comparison/invalid_args/relative/float64.cj
+API/std/unittest/new_bench/bench_configure_errors.cj
+API/std/unittest/options_validation/cli_arguments/not_defined_options_cause_error.cj
+API/std/unittest/options_validation/custom_validator/custom_validator_should_be_registered_in_time.cj
+API/std/unittest/parallel/unit/invalid_option_04.cj
+API/std/unittest/progress_tests/progress_detailed_parallel_limit_format.cj
+API/std/unittest/report_bench_csv/report_illegal_format.cj
+API/std/unittest/report_test_xml/report_illegal_format_2.cj
+API/std/unittest/report_test_xml/report_xml_no_path.cj
+API/std/unittest/tags/empty_tag_macro_exception.cj
+API/std/unittest/tags/non_valid_identifier_tag_exception.cj
+API/std/unittest/type_parameters/error_empty_set.cj
+API/std/unittest/type_parameters/error_empty_set_func.cj
+API/std/unittest/type_parameters/error_parameter_missed.cj
+API/std/unittest/type_parameters/error_parameter_missed_func.cj
+API/std/unittest/type_parameters/error_unknown_variable.cj
+API/std/unittest/type_parameters/error_unknown_variable_func.cj
+compiler/FFI/CFFI/cstring/compare.cj
+
+# bug 261 (changed compiler diagnostics)
+API/std/libast/decls/classdecl/test_annotation_001.cj
+API/std/libast/decls/macroexpandparam/test_macro_expand_param.cj
+API/std/libast/nodes/test_annotation_exception_001.cj
+API/std/libast/nodes/test_body_exception_001.cj
+API/std/libast/nodes/test_constructor_exception_001.cj
+API/std/libast/nodes/test_generic_constraint_exception_001.cj
+API/std/libast/nodes/test_generic_param_exception_001.cj
+API/std/libast/nodes/test_import_content_exception_001.cj
+API/std/libast/nodes/test_package_header_exception_002.cj
+API/std/libast/tokens/toTokens/test_string_totokens_001.cj
+compiler/CHIR/ConstantSafetyCheck/ArrayIndexOutOfBounds/arrayShortcut01.cj
+compiler/CHIR/DCE/testDCEApply01.cj
+compiler/CHIR/DCE/testDCEApply05.cj
+compiler/CHIR/DCE/testDCEApply08.cj
+compiler/CHIR/DCE/testDCEApply09.cj
+compiler/CHIR/DCE/testDCEApply10.cj
+compiler/CHIR/DCE/testDCEArray01.cj
+compiler/CHIR/DCE/testDCEArray05.cj
+compiler/CHIR/DCE/testDCEAsg02.cj
+compiler/CHIR/DCE/testDCEDowhile17.cj
+compiler/CHIR/DCE/testDCEIf07.cj
+compiler/CHIR/DCE/testDCEIf16.cj
+compiler/CHIR/DCE/testDCEMatch03.cj
+compiler/CHIR/DCE/testDCENothing2.cj
+compiler/CHIR/DCE/testDCENothing3.cj
+compiler/CHIR/DCE/testDCEReturn04.cj
+compiler/CHIR/DCE/testDCEReturn05.cj
+compiler/CHIR/DCE/testDCESwitch07.cj
+compiler/CHIR/DCE/testDCEThrow01.cj
+compiler/CHIR/DCE/testDCEThrow03.cj
+compiler/CHIR/DCE/testDCETuple04.cj
+compiler/CHIR/DCE/testDCEtypecast.cj
+compiler/CHIR/DCE/testUnusedCode14.cj
+compiler/CHIR/DCE/testUnusedCode15.cj
+compiler/CHIR/DCE/testUnusedOp03.cj
+compiler/CHIR/DCE/testUnusedVariable01.cj
+compiler/CHIR/MacroDiag/unused_function_2.cj
+compiler/Diagnose/parse_test/parse_conflict_modifier/case4.cj
+compiler/Diagnose/parse_test/parse_conflict_modifier/case6.cj
+compiler/Macro/macroWithContext/SentInfo/nagetive_case1/call.cj
+compiler/Macro/macroWithContext/enhances/setInfo/case7/call.cj
+compiler/Macro/module/test/call.cj
+compiler/Macro/nested/inQuoteDollarInterpolate/test_macro_1.cj
+compiler/Macro/nested/inQuoteDollarInterpolate/test_macro_2.cj
+compiler/Macro/nested/inQuoteDollarInterpolate/test_macro_3.cj
+compiler/Macro/nested/inQuoteDollarInterpolate/test_macro_6.cj
+compiler/Macro/replace/generic_decl.cj
+compiler/Parser/annotation/duplicate_builtin.cj
+compiler/Parser/others/typealias_fuzz.cj
+compiler/Sema/PatternMatching/EnumPattern/usertype_00.cj
+compiler/Sema/PatternMatching/Sealed/simple_non_exhaustive.cj
+compiler/Sema/PatternMatching/Sealed/simple_unreachable.cj
+compiler/Sema/PatternMatching/TypePattern/exhaustive_sealed.cj
+compiler/Sema/bottomType/function_return_bottom_01.cj
+compiler/Sema/if-let-expr/enhancedcondition/vars/samename_conditionandelse.cj
+compiler/Sema/varray/varray13.cj
+
+# bug 112 (crash when calling function from extended interface)
+API/std/deriving/equatable_test.cj
+API/std/unittest/new_bench/bench_strategy_3.cj
+API/std/unittest/new_bench/bench_strategy_config.cj
+API/std/unittest/new_test_dsl/max_parameters.cj
+API/std/unittest/new_test_dsl/strategy.cj
+API/std/unittest/prop_test/arbitrary/arbitrary_hashmap.cj
+API/std/unittest/prop_test/arbitrary/arbitrary_integer.cj
+API/std/unittest/prop_test/arbitrary_range/arbitrary_range_inrange.cj
+API/std/unittest/prop_test/arbitrary_range/arbitrary_range_integer_imaginable_signed.cj
+API/std/unittest/prop_test/arbitrary_range/arbitrary_range_integer_imaginable_unsigned.cj
+API/std/unittest/prop_test/full/shrink_mix_order.cj
+API/std/unittest/prop_test/full/strategy_macro.cj
+compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
+compiler/CHIR/ClosureConversion/testClosureConversion10.cj
+compiler/CHIR/Generic/testGeneric09.cj
+compiler/CHIR/SplitOperator/ovf.cj
+compiler/CHIR/SplitOperator/ovf_div.cj
+compiler/CHIR/SplitOperator/ovf_divu.cj
+compiler/CHIR/SplitOperator/ovf_mul.cj
+compiler/CHIR/SplitOperator/ovf_mulnative.cj
+compiler/CHIR/SplitOperator/ovf_sub.cj
+compiler/CHIR/SplitOperator/ovf_unative.cj
+compiler/CHIR/StaticAbstractMark/import1/main.cj
+compiler/CHIR/UG/ClosureConversion/staticFunc01.cj
+compiler/CHIR/UG/ClosureConversion/staticFunc03.cj
+compiler/CHIR/UG/VTable/non_generic/interface_extend03.cj
+compiler/CodegenCHIR/overflow/add_saturating.cj
+compiler/CodegenCHIR/overflow/add_throwing.cj
+compiler/CodegenCHIR/overflow/add_wrapping.cj
+compiler/CodegenCHIR/overflow/div_saturating.cj
+compiler/CodegenCHIR/overflow/div_throwing.cj
+compiler/CodegenCHIR/overflow/div_wrapping.cj
+compiler/CodegenCHIR/overflow/mod_saturating.cj
+compiler/CodegenCHIR/overflow/mod_throwing.cj
+compiler/CodegenCHIR/overflow/mod_wrapping.cj
+compiler/CodegenCHIR/overflow/mul_saturating.cj
+compiler/CodegenCHIR/overflow/mul_throwing.cj
+compiler/CodegenCHIR/overflow/mul_wrapping.cj
+compiler/CodegenCHIR/overflow/neg_saturating.cj
+compiler/CodegenCHIR/overflow/neg_throwing.cj
+compiler/CodegenCHIR/overflow/neg_wrapping.cj
+compiler/CodegenCHIR/overflow/sub_saturating.cj
+compiler/CodegenCHIR/overflow/sub_throwing.cj
+compiler/CodegenCHIR/overflow/sub_wrapping.cj
+compiler/CodegenCJNative/interface/primitive_extend_interface.cj
+compiler/CodegenCJNative/interface/primitive_extend_interface_generic_constraint.cj
+compiler/Mangle/MangledName/mangle15_boxed_base_decl.cj
+compiler/Sema/Extend/autobox_try_catch1.cj
+compiler/Sema/Extend/autobox_try_catch2.cj
+compiler/Sema/Extend/default_implement/default_implement_01.cj
+compiler/Sema/Extend/extend_overload_builtin_op3.cj
+compiler/Sema/Extend/interface_default_implement/call_virtual_primitive.cj
+compiler/Sema/Extend_import/import10/main.cj
+compiler/Sema/generics/generic_constraint/generic_constraint10.cj
+compiler/Sema/generics/generic_static_field_prop/generic_static_nested_func.cj
+compiler/Sema/generics/instantiation/instantiation007.cj
+compiler/Sema/generics/instantiation_rearrange_01/test.cj
+compiler/Sema/generics/rearrange_multi_impl/main.cj
+
+# bug 209 (package recompilation test: new version of package ignored)
+compiler/CodegenCJNative/compitability/0_class_add_open_method/main.cj
+compiler/CodegenCJNative/compitability/class_add_interface_concrete/main.cj
+compiler/CodegenCJNative/compitability/class_add_interface_concrete2/main.cj
+compiler/CodegenCJNative/compitability/class_add_open_method/main.cj
+compiler/CodegenCJNative/compitability/class_add_open_method2/main.cj
+compiler/CodegenCJNative/compitability/class_add_open_method3/main.cj
+compiler/CodegenCJNative/compitability/class_add_open_method4/main.cj
+compiler/CodegenCJNative/compitability/non_open_generic_class/main.cj
+compiler/CodegenCJNative/compitability/org_name/main.cj
+compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi.cj
+compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi_recursive.cj
+
+# bug 227 (HashMap stdlib behaviour differs from test expectancy)
+API/std/collection/test_HashMap.cj
+
+# bug 239 (`--output-type=obj` output fails: `__CJMetadataStart` relocation)
+compiler/Driver/options/output_type/obj/obj_test1.cj
+compiler/Driver/options/output_type/obj/obj_test3.cj
+compiler/Driver/options/output_type/obj/obj_test6.cj
+
+# bug 252 (OutOfMemory does not happen and other GC related tests)
+API/std/unittest/new_bench/bench_disable_gc.cj
+API/std/unittest/new_bench/bench_explicit_gc.cj
+Runtime/CJNative/Exception/Expection42_NewObject.cj

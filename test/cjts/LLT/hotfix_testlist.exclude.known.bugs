@@ -221,25 +221,10 @@ compiler/CodegenCommon/overflow/cmpfuzz/test_3_main.cj
 compiler/CodegenCJNative/demangle/decl/exception_throw2.cj
 compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
 
-# bug 60 (Support Process.current.atExit)
-compiler/CodegenCommon/atexit
-
 # bug 84 (ZeroSizedEnum in match expression)
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
 compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_03.cj
 compiler/CodegenCJNative/LegacyTests/enum_nest.cj
-
-# bug 90 (genericTypeInfoParam called in method with no genericFuncParams)
-compiler/Sema/enum/enum33_test/main.cj
-compiler/Sema/enum/enum44.cj
-compiler/Sema/enum/enum_circular_syn_01.cj
-compiler/Sema/Extend/default_implement/default_implement_01/main.cj
-compiler/Sema/Extend/extend_interface_static1.cj
-compiler/Sema/Extend/extend_interface_static2.cj
-compiler/Sema/generics/generic_member05/main.cj
-compiler/Sema/generics/generic_member06/main.cj
-compiler/Sema/generics/generic_static_field_prop/generic_static_prop06.cj
-compiler/Sema/type_infer/infer_member_access_with_enum_ctor_succ.cj
 
 # bug 92 (Support extends of AOT types)
 compiler/CHIR/CHIR2HLIR/extend/extend_primitive_overload_operator.cj
@@ -253,67 +238,6 @@ compiler/Sema/Extend/extend_lookup/main.cj
 # bug 132 (Incorrect signature of return type)
 compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
 
-# bug 112 (crash when calling function from extended interface)
-compiler/Sema/Extend/autobox_try_catch1.cj
-compiler/Sema/Extend/autobox_try_catch2.cj
-compiler/Sema/Extend/interface_default_implement/call_virtual_primitive.cj
-compiler/CHIR/CHIR2HLIR/extend/extend_generic_05.cj
-compiler/CHIR/Generic/testGeneric09.cj
-compiler/CHIR/UG/VTable/non_generic/interface_extend03.cj
-compiler/CodegenCHIR/overflow/add_saturating.cj
-compiler/CodegenCHIR/overflow/add_throwing.cj
-compiler/CodegenCHIR/overflow/add_wrapping.cj
-compiler/CodegenCHIR/overflow/div_saturating.cj
-compiler/CodegenCHIR/overflow/div_throwing.cj
-compiler/CodegenCHIR/overflow/div_wrapping.cj
-compiler/CodegenCHIR/overflow/mod_saturating.cj
-compiler/CodegenCHIR/overflow/mod_throwing.cj
-compiler/CodegenCHIR/overflow/mod_wrapping.cj
-compiler/CodegenCHIR/overflow/mul_saturating.cj
-compiler/CodegenCHIR/overflow/mul_throwing.cj
-compiler/CodegenCHIR/overflow/mul_wrapping.cj
-compiler/CodegenCHIR/overflow/neg_saturating.cj
-compiler/CodegenCHIR/overflow/neg_throwing.cj
-compiler/CodegenCHIR/overflow/neg_wrapping.cj
-compiler/CodegenCHIR/overflow/sub_saturating.cj
-compiler/CodegenCHIR/overflow/sub_throwing.cj
-compiler/CodegenCHIR/overflow/sub_wrapping.cj
-compiler/CodegenCJNative/interface/primitive_extend_interface.cj
-compiler/CodegenCJNative/interface/primitive_extend_interface_generic_constraint.cj
-compiler/Sema/Extend/extend_overload_builtin_op3.cj
-API/std/deriving/equatable_test.cj
-API/std/unittest/new_test_dsl/max_parameters.cj
-API/std/unittest/new_test_dsl/strategy.cj
-API/std/unittest/prop_test/arbitrary_range/arbitrary_range_inrange.cj
-API/std/unittest/prop_test/full/shrink_mix_order.cj
-API/std/unittest/prop_test/full/strategy_macro.cj
-API/std/unittest/prop_test/arbitrary_range/arbitrary_range_integer_imaginable_signed.cj
-API/std/unittest/prop_test/arbitrary_range/arbitrary_range_integer_imaginable_unsigned.cj
-compiler/Mangle/MangledName/mangle15_boxed_base_decl.cj
-API/std/unittest/prop_test/arbitrary/arbitrary_hashmap.cj
-compiler/Sema/generics/rearrange_multi_impl/main.cj
-compiler/Sema/generics/instantiation/instantiation007.cj
-compiler/Sema/generics/instantiation_rearrange_01/test.cj
-compiler/Sema/generics/generic_static_field_prop/generic_static_nested_func.cj
-compiler/CHIR/SplitOperator/ovf.cj
-compiler/CHIR/SplitOperator/ovf_div.cj
-compiler/CHIR/SplitOperator/ovf_divu.cj
-compiler/CHIR/SplitOperator/ovf_mul.cj
-compiler/CHIR/SplitOperator/ovf_sub.cj
-compiler/CHIR/UG/ClosureConversion/staticFunc01.cj
-compiler/CHIR/UG/ClosureConversion/staticFunc03.cj
-API/std/unittest/new_bench/bench_strategy_3.cj
-API/std/unittest/new_bench/bench_strategy_config.cj
-API/std/unittest/prop_test/arbitrary/arbitrary_integer.cj
-compiler/CHIR/ClosureConversion/testClosureConversion10.cj
-compiler/CHIR/ComplicatedCodeBugfix/Bugfix4/use_interface_def_imple_094.cj
-compiler/CHIR/SplitOperator/ovf_mulnative.cj
-compiler/CHIR/SplitOperator/ovf_unative.cj
-compiler/CHIR/StaticAbstractMark/import1/main.cj
-compiler/Sema/Extend/default_implement/default_implement_01.cj
-compiler/Sema/Extend_import/import10/main.cj
-compiler/Sema/generics/generic_constraint/generic_constraint10.cj
-
 # bug 120 (cbc_engine: Conflict found for reference)
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
 compiler/Sema/class/class_no_override_modifier_6.cj
@@ -322,14 +246,6 @@ compiler/Sema/Extend/default_implement/default_implement_04.cj
 # ignore due to timeouts and environmental problems
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
 compiler/Sema/join_meet/join_perf.cj
-API/std/unittest/mock/framework/exhaustive_ordered_verify_test.cj
-API/std/unittest/mock/framework/exhaustive_unordered_verify_test.cj
-API/std/unittest/mock/framework/interface_test.cj
-API/std/unittest/mock/framework/lifetime_test.cj
-API/std/unittest/mock/framework/partial_unordered_verify_test.cj
-API/std/unittest/mock/framework/stub_misconfiguration_test.cj
-API/std/unittest/mock/framework/suppressed_runtime_failure_test.cj
-API/std/unittest/mock/framework/verification_failed_reason_test.cj
 
 # bug 124: not implemented: cast from Option<Array<Int64>>.None to Option<Int64>
 compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
@@ -393,14 +309,6 @@ compiler/CodegenCJNative/generic/generic_enum_in_class.cj
 compiler/Sema/enum/enum36.cj
 compiler/Sema/enum/enum_interface_box_01.cj
 
-# bug 161 (io/fs related bugs (environment or miscompilation of foreigns, need investigation))
-API/std/io/ByteBuffer/test_setLength.cj
-API/std/io/ByteBuffer/test_seekable.cj
-API/std/fs/file/test_seekable.cj
-API/std/io/BufferedInputStream/test_seekable.cj
-API/std/fs/test_fs_file_coverage.cj
-API/std/io/StringReader/test_seekable.cj
-
 # bug 165 (java.lang.NullPointerException: Cannot invoke "com.huawei.excelsior.jet.compiler.types.ReferenceTypes$ReferenceType.isFinal()" because "root" is null)
 API/std/unittest/mock/compiler/ensurePreparedToMock/onlyTestMode.cj
 API/std/unittest/mock/compiler/ensurePreparedToMock/properWritingHandlerDecls.cj
@@ -410,12 +318,6 @@ API/std/unittest/mock/compiler/ensurePreparedToMock/topLevelFunctions.cj
 API/std/collection/test_Operation.cj
 API/std/collection/test_collection_endops_coverage.cj
 API/std/collection/test_collection_transformops_coverage.cj
-
-# bug 171 (Called unresolved AOT method)
-API/std/time/datetime/test_local_time.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/basic.cj
-Runtime/CJNative/DFX/hidumper_cjheap_and_GC.cj
-compiler/CHIR/CHIR2HLIR/time/native3.cj
 
 # bug 173 (mut interface function does not change struct fields)
 compiler/CodegenCJNative/generic/generic_struct2.cj
@@ -434,10 +336,6 @@ compiler/CodegenCJNative/demangle/type/cpointer_type1.cj
 
 # bug 179 (extra spaces in type printing via reflection)
 compiler/CodegenCJNative/ExtensionDef/extensiondef_07.cj
-
-# bug 184 (StackOverflowError in CangjieNodes$StoreFieldSeq.blockRef)
-API/std/collection/test_Concurrent.cj
-compiler/Macro/basic_expansion/main_in_macro_call.cj
 
 # bug 188 (extend+is cornercase)
 compiler/CodegenCJNative/is/is_01.cj
@@ -579,19 +477,6 @@ compiler/CHIR/UG/OpenGeneric/mut.cj
 
 # bug 253 (finalizers don't run)
 Runtime/CJNative/GC/gc_wcollector_finalizer.cj
-
-# bug 209 (package recompilation test: new version of package ignored)
-compiler/CodegenCJNative/compitability/class_add_interface_concrete/main.cj
-compiler/CodegenCJNative/compitability/class_add_interface_concrete2/main.cj
-compiler/CodegenCJNative/compitability/0_class_add_open_method/main.cj
-compiler/CodegenCJNative/compitability/class_add_open_method/main.cj
-compiler/CodegenCJNative/compitability/class_add_open_method2/main.cj
-compiler/CodegenCJNative/compitability/org_name/main.cj
-compiler/CodegenCJNative/compitability/class_add_open_method3/main.cj
-compiler/CodegenCJNative/compitability/class_add_open_method4/main.cj
-compiler/CodegenCJNative/compitability/non_open_generic_class/main.cj
-compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi.cj
-compiler/Sema/nonExhaustiveEnum/binaryCompat/change_abi_recursive.cj
 
 # bug 212 (UNEXPECTED: no cbc for launcher)
 compiler/Driver/options/optional_space/output.cj
@@ -738,9 +623,6 @@ API/std/libast/tokens/toString/test_004.cj
 compiler/CHIR/AST2CHIR/bugfix/bugfix4/test.cj
 compiler/CHIR/package/package01/test1.cj
 
-# bug 227 (HashMap stdlib behaviour differs from test expectancy)
-API/std/collection/test_HashMap.cj
-
 # bug 180 (Stack trace printing issues)
 compiler/CodegenCJNative/trycatch/unreachable.cj
 
@@ -750,9 +632,6 @@ API/std/posix/test_os_posix_sysinfo_unix.cj
 
 # bug 229 (`--save-temps` while `--save-temps`)
 compiler/Driver/options/obfuscation/test_config/test_not_exist.cj
-
-# bug 140 (not implemented: throwing binary expression)
-compiler/CodegenCommon/overflow/overshift1.cj
 
 # bug 234 (incorrrect overflow exception message suffixes)
 compiler/CodegenCommon/overflow/case_6.cj
@@ -772,11 +651,6 @@ compiler/CodegenCJNative/record/record_5.cj
 
 # bug 238 (Resources.scala: equirement failed: InstantiatedRecord)
 API/std/unittest/mock/compiler/createMock/mutableStruct.cj
-
-# bug 239 (`--output-type=obj` output fails: `__CJMetadataStart` relocation)
-compiler/Driver/options/output_type/obj/obj_test1.cj
-compiler/Driver/options/output_type/obj/obj_test3.cj
-compiler/Driver/options/output_type/obj/obj_test6.cj
 
 # bug 240 (Language constraint: all variables in `extend` should be used in the extended type)
 API/std/unittest/mock/compiler/createMock/defaultValues/customExtension.cj
@@ -824,11 +698,6 @@ compiler/CHIR/ComplicatedCodeBugfix/Bugfix31.cj
 
 # bug 251 (SIGSEGV in Execution::TypeArg)
 API/std/deriving/shrink_test.cj
-
-# bug 252 (OutOfMemory does not happen and other GC related tests)
-API/std/unittest/new_bench/bench_disable_gc.cj
-API/std/unittest/new_bench/bench_explicit_gc.cj
-Runtime/CJNative/Exception/Expection42_NewObject.cj
 
 # bug 219: Unsupported C2I static virtual call
 API/std/deriving/arbitrary_t_test.cj
