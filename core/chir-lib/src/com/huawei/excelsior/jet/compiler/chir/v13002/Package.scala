@@ -11,10 +11,10 @@ import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
 trait CHIRItemProvider {
-  def getType[T >: Null <: CHIR.Type: ClassTag](id: Long): Option[T]
-  def getValue[T >: Null <: CHIR.Value: ClassTag](id: Long): Option[T]
-  def getExpr[T >: Null <: CHIR.Expression: ClassTag](id: Long): T
-  def getDef[T >: Null <: CHIR.CustomTypeDef: ClassTag](id: Long): Option[T]
+  def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T]
+  def getValue[T >: Null <: CHIR.Value : ClassTag](id: Long): Option[T]
+  def getExpr[T >: Null <: CHIR.Expression : ClassTag](id: Long): T
+  def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): Option[T]
 }
 
 object PackageImpl {
@@ -28,12 +28,14 @@ object PackageImpl {
   private[v13002] enum EntityTable {
     case Types, Values, Expressions, Definitions
   }
-  private[v13002] final case class EntityRef(table: EntityTable, id: Long)
-  private[v13002] final case class ValidationIssue(message: String, entity: Option[EntityRef] = None)
+
+  private[v13002] case class EntityRef(table: EntityTable, id: Long)
+  private[v13002] case class ValidationIssue(message: String, entity: Option[EntityRef] = None)
+
   private def length[A](xs: Array[A]): Int = if (xs == null) 0 else xs.length
   private[v13002] def ids(xs: Array[Long]): Array[Long] = if (xs == null) Array.emptyLongArray else xs
 
-  private def expressionBase(x: Object): ExpressionT = x match {
+  private def expressionBase(e: Object): ExpressionT = e match {
     case e: ExpressionT => e
     case e: UnaryExpressionBaseT => e.getBase
     case e: BinaryExpressionBaseT => e.getBase
@@ -62,12 +64,12 @@ object PackageImpl {
 
   private def isTerminator(e: ExpressionT): Boolean = e.getKind >= CHIRExprKind.Goto && e.getKind <= CHIRExprKind.TryRShift
 
-  private def nestedGroups(x: Object): Array[Long] = {
-    val extra = x match {
+  private def nestedGroups(e: Object): Array[Long] = {
+    val extra = e match {
       case e: LambdaT if e.getBody != 0 => Array(e.getBody)
       case _ => Array.emptyLongArray
     }
-    val groups = ids(expressionBase(x).getBlockGroups)
+    val groups = ids(expressionBase(e).getBlockGroups)
     val all = if (extra.isEmpty) groups else groups ++ extra
     if (all.length <= 1) all else all.distinct
   }
@@ -113,15 +115,15 @@ object PackageImpl {
     e
   }
 
-  private[v13002] def location(e: ExpressionT): Option[CHIR.DebugLocation] = for {
-    base <- Option(e.getBase)
-    loc <- Option(base.getLoc)
-    first <- Option(loc.getBeginPos)
+  private[v13002] def location(e: ExpressionT): Option[CHIR.DebugLocation] = for (
+    base <- Option(e.getBase);
+    loc <- Option(base.getLoc);
+    first <- Option(loc.getBeginPos);
     last <- Option(loc.getEndPos)
     if first.getLine > 0 && last.getLine > 0
-  } yield CHIR.DebugLocation(first.getLine, last.getLine)
+  ) yield CHIR.DebugLocation(first.getLine, last.getLine)
 
-  private def typeBase(x: Object): TypeT = x match {
+  private def typeBase(t: Object): TypeT = t match {
     case t: TypeT => t
     case t: RawArrayTypeT => t.getBase
     case t: VArrayTypeT => t.getBase
@@ -131,7 +133,7 @@ object PackageImpl {
     case _ => throw new IllegalArgumentException("Unsupported type payload")
   }
 
-  private def valueBase(x: Object): ValueT = x match {
+  private def valueBase(t: Object): ValueT = t match {
     case t: FunctionT => t.getBase.getBase
     case t: GlobalVarT => t.getBase.getBase
     case t: ParameterT => t.getBase
@@ -230,7 +232,7 @@ object PackageImpl {
 
   }
 
-  private def typeShape(x: Object): Any = x match {
+  private def typeShape(t: Object): Any = t match {
     case t: RawArrayTypeT => (t.getBase.getKind, t.getDims)
     case t: VArrayTypeT => (t.getBase.getKind, t.getSize)
     case t: FuncTypeT => (t.getBase.getKind, t.getIsCfuncType, t.getHasVarArg)
@@ -248,14 +250,14 @@ object PackageImpl {
     }
   }
 
-  private def remapExpressionTypes(x: Object, remap: Long => Long)(using changes: Changes): Unit = {
+  private def remapExpressionTypes(e: Object, remap: Long => Long)(using changes: Changes): Unit = {
 
     def call(c: FuncCallT): Unit = {
       changes.set(remap(c.getObjType))(c.setObjType)
       changes.set(ids(c.getInstantiatedTypeArgs).map(remap))(c.setInstantiatedTypeArgs)
     }
 
-    x match {
+    e match {
       case e: AllocateBaseT => changes.set(remap(e.getAllocatedType))(e.setAllocatedType)
       case e: ApplyBaseT => call(e.getBase)
       case e: InvokeBaseT => call(e.getBase)
@@ -294,6 +296,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
     model.setValues(valueEntries.array)
     model.setExprs(expressionEntries.array)
   }
+
   private val hasIdentifier = loaded._2
   private given CHIRItemProvider = this
   import PackageImpl.*
@@ -345,7 +348,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
 
   def definitionId(definition: CHIR.CustomTypeDef): Long = registered(definitionIds, definition, "definition")
 
-  def getType[T >: Null <: CHIR.Type: ClassTag](id: Long): Option[T] = {
+  def getType[T >: Null <: CHIR.Type : ClassTag](id: Long): Option[T] = {
     if (id <= 0) return None
     var result = typeViews.getOrElse(id, null)
     if (result == null) {
@@ -359,7 +362,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
     }
   }
 
-  def getDef[T >: Null <: CHIR.CustomTypeDef: ClassTag](id: Long): Option[T] = {
+  def getDef[T >: Null <: CHIR.CustomTypeDef : ClassTag](id: Long): Option[T] = {
     if (id <= 0) return None
     var result = definitionViews.getOrElse(id, null)
     if (result == null) {
@@ -373,7 +376,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
     }
   }
 
-  def getValue[T >: Null <: CHIR.Value: ClassTag](id: Long): Option[T] = {
+  def getValue[T >: Null <: CHIR.Value : ClassTag](id: Long): Option[T] = {
     if (id <= 0) None else value(id) match {
       case v: T => Some(v)
       case _ => None
@@ -387,7 +390,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
     result
   })
 
-  def getExpr[T >: Null <: CHIR.Expression: ClassTag](id: Long): T = {
+  def getExpr[T >: Null <: CHIR.Expression : ClassTag](id: Long): T = {
     if (id <= 0) return null
     expressionViews.getOrElseUpdate(id, {
       val e = expressionBase(expressionTable(id).getValue)
