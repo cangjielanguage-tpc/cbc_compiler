@@ -22,14 +22,14 @@ object CHIRLoader {
 /** The cbc engine helper package chir (cbcengine-helper.chir). It is always appended
   * to the compilation scope. */
 object EngineHelperChir {
-  val sourceName: String = "cbcengine-helper.chir"
+  private val sourceName: String = "cbcengine-helper.chir"
 
-  /** Explicit CBCENGINE_HELPER_CHIR override wins; otherwise the helper chir
-    * is looked up next to cbc-intrinsics.cbc in the toolchain. */
-  def resolveFile(): Option[java.io.File] = {
-    val path = Option(System.getenv("CBCENGINE_HELPER_CHIR"))
-      .orElse(Option(System.getenv("CANGJIE_HOME")).map(home => s"$home/tools/lib/$sourceName"))
-    path.map(new java.io.File(_))
+  /** The helper chir is looked up next to cbc-intrinsics.cbc in the toolchain:
+    * the explicit `-cangjiehome` compiler argument wins over the CANGJIE_HOME
+    * environment variable. */
+  def resolveFile(cangjieHome: Option[String]): Option[java.io.File] = {
+    val home = cangjieHome.orElse(Option(System.getenv("CANGJIE_HOME")))
+    home.map(h => new java.io.File(s"$h/tools/lib/$sourceName"))
   }
 }
 

@@ -34,7 +34,7 @@ import com.huawei.excelsior.jet.compiler.o2lib.u.xiEnvModule.isProgressShowable
 import com.huawei.excelsior.jet.compiler.o2lib.u.{CompilationDriverModule, JStringsModule, ReplacementLibrary, xcFModule, xcMain0Module, xcMainModule, xcMakeModule, CacheAPIModule as CacheAPI, xiEnvModule as xiEnv, xiFilesModule as xfs}
 import com.huawei.excelsior.jet.compiler.o2lib.xmlib.FSModule as FS
 import com.huawei.excelsior.jet.compiler.options.BoolOption.*
-import com.huawei.excelsior.jet.compiler.options.StrOption.LibraryName
+import com.huawei.excelsior.jet.compiler.options.StrOption.{CangjieHome, LibraryName}
 import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironment
 import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironment.{methodByO2Object, typeToO2Class}
 import com.huawei.excelsior.jet.compiler.{Pass, Stage}
@@ -279,21 +279,19 @@ object CangjieMain {
   /** Appends the cbc engine helper lib chir to the compilation scope.
     * Cbc engine resolves implicit exception throwing from helper lib. */
   private def loadEngineHelperChir(p: CangjieProject, chirBuilder: CHIRSymLevelBuilderImpl): Unit = {
-    EngineHelperChir.resolveFile() match {
-      case Some(file) =>
-        if (!file.exists) {
-          sys.error(s"cbc engine helper chir was not found: ${file.getPath} " +
-            s"(install it to $$CANGJIE_HOME/tools/lib or set CBCENGINE_HELPER_CHIR)")
-        }
-        val canonical = file.getCanonicalPath
-        val alreadyAmongInputs = p.files.exists(f => new java.io.File(f.toString).getCanonicalPath == canonical)
-        if (!alreadyAmongInputs) {
-          chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(canonical))
-          new CHIRLoader(canonical).load(chirBuilder)
-        }
-      case None =>
-        xiEnv.info.print("cbc engine helper chir was not resolved (neither CBCENGINE_HELPER_CHIR nor CANGJIE_HOME is set); " +
-          "the image will not contain the engine helper package")
+    val cangjieHome = Option(env.valueOfOrNull(CangjieHome)).filter(_.nonEmpty)
+    val file = EngineHelperChir.resolveFile(cangjieHome).getOrElse {
+      sys.error("cbc engine helper chir was not resolved: pass -cangjiehome=<path> or set CANGJIE_HOME")
+    }
+    if (!file.exists) {
+      sys.error(s"cbc engine helper chir was not found: ${file.getPath} " +
+        s"(install it to $$CANGJIE_HOME/tools/lib or pass -cangjiehome=<path>)")
+    }
+    val canonical = file.getCanonicalPath
+    val alreadyAmongInputs = p.files.exists(f => new java.io.File(f.toString).getCanonicalPath == canonical)
+    if (!alreadyAmongInputs) {
+      chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(canonical))
+      new CHIRLoader(canonical).load(chirBuilder)
     }
   }
 

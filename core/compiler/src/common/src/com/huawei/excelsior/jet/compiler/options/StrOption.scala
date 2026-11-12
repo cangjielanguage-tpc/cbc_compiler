@@ -70,6 +70,7 @@ enum StrOption(defaultValue: String = null,
   case NoneLangPackRTClasses    extends StrOption
   case TomcatClasspath          extends StrOption
   case AppType                  extends StrOption
+  case CangjieHome              extends StrOption
 
   // Do not use this option. Use ProjectLogic.optRTFiles instead
   case OPTRTFILES               extends StrOption
