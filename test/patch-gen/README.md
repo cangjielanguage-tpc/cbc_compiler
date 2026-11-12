@@ -1,39 +1,53 @@
 # Patch-gen functional tests
 
-The 114 fixture files were copied unchanged from `patch-gen/test/test_data` in
-`hotfix_tools` main at `de646aae64edeca575c032dcf4c132908eae95da`.
-There are 33 test cases, each run at O0 and O1 by default. O2 can be selected
-explicitly and uses the existing O2 expectations where present.
+The suite checks patch generation, declaration dumps, expected diagnostics and
+serialization. It contains 33 cases, each run at O0 and O1 by default.
+O2 can be selected explicitly and uses level-specific expectations where present.
 
-The runner compiles the patchable library, compiles base and patched sources
-with the hotfix plugin, invokes the generator, checks the patch with `chir-dis`,
-and compares the declaration dump or expected diagnostic. Declaration order is
-normalized within each dump section; names and unreachable markers are retained.
-A successful generator must produce a patch file. Work files stay in ignored
-`work/`, and source fixtures are never compiled in place.
+## Prerequisites
 
-For the Scala generator, the runner passes `--test` to request the declaration
-dump. Its implementation and CLI are still pending on this branch.
-
-The native TEST build is useful as a control while implementing Scala:
+A Cangjie SDK with `cjc`, the hotfix plugin, `chir-dis` and the standard
+`stdx/dynamic/stdx` libraries is required. Java must be available on PATH.
+Build the generator and integration checker from the repository root:
 
 ```bash
-python3 test/patch-gen/run_tests.py \
-  --cangjie-home ~/Projects/software/hotfix-06.11 \
-  --patch-gen ~/Projects/hotfix_tools/output/patch-gen-test/patch-gen --native
+sbt chirLibTest 'patchGen/assembly'
 ```
 
-Use `--filter func1 class1` for a subset. The standard stdx location is
-`<cangjie-home>/stdx/dynamic/stdx`.
+`chirLibTest` itself runs without the SDK. The functional runner owns all SDK
+commands and file-based integration checks.
 
-The Scala guard-removal and body-transfer integration tests compile real plugin
-output, edit it using the common CHIR API, write once, reload, and validate it
-using native `chir-dis`:
+## Running
 
 ```bash
-CANGJIE_HOME=~/Projects/software/hotfix-06.11 \
-  sbt 'chirLib/testOnly *GuardChecksSuite'
+python3 test/patch-gen/run_tests.py --cangjie-home ~/Projects/software/hotfix-10.11
 ```
 
-These tests cover ordinary global/member functions. They do not yet generate
-complete executable patches or cover constructor return adaptation.
+The runner builds the patchable library, compiles original and patched sources
+with the hotfix plugin, generates patches and validates them with `chir-dis`.
+It compares declaration dumps or diagnostics against the fixtures. Expected
+errors must fail; successful cases must create a valid patch.
+
+The `func1` and `class1` cases also invoke a model checker for guard removal,
+body transfer, round-trip serialization and preserving an existing output when
+validation fails. The checker uses the default CHIR schema. External tools run
+in the Python runner, rather than in unit tests.
+
+Declaration order and outer newlines are normalized. Names, unreachable markers
+and diagnostic text remain significant. Work files and per-level `.actual`
+outputs are stored in ignored `work/`; sources are not compiled in place.
+
+## Options
+
+- `--filter func1 class1`: select cases by name prefix.
+- `--compile-level O0 O1 O2`: select optimization levels.
+- `--patch-gen /path/to/patch-gen`: select another generator executable.
+- `--native`: select a generator that prints declarations without `--test`;
+  the model checker is skipped.
+- `--checker-classpath <classpath>`: select prebuilt checker and generator
+  artifacts from another build directory.
+
+The default executable is `scripts/patch-gen`, backed by
+`core/cbc-patchgen/target/patch-gen.jar`. The checker is packaged as
+`core/chir-lib/target/chir-lib-tests.jar`. The SDK defaults to `CANGJIE_HOME`;
+`CANGJIE_STDX_PATH` can override the standard stdx directory.
