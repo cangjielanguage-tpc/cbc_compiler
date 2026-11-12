@@ -14,7 +14,6 @@ trait HasAnnotationsImpl extends HasAnnotations {
         case x: IsAutoEnvClassT => Some(IsAutoEnvClassImpl(x))
         case x: OverrideSrcFuncTypeT => Some(OverrideSrcFuncTypeImpl(x))
         case x: WrappedRawMethodT => Some(WrappedRawMethodImpl(x))
-        case x: MatchCaseIdT => Some(MatchCaseIdImpl(x))
         case _ => None
       }
     }
@@ -34,10 +33,6 @@ final class WrappedRawMethodImpl(w: WrappedRawMethodT)(using provider: CHIRItemP
 
 private object AttributeValues {
   val all: Vector[CHIR.Attribute] = CHIR.Attribute.values.toVector
-}
-
-final class MatchCaseIdImpl(m: MatchCaseIdT) extends CHIR.MatchCaseId {
-  def id: Long = m.getId
 }
 
 trait HasAttributesImpl extends EditableCHIR.HasAttributes {

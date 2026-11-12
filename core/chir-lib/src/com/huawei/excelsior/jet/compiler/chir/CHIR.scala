@@ -50,11 +50,6 @@ object CHIR {
     def rawMethod: Func
   }
 
-  /** Source match-case identity carried by v13008 annotations. */
-  trait MatchCaseId extends Annotation {
-    def id: Long
-  }
-
   trait HasDeclaringDef {
     def declaringDef: Option[CustomTypeDef]
   }
