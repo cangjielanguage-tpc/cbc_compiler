@@ -1,11 +1,11 @@
 package com.huawei.excelsior.jet.compiler.chir.v1203
 
 import com.google.flatbuffers.FlatBufferBuilder
-import com.huawei.excelsior.jet.compiler.chir.CHIR
+import com.huawei.excelsior.jet.compiler.chir
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, EditableCHIR}
 import com.huawei.excelsior.jet.compiler.chir.v1203.PackageFormat.*
 
 import java.nio.ByteBuffer
-import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
 import java.util.IdentityHashMap
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -19,7 +19,6 @@ trait CHIRItemProvider {
 }
 
 object PackageImpl {
-  def read(input: Path): PackageImpl = fromBytes(Files.readAllBytes(input))
   def fromBytes(bytes: Array[Byte]): PackageImpl = new PackageImpl(load(bytes))
 
   private def load(bytes: Array[Byte]): (CHIRPackageT, Boolean) = {
@@ -164,6 +163,7 @@ object PackageImpl {
       undo += (() => setter(previous))
       setter(next)
     }
+
     def restore(): Unit = undo.reverseIterator.foreach(_())
   }
 
@@ -175,11 +175,13 @@ object PackageImpl {
     def apply(index: Int): A = {
       if (index < entries.length) entries(index) else pending(index - entries.length)
     }
+
     override def iterator: Iterator[A] = entries.iterator ++ pending.iterator
     def append(entry: A): Long = {
       pending += entry
       length.toLong
     }
+
     def array: Array[A] = {
       if (pending.nonEmpty) {
         entries = entries ++ pending
@@ -272,23 +274,28 @@ object PackageImpl {
     }
   }
 
+  // Empty package construction is currently used only by tests.
+  private[chir] def empty(name: String): PackageImpl = {
+    val model = new CHIRPackageT
+    model.setName(name)
+    model.setValues(Array.empty[ValueElemUnion])
+    model.setExprs(Array.empty[ExpressionElemUnion])
+    model.setTypes(Array.empty[TypeElemUnion])
+    model.setDefs(Array.empty[CustomTypeDefElemUnion])
+    new PackageImpl((model, true))
+  }
+
 }
 
 /** Package-owned views share one mutable generated object model for all reads
   * and edits. No original serialized buffer or secondary reader is retained.
   * Like the previous implementation, this class is not thread-safe.
   */
-final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
-  extends CHIR.Package with CHIRItemProvider {
-  def this(source: String) = this(PackageImpl.load(Files.readAllBytes(java.nio.file.Paths.get(source))))
+final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends EditableCHIR.Package with CHIRItemProvider {
 
   private val model: CHIRPackageT = loaded._1
   private val valueEntries = new PackageImpl.AppendTable(model.getValues)
   private val expressionEntries = new PackageImpl.AppendTable(model.getExprs)
-  private[v1203] def data: CHIRPackageT = {
-    flushTables()
-    model
-  }
   private def flushTables(): Unit = {
     model.setValues(valueEntries.array)
     model.setExprs(expressionEntries.array)
@@ -320,21 +327,21 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
   def name: String = model.getName
   def values: Iterator[CHIR.Value] = (1L to valueEntries.length.toLong).iterator.map(value)
 
-  def typeDefs: Iterator[CHIR.CustomTypeDef] =
-    (1L to length(model.getDefs).toLong).iterator.map(id => getDef[CHIR.CustomTypeDef](id).get)
+  def typeDefs: Iterator[EditableCHIR.CustomTypeDef] =
+    (1L to length(model.getDefs).toLong).iterator.map(id => getDef[EditableCHIR.CustomTypeDef](id).get)
 
-  def function(idx: Int): CHIR.Func = getValue[CHIR.Func](idx).getOrElse(
+  def function(idx: Int): EditableCHIR.Func = getValue[EditableCHIR.Func](idx).getOrElse(
     throw new IllegalArgumentException(s"Value $idx is not a function"))
 
-  def packageInitFunc: CHIR.Func = function(Math.toIntExact(model.getPackageInitFunc))
-  def packageInitLiteralFunc: CHIR.Func = function(Math.toIntExact(model.getPackageLiteralInitFunc))
+  def packageInitFunc: EditableCHIR.Func = function(Math.toIntExact(model.getPackageInitFunc))
+  def packageInitLiteralFunc: EditableCHIR.Func = function(Math.toIntExact(model.getPackageLiteralInitFunc))
 
-  def getFunc(identifier: String): Option[CHIR.Func] = {
+  def getFunc(identifier: String): Option[EditableCHIR.Func] = {
     val name = normalized(identifier)
-    values.collectFirst { case f: CHIR.Func if f.identifier == name => f }
+    values.collectFirst { case f: EditableCHIR.Func if f.identifier == name => f }
   }
 
-  def getDef(identifier: String): Option[CHIR.CustomTypeDef] = {
+  def getDef(identifier: String): Option[EditableCHIR.CustomTypeDef] = {
     val name = normalized(identifier)
     typeDefs.find(_.identifier == name)
   }
@@ -424,6 +431,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     val targetType = model.getTypes()(index(to.getBase.getBase.getType)).asFuncType()
     require(sourceType.getHasVarArg == targetType.getHasVarArg &&
       sourceType.getIsCfuncType == targetType.getIsCfuncType, "Incompatible calling conventions")
+
     def value(id: Long): ValueElemUnion = valueTable(id)
 
     require(from.getGenericDecl == 0 && to.getGenericDecl == 0,
@@ -542,7 +550,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     if (structConstructor || (classConstructor && to.getRetVal == 0)) {
       val target = getValue[CHIR.Func](targetId).get
       val block = target.body.get.entryBlock
-      val allocated = insert(block, CHIR.Operation.Allocate(target.tpe.returnType), block.expressions.headOption)
+      val allocated = insert(block, EditableCHIR.Operation.Allocate(target.tpe.returnType), block.expressions.headOption)
       if (to.getRetVal != 0) localTable(to.getRetVal).setIsRetVal(false)
       to.setRetVal(valueId(allocated))
       localTable(valueId(allocated)).setIsRetVal(true)
@@ -564,23 +572,25 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       case s: StoreElementByNameT => (e.getKind, Option(s.getFieldNames).toSeq.flatten.toVector)
       case _ => Tuple1(e.getKind)
     }
-    if (isTerminator(e)) new CHIR.Terminator with CHIR.HasSuccessors with CHIR.OpaqueExpression {
+    if (isTerminator(e)) new CHIR.Terminator with CHIR.HasSuccessors with CHIR.OpaqueExpression with EditableCHIR.Expression {
+      def replace(operation: EditableCHIR.Operation): Unit = PackageImpl.this.replace(this, operation)
       def successors: Seq[CHIR.Block] = successorIds(e).map(blockView).toSeq
       def debugLoc: Option[CHIR.DebugLocation] = location(e)
       def operationKey: Product = key
       def valueOperands: Seq[CHIR.Value] = ids(e.getOperands).map(value).toSeq
-    } else new CHIR.OpaqueExpression {
+    } else new CHIR.OpaqueExpression with EditableCHIR.Expression {
+      def replace(operation: EditableCHIR.Operation): Unit = PackageImpl.this.replace(this, operation)
       def debugLoc: Option[CHIR.DebugLocation] = location(e)
       def operationKey: Product = key
       def valueOperands: Seq[CHIR.Value] = ids(e.getOperands).map(value).toSeq
     }
   }
 
-  def newGoto(destination: CHIR.Block, debugLoc: Option[CHIR.DebugLocation] = None): CHIR.Goto = {
+  def newGoto(destination: CHIR.Block, debugLoc: Option[CHIR.DebugLocation] = None): CHIR.Goto & EditableCHIR.Expression = {
     val destinationId = valueId(destination)
     blockTable(destinationId)
     val e = newExpression(CHIRExprKind.Goto, Array(destinationId), debugLoc)
-    getExpr[CHIR.Goto](appendExpression(ExpressionElem.Expression, e))
+    getExpr[CHIR.Goto & EditableCHIR.Expression](appendExpression(ExpressionElem.Expression, e))
   }
 
   private[v1203] def replaceExpressions(blockId: Long, prefix: Seq[CHIR.Expression], term: CHIR.Terminator): Unit = {
@@ -665,7 +675,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       // An edge to a block not yet added to the group is a staged edit.
       // Do not retire nodes until all reachable blocks form a complete CFG.
       if (closed && reachable.size != members.size) {
-        g.replaceBlocks(g.blocks.filter(b => reachable(valueId(b))), g.entryBlock)
+        replaceBlocks(valueId(g), g.blocks.filter(b => reachable(valueId(b))), g.entryBlock)
       }
       g.blocks.foreach { b =>
         ids(blockTable(valueId(b)).getExprs).foreach { id =>
@@ -703,14 +713,6 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     if (predecessorsDirty) {
       rebuildPredecessors()
       predecessorsDirty = false
-    }
-  }
-
-  private[v1203] def validationIssues(): Seq[ValidationIssue] = {
-    val problems = referenceIssues()
-    if (problems.nonEmpty) problems else {
-      ensurePredecessors()
-      validateBodies()
     }
   }
 
@@ -804,16 +806,48 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     } finally changes.restore()
   }
 
-  def write(output: Path): Unit = {
+  def toBytes: Array[Byte] = {
     prepareBodies()
-    val bytes = serializedBytes()
-    val target = output.toAbsolutePath
-    val temporary = Files.createTempFile(target.getParent, ".chir-", ".tmp")
-    try {
-      Files.write(temporary, bytes)
-      try Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-      catch { case _: AtomicMoveNotSupportedException => Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING) }
-    } finally Files.deleteIfExists(temporary)
+    serializedBytes()
+  }
+
+  def edit(function: CHIR.Func): EditableCHIR.Func = {
+    valueId(function)
+    function.asInstanceOf[EditableCHIR.Func]
+  }
+
+  def edit(block: CHIR.Block): EditableCHIR.Block = {
+    valueId(block)
+    block.asInstanceOf[EditableCHIR.Block]
+  }
+
+  def edit(group: CHIR.BlockGroup): EditableCHIR.BlockGroup = {
+    valueId(group)
+    group.asInstanceOf[EditableCHIR.BlockGroup]
+  }
+
+  def edit(variable: CHIR.GlobalVar): EditableCHIR.GlobalVar = {
+    valueId(variable)
+    variable.asInstanceOf[EditableCHIR.GlobalVar]
+  }
+
+  def edit(definition: CHIR.CustomTypeDef): EditableCHIR.CustomTypeDef = {
+    definitionId(definition)
+    definition.asInstanceOf[EditableCHIR.CustomTypeDef]
+  }
+
+  def edit(attributes: CHIR.HasAttributes): EditableCHIR.HasAttributes = attributes match {
+    case f: CHIR.Func => edit(f)
+    case g: CHIR.GlobalVar => edit(g)
+    case d: CHIR.CustomTypeDef => edit(d)
+    case m: InstanceVarImpl if m.provider eq this => m
+    case v: VMethodImpl if v.provider eq this => v
+    case _ => throw new IllegalArgumentException("Attributes belong to another package")
+  }
+
+  def edit(expression: CHIR.Expression): EditableCHIR.Expression = {
+    expressionId(expression)
+    expression.asInstanceOf[EditableCHIR.Expression]
   }
 
   private[v1203] def valueTable(id: Long): ValueElemUnion = {
@@ -836,8 +870,8 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     valueTable(id).asBlockGroup()
   }
 
-  private[v1203] def group(id: Long): CHIR.BlockGroup = value(id).asInstanceOf[CHIR.BlockGroup]
-  private[v1203] def blockView(id: Long): CHIR.Block = value(id).asInstanceOf[CHIR.Block]
+  private[v1203] def group(id: Long): EditableCHIR.BlockGroup = value(id).asInstanceOf[EditableCHIR.BlockGroup]
+  private[v1203] def blockView(id: Long): EditableCHIR.Block = value(id).asInstanceOf[EditableCHIR.Block]
 
   private def localTable(id: Long): LocalVarT = {
     val entry = valueTable(id)
@@ -1049,6 +1083,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     def check(test: Boolean, message: => String, ref: Option[EntityRef] = None): Unit = {
       if (!test) report(message, ref)
     }
+
     def safely(ref: Option[EntityRef])(action: => Unit): Unit = {
       try action catch { case NonFatal(e) => report(Option(e.getMessage).getOrElse("Invalid CHIR payload"), ref) }
     }
@@ -1213,7 +1248,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     changes.set(retValId)(function.setRetVal)
   }
 
-  // Shared implementation of Func.replaceBody and Func.removeBody.
+  // Shared backend for function body replacement and removal.
   private[v1203] def replaceFunctionBody(
     functionId: Long,
     body: Option[CHIR.BlockGroup],
@@ -1317,70 +1352,13 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     rememberGroupOwner(bodyId)
   }
 
-  // APIs currently called only by tests in this repository (excluding forwarders).
-  def typeId(tpe: CHIR.Type): Long = {
-    // Primitive type objects are shared singletons. Use the first equivalent
-    // table entry as their canonical reference, without rewriting loaded IDs.
-    if (!typeIds.containsKey(tpe)) (1L to length(model.getTypes).toLong).foreach(getType[CHIR.Type])
-    registered(typeIds, tpe, "type")
-  }
-
-  def newBlock(isLandingPad: Boolean = false): CHIR.Block = {
-    val b = new BlockT
-    b.setBase(newValue(s"#$nextBlockName", ValueKind.BLOCK))
-    b.setIsLandingPadBlock(isLandingPad)
-    b.setExprs(Array.emptyLongArray); b.setPredecessors(Array.emptyLongArray)
-    b.setExceptionCatchList(Array.emptyLongArray)
-    nextBlockName = Math.addExact(nextBlockName, 1L)
-    blockView(appendValue(ValueElem.Block, b))
-  }
-
-  def newBlockGroup(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block): CHIR.BlockGroup = {
-    val blockIds = checkedBlocks(0L, blocks, entryBlock)
-    val g = new BlockGroupT
-    g.setBase(newValue(nextGroupName.toString, ValueKind.BLOCK_GROUP))
-    g.setBlocks(blockIds)
-    g.setEntryBlock(valueId(entryBlock))
-    nextGroupName = Math.addExact(nextGroupName, 1L)
-    val id = appendValue(ValueElem.BlockGroup, g)
-    blockIds.foreach { blockId =>
-      blockTable(blockId).setParentGroup(id)
-      historicalBlockParents(blockId) = id
-    }
-    predecessorsDirty = true
-    group(id)
-  }
-
-  def newBranch(
-    condition: CHIR.Value,
-    trueBlock: CHIR.Block,
-    falseBlock: CHIR.Block,
-    debugLoc: Option[CHIR.DebugLocation] = None
-  ): CHIR.Branch = {
-    val conditionId = valueId(condition)
-    require(isBoolean(conditionId), "Branch condition must have Boolean type")
-    val t = valueId(trueBlock); val f = valueId(falseBlock)
-    blockTable(t); blockTable(f)
-    val b = new BranchT
-    b.setBase(newExpression(CHIRExprKind.Branch, Array(conditionId, t, f), debugLoc))
-    getExpr[CHIR.Branch](appendExpression(ExpressionElem.Branch, b))
-  }
-
-  def expressions(function: CHIR.Func): Seq[CHIR.Expression] = {
+  private[v1203] def expressions(function: CHIR.Func): Seq[CHIR.Expression] = {
     def visit(group: CHIR.BlockGroup): Seq[CHIR.Expression] = group.blocks.flatMap { block =>
       block.expressions.flatMap { e =>
         e +: nestedGroups(expressionTable(expressionId(e)).getValue).toSeq.flatMap(id => visit(this.group(id)))
       }
     }
     function.body.toSeq.flatMap(visit)
-  }
-
-  def isInternal(function: CHIR.Func): Boolean = {
-    val base = valueTable(valueId(function)).asFunction().getBase.getBase.getBase
-    Option(base.getAnnos).toSeq.flatten.exists { a => a.getValue match {
-      case a: LinkTypeInfoT => a.getLinkage == Linkage.INTERNAL
-      case _ => false
-    } }
   }
 
   private def replaceUses(function: CHIR.Func, from: CHIR.Value, to: CHIR.Value): Unit = {
@@ -1392,7 +1370,6 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     }
   }
 
-  def setOptimized(): Unit = model.setPhase(Phase.OPT)
 
   private def ensureType(tpe: CHIR.Type): Long = {
     val cached = insertedTypeObjects.get(tpe)
@@ -1402,15 +1379,48 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
       val found = (1L to length(model.getTypes).toLong).find(id => getType[CHIR.Type](id).contains(tpe))
       found.getOrElse {
         val t = new TypeT
+        val u = new TypeElemUnion
         t.setArgTys(Array.emptyLongArray)
         tpe match {
           case tpe: CHIR.RefType => t.setKind(CHIRTypeKind.REFTYPE); t.setArgTys(Array(ensureType(tpe.baseType)))
-          case CHIR.BuiltinType.Unit => t.setKind(CHIRTypeKind.UNIT)
+          case CHIR.BuiltinType.Int8 => t.setKind(CHIRTypeKind.INT8)
+          case CHIR.BuiltinType.Int16 => t.setKind(CHIRTypeKind.INT16)
+          case CHIR.BuiltinType.Int32 => t.setKind(CHIRTypeKind.INT32)
+          case CHIR.BuiltinType.Int64 => t.setKind(CHIRTypeKind.INT64)
+          case CHIR.BuiltinType.IntNative => t.setKind(CHIRTypeKind.INT_NATIVE)
+          case CHIR.BuiltinType.UInt8 => t.setKind(CHIRTypeKind.UINT8)
+          case CHIR.BuiltinType.UInt16 => t.setKind(CHIRTypeKind.UINT16)
+          case CHIR.BuiltinType.UInt32 => t.setKind(CHIRTypeKind.UINT32)
+          case CHIR.BuiltinType.UInt64 => t.setKind(CHIRTypeKind.UINT64)
+          case CHIR.BuiltinType.UIntNative => t.setKind(CHIRTypeKind.UINT_NATIVE)
+          case CHIR.BuiltinType.Float16 => t.setKind(CHIRTypeKind.FLOAT16)
+          case CHIR.BuiltinType.Float32 => t.setKind(CHIRTypeKind.FLOAT32)
+          case CHIR.BuiltinType.Float64 => t.setKind(CHIRTypeKind.FLOAT64)
+          case CHIR.BuiltinType.Rune => t.setKind(CHIRTypeKind.RUNE)
           case CHIR.BuiltinType.Boolean => t.setKind(CHIRTypeKind.BOOLEAN)
+          case CHIR.BuiltinType.Unit => t.setKind(CHIRTypeKind.UNIT)
+          case CHIR.BuiltinType.Nothing => t.setKind(CHIRTypeKind.NOTHING)
+          case CHIR.BuiltinType.Void => t.setKind(CHIRTypeKind.VOID)
+          case CHIR.BuiltinType.CString => t.setKind(CHIRTypeKind.C_STRING)
+          case CHIR.BuiltinType.This => t.setKind(CHIRTypeKind.THIS)
+          case tpe: CHIR.TupleType =>
+            t.setKind(CHIRTypeKind.TUPLE)
+            t.setArgTys(tpe.fieldTypes.map(ensureType).toArray)
+          case tpe: CHIR.FuncType =>
+            t.setKind(CHIRTypeKind.FUNC)
+            t.setArgTys((tpe.paramTypes :+ tpe.returnType).map(ensureType).toArray)
+            val function = new FuncTypeT
+            function.setBase(t)
+            function.setIsCfuncType(tpe.isC)
+            function.setHasVarArg(tpe.hasVarArg)
+            u.setType(TypeElem.FuncType)
+            u.setValue(function)
           case _ => throw new IllegalArgumentException("Missing type for inserted expression: " + tpe)
         }
-        val u = new TypeElemUnion
-        u.setType(TypeElem.Type); u.setValue(t)
+        if (u.getValue == null) {
+          u.setType(TypeElem.Type)
+          u.setValue(t)
+        }
         model.setTypes(model.getTypes :+ u)
         model.getTypes.length.toLong
       }
@@ -1419,8 +1429,8 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     id
   }
 
-  private def operation(operation: CHIR.Operation): (Byte, Object, Long) = {
-    import CHIR.Operation.*
+  private def operation(operation: EditableCHIR.Operation): (Byte, Object, Long) = {
+    import EditableCHIR.Operation.*
     def ref(tpe: CHIR.Type): CHIR.RefType = new CHIR.RefType { def baseType: CHIR.Type = tpe }
     operation match {
       case Allocate(tpe) =>
@@ -1454,7 +1464,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     }
   }
 
-  def insert(block: CHIR.Block, op: CHIR.Operation, before: Option[CHIR.Expression]): CHIR.LocalVar = {
+  private[v1203] def insert(block: CHIR.Block, op: EditableCHIR.Operation, before: Option[CHIR.Expression]): CHIR.LocalVar = {
     val blockId = valueId(block)
     val function = enclosingFunction(blockTable(blockId).getParentGroup).getOrElse(
       throw new IllegalArgumentException("Insertion requires a function-owned block"))
@@ -1475,11 +1485,11 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     val position = before.map(expressionId).getOrElse(expressionId(block.terminator))
     val index = block.expressions.indexWhere(e => expressionId(e) == position)
     require(index >= 0, "Insertion point is outside the block")
-    block.replaceExpressions(prefix.patch(index, Seq(getExpr[CHIR.Expression](id)), 0), block.terminator)
+    replaceExpressions(valueId(block), prefix.patch(index, Seq(getExpr[CHIR.Expression](id)), 0), block.terminator)
     getValue[CHIR.LocalVar](localId).get
   }
 
-  def replace(expression: CHIR.Expression, op: CHIR.Operation): Unit = {
+  private[v1203] def replace(expression: CHIR.Expression, op: EditableCHIR.Operation): Unit = {
     val id = expressionId(expression)
     val old = expressionBase(expressionTable(id).getValue)
     require(!isTerminator(old), "Cannot replace a terminator with a value operation")
@@ -1493,4 +1503,114 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean))
     expressionViews.remove(id)
   }
 
+  // APIs currently called only by tests in this repository (excluding forwarders).
+  def typeId(tpe: CHIR.Type): Long = {
+    // Primitive type objects are shared singletons. Use the first equivalent
+    // table entry as their canonical reference, without rewriting loaded IDs.
+    if (!typeIds.containsKey(tpe)) (1L to length(model.getTypes).toLong).foreach(getType[CHIR.Type])
+    registered(typeIds, tpe, "type")
+  }
+
+  def newGlobalVar(identifier: String, tpe: CHIR.Type): EditableCHIR.GlobalVar = {
+    val global = new GlobalValueT
+    global.setBase(newValue(normalized(identifier), ValueKind.GLOBALVAR))
+    global.getBase.setType(ensureType(tpe))
+    global.setSrcCodeIdentifier(identifier.stripPrefix("@"))
+    global.setRawMangledName("")
+    global.setPackageName(name)
+    global.setFeatures(Array.empty[String])
+    val variable = new GlobalVarT
+    variable.setBase(global)
+    value(appendValue(ValueElem.GlobalVar, variable)).asInstanceOf[EditableCHIR.GlobalVar]
+  }
+
+  def newFunction(identifier: String, params: Seq[CHIR.Type], result: CHIR.Type): EditableCHIR.Func = {
+    val signature = new CHIR.FuncType {
+      def paramTypes: Seq[CHIR.Type] = params
+      def paramTypesWithoutReceiver: Seq[CHIR.Type] = params.drop(1)
+      def receiverType: CHIR.Type = params.headOption.getOrElse(CHIR.BuiltinType.Void)
+      def returnType: CHIR.Type = result
+      def isC: Boolean = false
+      def hasVarArg: Boolean = false
+    }
+    val global = new GlobalValueT
+    global.setBase(newValue(normalized(identifier), ValueKind.FUNC))
+    global.getBase.setType(ensureType(signature))
+    global.setSrcCodeIdentifier(identifier.stripPrefix("@"))
+    global.setRawMangledName("")
+    global.setPackageName(name)
+    global.setFeatures(Array.empty[String])
+    val function = new FunctionT
+    function.setBase(global)
+    function.setGenericTypeParams(Array.emptyLongArray)
+    val id = appendValue(ValueElem.Function, function)
+    val parameters = params.zipWithIndex.map { (tpe, index) =>
+      val parameter = new ParameterT
+      parameter.setBase(newValue("%" + index, ValueKind.PARAMETER))
+      parameter.getBase.setType(ensureType(tpe))
+      parameter.setOwnedFunc(id)
+      appendValue(ValueElem.Parameter, parameter)
+    }
+    function.setParams(parameters.toArray)
+    function.setLocalId(params.size)
+    value(id).asInstanceOf[EditableCHIR.Func]
+  }
+
+  def newExit(debugLoc: Option[CHIR.DebugLocation]): CHIR.Exit & EditableCHIR.Expression =
+    getExpr[CHIR.Exit & EditableCHIR.Expression](appendExpression(ExpressionElem.Expression,
+      newExpression(CHIRExprKind.Exit, Array.emptyLongArray, debugLoc)))
+
+  def newBlock(isLandingPad: Boolean = false): EditableCHIR.Block = {
+    val b = new BlockT
+    b.setBase(newValue(s"#$nextBlockName", ValueKind.BLOCK))
+    b.setIsLandingPadBlock(isLandingPad)
+    b.setExprs(Array.emptyLongArray); b.setPredecessors(Array.emptyLongArray)
+    b.setExceptionCatchList(Array.emptyLongArray)
+    nextBlockName = Math.addExact(nextBlockName, 1L)
+    blockView(appendValue(ValueElem.Block, b))
+  }
+
+  def newBlockGroup(blocks: Seq[CHIR.Block], entryBlock: CHIR.Block): EditableCHIR.BlockGroup = {
+    val blockIds = checkedBlocks(0L, blocks, entryBlock)
+    val g = new BlockGroupT
+    g.setBase(newValue(nextGroupName.toString, ValueKind.BLOCK_GROUP))
+    g.setBlocks(blockIds)
+    g.setEntryBlock(valueId(entryBlock))
+    nextGroupName = Math.addExact(nextGroupName, 1L)
+    val id = appendValue(ValueElem.BlockGroup, g)
+    blockIds.foreach { blockId =>
+      blockTable(blockId).setParentGroup(id)
+      historicalBlockParents(blockId) = id
+    }
+    predecessorsDirty = true
+    group(id)
+  }
+
+  def newBranch(
+    condition: CHIR.Value,
+    trueBlock: CHIR.Block,
+    falseBlock: CHIR.Block,
+    debugLoc: Option[CHIR.DebugLocation] = None
+  ): CHIR.Branch & EditableCHIR.Expression = {
+    val conditionId = valueId(condition)
+    require(isBoolean(conditionId), "Branch condition must have Boolean type")
+    val t = valueId(trueBlock); val f = valueId(falseBlock)
+    blockTable(t); blockTable(f)
+    val b = new BranchT
+    b.setBase(newExpression(CHIRExprKind.Branch, Array(conditionId, t, f), debugLoc))
+    getExpr[CHIR.Branch & EditableCHIR.Expression](appendExpression(ExpressionElem.Branch, b))
+  }
+
+  private[v1203] def validationIssues(): Seq[ValidationIssue] = {
+    val problems = referenceIssues()
+    if (problems.nonEmpty) problems else {
+      ensurePredecessors()
+      validateBodies()
+    }
+  }
+
+  private[v1203] def data: CHIRPackageT = {
+    flushTables()
+    model
+  }
 }

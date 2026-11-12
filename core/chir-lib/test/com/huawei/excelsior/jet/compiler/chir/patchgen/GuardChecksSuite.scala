@@ -1,5 +1,6 @@
 package com.huawei.excelsior.jet.compiler.chir.patchgen
 
+import com.huawei.excelsior.jet.compiler.chir.EditableCHIR
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import java.nio.file.{Files, Path, Paths}
 import org.scalatest.funsuite.AnyFunSuite
@@ -29,24 +30,25 @@ class GuardChecksSuite extends AnyFunSuite {
           "--import-path", work.toString, "--output-type=staticlib",
           "--plugin", Paths.get(home, "tools/lib/libhotfix-plugin.so").toString,
           "-O0", "--emit-chir", "-o", "input.chir")
-        val pkg = CHIR.read(work.resolve("input.chir"), 13002)
+        val editable = EditableCHIR.read(work.resolve("input.chir"))
+        val pkg = editable
         val functions = pkg.values.collect { case f: CHIR.Func => f }.toVector
         val guarded = functions.filter(f => GuardChecks.hasFlag(f))
         assert(guarded.nonEmpty)
         val sources = guarded.filter(f => f.kind == CHIR.Func.Kind.Default && f.srcCodeIdentifier == "foo")
         assert(sources.nonEmpty)
         for (function <- guarded) {
-          GuardChecks.remove(function)
+          GuardChecks.remove(editable.edit(function))
           assert(!GuardChecks.hasFlag(function))
         }
         for (source <- sources) {
           val target = functions.find(f => f.srcCodeIdentifier == PatchableName.guardMethod(source) &&
             f.declaringDef.exists(_.srcCodeIdentifier.endsWith("$PatchImpl$GC"))).get
-          source.moveBody(target)
-          source.replaceAttributes((source.attributes :+ CHIR.Attribute.Imported).distinct)
+          editable.edit(source).moveBody(target)
+          editable.edit(source).replaceAttributes((source.attributes :+ CHIR.Attribute.Imported).distinct)
           assert(source.body.isEmpty && target.body.nonEmpty)
         }
-        pkg.write(work.resolve("output.chir"))
+        editable.write(work.resolve("output.chir"))
         run(work, "chir-dis", "output.chir")
         val saved = CHIR.read(work.resolve("output.chir"), 13002)
         assert(saved.values.collect { case f: CHIR.Func if GuardChecks.hasFlag(f) => f }.isEmpty)

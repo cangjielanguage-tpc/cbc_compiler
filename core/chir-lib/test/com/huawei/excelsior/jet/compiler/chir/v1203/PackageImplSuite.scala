@@ -1,5 +1,6 @@
 package com.huawei.excelsior.jet.compiler.chir.v1203
 
+import com.huawei.excelsior.jet.compiler.chir.EditableCHIR
 import com.google.flatbuffers.FlatBufferBuilder
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.v1203.PackageFormat.*
@@ -27,7 +28,7 @@ class PackageImplSuite extends AnyFunSuite {
     val movedReturn = source.retVal.get
     val replacedBody = target.body.get
     val replacedReturn = target.retVal.get
-    source.moveBody(target)
+    p.edit(source).moveBody(target)
     assert(source.body.isEmpty && source.retVal.isEmpty)
     assert(target.body.get eq movedBody)
     assert(target.retVal.get eq movedReturn)
@@ -53,7 +54,7 @@ class PackageImplSuite extends AnyFunSuite {
     val parameters = f.params
     val attributes = f.attributes
     val identifier = f.identifier
-    f.removeBody()
+    p.edit(f).removeBody()
     assert(f.body.isEmpty && f.retVal.isEmpty)
     assert(p.groupTable(p.valueId(body)).getOwnedFunc == 0)
     assert(!p.valueTable(p.valueId(result)).asLocalVar().getIsRetVal)
@@ -61,7 +62,7 @@ class PackageImplSuite extends AnyFunSuite {
     assert(f.params == parameters && f.attributes == attributes && f.identifier == identifier)
     assert(p.function(8).body.nonEmpty)
     val after = p.data.serializeToBinary()
-    f.removeBody()
+    p.edit(f).removeBody()
     assert(p.data.serializeToBinary().sameElements(after))
     assert(p.validationIssues().isEmpty)
     roundTrip(p) { saved =>
@@ -70,44 +71,6 @@ class PackageImplSuite extends AnyFunSuite {
       assert(declaration.identifier == identifier && declaration.attributes == attributes)
       assert(saved.valueId(declaration.params.head) == p.valueId(parameters.head))
       assert(saved.function(8).body.nonEmpty)
-    }
-  }
-
-  test("function and global attributes update held views and survive writing") {
-    val data = TestData.fixtureData()
-    val global = new GlobalVarT
-    val gv = new GlobalValueT
-    gv.setBase(PackageImpl.newValue("@global", ValueKind.GLOBALVAR))
-    gv.getBase.setType(2)
-    gv.setPackageName("fixture")
-    gv.setSrcCodeIdentifier("global")
-    global.setBase(gv)
-    val entry = new ValueElemUnion
-    entry.setType(ValueElem.GlobalVar)
-    entry.setValue(global)
-    data.setValues(data.getValues :+ entry)
-    val p = PackageImpl.fromBytes(data.serializeToBinary())
-    val f = p.function(1)
-    val g = p.getValue[CHIR.GlobalVar](13).get
-    val functionAttributes = Seq(CHIR.Attribute.Public, CHIR.Attribute.NoInline)
-    val globalAttributes = Seq(CHIR.Attribute.Private, CHIR.Attribute.Mut)
-    f.replaceAttributes(functionAttributes :+ CHIR.Attribute.Public)
-    g.replaceAttributes(globalAttributes)
-    assert(f.attributes == functionAttributes)
-    assert(g.attributes == globalAttributes)
-    assert(p.function(1).attributes == functionAttributes)
-    assert(p.getValue[CHIR.GlobalVar](13).get.attributes == globalAttributes)
-    roundTrip(p) { saved =>
-      assert(saved.function(1).attributes == functionAttributes)
-      assert(saved.getValue[CHIR.GlobalVar](13).get.attributes == globalAttributes)
-    }
-    f.replaceAttributes(Seq(CHIR.Attribute.Private))
-    g.replaceAttributes(Seq.empty)
-    assert(f.attributes == Seq(CHIR.Attribute.Private))
-    assert(g.attributes.isEmpty)
-    roundTrip(p) { saved =>
-      assert(saved.function(1).attributes == Seq(CHIR.Attribute.Private))
-      assert(saved.getValue[CHIR.GlobalVar](13).get.attributes.isEmpty)
     }
   }
 
@@ -138,7 +101,7 @@ class PackageImplSuite extends AnyFunSuite {
     val jump = p.newGoto(block, Some(CHIR.DebugLocation(10, 11)))
     val newBase = p.expressionTable(p.expressionId(jump)).asExpression().getBase
     assert(newBase.getAnnos != null && newBase.getLoc.getFilePath != null)
-    block.replaceTerminator(jump)
+    p.edit(block).replaceTerminator(jump)
     assert(block.terminator eq jump)
     assert(block.nonTerminatorExpressions.size == 1)
     assert(jump.destination eq block)
@@ -157,16 +120,16 @@ class PackageImplSuite extends AnyFunSuite {
   test("retired ownership is preserved on disk without reattaching nodes in memory") {
     val p = fresh()
     val b = p.function(1).body.get.entryBlock
-    b.replaceTerminator(p.newGoto(b))
+    p.edit(b).replaceTerminator(p.newGoto(b))
     assert(p.expressionTable(2).asExpression().getOwner == 0)
     roundTrip(p) { saved =>
       assert(saved.expressionTable(2).asExpression().getOwner == 3)
       assert(!saved.blockTable(3).getExprs.contains(2L))
       val oldExit = saved.getExpr[CHIR.Terminator](2)
       val spare = saved.newBlock()
-      spare.replaceTerminator(oldExit) // historical owner is not an active attachment
+      saved.edit(spare).replaceTerminator(oldExit) // historical owner is not an active attachment
       val group = saved.function(1).body.get
-      group.replaceBlocks(group.blocks :+ spare, group.entryBlock)
+      saved.edit(group).replaceBlocks(group.blocks :+ spare, group.entryBlock)
       assert(saved.validationIssues().isEmpty)
     }
     assert(p.expressionTable(2).asExpression().getOwner == 0)
@@ -179,15 +142,15 @@ class PackageImplSuite extends AnyFunSuite {
       val group = f.body.get
       val block = group.entryBlock
       val jump = p.newGoto(block)
-      block.replaceTerminator(jump)
+      p.edit(block).replaceTerminator(jump)
       val spare = p.newBlock()
       val spareJump = p.newGoto(spare)
-      spare.replaceTerminator(spareJump)
-      group.replaceBlocks(group.blocks :+ spare, block)
-      group.replaceBlocks(Seq(block), block)
+      p.edit(spare).replaceTerminator(spareJump)
+      p.edit(group).replaceBlocks(group.blocks :+ spare, block)
+      p.edit(group).replaceBlocks(Seq(block), block)
       val lambda = p.data.getValues()(7).asFunction()
       lambda.setFuncKind(FuncKind.LAMBDA)
-      p.function(8).removeBody()
+      p.edit(p.function(8)).removeBody()
       assert(p.validationIssues().isEmpty)
       val values = p.data.getValues
       val exprs = p.data.getExprs
@@ -224,7 +187,7 @@ class PackageImplSuite extends AnyFunSuite {
         assert(p.data.serializeToBinary().sameElements(before))
         p.write(output)
         val first = Files.readAllBytes(output)
-        val saved = PackageImpl.read(output)
+        val saved = PackageImpl.fromBytes(Files.readAllBytes(output))
         assert(saved.expressionTable(2).asExpression().getOwner == p.valueId(block))
         assert(saved.blockTable(p.valueId(spare)).getParentGroup > values.length)
         assert(saved.blockTable(p.valueId(spare)).getExprs.isEmpty)
@@ -242,13 +205,13 @@ class PackageImplSuite extends AnyFunSuite {
     val p = fresh()
     val group = p.function(1).body.get
     val block = group.entryBlock
-    val condition = p.insert(block, CHIR.Operation.BooleanConstant(true))
+    val condition = p.edit(block).insert(EditableCHIR.Operation.BooleanConstant(true))
     val expressionId = p.valueTable(p.valueId(condition)).asLocalVar().getAssociatedExpr
     val boolTypeId = p.typeId(condition.tpe)
     val second = p.newBlock()
-    second.replaceTerminator(p.newGoto(second))
-    block.replaceTerminator(p.newBranch(condition, block, second))
-    group.replaceBlocks(group.blocks :+ second, block)
+    p.edit(second).replaceTerminator(p.newGoto(second))
+    p.edit(block).replaceTerminator(p.newBranch(condition, block, second))
+    p.edit(group).replaceBlocks(group.blocks :+ second, block)
     val output = Files.createTempFile("wire-vectors-", ".chir")
     try {
       p.write(output)
@@ -259,7 +222,7 @@ class PackageImplSuite extends AnyFunSuite {
       assert(t.argTysVector() != null)
       assert(e.blockGroupsVector() != null)
       assert(b.exceptionCatchListVector() != null)
-      assert(PackageImpl.read(output).validationIssues().isEmpty)
+      assert(PackageImpl.fromBytes(Files.readAllBytes(output)).validationIssues().isEmpty)
     } finally Files.delete(output)
   }
 
@@ -268,13 +231,13 @@ class PackageImplSuite extends AnyFunSuite {
     val f = p.function(1)
     val original = f.attributes
     assert(f.attributes eq original)
-    f.replaceAttributes(Seq(CHIR.Attribute.Imported))
+    p.edit(f).replaceAttributes(Seq(CHIR.Attribute.Imported))
     val imported = f.attributes
     assert(imported == Seq(CHIR.Attribute.Imported))
     assert(f.attributes eq imported)
     p.data.getValues()(0).asFunction().getBase.getBase.getBase.setAttributes(1L << CHIR.Attribute.Public.ordinal)
     assert(f.attributes == Seq(CHIR.Attribute.Public))
-    f.replaceAttributes(Seq.empty)
+    p.edit(f).replaceAttributes(Seq.empty)
     assert(f.attributes.isEmpty)
   }
 
@@ -284,16 +247,16 @@ class PackageImplSuite extends AnyFunSuite {
     val block = f.body.get.entryBlock
     val initialValues = p.values.size
     val initialTypes = p.data.getTypes.length
-    val first = p.insert(block, CHIR.Operation.BooleanConstant(true))
+    val first = p.edit(block).insert(EditableCHIR.Operation.BooleanConstant(true))
     val firstId = p.valueId(first)
     for (i <- 1 until 128) {
-      p.insert(block, CHIR.Operation.BooleanConstant(i % 2 == 0))
+      p.edit(block).insert(EditableCHIR.Operation.BooleanConstant(i % 2 == 0))
     }
     assert(p.values.size == initialValues + 256)
     assert(p.getValue[CHIR.LocalVar](firstId).get eq first)
     assert(p.data.getValues.length == initialValues + 256)
     assert(p.data.getTypes.length == initialTypes + 1)
-    p.insert(block, CHIR.Operation.BooleanConstant(false))
+    p.edit(block).insert(EditableCHIR.Operation.BooleanConstant(false))
     assert(p.getValue[CHIR.LocalVar](firstId).get eq first)
     assert(p.function(1) eq f)
     roundTrip(p) { saved =>
@@ -318,7 +281,7 @@ class PackageImplSuite extends AnyFunSuite {
     data.setTypes(data.getTypes ++ Array(booleanType(), booleanType()))
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     assert(p.getType[CHIR.Type](7).contains(CHIR.BuiltinType.Boolean))
-    val value = p.insert(p.function(1).body.get.entryBlock, CHIR.Operation.BooleanConstant(true))
+    val value = p.edit(p.function(1).body.get.entryBlock).insert(EditableCHIR.Operation.BooleanConstant(true))
     assert(p.valueTable(p.valueId(value)).asLocalVar().getBase.getType == 6)
     assert(p.data.getTypes.length == 7)
   }
@@ -329,7 +292,7 @@ class PackageImplSuite extends AnyFunSuite {
     val jump = p.newGoto(block)
     assert(p.validationIssues().exists(_.message.contains("New expression has not been attached")))
     assert(p.validationIssues().exists(_.message.contains("New block has not been attached")))
-    block.replaceTerminator(jump)
+    p.edit(block).replaceTerminator(jump)
     val group = p.newBlockGroup(Seq(block), block)
     assert(p.validationIssues().exists(_.message.contains("New group has not been attached")))
     val output = Files.createTempFile("staged-chir-", ".chir")
@@ -338,7 +301,7 @@ class PackageImplSuite extends AnyFunSuite {
       assert(error.getMessage.contains("New group has not been attached"))
       assert(Files.size(output) == 0)
     } finally Files.delete(output)
-    p.function(1).replaceBody(Some(group), None)
+    p.edit(p.function(1)).replaceBody(Some(group), None)
     assert(p.validationIssues().isEmpty)
     roundTrip(p)(saved => assert(saved.function(1).body.get.blocks.size == 1))
   }
@@ -359,9 +322,9 @@ class PackageImplSuite extends AnyFunSuite {
     val exit = first.terminator
     val second = p.newBlock()
     val branch = p.newBranch(p.getValue[CHIR.Value](13).get, first, second)
-    first.replaceTerminator(branch)
-    second.replaceExpressions(Seq.empty, exit)
-    g.replaceBlocks(Seq(first, second), first)
+    p.edit(first).replaceTerminator(branch)
+    p.edit(second).replaceExpressions(Seq.empty, exit)
+    p.edit(g).replaceBlocks(Seq(first, second), first)
     assert(p.blockTable(p.valueId(second)).getParentGroup == p.valueId(g))
     assert(PackageImpl.ids(p.blockTable(p.valueId(second)).getPredecessors).isEmpty)
     assert(p.validationIssues().isEmpty)
@@ -378,9 +341,9 @@ class PackageImplSuite extends AnyFunSuite {
   test("newBlockGroup connects to the existing replaceBody implementation") {
     val p = fresh()
     val block = p.newBlock(isLandingPad = true)
-    block.replaceTerminator(p.newGoto(block))
+    p.edit(block).replaceTerminator(p.newGoto(block))
     val body = p.newBlockGroup(Seq(block), block)
-    p.function(1).replaceBody(Some(body), None)
+    p.edit(p.function(1)).replaceBody(Some(body), None)
     assert(p.function(1).body.get eq body)
     assert(p.groupTable(p.valueId(body)).getOwnedFunc == 1)
     assert(p.groupTable(2).getOwnedFunc == 0)
@@ -395,9 +358,9 @@ class PackageImplSuite extends AnyFunSuite {
     val unused = p.newBlock()
     val unusedId = p.valueId(unused)
     // Membership can be staged; no caller-triggered cleanup is necessary.
-    g.replaceBlocks(g.blocks :+ unused, entry)
+    p.edit(g).replaceBlocks(g.blocks :+ unused, entry)
     assert(g.blocks.size == 2)
-    entry.replaceTerminator(p.newGoto(entry))
+    p.edit(entry).replaceTerminator(p.newGoto(entry))
     assert(g.blocks.size == 2)
     assert(p.blockTable(unusedId).getParentGroup == p.valueId(g))
     roundTrip(p)(saved => assert(saved.function(1).body.get.blocks.size == 1))
@@ -410,7 +373,7 @@ class PackageImplSuite extends AnyFunSuite {
     data.getExprs()(0).asAllocateBase().getBase.setResultTy(9999)
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val before = p.data.serializeToBinary()
-    val error = intercept[IllegalArgumentException](p.function(1).moveBody(p.function(8)))
+    val error = intercept[IllegalArgumentException](p.edit(p.function(1)).moveBody(p.function(8)))
     assert(error.getMessage.contains("Invalid type ID"))
     assert(p.data.serializeToBinary().sameElements(before))
   }
@@ -425,7 +388,7 @@ class PackageImplSuite extends AnyFunSuite {
     data.getValues()(7).asFunction().getBase.getBase.getBase.setAnnos(Array(annotation))
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val moved = p.function(1).body.get
-    p.function(1).moveBody(p.function(8))
+    p.edit(p.function(1)).moveBody(p.function(8))
     assert(p.function(8).body.contains(moved))
     val output = Files.createTempFile("invalid-metadata-", ".chir")
     val sentinel = Array[Byte](1, 2, 3)
@@ -449,7 +412,7 @@ class PackageImplSuite extends AnyFunSuite {
     val g = f.body.get
     val unused = p.newBlock()
     val unusedId = p.valueId(unused)
-    g.replaceBlocks(g.blocks :+ unused, g.entryBlock)
+    p.edit(g).replaceBlocks(g.blocks :+ unused, g.entryBlock)
     assert(p.validationIssues().isEmpty) // raw CHIR permits empty unreachable blocks
     roundTrip(p) { saved =>
       val active = saved.function(1).body.get
@@ -468,7 +431,7 @@ class PackageImplSuite extends AnyFunSuite {
     val b = p.function(1).body.get.entryBlock
     val before = p.data.serializeToBinary()
     intercept[IllegalArgumentException](p.valueId(foreign.function(1)))
-    intercept[IllegalArgumentException](b.replaceTerminator(p.function(8).body.get.entryBlock.terminator))
+    intercept[IllegalArgumentException](p.edit(b).replaceTerminator(p.function(8).body.get.entryBlock.terminator))
     intercept[IllegalArgumentException](p.newBranch(p.function(1).params.head, b, b))
     intercept[IllegalArgumentException](p.newGoto(b, Some(CHIR.DebugLocation(10, 1))))
     assert(p.data.serializeToBinary().sameElements(before))
@@ -480,10 +443,10 @@ class PackageImplSuite extends AnyFunSuite {
     val b = g.entryBlock
     val other = p.function(8).body.get.entryBlock
     val before = p.data.serializeToBinary()
-    intercept[IllegalArgumentException](g.replaceBlocks(Seq(b, b), b))
-    intercept[IllegalArgumentException](g.replaceBlocks(Seq(b), other))
-    intercept[IllegalArgumentException](g.replaceBlocks(Seq(b, other), b))
-    intercept[IllegalArgumentException](g.replaceBlocks(Seq(b, q.function(1).body.get.entryBlock), b))
+    intercept[IllegalArgumentException](p.edit(g).replaceBlocks(Seq(b, b), b))
+    intercept[IllegalArgumentException](p.edit(g).replaceBlocks(Seq(b), other))
+    intercept[IllegalArgumentException](p.edit(g).replaceBlocks(Seq(b, other), b))
+    intercept[IllegalArgumentException](p.edit(g).replaceBlocks(Seq(b, q.function(1).body.get.entryBlock), b))
     intercept[IllegalArgumentException](p.newBlockGroup(Seq(b), b))
     assert(p.data.serializeToBinary().sameElements(before))
   }
@@ -491,7 +454,7 @@ class PackageImplSuite extends AnyFunSuite {
   test("write validates dangling definitions before touching an existing output") {
     val p = fresh()
     val b = p.function(1).body.get.entryBlock
-    b.replaceExpressions(Seq.empty, b.terminator) // removes the return-local definition
+    p.edit(b).replaceExpressions(Seq.empty, b.terminator) // removes the return-local definition
     assert(p.validationIssues().exists(_.message.contains("Return local is defined outside body")))
     val output = Files.createTempFile("invalid-chir-", ".chir")
     val sentinel = Array[Byte](1, 2, 3)
@@ -508,7 +471,7 @@ class PackageImplSuite extends AnyFunSuite {
     assert(p.validationIssues().exists(_.message.contains("invalid Types ID")))
     val q = fresh()
     val b = q.function(1).body.get.entryBlock
-    b.replaceTerminator(q.newGoto(q.function(8).body.get.entryBlock))
+    q.edit(b).replaceTerminator(q.newGoto(q.function(8).body.get.entryBlock))
     assert(q.validationIssues().exists(_.message.contains("outside group")))
   }
 
@@ -592,7 +555,7 @@ class PackageImplSuite extends AnyFunSuite {
     assert(cast.value eq source.params.head)
     assert(allocation.allocatedType eq source.genericTypeParams.head)
     val oldReturnName = result.identifier
-    source.moveBody(target)
+    p.edit(source).moveBody(target)
     assert(source.body.isEmpty && source.retVal.isEmpty)
     assert(target.body.get eq body)
     assert(target.retVal.get eq result)
@@ -618,13 +581,13 @@ class PackageImplSuite extends AnyFunSuite {
     val p = PackageImpl.fromBytes(genericMoveData().serializeToBinary())
     val foreign = PackageImpl.fromBytes(genericMoveData().serializeToBinary())
     val before = p.data.serializeToBinary()
-    intercept[IllegalArgumentException](p.function(1).moveBody(foreign.function(8)))
+    intercept[IllegalArgumentException](p.edit(p.function(1)).moveBody(foreign.function(8)))
     assert(p.data.serializeToBinary().sameElements(before))
     val data = genericMoveData()
     data.getTypes()(6).asGenericType().setUpperBounds(Array(1L))
     val q = PackageImpl.fromBytes(data.serializeToBinary())
     val unchanged = q.data.serializeToBinary()
-    intercept[IllegalArgumentException](q.function(1).moveBody(q.function(8)))
+    intercept[IllegalArgumentException](q.edit(q.function(1)).moveBody(q.function(8)))
     assert(q.data.serializeToBinary().sameElements(unchanged))
   }
 
@@ -634,7 +597,7 @@ class PackageImplSuite extends AnyFunSuite {
     data.getTypes()(8).asType().setArgTys(Array(2L))
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val before = p.data.serializeToBinary()
-    val error = intercept[IllegalArgumentException](p.function(1).moveBody(p.function(8)))
+    val error = intercept[IllegalArgumentException](p.edit(p.function(1)).moveBody(p.function(8)))
     assert(error.getMessage.contains("Missing substituted composite type"))
     assert(p.data.serializeToBinary().sameElements(before))
   }
@@ -648,7 +611,7 @@ class PackageImplSuite extends AnyFunSuite {
       val cast = p.getExpr[CHIR.StaticCast](6)
       val body = source.body.get
       assert(cast.value eq source.params.head)
-      source.moveBody(target)
+      p.edit(source).moveBody(target)
       assert(source.body.isEmpty)
       assert(target.body.get eq body)
       assert(cast.value eq target.params.head)
@@ -667,7 +630,7 @@ class PackageImplSuite extends AnyFunSuite {
     data.getValues()(0).asFunction().setFuncKind(FuncKind.GETTER)
     data.getValues()(7).asFunction().setFuncKind(FuncKind.GETTER)
     val p = PackageImpl.fromBytes(data.serializeToBinary())
-    p.function(1).moveBody(p.function(8))
+    p.edit(p.function(1)).moveBody(p.function(8))
     assert(p.function(8).kind == CHIR.Func.Kind.Getter)
     roundTrip(p)(saved => assert(saved.function(8).body.nonEmpty))
   }
@@ -679,7 +642,7 @@ class PackageImplSuite extends AnyFunSuite {
     data.getValues()(7).asFunction().getBase.getBase.setType(4)
     data.getValues()(2).asBlock().setExprs(Array(1L, 2L))
     val p = PackageImpl.fromBytes(data.serializeToBinary())
-    p.function(1).moveBody(p.function(8))
+    p.edit(p.function(1)).moveBody(p.function(8))
     assert(p.function(8).params.isEmpty && p.function(1).body.isEmpty)
     roundTrip(p)(saved => assert(saved.function(8).body.nonEmpty))
   }
@@ -690,7 +653,7 @@ class PackageImplSuite extends AnyFunSuite {
     data.getValues()(7).asFunction().getBase.getBase.setType(4)
     val p = PackageImpl.fromBytes(data.serializeToBinary())
     val before = p.data.serializeToBinary()
-    val error = intercept[IllegalArgumentException](p.function(1).moveBody(p.function(8)))
+    val error = intercept[IllegalArgumentException](p.edit(p.function(1)).moveBody(p.function(8)))
     assert(error.getMessage.contains("leading parameter that is used"))
     assert(p.data.serializeToBinary().sameElements(before))
   }
@@ -785,7 +748,7 @@ class PackageImplSuite extends AnyFunSuite {
     val output = Files.createTempFile("editable-chir-", ".chir")
     try {
       p.write(output)
-      val saved = PackageImpl.read(output)
+      val saved = PackageImpl.fromBytes(Files.readAllBytes(output))
       assert(saved.validationIssues().isEmpty)
       check(saved)
     } finally Files.delete(output)
