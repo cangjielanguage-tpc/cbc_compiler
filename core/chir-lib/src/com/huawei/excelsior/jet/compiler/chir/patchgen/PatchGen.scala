@@ -171,13 +171,13 @@ final class PatchGen(source: Option[Package], pkg: EditableCHIR.Package) {
 
   private def generateMethods(): Unit = {
     val generated = mutable.ArrayBuffer.empty[Func]
-    val methods = ScalaCollections.groupMapReduce(patchClass.toSeq.flatMap(_.methods))(_.srcCodeIdentifier)(identity)((first, _) => first)
+    val methods = patchClass.toSeq.flatMap(_.methods).groupBy(_.srcCodeIdentifier)
     for (f <- patches.distinct) {
       GuardChecks.remove(f)
       if (!isInit(f)) {
         error(patchClass.nonEmpty, "patch class is expected to be initialized")
         val methodName = PatchableName.guardMethod(f)
-        val target = methods.get(methodName)
+        val target = PatchGen.uniquePatchMethod(methods.getOrElse(methodName, Seq.empty))
         error(target.nonEmpty, "patch method is expected to be initialized")
         f.moveBody(target.get)
         generated += target.get
@@ -231,5 +231,14 @@ final class PatchGen(source: Option[Package], pkg: EditableCHIR.Package) {
         case _ =>
       }
     }
+  }
+}
+
+private[chir] object PatchGen {
+  def uniquePatchMethod(methods: Seq[Func]): Option[Func] = {
+    if (methods.size > 1) {
+      throw new PatchGenException("multiple patch methods found: " + methods.head.srcCodeIdentifier)
+    }
+    methods.headOption
   }
 }
