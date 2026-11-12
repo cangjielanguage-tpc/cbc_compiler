@@ -19,8 +19,8 @@ workdir which re-runs it via `python3 runner.py test --test <ID> --skip-build`.
 From `test/`:
 
 ```bash
-python3 runner.py test --cangjie-home ~/tmp/cangjie                # run everything
-python3 runner.py test --cangjie-home ~/tmp/cangjie -j 8           # in parallel
+python3 runner.py test --cangjie-home /path/to/cangjie             # run everything
+python3 runner.py test --cangjie-home /path/to/cangjie -j 8        # in parallel
 python3 runner.py test ... --testsuite hotfix                      # one suite (repeatable)
 python3 runner.py test ... --test cj::cast/cast::default           # specific test (repeatable)
 python3 runner.py test ... --test cj::cast                         # ID prefix: every matching test (repeatable)
@@ -43,7 +43,7 @@ python3 runner.py clean                                            # remove the 
   they are applied after discovery and skipped tests are reported.
 - A failed test's stdout/stderr is dumped after the summary (`build.log` for
   build failures); `--no-dump-on-error` disables this.
-- Failed IDs are written to `<work-dir>/failed.txt` — feed it back via
+- Failed IDs are written to `<work-dir>/failed.txt`; feed it back via
   `--tests` to re-run only failures.
 - Per-test logs are in the workdir: `build.log`, `run.log`, `run.err`,
   `diff.log`. The generated `run.sh` re-runs the test through the runner and
