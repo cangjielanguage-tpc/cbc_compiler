@@ -45,8 +45,10 @@ def is_elf_object(path):
 
 
 def parse_args(args):
-    """Split the cjc command line into (out, native_names, lib_paths)."""
-    out = "main"  # cjc's default product name when -o / --output is absent
+    """Split the cjc command line into (out, native_names, lib_paths, temps)."""
+    out = ""  # cjc's default product name "main" is applied later
+    out_dir = ""
+    temps = "temps"
     native_names = []
     lib_paths = []
     i = 0
@@ -59,6 +61,21 @@ def parse_args(args):
             i += 2
         elif arg.startswith("--output=") and len(arg) > 9:
             out = arg[len("--output="):]
+            i += 1
+        elif arg.startswith("-o") and not arg.startswith("--") and len(arg) > 2:
+            out = arg[2:]  # attached form: -o<name>
+            i += 1
+        elif arg == "--output-dir" and nxt is not None:
+            out_dir = nxt
+            i += 2
+        elif arg.startswith("--output-dir=") and len(arg) > 13:
+            out_dir = arg[len("--output-dir="):]
+            i += 1
+        elif arg == "--save-temps" and nxt is not None:
+            temps = nxt
+            i += 2
+        elif arg.startswith("--save-temps=") and len(arg) > 12:
+            temps = arg[len("--save-temps="):]
             i += 1
         elif arg == "-L" and nxt is not None:
             lib_paths.append(nxt)  # library path for launcher
@@ -83,7 +100,9 @@ def parse_args(args):
             i += 1
         else:
             i += 1
-    return out, native_names, lib_paths
+    if out_dir and not out.startswith("/"):
+        out = out_dir + "/" + out
+    return out, native_names, lib_paths, temps
 
 
 def repair_fake_libs(names, lib_dirs):
@@ -122,22 +141,25 @@ def genlibrary(out, names, lib_dirs, script_dir, temps):
 
 def main():
     script_dir = os.path.dirname(sys.argv[0]) or "."
-    out, native_names, lib_paths = parse_args(sys.argv[1:])
+    out, native_names, lib_paths, temps = parse_args(sys.argv[1:])
     lib_dirs = ["."] + lib_paths
 
     repair_fake_libs(native_names, lib_dirs)
     write_foreignlibspath(lib_paths)
 
-    temps = "temps"
     Path(temps).mkdir(parents=True, exist_ok=True)
-    run(["cjc", "--save-temps", temps] + sys.argv[2:])  # like bash: cjc --emit-chir "${@:2}"
+    argv = sys.argv[2:]  # like bash: drop the job-count flag
+    if not any(a == "--save-temps" or a.startswith("--save-temps=") for a in argv):
+        argv = ["--save-temps", temps] + argv
+    run(["cjc"] + argv)
 
     if out.endswith(".a"):
         with open(CJC_LIBS, "a") as f:
             f.write(os.path.basename(out) + "\n")
 
-    if out.endswith("/"):  # -o <dir>/ is an output directory
-        out += "main"
+    if out and (out.endswith("/") or os.path.isdir(out)):  # -o <dir> is an output directory
+        out = out.rstrip("/") + "/main"
+    out = out or "main"  # cjc's default product name when -o / --output is absent
 
     if out and not out.endswith(".a") and glob.glob(temps + "/*.chir"):
         genlibrary(out, native_names, lib_dirs, script_dir, temps)
