@@ -551,43 +551,58 @@ compiler/CodegenCJNative/reflect/reflect_01.cj
 API/std/reflect/typeInfo_instanceMemberFunction_generic.cj
 
 # bug 218 (umbrella issue: `could not find VTable slot for *`)
-API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
-compiler/CHIR/CHIR2HLIR/operator_overload/all_assign.cj
-compiler/CHIR/UG/CallExpr/invoke_like_03.cj
-compiler/CHIR/UG/CallExpr/invoke_like_05.cj
-compiler/CHIR/UG/OpenGeneric/basic.cj
-compiler/CodegenCJNative/record/override_cpointer_generic_return_with_concrete_type.cj
-compiler/CodegenCJNative/vfe/vfe_01.cj
-compiler/Macro/basic_expansion/interface_operator.cj
-compiler/Modules/Package/operator/main.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00012.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00035.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00051.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00065.cj
-compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00100.cj
-compiler/Sema/call/call19.cj
-compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_4.cj
-compiler/Sema/generics/generic_upperbound_reference_09.cj
-compiler/Sema/generics/operatorOverload/operatorOverload.cj
-compiler/Sema/generics/operatorOverload/operatorOverloadinInterface.cj
-API/std/unittest/mock/compiler/createMock/accessingViaAbstractClass.cj
-API/std/unittest/mock/compiler/createMock/accessingViaInterface.cj
-API/std/unittest/mock/compiler/createMock/anotherPackageFinalClass.cj
-API/std/unittest/mock/compiler/createMock/anotherPackageFinalMethod.cj
-API/std/unittest/mock/compiler/createMock/anotherPackageInterface.cj
-API/std/unittest/mock/compiler/createMock/anotherPackageOpenAndAbstractClass.cj
+# Re-checked on 2026-11-12 against liontiger/cjts-fixes-4 with the local CJTS
+# harness: 37 cases, 24 pass, 13 fail. Sections below are grouped by status.
+#
+# Fixed - pass now, no longer excluded:
+#   - 10 fixed by `chir: support extension traversal to find all extending
+#     interfaces` (256a7be2, 45170167):
+# API/std/unittest/mock/compiler/createMock/accessingViaAbstractClass.cj
+# API/std/unittest/mock/compiler/createMock/accessingViaInterface.cj
+# API/std/unittest/mock/compiler/createMock/anotherPackageFinalClass.cj
+# API/std/unittest/mock/compiler/createMock/anotherPackageFinalMethod.cj
+# API/std/unittest/mock/compiler/createMock/anotherPackageInterface.cj
+# API/std/unittest/mock/compiler/createMock/anotherPackageOpenAndAbstractClass.cj
+# API/std/unittest/mock/compiler/createMock/finalProperties.cj
+# API/std/unittest/mock/compiler/createMock/inaccessibleMembersAnotherPackage.cj
+# API/std/unittest/mock/compiler/createSpy/accessingToNonPackagePrivateFieldsOfAnotherPackage.cj
+# API/std/unittest/mock/compiler/createSpy/accessingToPackagePrivateFieldsOfAnotherPackage.cj
+#   - 14 passed before that fix as well:
+# compiler/CHIR/CHIR2HLIR/operator_overload/all_assign.cj
+# compiler/CHIR/UG/CallExpr/invoke_like_03.cj
+# compiler/CHIR/UG/CallExpr/invoke_like_05.cj
+# compiler/CHIR/UG/OpenGeneric/basic.cj
+# compiler/Macro/basic_expansion/interface_operator.cj
+# compiler/Modules/Package/operator/main.cj
+# compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00012.cj
+# compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00035.cj
+# compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00051.cj
+# compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00065.cj
+# compiler/Sema/call/call19.cj
+# compiler/Sema/generics/generic_upperbound_reference_09.cj
+# compiler/Sema/generics/operatorOverload/operatorOverload.cj
+# compiler/Sema/generics/operatorOverload/operatorOverloadinInterface.cj
+#
+# Still failing - "could not find VTable slot" compiler assert (receiver type
+# contains a type variable or a mock class of a generic type):
 API/std/unittest/mock/compiler/createMock/defaultValues/collections.cj
 API/std/unittest/mock/compiler/createMock/defaultValues/typealias.cj
+API/std/unittest/mock/compiler/createMock/trianglePackageDependencies.cj
+API/std/unittest/mock/compiler/createMock/wrongReturnType.cj
+compiler/CodegenCJNative/vfe/vfe_01.cj
+compiler/Sema/class/ThisType/class_generic_infer_thistype_ok_4.cj
+#
+# Still failing - "call of an abstract method" at runtime (default mode):
+compiler/CodegenCJNative/record/override_cpointer_generic_return_with_concrete_type.cj
+#
+# Still failing - engine crash at run time (SIGABRT from runtime frame;
+# earlier builds reported SIGILL in libcbcengine):
 API/std/unittest/mock/compiler/createMock/dependantPackageWithEnableMock.cj
-API/std/unittest/mock/compiler/createMock/finalProperties.cj
 API/std/unittest/mock/compiler/createMock/genericMethods.cj
 API/std/unittest/mock/compiler/createMock/genericsAnotherPackage.cj
-API/std/unittest/mock/compiler/createMock/inaccessibleMembersAnotherPackage.cj
 API/std/unittest/mock/compiler/createMock/sameGenericInstanceInDifferentPackages.cj
-API/std/unittest/mock/compiler/createMock/wrongReturnType.cj
-API/std/unittest/mock/compiler/createSpy/accessingToNonPackagePrivateFieldsOfAnotherPackage.cj
-API/std/unittest/mock/compiler/createSpy/accessingToPackagePrivateFieldsOfAnotherPackage.cj
 API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
+compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00100.cj
 
 # bug 222 (castIdentity: F16/F32/F64)
 API/std/libast/tokens/toString/test_004.cj
