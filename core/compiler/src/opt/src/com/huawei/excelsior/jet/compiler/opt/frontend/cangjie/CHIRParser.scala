@@ -1110,8 +1110,9 @@ trait CHIRParser
             val lparams = Seq.empty
 
             val refClass = asClassType(refType)
-            Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
-              refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
+            val direct = Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).toList ++
+              refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams)).toList
+            direct.iterator ++ direct.iterator.flatMap(refineSuperTypes)
           }
 
           val refType = (Iterator(declType) ++ refineSuperTypes(declType)).find(t => asClassType(t) == declClass).get
