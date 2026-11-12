@@ -2994,6 +2994,16 @@ trait CHIRParser
           } else {
             GenericTypeArg(t.idx)(outerTypeInfoParam())
           }
+        case SignatureType.ThisTypeInfo =>
+          if (rootMethod.getMethodType.hasThisTypeInfoParameter) {
+            rootMethodParam(rootMethod.getMethodType.getThisTypeInfoArgIdx)
+          } else if (rootMethod.getMethodType.hasReceiverParameter) {
+            ThisTypeInfoBy(rootMethodParam(rootMethod.getMethodType.getReceiverArgIdx))
+          } else {
+            shouldNotReachHere(
+              s"ThisTypeInfo is not available in ${rootMethod.getDeclaringClass.getName}.${rootMethod.getName}"
+            )
+          }
         case t: LocalTypeVariable => genericTypeInfoParam(t.idx)
         case t: InstantiatedType  => LoadTypeInfoGeneric(t)(t.instantiatedTypeParameters.map(loadTypeInfo): _*)
         case t: ArraySlice        => LoadTypeInfoGeneric(t)(loadTypeInfo(t.elemType))
