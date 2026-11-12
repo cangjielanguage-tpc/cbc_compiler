@@ -3,15 +3,12 @@
 From the repository root, run the dedicated sbt task:
 
 ```bash
-CANGJIE_HOME=~/Projects/software/hotfix-06.11 \
-CANGJIE_STDX_PATH=~/Projects/software/hotfix-06.11/stdx/dynamic/stdx \
 sbt chirLibTest
 ```
 
-The task runs only the CHIR library ScalaTest suites and propagates test failures.
-Without CANGJIE_HOME, native integration cases are reported as canceled; model
-and schema tests still run. The SDK supplies cjc, its hotfix plugin and chir-dis.
-The test helper sources the SDK's envsetup.sh for native commands.
+The task runs the CHIR library ScalaTest suites without a Cangjie SDK, plugin or
+external tools, and packages the checker classes used by the functional runner.
+Model round trips use byte arrays; only integration checks access files.
 
 For one suite or schema version, use sbt's standard test selection:
 
@@ -22,13 +19,17 @@ sbt 'chirLib/testOnly com.huawei.excelsior.jet.compiler.chir.v13008.*'
 
 EditingApiSuite exercises shared transformation contracts on all supported
 schemas. Version-specific suites cover generated table fields, raw metadata,
-serialization and invalid references. EditingApiSuite also checks that synthetic
+serialization and invalid references. BodyEditingSuite shares body replacement and
+validation tests through small schema adapters. SharedTestData contains common
+logical constructors and a wire fixture using fields shared by all schemas.
+EditingApiSuite also checks that synthetic
 compiler nodes cannot be edited.
 
 Patch-gen's CLI Main is not a test runner. Its end-to-end fixtures are separate:
 
 ```bash
-python3 test/patch-gen/run_tests.py --cangjie-home ~/Projects/software/hotfix-06.11
+sbt chirLibTest 'patchGen/assembly'
+python3 test/patch-gen/run_tests.py --cangjie-home ~/Projects/software/hotfix-10.11
 ```
 
 ## Reading and editing
