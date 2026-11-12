@@ -16,7 +16,7 @@ is_cjc_lib() {
 # The -o / --output operand is an output name, not an input: skip it.
 prev=""
 for arg in "$@"; do
-    if [[ "$prev" == "-o" || "$prev" == "--output" || "$arg" == --output=* || "$arg" == -o?* ]]; then
+    if [[ "$prev" == "-o" || "$prev" == "--output" || "$prev" == "--output-dir" || "$prev" == "--save-temps" || "$arg" == --output=* || "$arg" == --output-dir=* || "$arg" == --save-temps=* || "$arg" == -o?* ]]; then
         prev=""
         continue
     fi
@@ -31,8 +31,8 @@ for arg in "$@"; do
 done
 
 # Find cjc output: -o <out> / --output <out> / --output=<out> / -o<out>
-# Without them cjc names its product "main"; the cbc follows suit.
-out="main"
+out=""
+out_dir=""
 TEMP_DIR=temps
 save_temps_given=
 
@@ -59,6 +59,19 @@ while [[ $i -le $# ]]; do
         continue
     fi
 
+    if [[ "$arg" == "--output-dir" ]]; then
+        next_index=$((i+1))
+        out_dir="${!next_index:-}"
+        i=$((i+2))
+        continue
+    fi
+
+    if [[ "$arg" == --output-dir=* ]]; then
+        out_dir="${arg#--output-dir=}"
+        i=$((i+1))
+        continue
+    fi
+
     if [[ "$arg" == "--save-temps" ]]; then
         next_index=$((i+1))
         TEMP_DIR="${!next_index:-$TEMP_DIR}"
@@ -77,6 +90,11 @@ while [[ $i -le $# ]]; do
     i=$((i+1))
 done
 
+# --output-dir <dir> redirects the product: final name is <dir>/<out>.
+if [ -n "$out_dir" ] && [[ "$out" != /* ]]; then
+    out="$out_dir/$out"
+fi
+
 export TEMP_DIR
 mkdir -p $TEMP_DIR
 if [ -n "$save_temps_given" ]; then
@@ -89,10 +107,14 @@ if [[ "$out" == *.a ]]; then
   echo "${out##*/}" >> $CJC_LIBS
 fi
 
-# -o <dir>/ is an output directory: the product gets cjc's default name.
-if [[ "$out" == */ ]]; then
-  out="${out}main"
+# -o <dir> (existing directory or trailing slash) is an output directory:
+# the product gets cjc's default name inside it.
+if [ -n "$out" ] && { [[ "$out" == */ ]] || [ -d "$out" ]; }; then
+  out="${out%/}/main"
 fi
+
+# Without -o / --output cjc names its product "main"; the cbc follows suit.
+out="${out:-main}"
 
 if [ -n "$out" ] && compgen -G $TEMP_DIR/*.chir > /dev/null; then
   if [[ "$out" != *.a ]]; then
