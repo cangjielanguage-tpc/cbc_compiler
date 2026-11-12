@@ -23,6 +23,7 @@ python3 runner.py test --cangjie-home ~/tmp/cangjie                # run everyth
 python3 runner.py test --cangjie-home ~/tmp/cangjie -j 8           # in parallel
 python3 runner.py test ... --testsuite hotfix                      # one suite (repeatable)
 python3 runner.py test ... --test cj::cast/cast::default           # specific test (repeatable)
+python3 runner.py test ... --test cj::cast                         # ID prefix: every matching test (repeatable)
 python3 runner.py test ... --tests failed.txt                      # IDs from a file
 python3 runner.py test ... --skip-build                            # reuse the built workdir
 python3 runner.py test-discovery                                   # list all testcase IDs
@@ -34,6 +35,10 @@ python3 runner.py clean                                            # remove the 
 
 ## Results
 
+- `--test`/`--tests` entries are testcase ID prefixes: every discovered test
+  whose ID starts with an entry runs (`--test cj::cast` selects all cast
+  tests, all modes; a full ID like `cj::cast/cast::O2` stays exact). An entry
+  matching nothing is an error.
 - Excludes live in `excludes.cfg` (glob patterns over IDs, `#` comments);
   they are applied after discovery and skipped tests are reported.
 - A failed test's stdout/stderr is dumped after the summary (`build.log` for
