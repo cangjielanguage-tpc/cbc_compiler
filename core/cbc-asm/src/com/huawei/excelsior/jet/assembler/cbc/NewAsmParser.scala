@@ -1263,6 +1263,12 @@ private object InstructionParser {
   instr("fceil.64")  { (a, s) => a.fmathunary(FloatMathOperaions.CEIL, Width.W64, s.freg, s.freg) }
   instr("ffloor.64") { (a, s) => a.fmathunary(FloatMathOperaions.FLOOR, Width.W64, s.freg, s.freg) }
 
+  instr("flog10.16") { (a, s) => a.fmathunary(FloatMathOperaions.LOG10, Width.W16, s.freg, s.freg) }
+  instr("flog2.16")  { (a, s) => a.fmathunary(FloatMathOperaions.LOG2, Width.W16, s.freg, s.freg) }
+  instr("fexp.16")   { (a, s) => a.fmathunary(FloatMathOperaions.EXP, Width.W16, s.freg, s.freg) }
+  instr("fexp2.16")  { (a, s) => a.fmathunary(FloatMathOperaions.EXP2, Width.W16, s.freg, s.freg) }
+  instr("ftrunc.16") { (a, s) => a.fmathunary(FloatMathOperaions.TRUNC, Width.W16, s.freg, s.freg) }
+
   instr("flog10.32") { (a, s) => a.fmathunary(FloatMathOperaions.LOG10, Width.W32, s.freg, s.freg) }
   instr("flog2.32")  { (a, s) => a.fmathunary(FloatMathOperaions.LOG2, Width.W32, s.freg, s.freg) }
   instr("fexp.32")   { (a, s) => a.fmathunary(FloatMathOperaions.EXP, Width.W32, s.freg, s.freg) }
