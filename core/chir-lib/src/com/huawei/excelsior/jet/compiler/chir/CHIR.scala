@@ -156,6 +156,10 @@ object CHIR {
     def associatedExpr: Expression
   }
 
+  object LocalVar {
+    def unapply(value: LocalVar): Some[Expression] = Some(value.associatedExpr)
+  }
+
   trait Parameter extends Value {
     def identifier: String
     def srcCodeIdentifier: String
@@ -557,6 +561,8 @@ object CHIR {
   }
 
   object Unary {
+    def unapply(expression: Unary): Some[(Unary.Kind, Value)] = Some((expression.kind, expression.operand))
+
     enum Kind {
       case Neg, Not, BitNot
     }
@@ -703,6 +709,10 @@ object CHIR {
     def location: Value
   }
 
+  object Load {
+    def unapply(expression: Load): Some[Value] = Some(expression.location)
+  }
+
   trait Store extends Expression {
     def value: Value
     def location: Value
@@ -746,6 +756,11 @@ object CHIR {
     def condition: Value
     def trueBlock: Block
     def falseBlock: Block
+  }
+
+  object Branch {
+    def unapply(expression: Branch): Some[(Value, Block, Block)] =
+      Some((expression.condition, expression.trueBlock, expression.falseBlock))
   }
 
   trait Exit extends Expression with Terminator

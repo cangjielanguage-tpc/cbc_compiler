@@ -8,38 +8,10 @@ import com.huawei.excelsior.jet.compiler.chir.EditableCHIR
   * package remove unreachable blocks. No expressions need cloning or renaming.
   */
 private[chir] object GuardChecks {
-  private object Branch {
-    def unapply(expression: Expression): Option[Value] = expression match {
-      case b: Branch => Some(b.condition)
-      case _ => None
-    }
-  }
-
-  private object LocalVar {
-    def unapply(value: Value): Option[Expression] = value match {
-      case v: LocalVar => Some(v.associatedExpr)
-      case _ => None
-    }
-  }
-
-  private object Not {
-    def unapply(expression: Expression): Option[Value] = expression match {
-      case u: Unary if u.kind == Unary.Kind.Not => Some(u.operand)
-      case _ => None
-    }
-  }
-
-  private object Load {
-    def unapply(expression: Expression): Option[Value] = expression match {
-      case l: Load => Some(l.location)
-      case _ => None
-    }
-  }
-
   def getFlag(function: Func): Option[GlobalVar] = {
     function.body.flatMap { body =>
       body.entryBlock.terminator match {
-        case Branch(LocalVar(Not(LocalVar(Load(g: GlobalVar)))))
+        case Branch(LocalVar(Unary(Unary.Kind.Not, LocalVar(Load(g: GlobalVar)))), _, _)
           if g.srcCodeIdentifier == PatchableName.guardFlag(function) => Some(g)
         case _ => None
       }
@@ -52,8 +24,7 @@ private[chir] object GuardChecks {
   def hasFlag(function: Func): Boolean = getFlag(function).nonEmpty
 
   def remove(function: EditableCHIR.Func): Unit = {
-    val editable = function.pkg
-    val pkg = editable
+    val pkg = function.pkg
     val initializer = (function eq pkg.packageInitFunc) || (function eq pkg.packageInitLiteralFunc)
     require(initializer || hasFlag(function), "guard var flag check was not found")
     val entry = function.body.get.entryBlock
@@ -65,6 +36,6 @@ private[chir] object GuardChecks {
     val load = condition.asInstanceOf[Unary].operand.asInstanceOf[LocalVar].associatedExpr
     require((prefix.last eq condition) && (prefix(prefix.size - 2) eq load),
       "expected Load(guardVar) and Not at the end of the entry block")
-    entry.replaceExpressions(prefix.dropRight(2), editable.newGoto(branch.trueBlock, branch.debugLoc))
+    entry.replaceExpressions(prefix.dropRight(2), pkg.newGoto(branch.trueBlock, branch.debugLoc))
   }
 }
