@@ -20,10 +20,11 @@ sbt 'chirLib/testOnly com.huawei.excelsior.jet.compiler.chir.v13008.*'
 EditingApiSuite exercises shared transformation contracts on all supported
 schemas. Version-specific suites cover generated table fields, raw metadata,
 serialization and invalid references. BodyEditingSuite shares body replacement and
-validation tests through small schema adapters. SharedTestData contains common
-logical constructors and a wire fixture using fields shared by all schemas.
-EditingApiSuite also checks that synthetic
-compiler nodes cannot be edited.
+validation tests through small schema adapters. TBackingReadSuite shares live-view
+checks across schemas. TestData owns fixture construction and mutation scenarios;
+TestAdapter in each schema only decodes generated tables and accesses their fields.
+PackageMetadataSuite checks shared phase metadata on all schemas. EditingApiSuite
+also checks that synthetic compiler nodes cannot be edited.
 
 Patch-gen's CLI Main is not a test runner. Its end-to-end fixtures are separate:
 

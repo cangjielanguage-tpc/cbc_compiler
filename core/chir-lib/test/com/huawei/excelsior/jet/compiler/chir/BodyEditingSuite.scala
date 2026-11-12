@@ -3,32 +3,8 @@ package com.huawei.excelsior.jet.compiler.chir
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-private[chir] case class FunctionMetadata(body: Long, result: Long, signature: Long, params: Seq[Long],
-                                         localCounter: Long, blockCounter: Long, groupCounter: Long,
-                                         fastNative: Boolean, wrapper: Boolean, mangledName: String)
-
-private[chir] enum BodyFault {
-  case SharedBody, WrongEntry, WrongExpressionOwner, WrongResultDefinition, ForeignParameter
-}
-
-/** Only generated-table access differs between the schema adapters. */
-private[chir] trait BodyFixture {
-  def pkg: EditableCHIR.Package
-  def rawBytes: Array[Byte]
-  def metadata: FunctionMetadata
-  def groupOwner(id: Long): Long
-  def isReturn(id: Long): Boolean
-  def corrupt(fault: BodyFault): Unit
-  final def source: EditableCHIR.Func = pkg.function(1)
-  final def group(id: Int): CHIR.BlockGroup = pkg.values.toVector(id - 1).asInstanceOf[CHIR.BlockGroup]
-  final def local(id: Int): CHIR.LocalVar = pkg.values.toVector(id - 1).asInstanceOf[CHIR.LocalVar]
-}
-
 class BodyEditingSuite extends AnyFunSuite with Matchers {
-  private val backends = Seq(
-    1203 -> (() => v1203.TestData.bodyFixture()),
-    13002 -> (() => v13002.TestData.bodyFixture()),
-    13008 -> (() => v13008.TestData.bodyFixture()))
+  private val backends = TestData.versions.map(version => version -> (() => TestData.bodyFixture(version)))
 
   for ((version, fresh) <- backends) {
     test(s"$version body replacement updates held views and ownership") {

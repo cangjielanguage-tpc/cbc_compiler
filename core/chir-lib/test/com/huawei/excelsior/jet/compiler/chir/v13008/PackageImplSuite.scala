@@ -1,13 +1,13 @@
 package com.huawei.excelsior.jet.compiler.chir.v13008
 
 import com.huawei.excelsior.jet.compiler.chir.EditableCHIR
-import com.huawei.excelsior.jet.compiler.chir.CHIR
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, TestData}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
 class PackageImplSuite extends AnyFunSuite with Matchers {
   test("patch methods can share source generic types without redeclaring them") {
-    val data = TestData.fixtureData()
+    val data = TestData.fixtureData(TestAdapter)
     val base = new CHIRFormat.TypeT
     base.setKind(CHIRFormat.CHIRTypeKind.GENERIC)
     base.setArgTys(Array.emptyLongArray)

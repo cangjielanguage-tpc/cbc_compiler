@@ -2,7 +2,7 @@ package com.huawei.excelsior.jet.compiler.chir.v13002
 
 import com.huawei.excelsior.jet.compiler.chir.EditableCHIR
 import com.google.flatbuffers.FlatBufferBuilder
-import com.huawei.excelsior.jet.compiler.chir.CHIR
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, TestData}
 import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -11,10 +11,10 @@ import java.nio.ByteBuffer
 
 class PackageImplSuite extends AnyFunSuite with Matchers {
   private def fresh(): PackageImpl =
-    PackageImpl.fromBytes(TestData.fixtureData().serializeToBinary())
+    PackageImpl.fromBytes(TestData.fixtureData(TestAdapter).serializeToBinary())
 
   test("moveBody detaches the replaced destination body and return local") {
-    val data = TestData.fixtureData()
+    val data = TestData.fixtureData(TestAdapter)
     // Give the destination the fixture's spare body, which defines local 7.
     data.getValues()(7).asFunction().setBody(5)
     data.getValues()(7).asFunction().setRetVal(7)
@@ -262,7 +262,7 @@ class PackageImplSuite extends AnyFunSuite with Matchers {
   }
 
   test("inserted types use the first matching table ID regardless of view access order") {
-    val data = TestData.fixtureData()
+    val data = TestData.fixtureData(TestAdapter)
     def booleanType(): TypeElemUnion = {
       val t = new TypeT
       t.setKind(CHIRTypeKind.BOOLEAN)
@@ -413,7 +413,7 @@ class PackageImplSuite extends AnyFunSuite with Matchers {
   }
 
   test("serialization preserves original metadata and identifier convention") {
-    val original = TestData.fixtureData()
+    val original = TestData.fixtureData(TestAdapter)
     val raw = new FlatBufferBuilder
     raw.finish(CHIRPackage.pack(raw, original))
     Seq(original.serializeToBinary(), raw.sizedByteArray()).foreach { bytes =>
@@ -436,7 +436,7 @@ class PackageImplSuite extends AnyFunSuite with Matchers {
     p.expressionTable(2).asExpression().setOperands(Array(12L))
     (p.validationIssues().exists(_.message.contains("Goto target is not a block"))) shouldBe true
 
-    val data = TestData.fixtureData()
+    val data = TestData.fixtureData(TestAdapter)
     data.getValues()(0).asFunction().setRetVal(0)
     val use = new ExpressionT; use.setBase(new BaseT); use.setKind(CHIRExprKind.Store)
     use.setOperands(Array(4L, 4L)); use.setOwner(3)
@@ -449,7 +449,7 @@ class PackageImplSuite extends AnyFunSuite with Matchers {
   }
 
   test("distinct Unit literals retain individual identities and IDs") {
-    val data = TestData.fixtureData()
+    val data = TestData.fixtureData(TestAdapter)
     def unit(): ValueElemUnion = {
       val v = new ValueT; v.setBase(new BaseT); v.setType(2); v.setKind(ValueKind.LITERAL)
       val l = new LiteralValueT; l.setBase(v); l.setLiteralKind(ConstantValueKind.UNIT)
@@ -467,7 +467,7 @@ class PackageImplSuite extends AnyFunSuite with Matchers {
   }
 
   test("schema payloads lacking specialized CHIR views are retained") {
-    val data = TestData.fixtureData()
+    val data = TestData.fixtureData(TestAdapter)
     val base = new ExpressionT; base.setBase(new BaseT); base.setKind(CHIRExprKind.Lambda)
     val lambda = new LambdaT; lambda.setBase(base); lambda.setFuncTy(5); lambda.setIdentifier("preserve-lambda")
     val entry = new ExpressionElemUnion; entry.setType(ExpressionElem.Lambda); entry.setValue(lambda)
@@ -593,7 +593,7 @@ class PackageImplSuite extends AnyFunSuite with Matchers {
   }
 
   private def receiverMoveData(sourceMember: Boolean, targetMember: Boolean): CHIRPackageT = {
-    val data = TestData.fixtureData()
+    val data = TestData.fixtureData(TestAdapter)
     val t = new TypeT
     t.setKind(CHIRTypeKind.CLASS)
     val custom = new CustomTypeT
@@ -636,7 +636,7 @@ class PackageImplSuite extends AnyFunSuite with Matchers {
   }
 
   private def genericMoveData(): CHIRPackageT = {
-    val data = TestData.fixtureData()
+    val data = TestData.fixtureData(TestAdapter)
     def generic(name: String): TypeElemUnion = {
       val base = new TypeT; base.setKind(CHIRTypeKind.GENERIC)
       val t = new GenericTypeT; t.setBase(base); t.setIdentifier(name); t.setUpperBounds(Array(2L))
