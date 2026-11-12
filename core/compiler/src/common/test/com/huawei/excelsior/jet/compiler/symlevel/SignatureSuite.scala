@@ -280,6 +280,77 @@ class SignatureSuite extends CompilerSuite with ScalaCheckPropertyChecks {
     }
   }
 
+  for ((x, y, expected) <- Seq[(SignatureType, SignatureType, Option[(Seq[SignatureType], Seq[SignatureType])])](
+    // Single variables bind any signature, including another variable
+    (LocalTypeVariable(0), Int64, Some((Seq.empty, Seq(Int64)))),
+    (ClassTypeVariable(0), Record("Roo"), Some((Seq(Record("Roo")), Seq.empty))),
+    (ClassTypeVariable(0), ClassTypeVariable(0), Some((Seq(ClassTypeVariable(0)), Seq.empty))),
+    (LocalTypeVariable(1), ClassTypeVariable(0), Some((Seq.empty, Seq(LocalTypeVariable(0), ClassTypeVariable(0))))),
+
+    (Record("Roo"), Record("Roo"), Some((Seq.empty, Seq.empty))),
+    (Record("Roo"), Record("Rar"), None),
+    (Int64, Int32, None),
+
+    (InstantiatedReference("A", Seq(
+      InstantiatedReference("B", Seq(ClassTypeVariable(0), LocalTypeVariable(1))),
+      InstantiatedReference("C", Seq(InstantiatedReference("D", Seq(ClassTypeVariable(2))))),
+    )),
+      InstantiatedReference("A", Seq(
+        InstantiatedReference("B", Seq(Int64, ClassTypeVariable(0))),
+        InstantiatedReference("C", Seq(InstantiatedReference("D", Seq(CangjieArray(ClassTypeVariable(0)))))),
+      )),
+      Some((Seq(Int64, ClassTypeVariable(1), CangjieArray(ClassTypeVariable(0))), Seq(LocalTypeVariable(0), ClassTypeVariable(0))))),
+
+    // A repeated variable must be bound consistently
+    (InstantiatedReference("C", Seq(ClassTypeVariable(0), ClassTypeVariable(0))), InstantiatedReference("C", Seq(Int64, Int64)),
+      Some((Seq(Int64), Seq.empty))),
+    (InstantiatedReference("C", Seq(ClassTypeVariable(0), ClassTypeVariable(0))), InstantiatedReference("C", Seq(Int64, Int32)), None),
+    (InstantiatedReference("C", Seq(ClassTypeVariable(0), InstantiatedReference("D", Seq(ClassTypeVariable(0))))),
+      InstantiatedReference("C", Seq(Int64, InstantiatedReference("D", Seq(Int32)))), None),
+    (Tuple(Seq(ClassTypeVariable(0), ClassTypeVariable(0))), Tuple(Seq(Int64, Int32)), None),
+
+    (InstantiatedReference("C", Seq(ClassTypeVariable(0))), InstantiatedReference("D", Seq(Int64)), None),
+    (InstantiatedReference("C", Seq(ClassTypeVariable(0))), InstantiatedReference("C", Seq(Int64, Int32)), None),
+    (InstantiatedReference("C", Seq(ClassTypeVariable(0))), InstantiatedRecord("C", Seq(Int64)), None),
+
+    // Box(base) matches the collapsed base exactly when instantiate would collapse it
+    (Box(ClassTypeVariable(0)), CangjieReference("C"), Some((Seq(CangjieReference("C")), Seq.empty))),
+    (Box(ClassTypeVariable(0)), Box(Int64), Some((Seq(Int64), Seq.empty))),
+    (Box(ClassTypeVariable(0)), OptionLikeEnum("O", Seq.empty, CangjieReference("C")), None),
+    (Box(ClassTypeVariable(0)), Int64, None),
+
+    (VArray(ClassTypeVariable(0), 3), VArray(Int64, 3), Some((Seq(Int64), Seq.empty))),
+    (VArray(ClassTypeVariable(0), 3), VArray(Int64, 5), None),
+    (Tuple(Seq(ClassTypeVariable(0), ClassTypeVariable(1))), Tuple(Seq(Int64)), None),
+
+    // instantiate never substitutes inside a CPointer over a MethodSignature
+    (CPointer(MethodSignature(LocalTypeVariable(0))(Void)), CPointer(MethodSignature(LocalTypeVariable(0))(Void)),
+      Some((Seq.empty, Seq.empty))),
+    (CPointer(MethodSignature(LocalTypeVariable(0))(Void)), CPointer(MethodSignature(LocalTypeVariable(1))(Void)), None),
+
+    // Variables absent from the bindings are substituted by themselves
+    (CPointer(ClassTypeVariable(3)), CPointer(Record("Roo")),
+      Some((Seq(ClassTypeVariable(0), ClassTypeVariable(1), ClassTypeVariable(2), Record("Roo")), Seq.empty))),
+  )) {
+    test(s"$x matchInstantiated $y") {
+      x.matchInstantiated(y) shouldBe expected
+    }
+  }
+
+  for ((x, y, expected) <- Seq[(MethodSignature, MethodSignature, Option[(Seq[SignatureType], Seq[SignatureType])])](
+    (MethodSignature()(ClassTypeVariable(0)), MethodSignature()(Int64), Some((Seq(Int64), Seq.empty))),
+    (MethodSignature()(LocalTypeVariable(0)), MethodSignature()(Int64), Some((Seq.empty, Seq(Int64)))),
+    (MethodSignature()(ClassTypeVariable(0)), MethodSignature()(Box(Int64)), Some((Seq(Box(Int64)), Seq.empty))),
+    (MethodSignature(ClassTypeVariable(0))(ClassTypeVariable(0)), MethodSignature(Int64)(Int64), Some((Seq(Int64), Seq.empty))),
+    (MethodSignature(ClassTypeVariable(0))(ClassTypeVariable(0)), MethodSignature(Int64)(Int32), None),
+    (MethodSignature(Int64)(Void), MethodSignature(Int64, Int32)(Void), None),
+    (MethodSignature(Int64)(Void), MethodSignature(Int64)(Int64), None),
+  )) {
+    test(s"$x matchInstantiated $y") {
+      x.matchInstantiated(y) shouldBe expected
+    }
+  }
+
   for ((x, expected) <- Seq[(SignatureType, SignatureType)](
     // No type parameters: returned unchanged
     (Int32, Int32),
@@ -366,6 +437,41 @@ class SignatureSuite extends CompilerSuite with ScalaCheckPropertyChecks {
         val (c2, l2) = p2
         m.instantiate(c1, l1).instantiate(c2, l2) shouldBe
           m.instantiate(c1.map(_.instantiate(c2, l2)), l1.map(_.instantiate(c2, l2)))
+    }
+  }
+
+  test("matchInstantiatedImpl collects bindings of repeated occurrences") {
+    val x = InstantiatedReference("A", Seq(
+      InstantiatedReference("B", Seq(ClassTypeVariable(0), LocalTypeVariable(1))),
+      InstantiatedReference("C", Seq(InstantiatedReference("D", Seq(ClassTypeVariable(0))))),
+    ))
+    val y = InstantiatedReference("A", Seq(
+      InstantiatedReference("B", Seq(Int64, ClassTypeVariable(0))),
+      InstantiatedReference("C", Seq(InstantiatedReference("D", Seq(Int64)))),
+    ))
+    x.matchInstantiatedImpl(y) shouldBe
+      Some(Map[TypeVariable, SignatureType](ClassTypeVariable(0) -> Int64, LocalTypeVariable(1) -> ClassTypeVariable(0)))
+  }
+
+  test("matchInstantiated of an instantiated signature restores the substitution") {
+    forAll(genSig(3), genTotalInstantiationParams) { (x: SignatureType, params: (Seq[SignatureType], Seq[SignatureType])) =>
+      val (cparams, lparams) = params
+      val y = x.instantiate(cparams, lparams)
+      x.matchInstantiated(y) match {
+        case Some((c2, l2)) => x.instantiate(c2, l2) shouldBe y
+        case None => fail(s"expected $x to match its instantiation $y")
+      }
+    }
+  }
+
+  test("MethodSignature matchInstantiated of an instantiated signature restores the substitution") {
+    forAll(genMethodSignature(3), genTotalInstantiationParams) { (m: MethodSignature, params: (Seq[SignatureType], Seq[SignatureType])) =>
+      val (cparams, lparams) = params
+      val y = m.instantiate(cparams, lparams)
+      m.matchInstantiated(y) match {
+        case Some((c2, l2)) => m.instantiate(c2, l2) shouldBe y
+        case None => fail(s"expected $m to match its instantiation $y")
+      }
     }
   }
 }

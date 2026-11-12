@@ -24,6 +24,7 @@ import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 
 import scala.PartialFunction.condOpt
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 sealed abstract class SignatureType extends Signature {
 
@@ -394,6 +395,25 @@ sealed abstract class SignatureType extends Signature {
         CPointer(p.instantiateImpl(cparams, lparams))
     }
   }
+
+  /** Matches this signature against the given instantiated one and returns the collected bindings
+    * of this signature's type variables, or None if the signatures do not match. The instantiated
+    * signature is expected to be canonical, i.e. producible by `instantiate`: a Box matches a
+    * non-Box signature only when `instantiate` would collapse it (a reference base, except
+    * OptionLikeEnum), and a CPointer over a MethodSignature is compared as-is, since `instantiate`
+    * never substitutes inside it.
+    */
+  def matchInstantiatedImpl(instantiated: SignatureType): Option[collection.Map[TypeVariable, SignatureType]] = {
+    val bindings = mutable.Map[TypeVariable, SignatureType]()
+    if (SignatureType.matchInstantiated(this, instantiated, bindings)) Some(bindings) else None
+  }
+
+  /** Returns the substitution (cparams, lparams) with `instantiate(cparams, lparams)` equal to the
+    * given instantiated signature, or None if it does not match. Variables not bound by the match
+    * are substituted by themselves, which keeps them unchanged.
+    */
+  def matchInstantiated(instantiated: SignatureType): Option[(Seq[SignatureType], Seq[SignatureType])] =
+    matchInstantiatedImpl(instantiated).map(SignatureType.instantiationParams)
 
   def uninstantiated: SignatureType = this match {
     case _: Primitive | BString | _: Record | _: JBCReference | _: CangjieReference | _: JavaArray | ThisTypeInfo => this
@@ -940,6 +960,71 @@ object SignatureType {
     case TypeKind.LONG => BytecodeTypeKind.LONG
     case TypeKind.FLOAT => BytecodeTypeKind.FLOAT
     case TypeKind.DOUBLE => BytecodeTypeKind.DOUBLE
+  }
+
+  /** Collects bindings matching the template signature x against the instantiated signature y into
+    * the given map. Repeated variables must be bound consistently, otherwise the match fails.
+    */
+  private[symlevel] def matchInstantiated(x: SignatureType, y: SignatureType, bindings: mutable.Map[TypeVariable, SignatureType]): Boolean = {
+    def bind(v: TypeVariable, to: SignatureType): Boolean = bindings.get(v) match {
+      case Some(prev) => prev == to
+      case None => bindings(v) = to; true
+    }
+
+    (x, y) match {
+      case (x: TypeVariable, y) => bind(x, y)
+      case (x: Box, y: Box) => matchInstantiated(x.base, y.base, bindings)
+      case (x: Box, y) => x.base match {
+        // Box(base) matches the collapsed base exactly when instantiate would collapse it, see instantiateImpl
+        case v: TypeVariable if y.isReference && !y.isInstanceOf[OptionLikeEnum] => bind(v, y)
+        case _ => false
+      }
+      case (x: InstantiatedRecord, y: InstantiatedRecord) =>
+        x.name == y.name && matchParams(x.instantiatedTypeParameters, y.instantiatedTypeParameters, bindings)
+      case (x: InstantiatedReference, y: InstantiatedReference) =>
+        x.name == y.name && matchParams(x.instantiatedTypeParameters, y.instantiatedTypeParameters, bindings)
+      case (x: Tuple, y: Tuple) => matchParams(x.params, y.params, bindings)
+      case (x: PackedTuple, y: PackedTuple) => matchParams(x.params, y.params, bindings)
+      case (x: ArraySlice, y: ArraySlice) => matchInstantiated(x.elemType, y.elemType, bindings)
+      case (x: CangjieArray, y: CangjieArray) => matchInstantiated(x.elemType, y.elemType, bindings)
+      case (x: VArray, y: VArray) => x.length == y.length && matchInstantiated(x.elemType, y.elemType, bindings)
+      case (x: NullableWrapper, y: NullableWrapper) => matchInstantiated(x.baseType, y.baseType, bindings)
+      case (x: NonNullableWrapper, y: NonNullableWrapper) => matchInstantiated(x.baseType, y.baseType, bindings)
+      case (x: CangjieEnumWrapper, y: CangjieEnumWrapper) => matchInstantiated(x.baseType, y.baseType, bindings)
+      case (x: ZeroSizedEnum, y: ZeroSizedEnum) => matchEnum(x, y, bindings)
+      case (x: PrimitiveBasedEnum, y: PrimitiveBasedEnum) => matchEnum(x, y, bindings)
+      case (x: ClassBasedEnum, y: ClassBasedEnum) => matchEnum(x, y, bindings)
+      case (x: UnionBasedEnum, y: UnionBasedEnum) => matchEnum(x, y, bindings)
+      case (x: OptionLikeEnum, y: OptionLikeEnum) =>
+        x.name == y.name && matchInstantiated(x.someType, y.someType, bindings) &&
+          matchParams(x.params, y.params, bindings)
+      case (x: CPointer, y: CPointer) => (x.pointee, y.pointee) match {
+        case (_: MethodSignature, _: MethodSignature) => x.pointee == y.pointee
+        case (_: MethodSignature, _) => false
+        case (_, _: MethodSignature) => false
+        case (p: SignatureType, q: SignatureType) => matchInstantiated(p, q, bindings)
+        case _ => false
+      }
+      // Types instantiate leaves unchanged must be equal as-is
+      case _ => x == y
+    }
+  }
+
+  private def matchEnum(x: CangjieEnum, y: CangjieEnum, bindings: mutable.Map[TypeVariable, SignatureType]): Boolean =
+    x.name == y.name && matchParams(x.params, y.params, bindings)
+
+  private def matchParams(xs: Seq[SignatureType], ys: Seq[SignatureType], bindings: mutable.Map[TypeVariable, SignatureType]): Boolean =
+    xs.size == ys.size && (xs zip ys).forall(matchInstantiated(_, _, bindings))
+
+  /** Converts collected bindings into the (cparams, lparams) substitution accepted by `instantiate`.
+    * Variables not present in the bindings are substituted by themselves.
+    */
+  private[symlevel] def instantiationParams(bindings: collection.Map[TypeVariable, SignatureType]): (Seq[SignatureType], Seq[SignatureType]) = {
+    val cvars = bindings.keys.collect { case v: ClassTypeVariable => v.idx }
+    val lvars = bindings.keys.collect { case v: LocalTypeVariable => v.idx }
+    val cparams = if (cvars.isEmpty) Seq.empty else Seq.tabulate(cvars.max + 1)(i => bindings.getOrElse(ClassTypeVariable(i), ClassTypeVariable(i)))
+    val lparams = if (lvars.isEmpty) Seq.empty else Seq.tabulate(lvars.max + 1)(i => bindings.getOrElse(LocalTypeVariable(i), LocalTypeVariable(i)))
+    (cparams, lparams)
   }
 
 }
