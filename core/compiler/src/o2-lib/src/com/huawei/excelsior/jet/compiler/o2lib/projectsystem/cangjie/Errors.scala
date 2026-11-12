@@ -22,6 +22,9 @@ object Errors {
 
   val NOT_SUPPORTED_DIRECTIVE_FOR_CANGJIE_PROJECT = ErrMsg2006
 
+  val ENGINE_HELPER_CHIR_NOT_RESOLVED_ERROR = ErrMsg2007
+  val ENGINE_HELPER_CHIR_NOT_FOUND_ERROR    = ErrMsg2008
+
   def error(err: ErrMsg, x: Any*): Unit = {
     env.errors.fault(err, x: _*)
   }
