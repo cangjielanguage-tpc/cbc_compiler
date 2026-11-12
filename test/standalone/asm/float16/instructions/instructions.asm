@@ -458,6 +458,57 @@
       w.fbcc.16 FNGE, FR0, FR1, branch32_2
       jmp fail
       branch32_2:
+
+      ; assertion 33: log10(2)
+      fmovi.16 FR1, 2.0
+      flog10.16 FR0, FR1
+      @dead IR2
+      movf2i.16 IR2, FR0
+      bfxz.64.64 IR2, IR2, 0, 16
+      @dead IR1
+      movi.64 IR1, 33
+      w.bcci.64 NE, IR2, 0x34d1, fail
+
+      ; assertion 34: log2(3)
+      fmovi.16 FR1, 3.0
+      flog2.16 FR0, FR1
+      @dead IR2
+      movf2i.16 IR2, FR0
+      bfxz.64.64 IR2, IR2, 0, 16
+      @dead IR1
+      movi.64 IR1, 34
+      w.bcci.64 NE, IR2, 0x3e57, fail
+
+      ; assertion 35: exp(1)
+      fmovi.16 FR1, 1.0
+      fexp.16 FR0, FR1
+      @dead IR2
+      movf2i.16 IR2, FR0
+      bfxz.64.64 IR2, IR2, 0, 16
+      @dead IR1
+      movi.64 IR1, 35
+      w.bcci.64 NE, IR2, 0x4170, fail
+
+      ; assertion 36: exp2(-24) produces the minimum subnormal
+      fmovi.16 FR1, -24.0
+      fexp2.16 FR0, FR1
+      @dead IR2
+      movf2i.16 IR2, FR0
+      bfxz.64.64 IR2, IR2, 0, 16
+      @dead IR1
+      movi.64 IR1, 36
+      w.bcci.64 NE, IR2, 0x0001, fail
+
+      ; assertion 37: trunc(-0.75) preserves the negative zero sign
+      fmovi.16 FR1, -0.75
+      ftrunc.16 FR0, FR1
+      @dead IR2
+      movf2i.16 IR2, FR0
+      bfxz.64.64 IR2, IR2, 0, 16
+      @dead IR1
+      movi.64 IR1, 37
+      w.bcci.64 NE, IR2, 0x8000, fail
+
       @dead IR1
       movi.64 IR1, 0
       ret.64 IR1
