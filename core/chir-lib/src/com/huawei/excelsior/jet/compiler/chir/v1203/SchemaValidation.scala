@@ -27,10 +27,8 @@ private[v1203] object SchemaValidation {
 
     def referenceIds(table: EntityTable, ids: Array[Long], field: String, ref: Option[EntityRef]): Unit = {
       if (ids != null) {
-        var i = 0
-        while (i < ids.length) {
-          reference(table, ids(i), field, ref)
-          i += 1
+        for (id <- ids) {
+          reference(table, id, field, ref)
         }
       }
     }
