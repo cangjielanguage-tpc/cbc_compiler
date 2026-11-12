@@ -35,15 +35,6 @@ trait CbcSymbolAdapter extends SymbolAdapter {
     case _ => Seq.empty
   }
 
-  private def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
-    val cparams = genericParams(refType)
-    val lparams = Seq.empty
-
-    val refClass = asClassType(refType)
-    Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
-      refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
-  }
-
   private def methodRefFlags(mt: MethodType): MethodRefFlags = {
     val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
     if (mt.hasRetByValParameter) flags += MethodRefFlag.SRET
@@ -92,10 +83,8 @@ trait CbcSymbolAdapter extends SymbolAdapter {
           CbcFileFormat.AotTypeSignature.ref(declaringClass.getName)
         }
         (t, Seq.empty)
-      } else if (symbol.accessKind == SPECIAL && asClassType(symbol.refType.sigType) != declaringClass) {
-        val t = Closure(symbol.refType.sigType)(refineSuperTypes).find(asClassType(_) == declaringClass).get
-        (t.toCbc, genericParams(t))
       } else {
+        assert(symbol.accessKind != SPECIAL || asClassType(symbol.refType.sigType) == declaringClass, s"${symbol.refType.sigType} != $declaringClass")
         val t = symbol.refType.sigType
         (t.toCbc, genericParams(t))
       }
