@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 /** Run shared editing contracts against every schema backend. */
 class EditingApiSuite extends AnyFunSuite with Matchers {
-  private val backends = Seq(1203, 13002, 13008).map(version => version -> (() => SharedTestData.editableFixture(version)))
+  private val backends = Seq(1203, 13002, 13008).map(version => version -> (() => TestData.editableFixture(version)))
 
   for ((version, fresh) <- backends) {
     test(s"$version new blocks and groups replace a body and survive saving") {
