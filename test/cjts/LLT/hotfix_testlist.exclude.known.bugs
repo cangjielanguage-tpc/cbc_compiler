@@ -234,6 +234,8 @@ compiler/CHIR/UG/VTable/extend/extend4/main.cj
 compiler/CHIR/UG/VTable/extend/extend5/main.cj
 compiler/CodegenCJNative/LegacyTests/operatorParenExpr.cj
 compiler/Sema/Extend/extend_lookup/main.cj
+compiler/CHIR/StaticAbstractMark/import/main.cj
+compiler/CHIR/StaticAbstractMark/import2/main.cj
 
 # bug 132 (Incorrect signature of return type)
 compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
@@ -360,6 +362,7 @@ API/std/unittest/rendering/rendering_main.cj
 API/std/unittest/rendering/rendering_worker.cj
 API/std/unittest/mock/framework/spy_test.cj
 API/std/unittest/mock/integration/parametrized.cj
+API/std/unittest/mock/integration/wrong_type_args.cj
 
 # bug 200 (CHIRParser.valueOfFunc crash for CFunc)
 Runtime/CJNative/debuginfo_ffic_expr.cj
@@ -446,29 +449,6 @@ compiler/FFI/CFFI/record/small_15.cj
 compiler/Sema/generics/instantiate_01.cj
 compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_005.cj
 
-# bug 204 (no TypeInfo metadata for `std.core:CString` compiled as `+genlibrary`)
-API/std/unittest/mock/compiler/ensurePreparedToMock/generics.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/generics/other_package.cj
-API/std/unittest/mock/compiler/misc/instance_member_ref_generic_class.cj
-API/std/unittest/mock/compiler/misc/instance_member_ref_generic_struct.cj
-API/std/unittest/mock/examples/repo_1.cj
-API/std/unittest/mock/framework/generic.cj
-API/std/unittest/mock/integration/wrong_type_args.cj
-compiler/CodegenCJNative/reflect/reflect_08.cj
-compiler/CHIR/UG/ClosureConversion/importedFunc03/main.cj
-compiler/CHIR/UG/ClosureConversion/importedFunc04/main.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods_interface.cj
-compiler/CHIR/AST2CHIR/Apply/staticfuncaccess.cj
-compiler/CHIR/StaticAbstractMark/import/main.cj
-compiler/CHIR/StaticAbstractMark/import2/main.cj
-compiler/CHIR/UG/ClosureConversion/staticFunc05.cj
-compiler/CHIR/UG/ClosureConversion/staticFunc06.cj
-compiler/Sema/function/interface_def_val.cj
-API/std/unittest/mock/compiler/createMock/generic.cj
-API/std/unittest/mock/compiler/createMock/usePrivateTypes.cj
-API/std/unittest/mock/compiler/createSpy/generic.cj
-API/std/unittest/mock/compiler/createSpy/indirectSpyingGeneric.cj
-
 # bug 206 (mut generic struct interface -- could not find VTable slot for bar(BOXi32)BOXi32)
 API/std/unittest/mock/compiler/ensurePreparedToMock/generics_with_O2.cj
 compiler/CHIR/UG/OpenGeneric/extend.cj
@@ -476,93 +456,8 @@ compiler/CHIR/UG/OpenGeneric/inter.cj
 compiler/CHIR/UG/OpenGeneric/mut.cj
 
 # bug 253 (finalizers don't run)
-Runtime/CJNative/GC/gc_wcollector_finalizer.cj
-
-# bug 212 (UNEXPECTED: no cbc for launcher)
-compiler/Driver/options/optional_space/output.cj
-compiler/Driver/options/output_dir/test_o_output_dir.cj
-compiler/Driver/options/output_file/test_file.cj
-compiler/Driver/options/output_file/test_package.cj
-Runtime/CJNative/DFX/heap_snapshot_coverage.cj
 Runtime/CJNative/GC/gc_async_allocation_finalizer.cj
-Runtime/CJNative/GC/gc_region_pressure.cj
-Runtime/CJNative/RuntimeApi/runtime_api_followup.cj
-Runtime/CJNative/RuntimeApi/runtime_api_task_loader.cj
-Runtime/CJNative/RuntimeApi/runtime_api_validation.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda01.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda02.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda03.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda04.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda05.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda06.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda07.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda08.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda09.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda10.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda11.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda12.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda13.cj
-compiler/CHIROpt/ArrayLambda/testArrayLambda14.cj
-compiler/CHIROpt/ArrayLambda/testZeroValue01.cj
-compiler/CHIROpt/ArrayLambda/testZeroValue02.cj
-compiler/CHIROpt/ArrayLambda/testZeroValue03.cj
-compiler/CHIROpt/ArrayLambda/testZeroValue04.cj
-compiler/CHIROpt/ArrayListConstStartOpt/testArrayListEq.cj
-compiler/CHIROpt/ArrayListConstStartOpt/testArrayListEqFloat.cj
-compiler/CHIROpt/ArrayListConstStartOpt/testArrayListEqNotEqual.cj
-compiler/CHIROpt/ArrayListConstStartOpt/testArrayListEqSizeInit.cj
-compiler/CHIROpt/ArrayListConstStartOpt/testArrayListForIn.cj
-compiler/CHIROpt/ArrayListConstStartOpt/testArrayListGet.cj
-compiler/CHIROpt/ArrayListConstStartOpt/testArrayListGetSet.cj
-compiler/CHIROpt/ArrayListConstStartOpt/testArrayListSet.cj
-compiler/CHIROpt/ArrayListConstStartOpt/testArrayNotOptimized.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global01.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global01_tuple.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global02.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global02_varLoad.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global03.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global04.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global04_main.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global05.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global05_main.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global06.cj
-compiler/CHIROpt/ConstPropagation/globalvar/global07.cj
-compiler/CHIROpt/ConstPropagation/globalvar/inout01.cj
-compiler/CHIROpt/ConstPropagation/globalvar/static.init01.cj
-compiler/CHIROpt/ConstPropagation/globalvar/static.init02.cj
-compiler/CHIROpt/ConstPropagation/globalvar/struct01.cj
-compiler/CHIROpt/ConstPropagation/globalvar/tuple01.cj
-compiler/CHIROpt/ConstPropagation/globalvar/tuple02.cj
-compiler/CHIROpt/ConstPropagation/simplifyBinary/add_1.cj
-compiler/CHIROpt/ConstPropagation/simplifyBinary/add_2.cj
-compiler/CHIROpt/ConstPropagation/simplifyBinary/div.cj
-compiler/CHIROpt/ConstPropagation/simplifyBinary/exp.cj
-compiler/CHIROpt/ConstPropagation/simplifyBinary/lshift.cj
-compiler/CHIROpt/ConstPropagation/simplifyBinary/mul_1.cj
-compiler/CHIROpt/ConstPropagation/simplifyBinary/mul_2.cj
-compiler/CHIROpt/ConstPropagation/simplifyBinary/rshift.cj
-compiler/CHIROpt/ConstPropagation/simplifyBinary/sub.cj
-compiler/CHIROpt/ConstPropagation/simplifyUnary/bitnot.cj
-compiler/CHIROpt/ConstPropagation/simplifyUnary/not.cj
-compiler/CHIROpt/ConstPropagation/terminator/branch.cj
-compiler/CHIROpt/ConstPropagation/terminator/int_op_with_excep1.cj
-compiler/CHIROpt/ConstPropagation/terminator/multi_branch.cj
-compiler/CHIROpt/ConstPropagation/terminator/typecast_with_excep1.cj
-compiler/CodegenCommon/bug4/default.cj
-compiler/Driver/options/obfuscation/test_seed/test_default.cj
-compiler/Driver/options/obfuscation/test_seed/test_diff.cj
-compiler/Driver/options/trim_path/trim_path4.cj
-compiler/Driver/options/trim_path/trim_path5.cj
-compiler/Modules/ambiguous_import/pe/e.cj
-compiler/Modules/arithmetic/src/main.cj
-compiler/Modules/cj-cache-master/src/main.cj
-compiler/CodegenCommon/recursive_enum/multi-pkg1/main.cj
-compiler/Modules/Package/ImportUserDefinedCorePkg/main.cj
-compiler/Sema/class/interface_static_member_func_inheritance_1.cj
-compiler/CHIR/CHIR2HLIR/generic/generic_external_use_internal/main.cj
-compiler/CodegenCommon/bug0307/default.cj
-compiler/Modules/defaultArg/default.cj
-compiler/Modules/multiple_module_01/main.cj
+Runtime/CJNative/GC/gc_wcollector_finalizer.cj
 
 # bug 215 (not implemented: intrinsic CPOINTER_ADD)
 compiler/CHIROptTest/SancovPass/traceMemCmpArray3.cj
@@ -629,9 +524,6 @@ compiler/CodegenCJNative/trycatch/unreachable.cj
 # bug 228 (container sandboxing fails some tests)
 API/std/posix/test_os_posix_processinfo.cj
 API/std/posix/test_os_posix_sysinfo_unix.cj
-
-# bug 229 (`--save-temps` while `--save-temps`)
-compiler/Driver/options/obfuscation/test_config/test_not_exist.cj
 
 # bug 234 (incorrrect overflow exception message suffixes)
 compiler/CodegenCommon/overflow/case_6.cj

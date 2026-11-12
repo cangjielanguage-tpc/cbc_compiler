@@ -662,3 +662,15 @@ compiler/Driver/options/output_type/obj/obj_test6.cj
 API/std/unittest/new_bench/bench_disable_gc.cj
 API/std/unittest/new_bench/bench_explicit_gc.cj
 Runtime/CJNative/Exception/Expection42_NewObject.cj
+
+# Python script calls raw cjc (not cjc-wrapper)
+compiler/Driver/options/trim_path/trim_path4.cj
+compiler/Driver/options/trim_path/trim_path5.cj
+
+# Runtime API tests
+Runtime/CJNative/RuntimeApi/runtime_api_followup.cj
+Runtime/CJNative/RuntimeApi/runtime_api_task_loader.cj
+Runtime/CJNative/RuntimeApi/runtime_api_validation.cj
+
+# %run %run typo in test command
+compiler/CHIR/CHIR2HLIR/generic/generic_external_use_internal/main.cj
