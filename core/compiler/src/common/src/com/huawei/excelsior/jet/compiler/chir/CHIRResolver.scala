@@ -15,7 +15,7 @@ import com.huawei.excelsior.jet.compiler.chir.EnumKind.ZeroSized
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.*
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.LocalTypeVariable
-import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
+import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassTypeOpt
 import com.huawei.excelsior.jet.compiler.symlevel.{GenericInfo, MethodSignature, SignatureType, ClassType as SymClassType, Type as SymType}
 import com.huawei.excelsior.jet.compiler.types.Approximation.CC
 import com.huawei.excelsior.jet.compiler.types.CompiledType
@@ -553,13 +553,14 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
     }
 
     def refineSuperTypes(x: SignatureType): Iterator[SignatureType] = {
-      val cparams = genericParams(x)
-      val lparams = Seq.empty
+      val symSuperTypes = asClassTypeOpt(x).iterator flatMap { refClass =>
+        val cparams = genericParams(x)
+        val lparams = Seq.empty
 
-      val refClass = asClassType(x)
-      Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
-        refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams)) ++
-        extendingInterfaces(x).iterator
+        Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
+          refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
+      }
+      symSuperTypes ++ extendingInterfaces(x).iterator
     }
 
     Closure(t)(refineSuperTypes)
