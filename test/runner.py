@@ -5,6 +5,7 @@ import glob
 import io
 import multiprocessing
 import shutil
+import shlex
 import sys
 import json
 import platform
@@ -231,10 +232,18 @@ class StandaloneTestSuite(TestSuite):
             native_so = f"{test_work_dir}/lib{native_name}.so"
             native_log = io.StringIO()
             native_err = io.StringIO()
-            res = await run_in_env(True, env, ["cc", "-shared", "-fPIC", "-o", native_so, c_file],
+            native_compiler = shlex.split(env.get("CC") or "clang")
+            native_cmd = [*native_compiler, "-shared", "-fPIC", "-o", native_so, c_file]
+            arch = {"amd64": "x86_64", "arm64": "aarch64"}.get(self.architecture, self.architecture)
+            target = f"{platform.system().lower()}_{arch}_cjnative"
+            builtins = os.path.join(self.toolchain_path, "lib", target, "libclang_rt-builtins.a")
+            if isfile(builtins):
+                native_cmd.append(builtins)
+            res = await run_in_env(True, env, native_cmd,
                                   log=native_log, stderr_log=native_err)
             if res != 0:
                 err_msg = f"{self.suite_mode.capitalize()} test native library compilation error ({native_name}): {res}\n"
+                err_msg += f"cmd: {shlex.join(native_cmd)}\n"
                 if native_log.getvalue().strip():
                     err_msg += native_log.getvalue()
                 if native_err.getvalue().strip():
