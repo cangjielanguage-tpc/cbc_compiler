@@ -153,8 +153,8 @@ $ source <toolchain>/envsetup.sh
 
 To use a locally built compiler with the toolchain (e.g. when verifying it
 with the end-to-end test suites), replace the jar in the toolchain with the
-freshly built one (the `cbc-compiler` wrapper executes `cbc-compiler.jar`
-from its own directory):
+one built as described in the [Build](#build) section (the `cbc-compiler`
+wrapper executes `cbc-compiler.jar` from its own directory):
 
 ```bash
 $ cp core/compiler/target/aot/cbc-compiler.jar <toolchain>/tools/bin/
