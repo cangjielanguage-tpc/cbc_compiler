@@ -1,123 +1,168 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/env python3
+"""cjc wrapper: build native libraries and drive cjc + cbc-compiler.
 
-SCRIPT_DIR=$(dirname "$0")
+Recognised on the cjc command line:
+  -o, --output <out>    output name (--output=<out> too)
+  <NAME>.o / <NAME>.a  C object/archive: build lib<NAME>.so from it
+  -l <NAME> / -l<NAME>  link against lib<NAME>.so
+  -L <PATH> / -L<PATH>  library search path
+"""
 
-# Static archives produced by cjc-wrapper itself (cjc --output-type=staticlib)
-# are recorded here; such .a args are Cangjie code with CHIR on hand, not
-# foreign C archives, so they must not be linked into .so libraries.
-CJC_LIBS=.cjclibs
+import glob
+import os
+import shlex
+import subprocess
+import sys
+from pathlib import Path
 
-is_cjc_lib() {
-    [[ -f $CJC_LIBS ]] && grep -qxF "${1##*/}" $CJC_LIBS
-}
+CJC_LIBS = ".cjclibs"
 
-# Fallback to python script if there are (-l / -L) arguments or C inputs (*.o, *.a).
-# The -o / --output operand is an output name, not an input: skip it.
-prev=""
-for arg in "$@"; do
-    if [[ "$prev" == "-o" || "$prev" == "--output" || "$prev" == "--output-dir" || "$prev" == "--save-temps" || "$arg" == --output=* || "$arg" == --output-dir=* || "$arg" == --save-temps=* || "$arg" == -o?* ]]; then
-        prev=""
-        continue
-    fi
-    if [[ "$arg" == *.a ]] && is_cjc_lib "$arg"; then
-        prev=""
-        continue
-    fi
-    if [[ "$arg" == "-l" || "$arg" == "-L" || "$arg" == -l?* || "$arg" == -L?* || "$arg" == *.o || "$arg" == *.a ]]; then
-        exec "$SCRIPT_DIR/cjc-wrapper.py" "$@"
-    fi
-    prev="$arg"
-done
+def is_cjc_lib(path):
+    """True if path is a static archive previously produced by cjc-wrapper."""
+    name = os.path.basename(path)
+    try:
+        with open(CJC_LIBS) as f:
+            return any(line.strip() == name for line in f)
+    except OSError:
+        return False
 
-# Find cjc output: -o <out> / --output <out> / --output=<out> / -o<out>
-out=""
-out_dir=""
-TEMP_DIR=temps
-save_temps_given=
+def run(cmd):
+    """Run cmd; on failure exit with its status (like bash `set -e`)."""
+    status = subprocess.call(cmd)
+    if status:
+        sys.exit(128 - status if status < 0 else status)
 
-i=1
-while [[ $i -le $# ]]; do
-    arg="${!i}"
 
-    if [[ "$arg" == "-o" || "$arg" == "--output" ]]; then
-        next_index=$((i+1))
-        out="${!next_index:-}"
-        i=$((i+2))
-        continue
-    fi
+def is_elf_object(path):
+    """True if path is an ELF relocatable object (e.g. `clang -c` output)."""
+    try:
+        out = subprocess.run(["readelf", "-h", path], stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL,
+                             universal_newlines=True).stdout
+    except OSError:
+        return False
+    return "REL (Relocatable" in out
 
-    if [[ "$arg" == --output=* ]]; then
-        out="${arg#--output=}"
-        i=$((i+1))
-        continue
-    fi
 
-    if [[ "$arg" == -o?* ]]; then
-        out="${arg#-o}"
-        i=$((i+1))
-        continue
-    fi
+def parse_args(args):
+    """Split the cjc command line into (out, native_names, lib_paths, temps)."""
+    out = ""  # cjc's default product name "main" is applied later
+    out_dir = ""
+    temps = "temps"
+    native_names = []
+    lib_paths = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        nxt = args[i + 1] if i + 1 < len(args) else None
 
-    if [[ "$arg" == "--output-dir" ]]; then
-        next_index=$((i+1))
-        out_dir="${!next_index:-}"
-        i=$((i+2))
-        continue
-    fi
+        if arg in ("-o", "--output") and nxt is not None:
+            out = nxt
+            i += 2
+        elif arg.startswith("--output=") and len(arg) > 9:
+            out = arg[len("--output="):]
+            i += 1
+        elif arg.startswith("-o") and not arg.startswith("--") and len(arg) > 2:
+            out = arg[2:]  # attached form: -o<name>
+            i += 1
+        elif arg == "--output-dir" and nxt is not None:
+            out_dir = nxt
+            i += 2
+        elif arg.startswith("--output-dir=") and len(arg) > 13:
+            out_dir = arg[len("--output-dir="):]
+            i += 1
+        elif arg == "--save-temps" and nxt is not None:
+            temps = nxt
+            i += 2
+        elif arg.startswith("--save-temps=") and len(arg) > 12:
+            temps = arg[len("--save-temps="):]
+            i += 1
+        elif arg == "-L" and nxt is not None:
+            lib_paths.append(nxt)  # library path for launcher
+            i += 2
+        elif arg.startswith("-L") and len(arg) > 2:
+            lib_paths.append(arg[2:])
+            i += 1
+        elif arg == "-l" and nxt is not None:
+            native_names.append(nxt)  # shared lib for -foreignlibs
+            i += 2
+        elif arg.startswith("-l") and len(arg) > 2:
+            native_names.append(arg[2:])
+            i += 1
+        elif (arg.endswith(".o") or arg.endswith(".a")) and not is_cjc_lib(arg):
+            # Static object/archive: instead build a shared lib and register it.
+            # --whole-archive matters for archives: members are referenced only
+            # via dlsym at runtime, so the linker would otherwise drop them all.
+            name = arg[:-2]
+            run(["cc", "-shared", "-Wl,-Bsymbolic", "-Wl,--whole-archive", arg,
+                 "-Wl,--no-whole-archive", "-o", f"lib{name}.so"])
+            native_names.append(name)
+            i += 1
+        else:
+            i += 1
+    if out_dir and not out.startswith("/"):
+        out = out_dir + "/" + out
+    return out, native_names, lib_paths, temps
 
-    if [[ "$arg" == --output-dir=* ]]; then
-        out_dir="${arg#--output-dir=}"
-        i=$((i+1))
-        continue
-    fi
 
-    if [[ "$arg" == "--save-temps" ]]; then
-        next_index=$((i+1))
-        TEMP_DIR="${!next_index:-$TEMP_DIR}"
-        save_temps_given=1
-        i=$((i+2))
-        continue
-    fi
+def repair_fake_libs(names, lib_dirs):
+    """Relink lib<name>.so files that are plain ELF objects (built with
+    `clang -c`) into real shared libraries the runtime can dlopen."""
+    for name in names:
+        for d in lib_dirs:
+            lib = os.path.join(d, f"lib{name}.so")
+            if os.path.isfile(lib) and is_elf_object(lib):
+                run(["cc", "-shared", "-Wl,-Bsymbolic", "-o", lib + ".tmp", lib])
+                os.replace(lib + ".tmp", lib)
 
-    if [[ "$arg" == --save-temps=* ]]; then
-        TEMP_DIR="${arg#--save-temps=}"
-        save_temps_given=1
-        i=$((i+1))
-        continue
-    fi
 
-    i=$((i+1))
-done
+def write_foreignlibspath(lib_paths):
+    """Let launcher-wrapper prepend the -L paths to LD_LIBRARY_PATH."""
+    with open(".foreignlibspath", "w") as f:
+        f.write("# generated by cjc-wrapper\n")
+        if lib_paths:
+            quoted = ":".join(shlex.quote(p) for p in lib_paths)
+            f.write("export LD_LIBRARY_PATH=" + quoted + "${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\n")
+        else:
+            f.write("# no -L paths\n")
 
-# --output-dir <dir> redirects the product: final name is <dir>/<out>.
-if [ -n "$out_dir" ] && [[ "$out" != /* ]]; then
-    out="$out_dir/$out"
-fi
 
-export TEMP_DIR
-mkdir -p $TEMP_DIR
-if [ -n "$save_temps_given" ]; then
-  cjc "${@:2}"
-else
-  cjc --save-temps $TEMP_DIR "${@:2}"
-fi
+def genlibrary(out, names, lib_dirs, temps):
+    """Produce <out>.cbc, registering foreign libs for the engine."""
+    # Cangjie packages have lib<name>.so.cbc and run as bytecode: skip them.
+    foreign = [n for n in names
+               if not any(os.path.isfile(os.path.join(d, f"lib{n}.so.cbc")) for d in lib_dirs)]
+    cmd = ["cbc-compiler",
+           *sorted(glob.glob(temps + "/*.chir")), "+genlibrary", f"-outputname={out}"]
+    if foreign:
+        cmd.append("-foreignlibs=" + ",".join(foreign))
+    run(cmd)
 
-if [[ "$out" == *.a ]]; then
-  echo "${out##*/}" >> $CJC_LIBS
-fi
 
-# -o <dir> (existing directory or trailing slash) is an output directory:
-# the product gets cjc's default name inside it.
-if [ -n "$out" ] && { [[ "$out" == */ ]] || [ -d "$out" ]; }; then
-  out="${out%/}/main"
-fi
+def main():
+    out, native_names, lib_paths, temps = parse_args(sys.argv[1:])
+    lib_dirs = ["."] + lib_paths
 
-# Without -o / --output cjc names its product "main"; the cbc follows suit.
-out="${out:-main}"
+    repair_fake_libs(native_names, lib_dirs)
+    write_foreignlibspath(lib_paths)
 
-if [ -n "$out" ] && compgen -G $TEMP_DIR/*.chir > /dev/null; then
-  if [[ "$out" != *.a ]]; then
-    cbc-compiler $TEMP_DIR/*.chir +genlibrary -outputname="$out"
-  fi
-fi
+    Path(temps).mkdir(parents=True, exist_ok=True)
+    argv = sys.argv[2:]  # like bash: drop the job-count flag
+    if not any(a == "--save-temps" or a.startswith("--save-temps=") for a in argv):
+        argv = ["--save-temps", temps] + argv
+    run(["cjc"] + argv)
+
+    if out.endswith(".a"):
+        with open(CJC_LIBS, "a") as f:
+            f.write(os.path.basename(out) + "\n")
+
+    if out and (out.endswith("/") or os.path.isdir(out)):  # -o <dir> is an output directory
+        out = out.rstrip("/") + "/main"
+    out = out or "main"  # cjc's default product name when -o / --output is absent
+
+    if out and not out.endswith(".a") and glob.glob(temps + "/*.chir"):
+        genlibrary(out, native_names, lib_dirs, temps)
+
+
+if __name__ == "__main__":
+    main()
