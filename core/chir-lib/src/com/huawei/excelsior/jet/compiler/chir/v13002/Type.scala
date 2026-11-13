@@ -4,6 +4,8 @@ import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.chir.v13002.PackageFormat.*
 import com.huawei.excelsior.jet.compiler.chir.v13002.CHIRUtils.toTypeSeq
 
+// TODO: Share common type implementation logic between schemas where possible,
+// keeping generated-schema access in version-specific adapters.
 final class BoxTypeImpl(b: TypeT)(using provider: CHIRItemProvider) extends CHIR.BoxType {
   def baseType: CHIR.Type = provider.getType[CHIR.Type](b.getArgTys()(0)).get
 }

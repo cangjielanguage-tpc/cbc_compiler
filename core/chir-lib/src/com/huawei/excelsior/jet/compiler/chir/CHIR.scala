@@ -198,6 +198,8 @@ object CHIR {
   trait Type {
   }
 
+  // TODO: Refactor type-key construction together with the type implementations,
+  // sharing common logic while preserving cycle-safe generic type identity.
   private[chir] object TypeKey {
     // Generic bounds can refer back to their generic declaration. Declaration
     // matching uses the generic identity, not recursive expansion of its bounds.
