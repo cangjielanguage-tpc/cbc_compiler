@@ -1,7 +1,6 @@
 import asyncio
 import asyncio.subprocess
 import os
-import platform
 import shlex
 import sys
 import time
@@ -106,14 +105,7 @@ async def run_cjc(input_file, output_file, output_type=None, additional_args=Non
 
 
 async def run_cc(input_file: Path, output_file: Path, log=None, timings=None) -> int:
-    compiler = shlex.split(os.environ.get("CC") or "clang")
-    cmd = [*compiler, "-shared", "-fPIC", "-o", str(output_file), str(input_file)]
-    arch = platform.machine()
-    arch = {"amd64": "x86_64", "arm64": "aarch64"}.get(arch, arch)
-    target = f"{platform.system().lower()}_{arch}_cjnative"
-    builtins = Path(os.environ["TOOLCHAIN"]) / "lib" / target / "libclang_rt-builtins.a"
-    if builtins.is_file():
-        cmd.append(str(builtins))
+    cmd = ["clang", "-rtlib=compiler-rt", "-shared", "-fPIC", "-o", str(output_file), str(input_file)]
     result = await run_in_toolchain(cmd, log=log, stderr_log=log, timings=timings)
     if result != 0 and log is not None:
         log.write(f"cmd: {shlex.join(cmd)}\n")
