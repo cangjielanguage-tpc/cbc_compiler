@@ -9,7 +9,7 @@
 package com.huawei.excelsior.jet.compiler.opt.frontend.cangjie
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.assembler.AsmType
+import com.huawei.excelsior.jet.assembler.{AsmType, Width}
 import com.huawei.excelsior.jet.compiler.{PreparationRequired, RTSProc, Stage, StatsKind}
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.bytecode.{ArithOp, BytecodePosition}
@@ -35,6 +35,7 @@ import com.huawei.excelsior.jet.compiler.types.CompiledType
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 
 import scala.annotation.tailrec
+
 
 trait CHIRParser
   extends UCEComponent
@@ -1952,6 +1953,31 @@ trait CHIRParser
             val tvSig = resolver.typeSig(tv)
             val ti = loadTypeInfo(tvSig)
             state(e) = LoadMemory(sig.toAsm, sig, atomic = false)(ti)
+
+          case kind =>
+            import CHIR.Intrinsic.Kind as IK
+            kind match {
+              case IK.OverflowCheckedAdd | IK.OverflowCheckedSub | IK.OverflowCheckedMul |
+                   IK.OverflowCheckedDiv | IK.OverflowCheckedMod | IK.OverflowCheckedPow |
+                   IK.OverflowCheckedInc | IK.OverflowCheckedDec | IK.OverflowCheckedNeg =>
+                state(e) = lowerCheckedOverflowIntrinsic(kind, e, e.args.map(state.apply))
+
+              case IK.OverflowThrowingInc   | IK.OverflowThrowingDec   | IK.OverflowThrowingNeg   |
+                   IK.OverflowSaturatingInc | IK.OverflowSaturatingDec | IK.OverflowSaturatingNeg |
+                   IK.OverflowWrappingInc   | IK.OverflowWrappingDec   | IK.OverflowWrappingNeg   =>
+                state(e) = lowerUnaryOverflowIntrinsic(method, e, kind, e.args.map(state.apply))
+
+              case IK.OverflowThrowingAdd   | IK.OverflowThrowingSub   | IK.OverflowThrowingMul   |
+                   IK.OverflowThrowingDiv   | IK.OverflowThrowingMod   | IK.OverflowThrowingPow   |
+                   IK.OverflowSaturatingAdd | IK.OverflowSaturatingSub | IK.OverflowSaturatingMul |
+                   IK.OverflowSaturatingDiv | IK.OverflowSaturatingMod | IK.OverflowSaturatingPow |
+                   IK.OverflowWrappingAdd   | IK.OverflowWrappingSub   | IK.OverflowWrappingMul   |
+                   IK.OverflowWrappingDiv   | IK.OverflowWrappingMod   | IK.OverflowWrappingPow   =>
+                state(e) = lowerBinaryOverflowIntrinsic(method, e, kind, e.args.map(state.apply))
+
+              case _ =>
+                shouldNotReachHere(kind)
+            }
         }
 
       case e: CHIR.Spawn =>
@@ -2840,6 +2866,112 @@ trait CHIRParser
       val sa = StackAlloc.Local(sigType)
       InitStringRecord(sigType, isStatic = false, xstring)(sa)
       sa
+    }
+
+    private val helperPkgName = xstr("cangjie.runtime.cbcengine.helper")
+
+    /** Looks up a cbcengine-helper method by name and arity, instantiates it, and calls it. */
+    private def callHelperMethod(name: String, typeArgs: Seq[SignatureType], retType: SignatureType, paramTypes: Seq[SignatureType], args: Seq[Node]): Node = {
+      def findHelperMethod(name: String, paramCount: Int): Method = {
+        val helperPkg = typeProvider.findClass(helperPkgName)
+        assert(helperPkg != null, "cbcengine-helper package")
+        val helper = helperPkg.getDeclaredMethods.find { m =>
+          m.getName.contains(name) && m.getSignature.parameterTypes.size == paramCount
+        }.getOrElse(null)
+        assert(helper != null, s"$name in cbcengine-helper")
+        helper
+      }
+      val helper = findHelperMethod(name, paramTypes.size)
+      val refType = fromSymType(helper.getDeclaringClass)
+      val base = new MethodReference(helper, MAK.STATIC, CompiledType(refType))
+      val target = if (typeArgs.nonEmpty) {
+        base.toInstantiatedMethodReference(typeArgs, refType)
+      } else {
+        base
+      }
+      callMethod(target, Some(refType), None, retType, paramTypes, args, None)
+    }
+
+    private def lowerCheckedOverflowIntrinsic(kind: CHIR.Intrinsic.Kind, e: CHIR.Intrinsic, args: Seq[Node]): Node = {
+      import CHIR.Intrinsic.Kind as IK
+      val helperName = kind match {
+        case IK.OverflowCheckedAdd => "checkedAdd"
+        case IK.OverflowCheckedSub => "checkedSub"
+        case IK.OverflowCheckedMul => "checkedMul"
+        case IK.OverflowCheckedDiv => "checkedDiv"
+        case IK.OverflowCheckedMod => "checkedMod"
+        case IK.OverflowCheckedPow => "checkedPow"
+        case IK.OverflowCheckedInc => "checkedInc"
+        case IK.OverflowCheckedDec => "checkedDec"
+        case IK.OverflowCheckedNeg => "checkedNeg"
+        case _ => shouldNotReachHere(kind)
+      }
+      val opt = resolver.typeSig(e.resultTpe)
+      val intSig = opt.asInstanceOf[SignatureType.OptionLikeEnum].someType
+      val (typeArgs, paramTypes) = kind match {
+        case IK.OverflowCheckedPow => (Seq.empty, Seq(SignatureType.Int64, SignatureType.UInt64))
+        case IK.OverflowCheckedInc | IK.OverflowCheckedDec | IK.OverflowCheckedNeg => (Seq(intSig), Seq(intSig))
+        case _ => (Seq(intSig), Seq(intSig, intSig))
+      }
+      callHelperMethod(helperName, typeArgs, opt, paramTypes, args)
+    }
+
+    private def lowerUnaryOverflowIntrinsic(method: Method, e: CHIR.Intrinsic, kind: CHIR.Intrinsic.Kind, args: Seq[Node]): Node = {
+      import CHIR.Intrinsic.Kind as IK
+      val intSig = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.Integral]
+      val tpe = ValueType.fromSig(intSig)
+      val signed = intSig.signed
+      val width = intSig.toAsm.width
+      val x = CheckedOp.normalizeArg(tpe, width, signed, args.head)
+      val one = CheckedOp.normalizeArg(tpe, width, signed, IntegralConst(tpe)(1))
+      val zero = CheckedOp.normalizeArg(tpe, width, signed, IntegralConst(tpe)(0))
+      val managed = method.isManaged
+      kind match {
+        case IK.OverflowWrappingInc => Add(x, one)
+        case IK.OverflowWrappingDec => Sub(x, one)
+        case IK.OverflowWrappingNeg => Neg(tpe)(x)
+        case IK.OverflowThrowingInc => CheckedOp(tpe, width, CheckedOp.Kind.ADD, signed, managed)(x, one)
+        case IK.OverflowThrowingDec => CheckedOp(tpe, width, CheckedOp.Kind.SUB, signed, managed)(x, one)
+        case IK.OverflowThrowingNeg => CheckedUnary(tpe, AsmType.integral(width, signed), CheckedUnary.Kind.Neg)(x)
+        case IK.OverflowSaturatingInc => SaturatingOp(tpe, width, SaturatingOp.Kind.ADD, signed)(x, one)
+        case IK.OverflowSaturatingDec => SaturatingOp(tpe, width, SaturatingOp.Kind.SUB, signed)(x, one)
+        case IK.OverflowSaturatingNeg => SaturatingOp(tpe, width, SaturatingOp.Kind.SUB, signed)(zero, x)
+        case _ => shouldNotReachHere(kind)
+      }
+    }
+
+    private def lowerBinaryOverflowIntrinsic(method: Method, e: CHIR.Intrinsic, kind: CHIR.Intrinsic.Kind, args: Seq[Node]): Node = {
+      import CHIR.Intrinsic.Kind as IK
+      val intSig = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.Integral]
+      val tpe = ValueType.fromSig(intSig)
+      val signed = intSig.signed
+      val nbits = intSig.bits
+      val width = intSig.toAsm.width
+      val l = CheckedOp.normalizeArg(tpe, width, signed, args.head)
+      val r = CheckedOp.normalizeArg(tpe, width, signed, args(1))
+      val managed = method.isManaged
+      kind match {
+        case IK.OverflowWrappingAdd => Add(l, r)
+        case IK.OverflowWrappingSub => Sub(l, r)
+        case IK.OverflowWrappingMul => Mul(l, r)
+        case IK.OverflowWrappingDiv => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = true)(l, r)
+        case IK.OverflowWrappingMod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(l, r)
+        case IK.OverflowWrappingPow => assert(tpe == LongType); Pow(l, r)
+        case IK.OverflowThrowingAdd => CheckedOp(tpe, width, CheckedOp.Kind.ADD, signed, managed)(l, r)
+        case IK.OverflowThrowingSub => CheckedOp(tpe, width, CheckedOp.Kind.SUB, signed, managed)(l, r)
+        case IK.OverflowThrowingMul => CheckedOp(tpe, width, CheckedOp.Kind.MUL, signed, managed)(l, r)
+        case IK.OverflowThrowingPow => assert(tpe == LongType); CheckedOp(tpe, width, CheckedOp.Kind.POW, signed, managed)(l, r)
+        case IK.OverflowThrowingDiv if signed => CheckedOp(tpe, width, CheckedOp.Kind.DIV, signed, managed)(l, r)
+        case IK.OverflowThrowingDiv => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = true, isDiv = true)(l, r)
+        case IK.OverflowThrowingMod => DivisorCheck()(r); IDivRemOp(tpe, isUnsigned = !signed, isDiv = false)(l, r)
+        case IK.OverflowSaturatingAdd => SaturatingOp(tpe, width, SaturatingOp.Kind.ADD, signed)(l, r)
+        case IK.OverflowSaturatingSub => SaturatingOp(tpe, width, SaturatingOp.Kind.SUB, signed)(l, r)
+        case IK.OverflowSaturatingMul => SaturatingOp(tpe, width, SaturatingOp.Kind.MUL, signed)(l, r)
+        case IK.OverflowSaturatingDiv => DivisorCheck()(r); SaturatingOp(tpe, width, SaturatingOp.Kind.DIV, signed)(l, r)
+        case IK.OverflowSaturatingMod => DivisorCheck()(r); SaturatingOp(tpe, width, SaturatingOp.Kind.MOD, signed)(l, r)
+        case IK.OverflowSaturatingPow => assert(nbits == 64); SaturatingOp(tpe, width, SaturatingOp.Kind.POW, signed)(l, r)
+        case _ => shouldNotReachHere(kind)
+      }
     }
 
   }
