@@ -10,7 +10,7 @@ package com.huawei.excelsior.jet.compiler.opt.frontend.cangjie
 
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
 import com.huawei.excelsior.jet.assembler.AsmType
-import com.huawei.excelsior.jet.compiler.{Env, PreparationRequired, RTSProc, Stage, StatsKind}
+import com.huawei.excelsior.jet.compiler.{PreparationRequired, RTSProc, Stage, StatsKind}
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.bytecode.{ArithOp, BytecodePosition}
 import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
@@ -1997,36 +1997,25 @@ trait CHIRParser
             val toTpe = ValueType.fromSig(resolver.typeSig(e.resultTpe))
             state(e) = ReinterpretCast(value.tpe, toTpe)(value)
 
-          // SizeOf/AlignOf: fold known CType layouts; otherwise query TypeInfo.
-          // loadTypeInfo already splits concrete (`LoadTypeInfo`) vs open
-          // (`genericTypeInfoParam` / `LoadTypeInfoGeneric`); both feed the
-          // same ti.size / ti.align opcode.
+          // SizeOf/AlignOf: the operand type symbol is emitted with holes intact;
+          // the engine folds closed layouts at rewrite time and binds holes at
+          // runtime. Naked function type parameters (and package-generic class type
+          // parameters, which are GenericFuncParams slots) address the incoming
+          // slot by index instead of a type symbol.
           case CHIR.Intrinsic.Kind.SizeOf | CHIR.Intrinsic.Kind.AlignOf =>
             import SignatureType.*
 
             val Seq(t) = e.instantiatedTypeArgs
             val tSig = resolver.typeSig(t)
             val resTpe = ValueType.fromSig(resolver.typeSig(e.resultTpe))
+            assert(resTpe == LongType, resTpe)
 
-            // instance size in bytes for statically known layouts; natural
-            // alignment equals the size, zero-sized types are aligned to 1
-            val constSize = Wrapper.skip(tSig) match {
-              case Boolean | Int8 | UInt8 => 1L
-              case Int16 | UInt16 => 2L
-              case Int32 | UInt32 | UnicodeChar32 | Float32 => 4L
-              case Int64 | UInt64 | Float64 | AddrInt | AddrUInt => 8L
-              case Unit => 0L
-              case BString | _: CPointer => Env.addressSize.toLong
-              case _ => -1L
-            }
-
-            state(e) = if (constSize >= 0) {
-              val bytes = if (e.kind == CHIR.Intrinsic.Kind.SizeOf) constSize else math.max(constSize, 1L)
-              IntegralConst(resTpe)(bytes)
-            } else {
-              assert(resTpe == LongType, resTpe)
-              val ti = loadTypeInfo(tSig)
-              if (e.kind == CHIR.Intrinsic.Kind.SizeOf) TypeSize(ti) else TypeAlign(ti)
+            val size = e.kind == CHIR.Intrinsic.Kind.SizeOf
+            state(e) = Wrapper.skip(tSig) match {
+              case t: LocalTypeVariable => if (size) TypeSizeG(t.idx) else TypeAlignG(t.idx)
+              case t: ClassTypeVariable if rootMethod.getDeclaringClass.isCangjiePackage =>
+                if (size) TypeSizeG(t.idx) else TypeAlignG(t.idx)
+              case _ => if (size) TypeSize(tSig) else TypeAlign(tSig)
             }
         }
 

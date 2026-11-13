@@ -471,6 +471,14 @@ trait ForkedAssembler {
     regSymGroup(RegSymGroup.LoadTypeInfoGeneric, analyzer.prim(dst), sig_id)
   }
 
+  def size(dst: IR, sig: Signature): Unit = instr {
+    regSymGroup(RegSymGroup.Size, analyzer.prim(dst), sig)
+  }
+
+  def align(dst: IR, sig: Signature): Unit = instr {
+    regSymGroup(RegSymGroup.Align, analyzer.prim(dst), sig)
+  }
+
   // load type argument `idx` from `ti` and put it on `dst`
   def typeArg(ti: IR, idx: Int, dst: IR): Unit = instr {
     stream
@@ -758,18 +766,20 @@ trait ForkedAssembler {
       .sleb(scut4(offset))
   }
 
-  def typeSize(dst: IR, ti: IR): Unit = instr {
+  def sizeG(dst: IR, idx: Int): Unit = instr {
     analyzer.prim(dst)
     stream
       .opc8(Opcode.TypeSize)
-      .bits(_.w4(dst).w4(analyzer.usePrim(ti)))
+      .bits(_.w4(dst).w4(0))
+      .uleb(idx)
   }
 
-  def typeAlign(dst: IR, ti: IR): Unit = instr {
+  def alignG(dst: IR, idx: Int): Unit = instr {
     analyzer.prim(dst)
     stream
       .opc8(Opcode.TypeAlign)
-      .bits(_.w4(dst).w4(analyzer.usePrim(ti)))
+      .bits(_.w4(dst).w4(0))
+      .uleb(idx)
   }
 
   def jmp(target: Label): Unit = doJmp(target)
@@ -1573,8 +1583,8 @@ object Assembler {
     case LoadTypeInfoSig
     case LoadTypeInfoGeneric
     case NewObj
-    case Unused0
-    case Unused1
+    case Size
+    case Align
     case Unused2
     case Spawn
     case SpawnFuture

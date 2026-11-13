@@ -180,6 +180,16 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
           CbcFileFormat.Box(args.head)
         }
 
+      case Kw(KeywordKind.CPtr) +: tail =>
+        tokens = tail
+        val args = parseTypeList(LBracket, RBracket)
+        if (args.length != 1) {
+          errors += newError("failed to parse cpointer args", tail.head)
+          BuiltinSignature.Nothing
+        } else {
+          CbcFileFormat.CPointer(args.head)
+        }
+
       case Kw(KeywordKind.Arr) +: tail =>
         tokens = tail
         val args = parseTypeList(LBracket, RBracket)
@@ -649,6 +659,9 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
       case Kw(KeywordKind.MethodTypeName) =>
         val name = stream.parseStr()
         builder.setTypeName(name)
+        Continue
+      case Kw(KeywordKind.GenericParams) =>
+        builder.setGenericParamCount(stream.parseInt().toInt)
         Continue
       case Kw(KeywordKind.Link) =>
         val link = stream.parseStr()
@@ -1453,9 +1466,12 @@ private object InstructionParser {
   instr("st.raw.f32") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F32, s.int) }
   instr("st.raw.f64") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F64, s.int) }
 
-  // TypeInfo queries: the operand is a raw TypeInfo pointer (not a GC reference)
-  instr("ti.size")  { (a, s) => a.typeSize(s.ireg, s.ireg) }
-  instr("ti.align") { (a, s) => a.typeAlign(s.ireg, s.ireg) }
+  // type size/align: the operand is a type symbol; the .g forms take a
+  // GenericFuncParams index of the current method
+  instr("size")    { (a, s) => a.size(s.ireg, s.tpe) }
+  instr("align")   { (a, s) => a.align(s.ireg, s.tpe) }
+  instr("size.g")  { (a, s) => a.sizeG(s.ireg, s.int.toInt) }
+  instr("align.g") { (a, s) => a.alignG(s.ireg, s.int.toInt) }
 
   // calls
   instr("call.direct")    { (a, s) => a.callDirect(s.method, s.params) }

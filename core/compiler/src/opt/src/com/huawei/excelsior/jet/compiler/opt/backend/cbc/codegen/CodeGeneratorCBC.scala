@@ -300,14 +300,22 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
 
     private def genTypeSize(x: TypeSize): Unit = {
       val IReg(dst) = x
-      val IReg(ti)  = x.ti
-      asm.typeSize(dst, ti)
+      asm.size(dst, x.target.toCbc)
     }
 
     private def genTypeAlign(x: TypeAlign): Unit = {
       val IReg(dst) = x
-      val IReg(ti)  = x.ti
-      asm.typeAlign(dst, ti)
+      asm.align(dst, x.target.toCbc)
+    }
+
+    private def genTypeSizeG(x: TypeSizeG): Unit = {
+      val IReg(dst) = x
+      asm.sizeG(dst, x.idx)
+    }
+
+    private def genTypeAlignG(x: TypeAlignG): Unit = {
+      val IReg(dst) = x
+      asm.alignG(dst, x.idx)
     }
 
     private def genCast(cast: Cast): Unit = {
@@ -1418,6 +1426,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: ArithCommutativeOp         => genArithCommutativeOp(x)
         case x: TypeSize                   => genTypeSize(x)
         case x: TypeAlign                  => genTypeAlign(x)
+        case x: TypeSizeG                  => genTypeSizeG(x)
+        case x: TypeAlignG                 => genTypeAlignG(x)
         case x: BinaryOp                   => shouldNotReachHere(s"unexpected BinaryOp: $x")
         case x: Shift                      => genShift(x)
         case x: Cast                       => genCast(x)

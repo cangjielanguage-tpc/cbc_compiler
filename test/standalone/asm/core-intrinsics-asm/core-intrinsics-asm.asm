@@ -10,21 +10,17 @@
 @type default
   @method main()I64
     @code
-      ; ---- ti.size / ti.align of I64 ----
-      load.type.info IR1, I64
-      ti.size IR2, IR1
-      ti.align IR3, IR1
-      @dead IR1
+      ; ---- size / align of I64 ----
+      size IR2, I64
+      align IR3, I64
       call.direct #println, IRZ, IR2       ; 8
       @dead IR2
       call.direct #println, IRZ, IR3       ; 8
       @dead IR3
 
-      ; ---- ti.size / ti.align of U8 ----
-      load.type.info IR1, U8
-      ti.size IR2, IR1
-      ti.align IR3, IR1
-      @dead IR1
+      ; ---- size / align of U8 ----
+      size IR2, U8
+      align IR3, U8
       call.direct #println, IRZ, IR2       ; 1
       @dead IR2
       call.direct #println, IRZ, IR3       ; 1

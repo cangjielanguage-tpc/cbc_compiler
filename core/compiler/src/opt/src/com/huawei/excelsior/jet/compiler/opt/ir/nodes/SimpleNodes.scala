@@ -304,46 +304,87 @@ trait SimpleNodes { self: Universe with Nodes =>
     def unapply(n: VectorIndexByte32): Option[(Node, Node, Node)] = Some((n.arr, n.off, n.target))
   }
 
-  /** Loads the size in bytes of the instance described by the TypeInfo pointer
-    * held in `ti` (a loadTypeInfo-derived node) as a zero-extended 64-bit
-    * unsigned value.
+  /** Size in bytes of the instance layout of `target` as a zero-extended 64-bit
+    * unsigned value. `target` may contain type variables; the holes bind at runtime.
+    * The layout itself is resolved by the engine (TypeInfo), never by the compiler.
     */
   class TypeSize private (proto: TypeSize.Proto) extends FloatingNodeWithFixedArgs(proto) {
-    def ti = arg(0)
+    def target: SignatureType = proto.target
   }
 
   object TypeSize {
-    case class Proto private[TypeSize]()
-      extends FixedArgs[TypeSize](AddrType)(LongType) {
+    case class Proto private[TypeSize](target: SignatureType)
+      extends FixedArgs[TypeSize]()(LongType) with PrototypeStrictNodeClass[TypeSize, TypeSize] {
       def newInstance() = new TypeSize(this)
     }
 
-    def proto() = Prototype.intern(Proto())
+    def apply(x: SignatureType) = proto(x)()
 
-    def apply(ti: Node): Node = proto()(ti)
+    def proto(x: SignatureType) = Prototype.intern(Proto(x))
 
-    def unapply(n: TypeSize): Option[Node] = Some(n.ti)
+    def unapply(n: TypeSize): Option[SignatureType] = Some(n.target)
   }
 
-  /** Loads the alignment in bytes of the instance described by the TypeInfo
-    * pointer held in `ti` (a loadTypeInfo-derived node) as a zero-extended
-    * 64-bit unsigned value.
+  /** Alignment in bytes of the instance layout of `target` as a zero-extended 64-bit
+    * unsigned value. `target` may contain type variables; the holes bind at runtime.
     */
   class TypeAlign private (proto: TypeAlign.Proto) extends FloatingNodeWithFixedArgs(proto) {
-    def ti = arg(0)
+    def target: SignatureType = proto.target
   }
 
   object TypeAlign {
-    case class Proto private[TypeAlign]()
-      extends FixedArgs[TypeAlign](AddrType)(LongType) {
+    case class Proto private[TypeAlign](target: SignatureType)
+      extends FixedArgs[TypeAlign]()(LongType) with PrototypeStrictNodeClass[TypeAlign, TypeAlign] {
       def newInstance() = new TypeAlign(this)
     }
 
-    def proto() = Prototype.intern(Proto())
+    def apply(x: SignatureType) = proto(x)()
 
-    def apply(ti: Node): Node = proto()(ti)
+    def proto(x: SignatureType) = Prototype.intern(Proto(x))
 
-    def unapply(n: TypeAlign): Option[Node] = Some(n.ti)
+    def unapply(n: TypeAlign): Option[SignatureType] = Some(n.target)
+  }
+
+  /** Size in bytes of the instance layout of the method's `idx`-th generic type
+    * parameter (the GenericFuncParams slot) as a zero-extended 64-bit unsigned value.
+    */
+  class TypeSizeG private (proto: TypeSizeG.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def idx: Int = proto.idx
+  }
+
+  object TypeSizeG {
+    case class Proto private[TypeSizeG](idx: Int)
+      extends FixedArgs[TypeSizeG]()(LongType) with PrototypeStrictNodeClass[TypeSizeG, TypeSizeG] {
+      assert(idx >= 0)
+      def newInstance() = new TypeSizeG(this)
+    }
+
+    def apply(idx: Int) = proto(idx)()
+
+    def proto(idx: Int) = Prototype.intern(Proto(idx))
+
+    def unapply(n: TypeSizeG): Option[Int] = Some(n.idx)
+  }
+
+  /** Alignment in bytes of the instance layout of the method's `idx`-th generic type
+    * parameter (the GenericFuncParams slot) as a zero-extended 64-bit unsigned value.
+    */
+  class TypeAlignG private (proto: TypeAlignG.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def idx: Int = proto.idx
+  }
+
+  object TypeAlignG {
+    case class Proto private[TypeAlignG](idx: Int)
+      extends FixedArgs[TypeAlignG]()(LongType) with PrototypeStrictNodeClass[TypeAlignG, TypeAlignG] {
+      assert(idx >= 0)
+      def newInstance() = new TypeAlignG(this)
+    }
+
+    def apply(idx: Int) = proto(idx)()
+
+    def proto(idx: Int) = Prototype.intern(Proto(idx))
+
+    def unapply(n: TypeAlignG): Option[Int] = Some(n.idx)
   }
 
   class CheckedUnary(proto: CheckedUnary.Proto) extends NodeWithFixedArgs(proto) with SpinalNode with CanThrow with ProducesValue {

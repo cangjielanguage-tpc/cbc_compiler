@@ -70,7 +70,7 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
       | GetFieldSeqRef | GetStaticFieldSeqRef
       | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq
       | CangjieReferenceNode
-      | TypeSize | TypeAlign) => true
+      | TypeSize | TypeAlign | TypeSizeG | TypeAlignG) => true
 
     case x: BitcodeDeferred.FieldOp => x.hasObj
 

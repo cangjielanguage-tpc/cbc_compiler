@@ -9,7 +9,8 @@ func alignOfGeneric<T>() : UIntNative where T <: CType {
 }
 
 main() {
-    // concrete types: the compiler folds these to compile-time constants
+    // concrete types: no compile-time fold; size/align resolve through
+    // TypeInfo at runtime
     println(sizeOf<Int64>())
     println(alignOf<Int64>())
     println(sizeOf<Int32>())
@@ -18,7 +19,7 @@ main() {
     println(sizeOf<Unit>())
     println(alignOf<Unit>())
     println(sizeOf<CPointer<Int64>>())
-    // generic bodies are compiled as ti.size/ti.align TypeInfo queries
+    // generic helpers resolve size/align of the runtime type argument
     println(sizeOfGeneric<Int64>())
     println(alignOfGeneric<Int64>())
     println(sizeOfGeneric<UInt8>())

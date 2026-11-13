@@ -95,6 +95,7 @@ object Token {
     case Fieldref extends KeywordKind("@field_ref")
     case Link extends KeywordKind("@link")
     case MethodTypeName extends KeywordKind("@method_type_name")
+    case GenericParams extends KeywordKind("@generic_params")
     case SourceFile extends KeywordKind("@source_file")
     case UntypedCount extends KeywordKind("@untyped_count")
     case SavedIregs extends KeywordKind("@saved_iregs")
@@ -169,6 +170,7 @@ object Token {
     case F64     extends KeywordKind("F64")
     case PTR     extends KeywordKind("PTR")
     case Box     extends KeywordKind("Box")
+    case CPtr    extends KeywordKind("CPtr")
 
     case EQ       extends KeywordKind("EQ")
     case NE       extends KeywordKind("NE")
