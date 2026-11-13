@@ -81,7 +81,8 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
       // the `.ti` symbol and the runtime type name are built from.
       val isPrivate = v.attributes.contains(CHIR.Attribute.Private)
       if (isPrivate) {
-        s"${v.packageName}:${v.identifier.stripPrefix("@")}" + suffix
+        val prefix = if isLambda(v.tpe) then "" else v.packageName
+        prefix + v.identifier.stripPrefix("@") + suffix
       } else if (srcName.isEmpty || isGenericInstantiated(v)) {
         v.identifier.stripPrefix("@") + suffix
       } else {
