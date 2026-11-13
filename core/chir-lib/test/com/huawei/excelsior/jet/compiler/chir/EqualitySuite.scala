@@ -19,6 +19,34 @@ class EqualitySuite extends AnyFunSuite with Matchers {
     Set[CHIR.FuncSig](functions.head, functions.last).size shouldBe 2
   }
 
+  test("nominal definition equality compares shared metadata across schemas") {
+    val fixtures = TestData.versions.map(TestData.readFixture)
+    val definitions = fixtures.map(_.definition[CHIR.ClassDef](1))
+    for (a <- definitions; b <- definitions) {
+      a shouldEqual b
+      a.hashCode shouldBe b.hashCode
+    }
+    fixtures.last.pkg.edit(definitions.last).replaceAttributes(Seq(CHIR.Attribute.Public))
+    definitions.head should not equal definitions.last
+    definitions.last should not equal definitions.head
+  }
+
+  test("different definition kinds may share hashes without comparing equal") {
+    val data = v13008.CHIRFormat.CHIRPackageT.deserializeFromBinary(TestData.readFixture(13008).rawBytes)
+    val cls = data.getDefs()(0).asClassDef().getBase
+    val struct = data.getDefs()(1).asStructDef().getBase
+    struct.setPackageName(cls.getPackageName)
+    struct.setIdentifier(cls.getIdentifier)
+    struct.setSrcCodeIdentifier(cls.getSrcCodeIdentifier)
+    struct.getBase.setAttributes(cls.getBase.getAttributes)
+    for (version <- TestData.versions) {
+      val definitions = CHIR.fromBytes(data.serializeToBinary(), version).typeDefs.toVector
+      definitions(0).hashCode shouldBe definitions(1).hashCode
+      definitions(0) should not equal definitions(1)
+      definitions(1) should not equal definitions(0)
+    }
+  }
+
   test("identity equality does not evaluate function type metadata") {
     val t = new CHIR.FuncType {
       def paramTypes: Seq[CHIR.Type] = fail("identity equality must not read parameters")
@@ -28,7 +56,7 @@ class EqualitySuite extends AnyFunSuite with Matchers {
       def isC: Boolean = fail("unexpected query")
       def hasVarArg: Boolean = fail("unexpected query")
     }
-    t.equals(t) shouldBe true
-    t.equals(null) shouldBe false
+    t shouldEqual t
+    t should not equal null
   }
 }

@@ -75,7 +75,7 @@ object CHIR {
     def retVal: Option[LocalVar]
     def sourceFile: Option[String]
 
-    final def equalTo(that: FuncSig): Boolean = that match {
+    protected final def equalsImpl(that: FuncSig): Boolean = that match {
       case that: Func =>
         this.name == that.name &&
         this.tpe == that.tpe &&
@@ -226,11 +226,11 @@ object CHIR {
     def typeDef: CustomTypeDef
     def genericTypeParams: Seq[Type]
 
-    def equalTo(that: CustomType): Boolean
+    protected def equalsImpl(that: CustomType): Boolean
 
     final override def equals(other: Any): Boolean = other match {
       case that: AnyRef if this eq that => true
-      case that: CustomType => equalTo(that)
+      case that: CustomType => equalsImpl(that)
       case _ => false
     }
 
@@ -240,7 +240,7 @@ object CHIR {
   trait ClassType extends CustomType {
     def typeDef: ClassDef
 
-    final def equalTo(that: CustomType): Boolean = that match {
+    protected final def equalsImpl(that: CustomType): Boolean = that match {
       case that: ClassType =>
         this.typeDef == that.typeDef &&
         this.genericTypeParams == that.genericTypeParams
@@ -251,7 +251,7 @@ object CHIR {
   trait EnumType extends CustomType {
     def typeDef: EnumDef
 
-    final def equalTo(that: CustomType): Boolean = that match {
+    protected final def equalsImpl(that: CustomType): Boolean = that match {
       case that: EnumType =>
         this.typeDef == that.typeDef &&
         this.genericTypeParams == that.genericTypeParams
@@ -262,7 +262,7 @@ object CHIR {
   trait StructType extends CustomType {
     def typeDef: StructDef
 
-    final def equalTo(that: CustomType): Boolean = that match {
+    protected final def equalsImpl(that: CustomType): Boolean = that match {
       case that: StructType =>
         this.typeDef == that.typeDef &&
         this.genericTypeParams == that.genericTypeParams
@@ -389,11 +389,16 @@ object CHIR {
     def vtables: Seq[VTable]
     def implementedInterfaces: Seq[ClassType]
 
-    def equalTo(that: CustomTypeDef): Boolean
+    protected def equalsImpl(that: CustomTypeDef): Boolean
 
     final override def equals(other: Any): Boolean = other match {
       case that: AnyRef if this eq that => true
-      case that: CustomTypeDef => equalTo(that)
+      case that: CustomTypeDef =>
+        this.packageName == that.packageName &&
+        this.identifier == that.identifier &&
+        this.srcCodeIdentifier == that.srcCodeIdentifier &&
+        this.attributes == that.attributes &&
+        equalsImpl(that)
       case _ => false
     }
 
@@ -405,12 +410,8 @@ object CHIR {
     def tpe: EnumType
     def ctors: Seq[EnumCtor]
 
-    final def equalTo(that: CustomTypeDef): Boolean = that match {
+    protected final def equalsImpl(that: CustomTypeDef): Boolean = that match {
       case that: EnumDef =>
-        this.packageName == that.packageName &&
-        this.identifier == that.identifier &&
-        this.srcCodeIdentifier == that.srcCodeIdentifier &&
-        this.attributes == that.attributes &&
         this.nonExhaustive == that.nonExhaustive
       case _ => false
     }
@@ -421,12 +422,8 @@ object CHIR {
     def tpe: ClassType
     def superClass: Option[ClassType]
 
-    final def equalTo(that: CustomTypeDef): Boolean = that match {
+    protected final def equalsImpl(that: CustomTypeDef): Boolean = that match {
       case that: ClassDef =>
-        this.packageName == that.packageName &&
-        this.identifier == that.identifier &&
-        this.srcCodeIdentifier == that.srcCodeIdentifier &&
-        this.attributes == that.attributes &&
         this.isClass == that.isClass &&
         this.superClass == that.superClass
       case _ => false
@@ -436,12 +433,8 @@ object CHIR {
   trait StructDef extends CustomTypeDef {
     def tpe: StructType
 
-    final def equalTo(that: CustomTypeDef): Boolean = that match {
-      case that: StructDef =>
-        this.packageName == that.packageName &&
-        this.identifier == that.identifier &&
-        this.srcCodeIdentifier == that.srcCodeIdentifier &&
-        this.attributes == that.attributes
+    protected final def equalsImpl(that: CustomTypeDef): Boolean = that match {
+      case _: StructDef => true
       case _ => false
     }
   }
@@ -449,12 +442,8 @@ object CHIR {
   trait ExtendDef extends CustomTypeDef {
     def genericTypeParams: Seq[GenericType]
 
-    final def equalTo(that: CustomTypeDef): Boolean = that match {
+    protected final def equalsImpl(that: CustomTypeDef): Boolean = that match {
       case that: ExtendDef =>
-        this.packageName == that.packageName &&
-        this.identifier == that.identifier &&
-        this.srcCodeIdentifier == that.srcCodeIdentifier &&
-        this.attributes == that.attributes &&
         this.genericTypeParams == that.genericTypeParams
       case _ => false
     }
@@ -465,11 +454,11 @@ object CHIR {
     def tpe: FuncType
     def genericTypeParams: Seq[Type]
 
-    def equalTo(that: FuncSig): Boolean
+    protected def equalsImpl(that: FuncSig): Boolean
 
     final override def equals(other: Any): Boolean = other match {
       case that: AnyRef if this eq that => true
-      case that: FuncSig => equalTo(that)
+      case that: FuncSig => equalsImpl(that)
       case _ => false
     }
 
@@ -487,7 +476,7 @@ object CHIR {
     def parentType: Type
     def returnType: Type
 
-    final def equalTo(that: FuncSig): Boolean = that match {
+    protected final def equalsImpl(that: FuncSig): Boolean = that match {
       case that: VMethod =>
         this.name == that.name &&
         this.tpe == that.tpe &&
