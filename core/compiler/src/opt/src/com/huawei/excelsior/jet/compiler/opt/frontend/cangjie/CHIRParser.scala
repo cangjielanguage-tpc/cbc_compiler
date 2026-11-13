@@ -673,8 +673,21 @@ trait CHIRParser
     private def parseExpression(e: CHIR.Expression, block: Block, state: State): Unit = e match {
       case e: CHIR.Unary =>
         import SignatureType.*
-        val arg = state(e.operand)
+
         val sig = resolver.typeSig(e.resultTpe)
+
+        def adjustRes(n: Node) = if (sig == Float16) ValueConvert(AsmType.F32, AsmType.F16)(n) else n
+
+        def adjustArg(n: Node) = sig match {
+          case Float16 =>
+            ValueConvert(AsmType.F16, AsmType.F32)(n)
+          case sig: SignatureType.Integral if sig.isShortIntegral =>
+            BitFieldExtract(IntType, 0, sig.bits, signExtension = sig.signed, n)
+          case _ =>
+            n
+        }
+
+        val arg = adjustArg(state(e.operand))
         val tpe = if (sig == Float16) FloatType else arg.tpe
         assert(tpe != ValueType, arg)
 
@@ -697,7 +710,7 @@ trait CHIRParser
           case CHIR.Unary.Kind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
           case CHIR.Unary.Kind.BitNot => Xor(arg, IntegralConst(tpe)(-1))
         }
-        state(e) = n
+        state(e) = adjustRes(n)
 
       case e: CHIR.Binary =>
         import SignatureType.*
