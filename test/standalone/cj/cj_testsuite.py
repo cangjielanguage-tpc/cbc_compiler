@@ -1,4 +1,3 @@
-import asyncio
 import difflib
 import glob
 import io
@@ -30,13 +29,6 @@ def _fail(log_io, wdir):
 class CjTestSuite(TestSuite):
     SUITE = "cj"
 
-    def __init__(self):
-        super().__init__()
-        self._copy_locks = {}
-
-    def _copy_lock(self, key):
-        return self._copy_locks.setdefault(key, asyncio.Lock())
-
     async def discover(self) -> list[TestIdentifier]:
         ids = []
         for f in sorted(glob.glob(str(HERE / "**" / "*.cj"), recursive=True)):
@@ -51,50 +43,45 @@ class CjTestSuite(TestSuite):
         rel = test_id.test_name
         name = Path(rel).name
         mode = test_id.mode
-        test_src = HERE / Path(rel).parent
-        test_copy = workdir.parent      # per-test area, shared by default + O2
-        wdir = workdir                  # per-mode area
+        wdir = workdir                  # per-mode area: source copy + artifacts
         log_io = io.StringIO()
         jc_options = os.environ.get("CBC_JC_OPTIONS", "")
 
-        # Copy the source dir once (shared across modes), then compile its deps.
-        async with self._copy_lock(test_id.test_name):
-            if not test_copy.exists():
-                shutil.copytree(test_src, test_copy, dirs_exist_ok=True)
+        # Each mode gets its own copy of the sources, so default and O2 build
+        # and run fully concurrently without sharing any files.
+        shutil.copytree(HERE / Path(rel).parent, wdir, dirs_exist_ok=True)
 
-            # AOT packages -> native dylibs, later linked via -cbcaotdeps.
-            aot_names = []
-            for aot_file in sorted(test_copy.glob("*.aot.cj")):
-                aot_name = aot_file.name[:-len(".aot.cj")]
-                aot_so = aot_file.with_name(f"lib{aot_name}{DYLIB_EXT}")
-                res = await run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io,
-                                    timings=self.timings)
-                log_io.write(f"\n[aot {aot_name}] exit {res}\n")
-                if res != 0:
-                    return _fail(log_io, wdir)
-                aot_names.append(aot_name)
+        # AOT packages -> native dylibs, later linked via -cbcaotdeps.
+        aot_names = []
+        for aot_file in sorted(wdir.glob("*.aot.cj")):
+            aot_name = aot_file.name[:-len(".aot.cj")]
+            aot_so = aot_file.with_name(f"lib{aot_name}{DYLIB_EXT}")
+            res = await run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io,
+                                timings=self.timings)
+            log_io.write(f"\n[aot {aot_name}] exit {res}\n")
+            if res != 0:
+                return _fail(log_io, wdir)
+            aot_names.append(aot_name)
 
-            # Foreign C -> native dylibs, later linked via -foreignlibs.
-            native_names = []
-            for c_file in sorted(test_copy.glob("*.c")):
-                native_name = c_file.stem
-                native_so = c_file.with_name(f"lib{native_name}{DYLIB_EXT}")
-                res = await run_in_toolchain(
-                    ["cc", "-shared", "-fPIC", "-o", str(native_so), str(c_file)],
-                    log=log_io, timings=self.timings)
-                log_io.write(f"\n[native {native_name}] exit {res}\n")
-                if res != 0:
-                    return _fail(log_io, wdir)
-                native_names.append(native_name)
-
-        wdir.mkdir(parents=True, exist_ok=True)
+        # Foreign C -> native dylibs, later linked via -foreignlibs.
+        native_names = []
+        for c_file in sorted(wdir.glob("*.c")):
+            native_name = c_file.stem
+            native_so = c_file.with_name(f"lib{native_name}{DYLIB_EXT}")
+            res = await run_in_toolchain(
+                ["cc", "-shared", "-fPIC", "-o", str(native_so), str(c_file)],
+                log=log_io, timings=self.timings)
+            log_io.write(f"\n[native {native_name}] exit {res}\n")
+            if res != 0:
+                return _fail(log_io, wdir)
+            native_names.append(native_name)
 
         # cjc import search paths; widened as more packages are compiled in.
-        import_paths = [test_copy] if aot_names else []
+        import_paths = [wdir] if aot_names else []
 
         # Intermediate packages -> CHIR, handed to cbc-compiler as extra inputs.
         int_chir_files = []
-        int_files = sorted(test_copy.glob("*.int.cj"))
+        int_files = sorted(wdir.glob("*.int.cj"))
         if int_files:
             temp_dir = wdir / "temp"
             temp_dir.mkdir(exist_ok=True)
@@ -111,7 +98,7 @@ class CjTestSuite(TestSuite):
                 int_chir_files.append(f"temp/{pkg}.chir")
 
         # Compile the entry point to CHIR.
-        res = await run_cjc(str(test_copy / f"{name}.cj"), str(wdir / f"{name}.chir"),
+        res = await run_cjc(str(wdir / f"{name}.cj"), str(wdir / f"{name}.chir"),
                             additional_args=["--emit-chir"] + _import_flags(import_paths) + mode_flags(mode),
                             log=log_io, timings=self.timings)
         log_io.write(f"\n[cjc {mode}] exit {res}\n")
@@ -140,7 +127,7 @@ class CjTestSuite(TestSuite):
         if not cbc.is_file():
             raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
-        cmd = f'{DYLIB_PATH_VAR}="{wdir.parent}:${DYLIB_PATH_VAR}" launcher "{wdir}/{name}.cbc"'
+        cmd = f'{DYLIB_PATH_VAR}="{wdir}:${DYLIB_PATH_VAR}" launcher "{wdir}/{name}.cbc"'
         out_io = io.StringIO()
         err_io = io.StringIO()
         res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io,
@@ -155,7 +142,7 @@ class CjTestSuite(TestSuite):
 
 
 def verify(wdir, name):
-    expected = wdir.parent / f"{name}.expected"
+    expected = wdir / f"{name}.expected"
     actual = wdir / f"{name}.actual"
     exp_txt = expected.read_text() if expected.is_file() else None
     act_txt = actual.read_text()

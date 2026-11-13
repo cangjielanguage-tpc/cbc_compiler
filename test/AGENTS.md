@@ -74,10 +74,12 @@ automatically, there is no list to register it in.
 ## Workdir layout
 
 All generated files live under `test/workdir/<suite>/<test>/<mode>/`
-(override with `--work-dir`); the suite copies the test's sources there
-before building. Per test you will find `*.actual` with the observed output
-for diffing, the logs `build.log`, `run.log`, `run.err` and `diff.log`, and
-a generated `run.sh` that re-runs this single test through the runner.
+(override with `--work-dir`); the suite copies the test's sources into the
+per-mode directory before building, so modes (e.g. `default` and `O2`) never
+share files and build and run fully concurrently. Per test you will find
+`*.actual` with the observed output for diffing, the logs `build.log`,
+`run.log`, `run.err` and `diff.log`, and a generated `run.sh` that re-runs
+this single test through the runner.
 `python3 test/runner.py clean` removes the whole workdir.
 
 ## Verifying compiler changes
