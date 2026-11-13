@@ -241,24 +241,32 @@ trait SimpleNodes { self: Universe with Nodes =>
     * Byte offsets are relative to the raw array data start.
     * The result is the index of the first differing byte (0..31), or 32 when
     * all compared bytes are equal.
+    * Parse placeholder: unrolled into a primitive loop right after parsing
+    * (see VectorIntrinsicsExpansion), never reaches the backend.
     */
   class VectorCompare32 private (proto: VectorCompare32.Proto)
-    extends FloatingNodeWithFixedArgs(proto) with StructurallyUnique {
-    def arr1 = arg(0)
-    def off1 = arg(1)
-    def arr2 = arg(2)
-    def off2 = arg(3)
+    extends NodeWithFixedArgs(proto) with SpinalMemoryNode with ProducesValue {
+    def arrayType = proto.arrayType
+
+    def arr1 = arg(2)
+    def off1 = arg(3)
+    def arr2 = arg(4)
+    def off2 = arg(5)
   }
 
   object VectorCompare32 {
-    case class Proto private[VectorCompare32]()
-      extends FixedArgs[VectorCompare32](TRefType, LongType, TRefType, LongType)(LongType) {
+    case class Proto private[VectorCompare32](arrayType: SignatureType)
+      extends FixedArgs[VectorCompare32](ControlType, MemoryType, TRefType, LongType, TRefType, LongType)(LongType)
+        with ControlMemoryValueTagged[VectorCompare32] {
+      require(arrayType.isCangjieArray)
+
       def newInstance() = new VectorCompare32(this)
     }
 
-    def proto() = Prototype.intern(Proto())
+    def proto(arrayType: SignatureType) = Prototype.intern(Proto(arrayType))
 
-    def apply(arr1: Node, off1: Node, arr2: Node, off2: Node): Node = proto()(arr1, off1, arr2, off2)
+    def apply(arrayType: SignatureType)(arr1: Node, off1: Node, arr2: Node, off2: Node): Node =
+      proto(arrayType)(arr1, off1, arr2, off2)
 
     def unapply(n: VectorCompare32): Option[(Node, Node, Node, Node)] = Some((n.arr1, n.off1, n.arr2, n.off2))
   }
@@ -267,23 +275,31 @@ trait SimpleNodes { self: Universe with Nodes =>
     * Byte offset is relative to the raw array data start.
     * The result is the index of the first equal byte (0..31), or 32 when
     * none of the scanned bytes matches.
+    * Parse placeholder: unrolled into a primitive loop right after parsing
+    * (see VectorIntrinsicsExpansion), never reaches the backend.
     */
   class VectorIndexByte32 private (proto: VectorIndexByte32.Proto)
-    extends FloatingNodeWithFixedArgs(proto) with StructurallyUnique {
-    def arr = arg(0)
-    def off = arg(1)
-    def target = arg(2)
+    extends NodeWithFixedArgs(proto) with SpinalMemoryNode with ProducesValue {
+    def arrayType = proto.arrayType
+
+    def arr = arg(2)
+    def off = arg(3)
+    def target = arg(4)
   }
 
   object VectorIndexByte32 {
-    case class Proto private[VectorIndexByte32]()
-      extends FixedArgs[VectorIndexByte32](TRefType, LongType, IntType)(LongType) {
+    case class Proto private[VectorIndexByte32](arrayType: SignatureType)
+      extends FixedArgs[VectorIndexByte32](ControlType, MemoryType, TRefType, LongType, IntType)(LongType)
+        with ControlMemoryValueTagged[VectorIndexByte32] {
+      require(arrayType.isCangjieArray)
+
       def newInstance() = new VectorIndexByte32(this)
     }
 
-    def proto() = Prototype.intern(Proto())
+    def proto(arrayType: SignatureType) = Prototype.intern(Proto(arrayType))
 
-    def apply(arr: Node, off: Node, target: Node): Node = proto()(arr, off, target)
+    def apply(arrayType: SignatureType)(arr: Node, off: Node, target: Node): Node =
+      proto(arrayType)(arr, off, target)
 
     def unapply(n: VectorIndexByte32): Option[(Node, Node, Node)] = Some((n.arr, n.off, n.target))
   }

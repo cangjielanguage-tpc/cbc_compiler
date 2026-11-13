@@ -1453,10 +1453,6 @@ private object InstructionParser {
   instr("st.raw.f32") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F32, s.int) }
   instr("st.raw.f64") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F64, s.int) }
 
-  // 32-byte block string helpers
-  instr("vcmp.32") { (a, s) => a.vcmp32(s.ireg, s.ireg, s.ireg, s.ireg, s.ireg) }
-  instr("vidx.32") { (a, s) => a.vidx32(s.ireg, s.ireg, s.ireg, s.ireg) }
-
   // TypeInfo queries: the operand is a raw TypeInfo pointer (not a GC reference)
   instr("ti.size")  { (a, s) => a.typeSize(s.ireg, s.ireg) }
   instr("ti.align") { (a, s) => a.typeAlign(s.ireg, s.ireg) }

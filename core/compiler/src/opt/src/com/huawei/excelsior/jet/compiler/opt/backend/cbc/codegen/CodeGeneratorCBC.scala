@@ -298,23 +298,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       }
     }
 
-    private def genVectorCompare32(x: VectorCompare32): Unit = {
-      val IReg(dst)  = x
-      val IReg(arr1) = x.arr1
-      val IReg(off1) = x.off1
-      val IReg(arr2) = x.arr2
-      val IReg(off2) = x.off2
-      asm.vcmp32(dst, arr1, off1, arr2, off2)
-    }
-
-    private def genVectorIndexByte32(x: VectorIndexByte32): Unit = {
-      val IReg(dst)    = x
-      val IReg(arr)    = x.arr
-      val IReg(off)    = x.off
-      val IReg(target) = x.target
-      asm.vidx32(dst, arr, off, target)
-    }
-
     private def genTypeSize(x: TypeSize): Unit = {
       val IReg(dst) = x
       val IReg(ti)  = x.ti
@@ -1433,8 +1416,6 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case x: CheckedOp                  => genCheckedOp(x)
         case x: SaturatingOp               => genSaturatingOp(x)
         case x: ArithCommutativeOp         => genArithCommutativeOp(x)
-        case x: VectorCompare32            => genVectorCompare32(x)
-        case x: VectorIndexByte32          => genVectorIndexByte32(x)
         case x: TypeSize                   => genTypeSize(x)
         case x: TypeAlign                  => genTypeAlign(x)
         case x: BinaryOp                   => shouldNotReachHere(s"unexpected BinaryOp: $x")

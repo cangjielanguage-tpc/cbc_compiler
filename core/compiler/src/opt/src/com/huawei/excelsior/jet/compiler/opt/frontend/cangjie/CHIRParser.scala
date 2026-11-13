@@ -42,6 +42,7 @@ trait CHIRParser
      with CangjieParsingCleanup
      with DCEComponent
      with HLIRNodes
+     with VectorIntrinsicsExpansion
      with ContextTypesRecalculation
      with Arrays { self: Universe =>
 
@@ -243,6 +244,18 @@ trait CHIRParser
         commit(idx)
 
         BBlock(loopContinue.falseExit)
+      }
+    }
+
+    for (n <- all[VectorCompare32]) {
+      replaceByCode(n) {
+        expandVectorCompare32(n)
+      }
+    }
+
+    for (n <- all[VectorIndexByte32]) {
+      replaceByCode(n) {
+        expandVectorIndexByte32(n)
       }
     }
 
@@ -1907,12 +1920,20 @@ trait CHIRParser
 
           // String optimizer: 32-byte block compare/search over raw arrays.
           case CHIR.Intrinsic.Kind.VectorCompare32 =>
-            val Seq(arr1, off1, arr2, off2) = e.args
-            state(e) = VectorCompare32(state(arr1), state(off1), state(arr2), state(off2))
+            val args = e.args
+            val ValueSig(arrayType) = args.head
+            val (arr1, off1, arr2, off2) = args match {
+              case Seq(arr1, off1, arr2, off2) => (state(arr1), state(off1), state(arr2), state(off2))
+            }
+            state(e) = VectorCompare32(arrayType)(arr1, off1, arr2, off2)
 
           case CHIR.Intrinsic.Kind.VectorIndexByte32 =>
-            val Seq(arr, off, target) = e.args
-            state(e) = VectorIndexByte32(state(arr), state(off), state(target))
+            val args = e.args
+            val ValueSig(arrayType) = args.head
+            val (arr, off, target) = args match {
+              case Seq(arr, off, target) => (state(arr), state(off), state(target))
+            }
+            state(e) = VectorIndexByte32(arrayType)(arr, off, target)
 
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {

@@ -151,8 +151,6 @@ trait IOComponent extends BinaryIO { self: Universe =>
     VArrayFillByLambda.Proto,
     PowI.Proto,
     Pow.Proto,
-    VectorCompare32.Proto,
-    VectorIndexByte32.Proto,
     TypeSize.Proto,
     TypeAlign.Proto,
     // Add new prototypes above this line.
