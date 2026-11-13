@@ -798,6 +798,8 @@ trait CangjieNodes { self: Universe =>
     def srcStart = arg(4)
     def dstStart = arg(5)
     def len = arg(6)
+
+    override def canThrow = arrayType.getArrayElemType.isVariableSizeType
   }
 
   object ArrayBuiltInCopyTo {

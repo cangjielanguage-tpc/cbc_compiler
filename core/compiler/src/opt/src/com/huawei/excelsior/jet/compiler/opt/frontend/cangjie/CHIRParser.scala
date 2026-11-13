@@ -216,9 +216,6 @@ trait CHIRParser
         val arrayType = n.arrayType
         val idxTpe = n.srcStart.tpe
 
-        // TODO: is not true if stdlib is compiled to CBC
-        assert(!arrayType.getArrayElemType.isTypeVariable)
-
         val entryGoto = Goto()
 
         val loopBlock = BBlock(entryGoto)
@@ -228,14 +225,8 @@ trait CHIRParser
         val bodyBlock = BBlock(loopContinue.trueExit)
         val srcIdx = Add(n.srcStart, idx)
         val dstIdx = Add(n.dstStart, idx)
-        if (arrayType.getArrayElemType.isRecord) {
-          val srcMem = GetFieldSeqRef(maybeDerivedPtrBase(n.src), n.src, arrayIndex(arrayType, srcIdx))
-          val dstMem = GetFieldSeqRef(maybeDerivedPtrBase(n.dst), n.dst, arrayIndex(arrayType, dstIdx))
-          copy(arrayType.getArrayElemType, dstMem, srcMem)
-        } else {
-          val value = arrayGet(arrayType, n.src, srcIdx)
-          arrayPut(arrayType, n.dst, dstIdx, value)
-        }
+        val value = arrayGet(arrayType, n.src, srcIdx)
+        arrayPut(arrayType, n.dst, dstIdx, value)
         val bodyGoto = Goto()
 
         loopBlock.addArg(bodyGoto)
