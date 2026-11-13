@@ -815,6 +815,14 @@ trait CangjieNodes { self: Universe =>
 
   object AtomicOps {
 
+    private def irType(field: CangjieFieldReference): Type = {
+      if (field.fieldType.isTypeVariable) {
+        TRefType
+      } else {
+        ValueType(field.fieldType)
+      }
+    }
+
     sealed trait AtomicNode extends SpinalMemoryNode {
       def field: CangjieFieldReference
       final def fieldType: AsmType = field.fieldType.toAsm
@@ -828,7 +836,7 @@ trait CangjieNodes { self: Universe =>
 
     object Load {
       case class Proto private[Load](obj: Type, field: CangjieFieldReference)
-        extends FixedArgs[Load](ControlType, MemoryType, obj)(ValueType(field.fieldType)) with ControlMemoryValueTagged[Load] {
+        extends FixedArgs[Load](ControlType, MemoryType, obj)(irType(field)) with ControlMemoryValueTagged[Load] {
 
         def newInstance() = new Load(this)
       }
@@ -844,7 +852,7 @@ trait CangjieNodes { self: Universe =>
 
     object Store {
       case class Proto private[Store](obj: Type, field: CangjieFieldReference)
-        extends FixedArgs[Store](ControlType, MemoryType, obj, ValueType(field.fieldType))(ControlType) with ControlMemoryTagged[Store] {
+        extends FixedArgs[Store](ControlType, MemoryType, obj, irType(field))(ControlType) with ControlMemoryTagged[Store] {
 
         def newInstance() = new Store(this)
       }
@@ -861,7 +869,7 @@ trait CangjieNodes { self: Universe =>
 
     object CAS {
       case class Proto private[CAS](obj: Type, field: CangjieFieldReference)
-        extends FixedArgs[CAS](ControlType, MemoryType, obj, ValueType(field.fieldType), ValueType(field.fieldType))(ValueType(SignatureType.Boolean))
+        extends FixedArgs[CAS](ControlType, MemoryType, obj, irType(field), irType(field))(ValueType(SignatureType.Boolean))
           with ControlMemoryValueTagged[CAS] {
 
         def newInstance() = new CAS(this)
@@ -884,7 +892,7 @@ trait CangjieNodes { self: Universe =>
       }
 
       case class Proto private[Simple](kind: Kind, obj: Type, field: CangjieFieldReference)
-        extends FixedArgs[Simple](ControlType, MemoryType, obj, ValueType(field.fieldType))(ValueType(field.fieldType))
+        extends FixedArgs[Simple](ControlType, MemoryType, obj, irType(field))(irType(field))
           with ControlMemoryValueTagged[Simple] {
         def newInstance() = new Simple(this)
       }
