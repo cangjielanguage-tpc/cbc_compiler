@@ -293,6 +293,9 @@ object PackageImpl {
   * and edits. No original serialized buffer or secondary reader is retained.
   * Like the previous implementation, this class is not thread-safe.
   */
+// TODO: Split entity storage/views, editing, validation and serialization into smaller
+// implementation components that share the same backing model. Share logic between
+// schemas where possible.
 final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends EditableCHIR.Package with CHIRItemProvider {
 
   private val model: CHIRPackageT = loaded._1
