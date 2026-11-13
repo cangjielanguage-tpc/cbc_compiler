@@ -5,7 +5,8 @@ Guidance for AI coding agents working in this repository.
 For repository layout, build instructions and configuration, see [README.md](README.md)
 - this file does not repeat it.
 For the end-to-end test suites (standalone / hotfix) - toolchain setup and how
-to run them - see [test/README.md](test/README.md).
+to run them - see [test/README.md](test/README.md); agent-level detail on the
+suites (pipelines, test layout, workdir) is in [test/AGENTS.md](test/AGENTS.md).
 
 ## Verifying changes
 
@@ -14,11 +15,12 @@ end-to-end standalone suite (at least the tests related to the change),
 especially when CHIR parsing, lowering or ABI conventions are touched:
 
 ```bash
-$ python3 test/runner.py test --filter standalone/cj/bugs
+$ python3 test/runner.py test --test cj::bugs
 ```
 
 Toolchain setup, suite descriptions and more `runner.py` options are described
-in [test/README.md](test/README.md).
+in [test/README.md](test/README.md), the pipelines and test layout in
+[test/AGENTS.md](test/AGENTS.md).
 
 ## Scala 3 style
 

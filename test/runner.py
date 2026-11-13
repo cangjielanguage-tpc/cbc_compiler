@@ -1,695 +1,455 @@
 import argparse
 import asyncio
-import asyncio.subprocess
-import glob
-import io
-import multiprocessing
+import fnmatch
+import importlib.util
+import os
+import shlex
 import shutil
 import sys
-import json
-import platform
-import os
-from os.path import dirname, realpath, isfile
-from typing import Callable, Awaitable, AnyStr
-from runner_tools import *
+from os.path import isfile
+from pathlib import Path
+
+from runner_lib import MissingArtifacts, TestIdentifier, TestSuite
+
+ROOT = Path(__file__).resolve().parent
+EXCLUDES_CFG = ROOT / "excludes.cfg"
 
 
-def parse_tests_list(config_file: str, root_dir: str) -> dict[str, list[str]]:
-    """
-    Parses a file with 'include' and 'exclude' glob patterns and returns a dict mapping matched files
-    to a list of explicitly excluded modes.
+def load_suites() -> list[tuple[str, TestSuite]]:
+    suites = []
+    for f in sorted(ROOT.glob("**/*_testsuite.py")):
+        if "workdir" in f.parts:
+            continue
+        mod_name = "testsuite_mod_" + f.stem
+        spec = importlib.util.spec_from_file_location(mod_name, f)
+        if spec is None or spec.loader is None:
+            raise SystemExit(f"Cannot load testsuite module from {f}")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = mod
+        spec.loader.exec_module(mod)
+        classes = [obj for obj in vars(mod).values()
+                   if isinstance(obj, type) and issubclass(obj, TestSuite) and obj is not TestSuite]
+        if len(classes) != 1:
+            raise SystemExit(f"Suite {f.name} must define exactly one TestSuite subclass, found {len(classes)}")
+        suite = classes[0]()
+        suites.append((suite.SUITE, suite))
+    if not suites:
+        raise SystemExit("No testsuites found (expected files named {name}_testsuite.py)")
+    return suites
 
-    If 'exclude' has no mode specified, the test is removed completely.
-    """
-    include_patterns = []
-    exclude_patterns = []
 
-    with open(config_file, 'r') as f:
-        for line in f:
+def read_id_list(path: str | Path) -> list[str]:
+    ids = []
+    with open(path) as fh:
+        for line in fh:
             line = line.strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
+            ids.append(line)
+    return ids
 
-            if line.startswith('include '):
-                suffix = line.replace('include ', '', 1).strip()
-                include_patterns.append(suffix)
-            elif line.startswith('exclude '):
-                suffix = line.replace('exclude ', '', 1).strip()
-                parts = suffix.split(maxsplit=1)
-                pattern = parts[0]
-                mode = parts[1] if len(parts) > 1 else None
-                exclude_patterns.append((pattern, mode))
 
-    matched_files = set()
-    for pattern in include_patterns:
-        full_pattern = os.path.join(root_dir, pattern)
-        files = glob.glob(full_pattern, recursive=True)
-        matched_files.update(os.path.relpath(f, root_dir) for f in files if os.path.isfile(f))
+def load_excludes() -> list[str]:
+    if not EXCLUDES_CFG.exists():
+        return []
+    return read_id_list(EXCLUDES_CFG)
 
-    excluded_modes = {}
-    for pattern, mode in exclude_patterns:
-        full_pattern = os.path.join(root_dir, pattern)
-        files = glob.glob(full_pattern, recursive=True)
-        for f in files:
-            rel_f = os.path.relpath(f, root_dir)
-            if mode is None:
-                matched_files.discard(rel_f)
+
+def matches(test_id: TestIdentifier, pattern: str) -> bool:
+    # A mode pattern has two `::` separators (suite + mode); a whole-test
+    # pattern has one (suite only).
+    if pattern.count("::") >= 2:
+        return fnmatch.fnmatch(str(test_id), pattern)
+    return fnmatch.fnmatch(f"{test_id.suite_name}::{test_id.test_name}", pattern)
+
+
+def excluded(test_id: TestIdentifier, patterns: list[str]) -> bool:
+    return any(matches(test_id, pattern) for pattern in patterns)
+
+
+def autodetect_parallelism() -> int:
+    try:
+        limit = len(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        limit = os.cpu_count() or 1
+    return max(1, limit // 4)
+
+
+def write_run_sh(tdir: Path, test_id: TestIdentifier, toolchain: str) -> None:
+    run_sh = tdir / "run.sh"
+    run_sh.write_text(
+        "#!/bin/bash\n"
+        f"cd {shlex.quote(str(ROOT))} || exit 1\n"
+        f"exec python3 runner.py test --test {shlex.quote(str(test_id))} --skip-build"
+        f" --cangjie-home {shlex.quote(str(Path(toolchain).absolute()))}\n"
+    )
+    run_sh.chmod(0o755)
+
+
+def auto_status() -> str:
+    # Default: interactive on a terminal, plain when captured/piped.
+    return "interactive" if sys.stdout.isatty() else "plain"
+
+
+class Permit:
+    """One live line of the interactive progress area.
+
+    A task acquires a permit for the duration of its build+run; while held,
+    the permit's line shows the current activity. Releasing the permit frees
+    both the concurrency slot and its line.
+    """
+
+    def __init__(self, reporter: "StatusReporter", index: int):
+        self.reporter = reporter
+        self.index = index
+        self.activity: tuple[str, TestIdentifier] | None = None
+
+    def set(self, phase: str, test_id: TestIdentifier) -> None:
+        if self.reporter.interactive:
+            self.activity = (phase, test_id)
+            self.reporter._render()
+        else:
+            print(self.reporter._fit(self.reporter._format(phase, test_id)), flush=True)
+
+    def release(self) -> None:
+        self.activity = None
+        self.reporter._pool.put_nowait(self)
+        self.reporter._render()
+
+
+class StatusReporter:
+    """Progress display for the run.
+
+    ``plain`` appends one line per phase (building/built/running/done) to stdout.
+
+    ``interactive`` keeps an N-line live area at the bottom of the screen, one
+    line per permit (= per parallel worker). A task must acquire a permit
+    before running; all changes go through the permit, which triggers a render
+    of the whole live area. Results are logged as permanent ``done``/``failed``
+    lines (with a ``[finished/total]`` counter) above the live area; live lines
+    show ``building``/``running`` without a counter. All prefixes are padded to
+    one fixed width (computed from the total test count) so the ``<test>``
+    column never shifts as the counter grows. The reporter is the single
+    writer: every redraw is an atomic cursor-up + clear + rewrite, and every
+    line is truncated to the terminal width so nothing wraps and the cursor
+    math stays valid. Falls back to plain when stdout is not a terminal.
+    """
+
+    def __init__(self, mode: str, parallelism: int, total: int) -> None:
+        self.interactive = mode == "interactive" and sys.stdout.isatty()
+        self.total = total
+        self._finished = 0
+        self.n = max(1, parallelism)
+        try:
+            # Query the terminal directly: shutil.get_terminal_size honours a
+            # stale COLUMNS env var, which over-reports and makes lines wrap.
+            self.width = max(20, os.get_terminal_size(sys.stdout.fileno()).columns)
+        except OSError:
+            self.width = 80
+        # Widest possible counter is [total/total]; the prefix column is
+        # fixed for the whole run so lines never shift as the counter grows.
+        ctr_max = f"[{total}/{total}]"
+        self.prefix_width = max(len(f"failed {ctr_max}"), len("building"))
+        self.permits: list[Permit] = [Permit(self, i) for i in range(self.n)]
+        self._pool: asyncio.Queue[Permit] = asyncio.Queue()
+        for permit in self.permits:
+            self._pool.put_nowait(permit)
+        self._drawn = False
+
+    def _fit(self, line: str) -> str:
+        limit = self.width - 1
+        if len(line) <= limit:
+            return line
+        tail = line[-16:]
+        head = line[:max(0, limit - 3 - len(tail))]
+        return head + "..." + tail
+
+    def _format(self, verb: str, test_id: TestIdentifier, finished: int | None = None) -> str:
+        if finished is None:
+            body = verb
+        else:
+            body = f"{verb} [{finished}/{self.total}]"
+        pad = " " * (self.prefix_width - len(body))
+        return f"{body}{pad}- {test_id}"
+
+    async def acquire(self) -> Permit:
+        return await self._pool.get()
+
+    def _render(self, move_up: bool = True) -> None:
+        if not self.interactive:
+            return
+        if move_up and self._drawn and self.n > 1:
+            sys.stdout.write(f"\x1b[{self.n - 1}A")
+        lines = []
+        for permit in self.permits:
+            if permit.activity is None:
+                text = ""
             else:
-                if rel_f in matched_files:
-                    if rel_f not in excluded_modes:
-                        excluded_modes[rel_f] = set()
-                    excluded_modes[rel_f].add(mode)
+                phase, test_id = permit.activity
+                text = self._format(phase, test_id)
+            lines.append(self._fit(text).ljust(self.width - 1))
+        sys.stdout.write("\r" + "\n\r".join(lines))
+        sys.stdout.flush()
+        self._drawn = True
 
-    tests = {}
-    for f in sorted(list(matched_files)):
-        if f.endswith(".aot.cj"):
-            continue
-        if f.endswith(".int.cj"):
-            continue
-        if f.endswith(".cj"):
-            test_name = f[:-len(".cj")]
-        elif f.endswith(".asm"):
-            test_name = f[:-len(".asm")]
-        else:
-            raise ValueError(f"Incorrect test extension: {f}")
-
-        tests[test_name] = list(excluded_modes.get(f, set()))
-
-    return tests
-
-
-class TestSuite:
-    architecture = platform.machine()
-    cpu_count = multiprocessing.cpu_count()
-    root_dir = dirname(os.path.abspath(__file__))
-    _stderr_lock = asyncio.Lock()
-
-    def __init__(self, toolchain_path: str = ""):
-        self.toolchain_path = toolchain_path
-
-    async def print_stderr(self, msg: str):
-        async with self._stderr_lock:
-            print(msg, file=sys.stderr)
-
-    async def print_status(self, msg: str):
-        async with self._stderr_lock:
-            print(msg, file=sys.stderr)
-
-    def parallelism(self, args) -> int:
-        if args.parallelism is not None:
-            return max(1, int(args.parallelism))
-        return max(1, self.cpu_count // 4)
-
-    async def build_parallel(self, tests: list[str], build: Callable[[str], Awaitable[int]], args, parallelism="auto"):
-        if parallelism == "auto":
-            parallelism = self.parallelism(args)
-        semaphore = asyncio.Semaphore(parallelism)
-
-        async def build_bounded(test: str):
-            async with semaphore:
-                return test, await build(test)
-
-        tasks = [asyncio.create_task(build_bounded(test)) for test in tests]
-        results = await asyncio.gather(*tasks)
-        succeeded = [test_name for test_name, err_code in results if err_code == 0]
-        return succeeded
-
-    def expected_file(self, test_name: str):
-        return dotexpected(test_name)
-
-    async def check_result(self, test_name: str, custom_actual: str = None):
-        expected = self.expected_file(test_name)
-        actual = custom_actual if custom_actual is not None else dotactual(test_name)
-        diff_err = io.StringIO()
-        t0 = time.monotonic()
-        res = await run_async(" ".join(diff(actual, expected)), shell=True, stderr_log=diff_err)
-        await Timings.add('diff', time.monotonic() - t0, timing_chunk)
-        return res
-
-    def cjc_env(self):
-        return os.environ.copy()
-
-    async def run_cjc(self, file: str, output_file: str, output_type: str = None,
-                      additional_args: list[str] = [], use_tool_sh: bool = True, cwd=None, log=None, env=None):
-        assert '.' in file
-        cjc_args = ["--fobf-layout", "--fno-obf-export-symbols", "--fobf-source-path",
-                    "--obf-sym-output-mapping", dotobfdotmap(output_file)]
-        cjc_args += additional_args
-
-        if output_type is not None:
-            cjc_args += ["--output-type", output_type]
-
-        _, file_extension = file.rsplit('.', 1)
-        assert file_extension == "cj"
-
-        cjc_args += ["-o", output_file]
-
-        cjc_cmd_list = ['cjc', '--int-overflow', 'wrapping', '-Woff', 'unused', file, *cjc_args]
-
-        env = self.cjc_env() if env is None else env.copy()
-        return await run_in_env(use_tool_sh, env, cjc_cmd_list, cwd=cwd, log=log)
-
-    def clean(self):
-        print("Cleaning up...")
-        generated_patterns = ["*.out", "*.cbc", "*.bchir", "*.bchir2", "*.cjo", "*.pdba", "*.chir.fb",
-                              "*.actual", "*.dasm", "*.a", "*.so"]
-        generated_dirs = ["default/", "O2/", "jetpdb/", "hotfix-default/"]
-        for pattern in generated_patterns:
-            for f in glob.glob(os.path.join(self.root_dir, "**", pattern), recursive=True):
-                if os.path.isfile(f):
-                    os.remove(f)
-                elif os.path.isdir(f):
-                    shutil.rmtree(f)
-        for dir_pattern in generated_dirs:
-            for f in glob.glob(os.path.join(self.root_dir, "**", dir_pattern), recursive=True):
-                if os.path.isdir(f):
-                    shutil.rmtree(f)
-
-
-class StandaloneTestSuite(TestSuite):
-    suite_mode = "standalone"
-    compilation_modes = [("default", []), ("O2", ["-O2"])]
-    standalone_tests = parse_tests_list(os.path.join(TestSuite.root_dir, "tests-list-standalone.cfg"), root_dir=TestSuite.root_dir)
-
-    def __init__(self, toolchain_path: str):
-        super().__init__(toolchain_path)
-        self.compilation_failures = []
-        self.built_modes = set()
-
-    def mode_work_dir(self, test_work_dir, mode, name):
-        return f"{test_work_dir}/{mode}"
-
-    async def prepare_tools(self, args):
-        return 0
-
-    async def compile_cj(self, test_name, mode_work_dir, name, import_args, opt_flags, aot_names, native_names, log):
-        res = await self.run_cjc(dotcj(test_name),
-                                 output_file=dotchir(f"{mode_work_dir}/{name}"),
-                                 additional_args=["--emit-chir"] + import_args + opt_flags,
-                                 log=log)
-        return res
-
-    def cbc_name(self, name):
-        return name
-
-    def cj_run_command(self, mode_work_dir, name, env):
-        return ["launcher", f"{mode_work_dir}/{name}.cbc"]
-
-    async def build_test(self, test_name: str):
-        test_work_dir, name = test_name.rsplit('/', 1)
-        in_mode = test_name[test_name.find('standalone'):].split('/')[1]
-        env = os.environ.copy()
-
-        excluded_modes = self.standalone_tests.get(test_name, [])
-
-        await self.print_status(f"Building test {test_name}")
-
-        import_args = []
-        aot_so_names = []
-        for aot_file in sorted(glob.glob(os.path.join(test_work_dir, "*.aot.cj"))):
-            aot_name = os.path.basename(aot_file)[:-len(".aot.cj")]
-            aot_so = f"{test_work_dir}/lib{aot_name}.so"
-            import_args = ["--import-path", test_work_dir]
-            aot_log = io.StringIO()
-            res = await self.run_cjc(aot_file,
-                                     output_file=aot_so,
-                                     output_type="dylib",
-                                     use_tool_sh=True,
-                                     log=aot_log)
-            if res != 0:
-                err_msg = f"{self.suite_mode.capitalize()} test AOT part compilation error ({aot_name}): {res}\n"
-                if aot_log.getvalue().strip():
-                    err_msg += aot_log.getvalue()
-                await self.print_stderr(err_msg)
-                self.compilation_failures.append((test_name, in_mode, f"during AOT compilation ({aot_name})"))
-                return 1
-            aot_so_names.append(aot_name)
-
-        native_lib_names = []
-        for c_file in sorted(glob.glob(os.path.join(test_work_dir, "*.c"))):
-            native_name = os.path.basename(c_file)[:-len(".c")]
-            native_so = f"{test_work_dir}/lib{native_name}.so"
-            native_log = io.StringIO()
-            native_err = io.StringIO()
-            res = await run_in_env(True, env, ["cc", "-shared", "-fPIC", "-o", native_so, c_file],
-                                  log=native_log, stderr_log=native_err)
-            if res != 0:
-                err_msg = f"{self.suite_mode.capitalize()} test native library compilation error ({native_name}): {res}\n"
-                if native_log.getvalue().strip():
-                    err_msg += native_log.getvalue()
-                if native_err.getvalue().strip():
-                    err_msg += native_err.getvalue()
-                await self.print_stderr(err_msg)
-                self.compilation_failures.append((test_name, in_mode, f"during native library compilation ({native_name})"))
-                return 1
-            native_lib_names.append(native_name)
-
-        match in_mode:
-            case "asm":
-                compile_asm_to_obj = ['cbc-asm', dotasm(test_name)]
-
-                with open(f"{test_work_dir}/asm.out", "w+") as asm_log:
-                    asm_err = io.StringIO()
-                    res = await run_in_env(True, env, compile_asm_to_obj, log=asm_log, stderr_log=asm_err)
-                    if res != 0:
-                        asm_log.flush()
-                        asm_log.seek(0)
-                        asm_out = asm_log.read()
-                        asm_msg = f"{self.suite_mode.capitalize()} test asm error: {res}"
-                        if asm_out.strip():
-                            asm_msg += asm_out
-                        if asm_err.getvalue().strip():
-                            asm_msg += asm_err.getvalue()
-                        await self.print_stderr(asm_msg)
-                        self.compilation_failures.append((test_name, in_mode, "during asm compilation"))
-                        return 1
-
-            case "cj":
-                any_mode_succeeded = False
-                attempted_modes = 0
-                for mode, opt_flags in self.compilation_modes:
-                    if mode in excluded_modes:
-                        await self.print_status(f"Skipping {test_name} compilation ({mode} mode) due to config exclusion.")
-                        continue
-
-                    attempted_modes += 1
-                    mode_work_dir = self.mode_work_dir(test_work_dir, mode, name)
-                    os.makedirs(mode_work_dir, exist_ok=True)
-
-                    int_chir_files = []
-                    int_cj_files = sorted(glob.glob(os.path.join(test_work_dir, "*.int.cj")))
-
-                    if int_cj_files:
-                        int_temp_dir = f"{mode_work_dir}/temp"
-                        import_args += ["--import-path", int_temp_dir]
-                        os.makedirs(int_temp_dir, exist_ok=True)
-                        for int_cj_file in int_cj_files:
-                            int_fullname = os.path.splitext(os.path.basename(int_cj_file))[0]
-                            int_basename = os.path.splitext(int_fullname)[0]
-                            int_chir_files.append(f"temp/{int_basename}.chir")
-                            int_log = io.StringIO()
-                            res = await self.run_cjc(int_cj_file,
-                                                     output_file=f"{int_temp_dir}/{int_basename}",
-                                                     additional_args=["--save-temps", int_temp_dir, "--output-type", "staticlib"] +
-                                                                     import_args + opt_flags,
-                                                     use_tool_sh=True,
-                                                     log=int_log)
-                            if res != 0:
-                                err_msg = f"{self.suite_mode.capitalize()} test INT package compilation error ({int_basename}): {res}\n"
-                                if int_log.getvalue().strip():
-                                    err_msg += int_log.getvalue()
-                                await self.print_stderr(err_msg)
-                                self.compilation_failures.append((test_name, in_mode, f"during INT package compilation ({int_basename})"))
-                                return 1
-
-
-                    chir_log = io.StringIO()
-                    cbc_name = self.cbc_name(name)
-                    res = await self.compile_cj(test_name, mode_work_dir, name,
-                                                import_args, opt_flags, aot_so_names,
-                                                native_lib_names, chir_log)
-                    if res != 0:
-                        err_msg = f"{self.suite_mode.capitalize()} test compilation error ({test_name} - {mode}): {res}\n"
-                        if chir_log.getvalue().strip():
-                            err_msg += chir_log.getvalue()
-                        await self.print_stderr(err_msg)
-                        self.compilation_failures.append((test_name, in_mode, f"during compilation ({mode})"))
-                        continue
-
-                    aot_deps_args = [f"-cbcaotdeps={':'.join(aot_so_names)}"] if aot_so_names else []
-                    foreign_libs_args = [f"-foreignlibs={':'.join(native_lib_names)}"] if native_lib_names else []
-                    jc_options = f"+IgnoreSourceFileNameForCbc {self.jc_options}"
-                    chir_to_cbc =['cbc-compiler', f"-outputname={cbc_name}", f"{cbc_name}.chir", jc_options] + aot_deps_args + foreign_libs_args + int_chir_files
-                    cbc_log = io.StringIO()
-                    cbc_err = io.StringIO()
-                    res = await run_in_env(True, env, chir_to_cbc, cwd=mode_work_dir, log=cbc_log, stderr_log=cbc_err)
-                    if res != 0:
-                        err_detail = f"{self.suite_mode.capitalize()} test cbc-compiler.jar error ({test_name} - {mode}): {res}\n cmd: {chir_to_cbc}\n"
-                        if cbc_log.getvalue().strip():
-                            err_detail += cbc_log.getvalue()
-                        if cbc_err.getvalue().strip():
-                            err_detail += cbc_err.getvalue()
-                        await self.print_stderr(err_detail)
-                        self.compilation_failures.append((test_name, in_mode, f"during compilation ({mode})"))
-                        continue
-
-                    self.built_modes.add((test_name, mode))
-                    any_mode_succeeded = True
-
-                if attempted_modes > 0 and not any_mode_succeeded:
-                    return 1
-
-            case _:
-                raise ValueError(f"Unknown standalone test mode: {in_mode}")
-
-        return 0
-
-    async def run_test(self, test_name: str):
-        test_work_dir, name = test_name.rsplit('/', 1)
-        in_mode = test_name[test_name.find('standalone'):].split('/')[1]
-        env = os.environ.copy()
-
-        current_ld_path = env.get("LD_LIBRARY_PATH", "")
-        env["LD_LIBRARY_PATH"] = f"{test_work_dir}:{current_ld_path}" if current_ld_path else test_work_dir
-
-        if in_mode == "asm":
-            await self.print_status(f'Running {test_name} in standalone mode (asm)')
-            cmd = ["launcher", dotcbc(test_name)]
-            launcher_err = io.StringIO()
-            with open(dotactual(test_name), "w") as test_output:
-                res = await run_in_env(True, env, cmd, log=test_output, stderr_log=launcher_err)
-                test_output.write(f"{res}\n")
-            if await self.check_result(test_name) != 0:
-                err = launcher_err.getvalue().strip()
-                if err:
-                    await self.print_stderr(err)
-                msg = test_failed(test_name, in_mode, msg="diff (mode: standalone asm)")
-                await self.print_stderr(msg)
-                return True
-
-        elif in_mode == "cj":
-            excluded_modes = self.standalone_tests.get(test_name, [])
-            for mode, _ in self.compilation_modes:
-                if mode in excluded_modes or (test_name, mode) not in self.built_modes:
-                    continue
-
-                mode_work_dir = self.mode_work_dir(test_work_dir, mode, name)
-                mode_cbc = f"{mode_work_dir}/{self.cbc_name(name)}.cbc"
-
-                if not os.path.isfile(mode_cbc):
-                    continue
-
-                await self.print_status(f'Running {test_name} in {self.suite_mode} mode (cj - {mode})')
-                cmd = self.cj_run_command(mode_work_dir, name, env)
-
-                actual_file = f"{mode_work_dir}/{name}.actual"
-                launcher_err = io.StringIO()
-                with open(actual_file, "w") as test_output:
-                    res = await run_in_env(True, env, cmd, log=test_output, stderr_log=launcher_err)
-                    err_res = launcher_err.getvalue()
-                    test_output.write(f"{res}\n" if not err_res else err_res)
-                if await self.check_result(test_name, custom_actual=actual_file) != 0:
-                    err = launcher_err.getvalue().strip()
-                    if err:
-                        await self.print_stderr(err)
-                    msg = test_failed(test_name, in_mode, msg=f"diff (mode: {self.suite_mode} cj - {mode})")
-                    await self.print_stderr(msg)
-                    continue
-
-        else:
-            raise ValueError(f"Unknown standalone test mode: {in_mode}")
-
-        return 0
-
-    async def run(self, args):
-        print(f"{self.suite_mode.capitalize()} testsuite")
-        self.jc_options = args.jc_options
-
-        tests = list(filter(lambda name: enabled(name, args), self.standalone_tests.keys()))
-        if not tests:
-            print("Tests set is empty")
+    def log_result(self, test_id: TestIdentifier, ok: bool) -> None:
+        self._finished += 1
+        verb = "done" if ok else "failed"
+        line = self._format(verb, test_id, self._finished)
+        if not self.interactive:
+            print(self._fit(line), flush=True)
             return
+        if self._drawn:
+            # Move to the top of the live area and clear it (not the trail
+            # above), write the history line there, then re-render the live
+            # area below it. Once the screen fills, the newline scrolls and
+            # the trail grows upward.
+            # Move to the top of the live area and clear it (not the trail
+            # above), write the history line there, then re-render the live
+            # area below it. Once the screen fills, the newline scrolls and
+            # the trail grows upward.
+            if self.n > 1:
+                sys.stdout.write(f"\x1b[{self.n - 1}A")
+            sys.stdout.write("\r\x1b[0J")
+        sys.stdout.write(self._fit(line) + "\n")
+        self._render(move_up=False)
 
-        if await self.prepare_tools(args) != 0:
-            failedTests.append(f"{self.suite_mode} tool preparation failed")
+    def finish(self) -> None:
+        if not self.interactive:
             return
-
-        self.compilation_failures = []
-        self.built_modes.clear()
-        global timing_chunk
-        timing_chunk = 'build'
-        succeeded: list[str] = await self.build_parallel(tests, self.build_test, args)
-        timing_chunk = 'other'
-
-        for test_name, in_mode, msg in self.compilation_failures:
-            full_msg = test_failed(test_name, in_mode, msg=msg)
-            await self.print_stderr(full_msg)
-
-        timing_chunk = 'run'
-        for test in succeeded:
-            await self.run_test(test)
-        timing_chunk = 'other'
+        if self._drawn:
+            if self.n > 1:
+                sys.stdout.write(f"\x1b[{self.n - 1}A")
+            sys.stdout.write("\r\x1b[0J")
+        sys.stdout.flush()
 
 
-class HotfixTestSuite(StandaloneTestSuite):
-    suite_mode = "hotfix"
-    compilation_modes = [("default", [])]
-    standalone_tests = parse_tests_list(os.path.join(TestSuite.root_dir, "tests-list-hotfix.cfg"),
-                                       root_dir=TestSuite.root_dir)
+async def process_testcase(test_id: TestIdentifier, discovered: dict[TestIdentifier, TestSuite],
+                           workdir: Path, args: argparse.Namespace, toolchain: str,
+                           results: list[tuple[TestIdentifier, str]], reporter: StatusReporter,
+                           permit: Permit) -> None:
+    suite = discovered[test_id]
+    tdir = workdir / test_id.path
+    if not args.skip_build:
+        permit.set("building", test_id)
+        rc = await suite.build(test_id, tdir)
+        if rc != 0:
+            results.append((test_id, f"build failed (exit {rc})"))
+            reporter.log_result(test_id, False)
+            return
+    permit.set("running", test_id)
+    rc = await suite.run(test_id, tdir)
+    write_run_sh(tdir, test_id, toolchain)
+    ok = rc == 0
+    results.append((test_id, "passed" if ok else "run failed"))
+    reporter.log_result(test_id, ok)
 
-    def expected_file(self, test_name: str):
-        hotfix_expected = dotexpected(f"{test_name}.hotfix")
-        return hotfix_expected if os.path.isfile(hotfix_expected) else super().expected_file(test_name)
 
-    def cjc_env(self):
-        return self.hotfix_env.copy()
+def dump_test_output(tdir: Path, reason: str) -> None:
+    names = ["build.log"] if reason.startswith("build") else ["run.log", "run.err"]
+    for name in names:
+        path = tdir / name
+        if not path.is_file():
+            continue
+        print(f"--- {name} ---")
+        text = path.read_text(errors="replace")
+        if not text.endswith("\n"):
+            text += "\n"
+        sys.stdout.write(text)
 
-    def mode_work_dir(self, test_work_dir, mode, name):
-        return f"{test_work_dir}/hotfix-{mode}/{name}"
 
-    def cbc_name(self, name):
-        return f"diff{name}_patched"
+def print_timings(suites: list[tuple[str, TestSuite]]) -> None:
+    reported = []
+    total = 0.0
+    for name, suite in suites:
+        timings = suite.timings
+        if not timings:
+            continue
+        suite_total = sum(timings.values())
+        total += suite_total
+        reported.append((name, suite_total, timings))
+    if reported:
+        print(f"[Timings] Total: {total:9.2f} s")
+        for name, suite_total, timings in reported:
+            print(f"  {name + ':':<14} {suite_total:9.2f} s")
+            for tag, secs in sorted(timings.items(), key=lambda kv: -kv[1]):
+                print(f"    {tag:<12} {secs:9.2f} s")
 
-    async def disassemble_chir(self, chir, mode_work_dir, env, log):
-        res = await run_in_env(True, env.copy(), ["chir-dis", chir],
-                               cwd=mode_work_dir, log=log, stderr_log=log)
-        if res != 0:
-            log.write(f"CHIR disassembly failed ({chir}): {res}\n")
-        return res
 
-    async def prepare_tools(self, args):
-        self.plugin = os.path.join(self.toolchain_path, "tools/lib/libhotfix-plugin.so")
-        env = os.environ.copy()
-        env.pop('HOTFIX_GEN_THROW_STUBS', None)
-        env['CANGJIE_STDX_PATH'] = os.path.expanduser(env.get(
-            'CANGJIE_STDX_PATH', f"{self.toolchain_path}/stdx/dynamic/stdx"))
-        env['LD_LIBRARY_PATH'] = os.pathsep.join(filter(None, [
-            env['CANGJIE_STDX_PATH'], env.get('LD_LIBRARY_PATH', '')]))
-        self.hotfix_env = env
+async def run_tests(args: argparse.Namespace) -> int:
+    workdir = Path(args.work_dir) if args.work_dir else ROOT / "workdir"
+    toolchain = os.environ["TOOLCHAIN"]
+
+    discovered: dict[TestIdentifier, TestSuite] = {}
+    suites = load_suites()
+    if args.testsuite:
+        known = {name for name, _ in suites}
+        unknown = [s for s in args.testsuite if s not in known]
+        if unknown:
+            print(f"Unknown testsuites: {', '.join(unknown)}", file=sys.stderr)
+            return 1
+        suites = [(name, suite) for name, suite in suites if name in args.testsuite]
+    for name, suite in suites:
+        for test_id in await suite.discover():
+            discovered[test_id] = suite
+
+    patterns = load_excludes()
+    excluded_ids = [t for t in discovered if excluded(t, patterns)]
+    for test_id in excluded_ids:
+        del discovered[test_id]
+    if excluded_ids:
+        print(f"Skipped {len(excluded_ids)} testcases (excluded)")
+
+    explicit = list(args.test)
+    if args.tests:
+        explicit += read_id_list(args.tests)
+    if explicit:
+        selected: list[TestIdentifier] = []
+        seen: set[TestIdentifier] = set()
+        unknown: list[str] = []
+        for entry in explicit:
+            matched = [t for t in sorted(discovered) if str(t).startswith(entry)]
+            if not matched:
+                unknown.append(entry)
+            for t in matched:
+                if t not in seen:
+                    seen.add(t)
+                    selected.append(t)
+        if unknown:
+            print(f"Unknown testcases: {', '.join(unknown)}", file=sys.stderr)
+            return 1
+        ids = selected
+    else:
+        ids = sorted(discovered)
+    if not ids:
+        print("No testcases to run")
         return 0
 
-    async def compile_cj(self, test_name, mode_work_dir, name, import_args, opt_flags, aot_names, native_names, log):
-        mode_work_dir = os.path.abspath(mode_work_dir)
-        # cjc and the plugin write intermediate files into cwd. Isolate each test.
-        for pattern in ("*.chir", "*.chirtxt", "*.cbc"):
-            for path in glob.glob(os.path.join(mode_work_dir, pattern)):
-                os.remove(path)
-        executable = os.path.join(mode_work_dir, name)
-        if os.path.isfile(executable):
-            os.remove(executable)
-        import_args = [os.path.abspath(arg) if i > 0 and import_args[i - 1] == '--import-path'
-                       else arg for i, arg in enumerate(import_args)]
-        test_work_dir = os.path.abspath(os.path.dirname(test_name))
-        link_args = []
-        for lib in aot_names + native_names:
-            link_args += ["-L", test_work_dir, "-l", lib]
-        # INT packages are bytecode inputs for CBC and static inputs for the native host.
-        for int_file in sorted(glob.glob(os.path.join(test_work_dir, "*.int.cj"))):
-            int_name = os.path.basename(int_file)[:-len(".int.cj")]
-            archive = os.path.join(mode_work_dir, "temp", int_name)
-            # Standalone writes extensionless archives; cjc accepts .a inputs.
-            shutil.copy2(archive, f"{archive}.a")
-            link_args.append(f"{archive}.a")
-        common_args = import_args + link_args + ["--link-options=--export-dynamic"]
-        stub_env = self.cjc_env()
-        stub_env['HOTFIX_GEN_THROW_STUBS'] = 'true'
-        # --save-temps keeps the package-named CHIR and lets compilation finish
-        # (replaces the old --emit-chir + --continue pair; the directory must exist).
-        res = await self.run_cjc(os.path.abspath(dotcj(test_name)), output_file=executable,
-                                 additional_args=common_args + ["--plugin", self.plugin,
-                                                                "--save-temps", mode_work_dir],
-                                 cwd=mode_work_dir, log=log, env=stub_env)
-        if res != 0:
-            return res
-        # --save-temps names CHIR after the package rather than the executable.
-        chir_files = glob.glob(os.path.join(mode_work_dir, "*.chir"))
-        if len(chir_files) != 1:
-            log.write(f"Expected one original CHIR file, found: {chir_files}\n")
-            return 1
-        chir = dotchir(executable)
-        os.replace(chir_files[0], chir)
-        env = self.hotfix_env.copy()
-        env['LD_LIBRARY_PATH'] = os.pathsep.join(filter(None, [test_work_dir, env.get('LD_LIBRARY_PATH')]))
-        env.pop('CBCOPT', None)
-        res = await self.disassemble_chir(chir, mode_work_dir, env, log)
-        if res != 0:
-            return res
-        stub_log = io.StringIO()
-        res = await run_in_env(True, env.copy(), [executable], cwd=mode_work_dir,
-                               log=stub_log, stderr_log=stub_log)
-        with open(f"{executable}.stub.actual", "w") as output:
-            output.write(stub_log.getvalue())
-        if res != 1 or "Exception: should not reach here" not in stub_log.getvalue().splitlines():
-            log.write(f"Expected throw-stub exception with exit status 1, got {res}:\n{stub_log.getvalue()}")
-            return 1
-        patched_chir = dotchir(f"{executable}_patched")
-        res = await self.run_cjc(os.path.abspath(dotcj(test_name)), output_file=patched_chir,
-                                 additional_args=common_args + ["--emit-chir", "--plugin", self.plugin],
-                                 cwd=mode_work_dir, log=log)
-        if res == 0:
-            res = await self.disassemble_chir(patched_chir, mode_work_dir, env, log)
-        if res == 0:
-            res = await run_in_env(True, env, ["patch-gen", chir, patched_chir],
-                                   cwd=mode_work_dir, log=log, stderr_log=log)
-        if res == 0:
-            patch_chir = dotchir(os.path.join(mode_work_dir, self.cbc_name(name)))
-            res = await self.disassemble_chir(patch_chir, mode_work_dir, env, log)
-        return res
+    parallelism = max(1, int(args.parallelism)) if args.parallelism is not None else autodetect_parallelism()
+    results: list[tuple[TestIdentifier, str]] = []
+    mode = auto_status() if args.status == "auto" else args.status
+    reporter = StatusReporter(mode, parallelism, len(ids))
 
-    def cj_run_command(self, mode_work_dir, name, env):
-        mode_work_dir = os.path.abspath(mode_work_dir)
-        env['CANGJIE_STDX_PATH'] = self.hotfix_env['CANGJIE_STDX_PATH']
-        env['LD_LIBRARY_PATH'] = os.pathsep.join(filter(None, [env.get('LD_LIBRARY_PATH'), mode_work_dir]))
-        env['CBCOPT'] = f"cbc.path={mode_work_dir}"
-        # Main-branch runtime initializes the interpreter only via the launcher;
-        # the preload library restores in-process initialization for AOT binaries.
-        env['LD_PRELOAD'] = os.path.join(self.toolchain_path, 'tools/lib/libcbc-preload.so')
-        return [os.path.join(mode_work_dir, name)]
+    async def bounded(test_id: TestIdentifier) -> None:
+        permit = await reporter.acquire()
+        try:
+            await process_testcase(test_id, discovered, workdir, args, toolchain, results, reporter, permit)
+        finally:
+            permit.release()
+
+    tasks = [asyncio.create_task(bounded(t)) for t in ids]
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+    for task in pending:
+        task.cancel()
+    await asyncio.gather(*pending, return_exceptions=True)
+    reporter.finish()
+    for task in done:
+        exc = task.exception()
+        if exc is None:
+            continue
+        if isinstance(exc, MissingArtifacts):
+            print(f"Hard error: {exc}", file=sys.stderr)
+            return 2
+        raise exc
+
+    failed = [entry for entry in results if entry[1] != "passed"]
+    passed_count = len(ids) - len(failed)
+    print(f"[Summary] {passed_count} passed, {len(failed)} failed")
+    for test_id, reason in failed:
+        print(f"FAILED {test_id} ({reason})")
+        if args.dump_on_error:
+            dump_test_output(workdir / test_id.path, reason)
+        if args.describe:
+            tdir = workdir / test_id.path
+            print(f"  run: {tdir / 'run.sh'}")
+            print(f"  logs: {tdir / 'run.log'}, {tdir / 'run.err'}, {tdir / 'diff.log'}")
+
+    print_timings(suites)
+
+    failed_ids = [test_id for test_id, _ in failed]
+    if failed_ids:
+        failed_list = Path(args.failed_list) if args.failed_list else workdir / "failed.txt"
+        failed_list.parent.mkdir(parents=True, exist_ok=True)
+        failed_list.write_text("\n".join(str(t) for t in failed_ids) + "\n")
+        print(f"Failed test list written to {failed_list}")
+        return 1
+    return 0
 
 
-def enabled(name, args):
-    if args.filter_file:
-        return name in enabled_exact_tests
-    return all(name.startswith(prefix) for prefix in args.filter)
-
-
-enabled_exact_tests: dict = {}
-
-
-def collect_enabled_exact_tests(args):
-    global enabled_exact_tests
-    enabled_exact_tests = {}
-    if args.filter_file:
-        enabled_exact_tests = parse_tests_list(args.filter_file, dirname(os.path.abspath(__file__)))
-
-
-async def run_in_env(use_tool_sh: bool, env: dict[str, str], cmd: list[str], cwd=None, log=None, stderr_log=None):
-    if use_tool_sh:
-        env['TOOLCHAIN'] = toolchain_path
-        cmd = [f'{TestSuite.root_dir}/tool.sh'] + cmd
-
-    t0 = time.monotonic()
-    res = await run_async(cmd, shell=False, log=log, env=env, cwd=cwd, stderr_log=stderr_log)
-    await Timings.add(classify_cmd(cmd), time.monotonic() - t0, timing_chunk)
-    return res
-
-
-toolchain_path: str = ""
-
-# Current chunk ('build' or 'run') for timing attribution; set by run().
-timing_chunk: str = 'other'
-
-
-def test_failed(name, in_mode="cj", msg=None):
-    global failedTests
-
-    if in_mode == "asm":
-        fname = dotasm(name)
-    elif in_mode == "cj":
-        fname = dotcj(name)
-    else:
-        raise ValueError(f"Unknown test mode: {in_mode}")
-
-    full_msg = f'{fname} failed ' + str(msg)
-    failedTests.append(full_msg)
-    return full_msg
-
-
-failedTests: list = []
-
-
-async def run_async(what, log=None, env=None, shell=False, cwd=None, stderr_log=None) -> int:
-    async def logger(log_file, stream):
-        while not stream.at_eof():
-            data = await stream.readline()
-            decoded = data.decode() if isinstance(data, bytes) else data
-            if log_file is not None:
-                log_file.write(decoded)
-
-    kwargs = {}
-    if log is not None:
-        kwargs["stdout"] = asyncio.subprocess.PIPE
-    if stderr_log is not None:
-        kwargs["stderr"] = asyncio.subprocess.PIPE
-    if env:
-        kwargs["env"] = env
-
-    if shell:
-        process = await asyncio.create_subprocess_shell(what, cwd=cwd, **kwargs)
-    else:
-        process = await asyncio.create_subprocess_exec(*what, cwd=cwd, **kwargs)
-
-    stdout_task = None
-    stderr_task = None
-    if log is not None:
-        stdout_task = asyncio.create_task(logger(log, process.stdout))
-    if stderr_log is not None:
-        stderr_task = asyncio.create_task(logger(stderr_log, process.stderr))
-
-    tasks = [t for t in [stdout_task, stderr_task] if t is not None]
-    if tasks:
-        await asyncio.gather(*tasks)
-    return await process.wait()
-
-
-def test(args):
-    global toolchain_path
-    global failedTests
-
-    res = 0
-    if args.filter_file:
-        args.filter_file = os.path.abspath(args.filter_file)
-    if args.cangjie_home:
-        args.cangjie_home = os.path.abspath(os.path.expanduser(args.cangjie_home))
-    os.chdir(TestSuite.root_dir)
-    collect_enabled_exact_tests(args)
-
-    toolchain_path = args.cangjie_home or os.environ.get("CANGJIE_HOME")
-    if not toolchain_path:
+def cmd_test(args: argparse.Namespace) -> int:
+    toolchain = args.cangjie_home or os.environ.get("CANGJIE_HOME")
+    if not toolchain:
         print("No toolchain path specified. Use --cangjie-home or set CANGJIE_HOME environment variable.", file=sys.stderr)
-        exit(1)
-    toolchain_path = os.path.abspath(os.path.expanduser(toolchain_path))
+        return 1
     source = "--cangjie-home flag" if args.cangjie_home else "CANGJIE_HOME env var"
-    envsetup = toolchain_path + "/envsetup.sh"
-    if not isfile(envsetup):
-        print(f"There is no envsetup.sh in {toolchain_path} (set via {source}), path probably points to wrong place", file=sys.stderr)
-        exit(1)
+    if not isfile(toolchain + "/envsetup.sh"):
+        print(f"There is no envsetup.sh in {toolchain} (set via {source}), path probably points to wrong place", file=sys.stderr)
+        return 1
+    os.environ["TOOLCHAIN"] = toolchain
+    os.environ["CANGJIE_STDX_PATH"] = os.path.expanduser(os.environ.get(
+        "CANGJIE_STDX_PATH", f"{toolchain}/stdx/dynamic/stdx"))
+    if args.jc_options:
+        os.environ["CBC_JC_OPTIONS"] = args.jc_options
+    print(f"CANGJIE_TOOLCHAIN: {toolchain}")
+    return asyncio.run(run_tests(args))
 
-    print(f"CANGJIE_TOOLCHAIN: {toolchain_path}")
 
-    suite = HotfixTestSuite if args.mode == "hotfix" else StandaloneTestSuite
-    asyncio.run(suite(toolchain_path).run(args))
+def cmd_clean(args: argparse.Namespace) -> int:
+    workdir = Path(args.work_dir) if args.work_dir else ROOT / "workdir"
+    if workdir.exists():
+        shutil.rmtree(workdir)
+        print(f"Removed {workdir}")
+    return 0
 
-    print()
-    print(Timings.report())
 
-    if failedTests:
-        print()
-        print(f"[Summary] ({len(failedTests)} failed tests)")
-        for fail in failedTests:
-            print(fail)
-        res += 10
+async def discovery() -> None:
+    patterns = load_excludes()
+    for name, suite in load_suites():
+        for test_id in sorted(await suite.discover()):
+            if not excluded(test_id, patterns):
+                print(test_id)
 
-    exit(res)
+
+def cmd_discovery_async(args: argparse.Namespace) -> int:
+    asyncio.run(discovery())
+    return 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="CBC testsuite")
+    subparsers = parser.add_subparsers(required=True)
+
+    parser_test = subparsers.add_parser("test", help="Build and run testcases")
+    parser_test.set_defaults(func=cmd_test)
+    parser_test.add_argument("--cangjie-home", help="Path to Cangjie toolchain (overrides CANGJIE_HOME env var)")
+    parser_test.add_argument("--test", action="append", default=[],
+                             help="Testcase ID prefix to run (repeatable); every test whose ID starts with it runs")
+    parser_test.add_argument("--tests", help="File with testcase ID prefixes, one per line (# comments allowed)")
+    parser_test.add_argument("--testsuite", action="append", metavar="NAME", default=[],
+                             help="Testsuite to run (repeatable); when given, only these suites run")
+    parser_test.add_argument("--skip-build", action="store_true", help="Skip build, start running tests")
+    parser_test.add_argument("--describe", action="store_true", help="Print run command and log paths for failed testcases")
+    parser_test.add_argument("--dump-on-error", action=argparse.BooleanOptionalAction, default=True,
+                             help="Dump failed test's stdout/stderr; --no-dump-on-error disables")
+    parser_test.add_argument("--status", choices=["auto", "plain", "interactive"], default="auto",
+                             help="Progress display: plain (one line per phase) or interactive "
+                             "(live N-line area); default: auto - interactive on a TTY, else plain")
+    parser_test.add_argument("-j", "--parallelism", help="Number of testcases processed in parallel")
+    parser_test.add_argument("--work-dir", help="Work directory (default ./workdir)")
+    parser_test.add_argument("--failed-list", help="File to dump failed testcase IDs (default <work-dir>/failed.txt)")
+    parser_test.add_argument("--jc-options", nargs="?", default="", help="Options for cbc-compiler.jar")
+
+    parser_discovery = subparsers.add_parser("test-discovery", help="Discover all testcases of all test suites")
+    parser_discovery.set_defaults(func=cmd_discovery_async)
+    parser_discovery.add_argument("--work-dir", help="Work directory (default ./workdir)")
+
+    parser_clean = subparsers.add_parser("clean", help="Remove the work directory")
+    parser_clean.set_defaults(func=cmd_clean)
+    parser_clean.add_argument("--work-dir", help="Work directory (default ./workdir)")
+
+    args = parser.parse_args()
+    sys.exit(args.func(args))
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog="CBC testsuite")
-    subparsers = parser.add_subparsers(required=True)
-    parser_test = subparsers.add_parser('test', help="Test all test cases")
-    parser_test.set_defaults(func=test)
-    parser_test.add_argument('--mode', choices=['standalone', 'hotfix'], default='standalone',
-                             help="Test execution mode (default: standalone)")
-    parser_test.add_argument('--cangjie-home', help="Path to Cangjie toolchain (overrides CANGJIE_HOME env var)")
-    parser_test.add_argument('--filter', nargs='+', default=[], help="Run only test cases with given prefixes")
-    parser_test.add_argument('--filter-file', help="Run only test cases listed in given file")
-    parser_test.add_argument('-j', '--parallelism', nargs='?', help="Count of tests built in parallel")
-    parser_test.add_argument('--jc-options', nargs='?', default='', help="Options for cbc compiler")
-
-    parser_clean = subparsers.add_parser('clean', help="Clean up intermediate files")
-    parser_clean.set_defaults(func=lambda _: TestSuite().clean())
-    args = parser.parse_args()
-
-    failedTests = []
-
-    args.func(args)
+    main()

@@ -1,105 +1,53 @@
-# CBC compiler tests
+# CBC tests
 
-This directory contains the end-to-end test suites for the CBC compiler.
-Unit tests (`sbt test`) are described in the main [README.md](../README.md).
+`runner.py` discovers pluggable test suites (`**/*_testsuite.py`), builds and
+runs them against a Cangjie toolchain, and diffs program output against
+`.expected` files.
 
-## Suites
+Suites: 
+- `cj` (cjc -> cbc-compiler -> launcher, `default` + `O2` modes);
+- `asm` (CBC assembly via `cbc-asm`);
+- `hotfix` (cj sources rebuilt as hotfix patches).
 
-`runner.py` drives two suites. Both compile and execute test programs against
-a Cangjie toolchain (SDK distribution):
+A new suite is a `<name>_testsuite.py` defining one `TestSuite` subclass
+(from `runner_lib`) that implements async `discover` / `build` / `run`;
+after running a test the runner writes a `run.sh` into the test's
+workdir which re-runs it via `python3 runner.py test --test <ID> --skip-build`.
 
-- `standalone` - the main pipeline: `cjc --emit-chir` -> `cbc-compiler` ->
-  `launcher`. Each test is compiled in `default` and `O2` modes.
-- `hotfix` - the hotfix/patching pipeline: `cjc` with `libhotfix-plugin.so`
-  produces a throw-stub binary (must abort with `Exception: should not reach
-  here`), then a patched CHIR; `patch-gen` computes the patch CHIR, which
-  `cbc-compiler` compiles into `diff<name>_patched.cbc`. At run time the stub
-  binary is executed with the patch loaded via `libcbc-preload.so` and
-  `CBCOPT=cbc.path=...`. Tests run in `default` mode only.
-
-The `cjts/` directory holds the Cangjie LLT suite; it is run by CI with its
-own wrappers (`cjts/cjc-wrapper`, `cjts/launcher-wrapper`) and per-suite
-exclude lists (e.g. `cjts/LLT/hotfix_testlist.exclude.known.bugs`), not by
-`runner.py`.
-
-## Prerequisites
-
-- A Cangjie toolchain containing `envsetup.sh`, specified via `--cangjie-home`
-  or the `CANGJIE_HOME` environment variable. The runner sources `envsetup.sh`
-  itself (`test/tool.sh`) before every command (`cjc`, `cbc-compiler`,
-  `launcher`, `chir-dis`, `cbc-asm`), so there is no need to source it manually.
-- The toolchain's `cbc-compiler` wrapper (`<toolchain>/tools/bin/cbc-compiler`)
-  executes `cbc-compiler.jar` from its own directory. To run the tests against
-  a locally built compiler, install it into the toolchain first (see the
-  "Toolchain" section in the main [README.md](../README.md)).
-- For the `hotfix` suite the toolchain must in addition contain the hotfix
-  components: `tools/lib/libhotfix-plugin.so`, `tools/bin/patch-gen`,
-  `tools/lib/libcbc-preload.so`, the interpreter engine libraries
-  (`tools/lib/libcbcengine.so`) and `tools/lib/cbc-intrinsics.cbc`. The stdx
-  library path defaults to `<toolchain>/stdx/dynamic/stdx` and can be
-  overridden with the `CANGJIE_STDX_PATH` environment variable.
+Python 3.11 or newer is required to run the runner.
 
 ## Running
 
-From the repository root:
+From `test/`:
 
 ```bash
-$ python3 test/runner.py test                                # standalone suite
-$ python3 test/runner.py test --mode hotfix                  # hotfix suite
-$ python3 test/runner.py test --filter standalone/cj/bugs    # subset by name prefix
-$ python3 test/runner.py clean                               # remove generated files
+python3 runner.py test --cangjie-home /path/to/cangjie             # run everything
+python3 runner.py test --cangjie-home /path/to/cangjie -j 8        # in parallel
+python3 runner.py test ... --testsuite hotfix                      # one suite (repeatable)
+python3 runner.py test ... --test cj::cast/cast::default           # specific test (repeatable)
+python3 runner.py test ... --test cj::cast                         # ID prefix: every matching test (repeatable)
+python3 runner.py test ... --tests failed.txt                      # IDs from a file
+python3 runner.py test ... --skip-build                            # reuse the built workdir
+python3 runner.py test-discovery                                   # list all testcase IDs
+python3 runner.py clean                                            # remove the workdir
 ```
 
-Options:
+`--cangjie-home` (or `CANGJIE_HOME`) must point to a toolchain containing
+`envsetup.sh`; the runner sources it itself before every command.
 
-- `--mode standalone|hotfix` - suite to run (default: `standalone`)
-- `--cangjie-home <path>` - toolchain path; overrides `CANGJIE_HOME`
-- `--filter <prefix>...` - run only tests whose names (paths relative to
-  `test/`, without extension, e.g. `standalone/cj/bugs/bug-205/main`) start
-  with one of the given prefixes
-- `--filter-file <cfg>` - run exactly the tests matched by a config file in
-  the tests-list format (see below)
-- `-j, --parallelism <n>` - number of tests built in parallel
-  (default: cpu count / 4)
-- `--jc-options '<opts>'` - extra options passed to `cbc-compiler`
+## Results
 
-## Test layout
-
-A test under `standalone/cj/` is a directory with the main source
-`<name>.cj` (package `default`) plus optional side files:
-
-- `<name>.aot.cj` - AOT part: compiled by `cjc` into `lib<name>.so`
-  (`--output-type=dylib`) in the test directory and passed to
-  `cbc-compiler` via `-cbcaotdeps`; it is never compiled to CHIR/CBC itself.
-- `<name>.int.cj` - intermediate package: compiled to a static archive and
-  passed to `cbc-compiler` as an additional CHIR input.
-- `<name>.c` - native library: built with `cc -shared -fPIC` and passed via
-  `-foreignlibs`.
-- `<name>.expected` - golden output: the program's stdout followed by its
-  exit status. For the hotfix suite, a `<name>.hotfix.expected` file
-  overrides it when present.
-
-Files generated during a run are kept next to the sources in per-mode
-subdirectories (`default/`, `O2/`, `hotfix-default/`), including `*.actual`
-with the observed output for diffing, and are removed by
-`python3 test/runner.py clean`.
-
-Tests in `standalone/asm/` are written in CBC assembly (`*.asm`), assembled
-with `cbc-asm` and executed by `launcher` directly.
-
-## Test lists
-
-`tests-list-standalone.cfg` and `tests-list-hotfix.cfg` select the tests of
-each suite with glob patterns:
-
-```text
-include standalone/cj/**/*.cj
-exclude standalone/**/*.aot.cj
-exclude standalone/cj/lambda-method-ref-extend/main.cj    # excluded everywhere
-exclude standalone/cj/some/test.cj O2                     # excluded in O2 mode only
-```
-
-An `exclude` without a trailing mode removes the test from the suite
-completely; with a mode it skips only that compilation mode. The two lists
-are independent: a test excluded from the standalone list may still run in
-the hotfix suite and vice versa.
+- `--test`/`--tests` entries are testcase ID prefixes: every discovered test
+  whose ID starts with an entry runs (`--test cj::cast` selects all cast
+  tests, all modes; a full ID like `cj::cast/cast::O2` stays exact). An entry
+  matching nothing is an error.
+- Excludes live in `excludes.cfg` (glob patterns over IDs, `#` comments);
+  they are applied after discovery and skipped tests are reported.
+- A failed test's stdout/stderr is dumped after the summary (`build.log` for
+  build failures); `--no-dump-on-error` disables this.
+- Failed IDs are written to `<work-dir>/failed.txt`; feed it back via
+  `--tests` to re-run only failures.
+- Per-test logs are in the workdir: `build.log`, `run.log`, `run.err`,
+  `diff.log`. The generated `run.sh` re-runs the test through the runner and
+  can be executed by hand; `--describe` prints its path.
+- Exit codes: `0` all passed, `1` failures, `2` hard error.
