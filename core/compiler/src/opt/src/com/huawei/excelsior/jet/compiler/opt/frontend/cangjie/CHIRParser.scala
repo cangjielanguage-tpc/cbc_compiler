@@ -1912,6 +1912,94 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.CPointerInit1 =>
             state(e) = state(e.args.head)
 
+          case CHIR.Intrinsic.Kind.CPointerGetPointerAddress =>
+            state(e) = LConst(123456) // FIXME
+
+          case CHIR.Intrinsic.Kind.CPointerAdd =>
+            state(e) = state(e.args.head) // FIXME
+
+          case CHIR.Intrinsic.Kind.Bitcast =>
+            val ValueSig(from) = e.args.head
+            val to = resolver.typeSig(e.resultTpe)
+            state(e) = ReinterpretCast(ValueType.fromSig(from), ValueType.fromSig(to))(state(e.args.head))
+
+          case CHIR.Intrinsic.Kind.CStringConvertCstrToPtr =>
+            state(e) = state(e.args.head)
+
+          case CHIR.Intrinsic.Kind.FutureInit =>
+            // FIXME
+
+          case CHIR.Intrinsic.Kind.FutureIsComplete =>
+            // FIXME
+            state(e) = IConst(0)
+
+          case CHIR.Intrinsic.Kind.FutureWait =>
+            // FIXME
+
+          case CHIR.Intrinsic.Kind.FutureNotifyAll =>
+            // FIXME
+
+          case CHIR.Intrinsic.Kind.Sleep =>
+            // FIXME
+
+          case CHIR.Intrinsic.Kind.SetThreadObject =>
+            // FIXME
+
+          case CHIR.Intrinsic.Kind.GetThreadObject =>
+            // FIXME
+            state(e) = Null()
+
+          case CHIR.Intrinsic.Kind.ExclusiveScope =>
+            // FIXME
+
+          case CHIR.Intrinsic.Kind.IsThreadObjectInited =>
+            // FIXME
+            state(e) = IConst(0)
+
+          case CHIR.Intrinsic.Kind.DumpAllThreadsInfo =>
+            // FIXME
+            state(e) = Null()
+
+          case CHIR.Intrinsic.Kind.DumpCJHeapData =>
+            // FIXME
+            state(e) = LConst(0)
+
+          case CHIR.Intrinsic.Kind.DumpCurrentThreadInfo =>
+            // FIXME
+            state(e) = LConst(0)
+
+          case CHIR.Intrinsic.Kind.FillInStackTrace =>
+            // FIXME
+            state(e) = Null()
+
+          case CHIR.Intrinsic.Kind.DecodeStackTrace =>
+            // FIXME
+            state(e) = LConst(0)
+
+          case CHIR.Intrinsic.Kind.VectorIndexByte32 =>
+            // FIXME
+            state(e) = LConst(0)
+
+          case CHIR.Intrinsic.Kind.VectorCompare32 =>
+            // FIXME
+            state(e) = LConst(0)
+
+          case CHIR.Intrinsic.Kind.RawArrayRefEq =>
+            // FIXME
+            state(e) = IConst(0)
+
+          case CHIR.Intrinsic.Kind.ObjectRefEq =>
+            // FIXME
+            state(e) = IConst(0)
+
+          case CHIR.Intrinsic.Kind.SizeOf =>
+            // FIXME
+            state(e) = LConst(0)
+
+          case CHIR.Intrinsic.Kind.AlignOf =>
+            // FIXME
+            state(e) = LConst(0)
+
           case CHIR.Intrinsic.Kind.CStringInit =>
             state(e) = state(e.args.head)
 

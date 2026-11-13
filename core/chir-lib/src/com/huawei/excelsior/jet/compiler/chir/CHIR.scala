@@ -439,6 +439,30 @@ object CHIR {
       case CPointerWrite
       case CPointerInit0
       case CPointerInit1
+      case CPointerGetPointerAddress
+      case CPointerAdd
+      case Bitcast
+      case CStringConvertCstrToPtr
+      case FutureInit
+      case FutureIsComplete
+      case FutureWait
+      case FutureNotifyAll
+      case Sleep
+      case SetThreadObject
+      case GetThreadObject
+      case ExclusiveScope
+      case IsThreadObjectInited
+      case DumpAllThreadsInfo
+      case DumpCJHeapData
+      case DumpCurrentThreadInfo
+      case FillInStackTrace
+      case DecodeStackTrace
+      case VectorIndexByte32
+      case VectorCompare32
+      case RawArrayRefEq
+      case ObjectRefEq
+      case SizeOf
+      case AlignOf
       case CStringInit
       case InoutParam
       case ObjectZeroValue
