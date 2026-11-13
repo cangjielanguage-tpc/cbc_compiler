@@ -2014,7 +2014,7 @@ trait CHIRParser
           case v: CHIR.NullLiteral => if (resolver.typeSig(e.resultTpe).isTraceableReference) Null() else intConst(0, v)
           case v: CHIR.IntLiteral => intConst(v.value, v)
           case v: CHIR.FloatLiteral => v.tpe match {
-            case CHIR.BuiltinType.Float16 => notImplemented(s"FLOAT16: ${v.value}")
+            case CHIR.BuiltinType.Float16 => IConst(java.lang.Float.floatToRawIntBits(v.value.toFloat)) // TODO: proper Float16
             case CHIR.BuiltinType.Float32 => FConst(v.value.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.value)
           }
