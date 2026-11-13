@@ -659,7 +659,7 @@ trait CHIRParser
         val param = rootMethodParam(idx)
         val realParam = method.getParamType(idx) match {
           case SignatureType.Box(t: SignatureType.OptionLikeEnum) if t.someType.isTypeVariable => param
-          case t: SignatureType.Box => UnboxLea(t.base)(param)
+          case t: SignatureType.Box if !t.base.isVariableSizeType => UnboxLea(t.base)(param)
           case _ => param
         }
         state(rcv) = realParam
