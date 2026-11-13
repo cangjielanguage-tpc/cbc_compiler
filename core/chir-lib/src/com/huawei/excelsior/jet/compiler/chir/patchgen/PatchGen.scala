@@ -46,7 +46,7 @@ final class PatchGen(source: Option[Package], pkg: EditableCHIR.Package) {
         f.tpe.paramTypes.headOption.map(RefType.skip).collect { case t: CustomType => t.typeDef }
       } else None
     }
-    (f.identifier, f.srcCodeIdentifier, f.packageName, Equality.typeKey(f.tpe), f.body.nonEmpty, imported(f), parent.map(definitionKey))
+    (f.identifier, f.srcCodeIdentifier, f.packageName, TypeKey(f.tpe), f.body.nonEmpty, imported(f), parent.map(definitionKey))
   }
   private def definitionKey(d: CustomTypeDef): Product =
     (d.identifier, d.srcCodeIdentifier, d.packageName, d.isInstanceOf[ClassDef], d.isInstanceOf[StructDef])

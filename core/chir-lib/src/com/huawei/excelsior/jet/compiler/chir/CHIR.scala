@@ -198,6 +198,30 @@ object CHIR {
   trait Type {
   }
 
+  private[chir] object TypeKey {
+    // Generic bounds can refer back to their generic declaration. Declaration
+    // matching uses the generic identity, not recursive expansion of its bounds.
+    def apply(tpe: Type): Product = tpe match {
+      case t: BuiltinType => Tuple1(t)
+      case t: GenericType => ("generic", t.identifier)
+      case t: RefType => ("ref", apply(t.baseType))
+      case t: BoxType => ("box", apply(t.baseType))
+      case t: CustomType =>
+        val d = t.typeDef
+        val kind = t match {
+          case _: ClassType => "class"
+          case _: StructType => "struct"
+          case _ => "enum"
+        }
+        (kind, d.identifier, d.packageName, d.srcCodeIdentifier, t.genericTypeParams.map(apply))
+      case t: FuncType => ("func", t.paramTypes.map(apply), apply(t.returnType), t.isC, t.hasVarArg)
+      case t: CPointerType => ("pointer", apply(t.elementType))
+      case t: RawArrayType => ("rawarray", apply(t.elementType))
+      case t: VArrayType => ("varray", apply(t.elementType), t.size)
+      case t: TupleType => ("tuple", t.fieldTypes.map(apply))
+    }
+  }
+
   trait BoxType extends Type {
     def baseType: Type
 

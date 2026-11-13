@@ -3,6 +3,7 @@ package com.huawei.excelsior.jet.compiler.chir.v1203
 import com.google.flatbuffers.FlatBufferBuilder
 import com.huawei.excelsior.jet.compiler.chir
 import com.huawei.excelsior.jet.compiler.chir.{CHIR, EditableCHIR}
+import com.huawei.excelsior.jet.compiler.chir.CHIR.TypeKey
 import com.huawei.excelsior.jet.compiler.chir.v1203.PackageFormat.*
 
 import java.nio.ByteBuffer
@@ -569,10 +570,10 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
     val e = expressionBase(payload)
     def key: Product = payload match {
       case l: LambdaT => (e.getKind, l.getIdentifier, l.getSrcCodeName, l.getIsLocalFunc,
-        getType[CHIR.Type](l.getFuncTy).map(com.huawei.excelsior.jet.compiler.chir.patchgen.Equality.typeKey),
-        ids(l.getGenericTypeParams).toSeq.map(id => com.huawei.excelsior.jet.compiler.chir.patchgen.Equality.typeKey(getType[CHIR.Type](id).get)))
+        getType[CHIR.Type](l.getFuncTy).map(TypeKey.apply),
+        ids(l.getGenericTypeParams).toSeq.map(id => TypeKey(getType[CHIR.Type](id).get)))
       case g: GetInstantiateValueT => (e.getKind, ids(g.getInstantiateTypes).toSeq.map(id =>
-        com.huawei.excelsior.jet.compiler.chir.patchgen.Equality.typeKey(getType[CHIR.Type](id).get)))
+        TypeKey(getType[CHIR.Type](id).get)))
       case f: FieldByNameT => (e.getKind, Option(f.getFieldNames).toSeq.flatten.toVector)
       case g: GetElementByNameT => (e.getKind, Option(g.getFieldNames).toSeq.flatten.toVector)
       case s: StoreElementByNameT => (e.getKind, Option(s.getFieldNames).toSeq.flatten.toVector)
@@ -1380,7 +1381,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
   private def ensureType(tpe: CHIR.Type): Long = {
     val cached = insertedTypeObjects.get(tpe)
     if (cached != null) return cached.longValue()
-    val key = com.huawei.excelsior.jet.compiler.chir.patchgen.Equality.typeKey(tpe)
+    val key = TypeKey(tpe)
     val id = insertedTypeIds.getOrElseUpdate(key, {
       val found = (1L to length(model.getTypes).toLong).find(id => getType[CHIR.Type](id).contains(tpe))
       found.getOrElse {
