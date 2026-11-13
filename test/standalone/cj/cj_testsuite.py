@@ -5,7 +5,6 @@ import io
 import os
 import shutil
 from pathlib import Path
-from typing import overload, override
 
 from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cjc, run_in_toolchain
 
@@ -38,7 +37,6 @@ class CjTestSuite(TestSuite):
     def _copy_lock(self, key):
         return self._copy_locks.setdefault(key, asyncio.Lock())
 
-    @override
     async def discover(self) -> list[TestIdentifier]:
         ids = []
         for f in sorted(glob.glob(str(HERE / "**" / "*.cj"), recursive=True)):
@@ -49,7 +47,6 @@ class CjTestSuite(TestSuite):
                 ids.append(TestIdentifier(self.SUITE, rel, mode))
         return ids
 
-    @override
     async def build(self, test_id: TestIdentifier, workdir: Path) -> int:
         rel = test_id.test_name
         name = Path(rel).name
@@ -136,7 +133,6 @@ class CjTestSuite(TestSuite):
         (wdir / "build.log").write_text(log_io.getvalue())
         return 0 if res == 0 else 1
 
-    @override
     async def run(self, test_id: TestIdentifier, workdir: Path) -> int:
         name = Path(test_id.test_name).name
         wdir = workdir
