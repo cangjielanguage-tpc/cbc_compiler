@@ -83,7 +83,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       case IDivRemOp.DivisorEdge(op) =>
         cond(use.source) {
           case IntegralConst(c) =>
-            assert(c != 1 && c != -1 && c != 0) // Must be handled before.
+            assert(isStandalone || c != 1 && c != -1 && c != 0) // Must be handled before.
             op.isDiv && Isa12Mode
         }
 
