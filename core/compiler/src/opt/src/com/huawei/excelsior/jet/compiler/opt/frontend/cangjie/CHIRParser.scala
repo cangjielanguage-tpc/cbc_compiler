@@ -1997,11 +1997,13 @@ trait CHIRParser
             val toTpe = ValueType.fromSig(resolver.typeSig(e.resultTpe))
             state(e) = ReinterpretCast(value.tpe, toTpe)(value)
 
-          // SizeOf/AlignOf: the operand type symbol is emitted with holes intact;
-          // the engine folds closed layouts at rewrite time and binds holes at
-          // runtime. Naked function type parameters (and package-generic class type
-          // parameters, which are GenericFuncParams slots) address the incoming
-          // slot by index instead of a type symbol.
+          // SizeOf/AlignOf: the operand type symbol is emitted with holes intact.
+          // Closed forms are folded to constants by the engine rewriter at image
+          // preparation; open forms stage the subterm TypeInfos into IR1+i (like
+          // load.type.info.g) and the engine binds the holes at runtime. Naked
+          // function type parameters (and package-generic class type parameters,
+          // which are GenericFuncParams slots) address the incoming slot by index
+          // instead of a type symbol.
           case CHIR.Intrinsic.Kind.SizeOf | CHIR.Intrinsic.Kind.AlignOf =>
             import SignatureType.*
 
@@ -2015,7 +2017,9 @@ trait CHIRParser
               case t: LocalTypeVariable => if (size) TypeSizeG(t.idx) else TypeAlignG(t.idx)
               case t: ClassTypeVariable if rootMethod.getDeclaringClass.isCangjiePackage =>
                 if (size) TypeSizeG(t.idx) else TypeAlignG(t.idx)
-              case _ => if (size) TypeSize(tSig) else TypeAlign(tSig)
+              case _ =>
+                val tis = genericTypeInfoArgs(tSig)
+                if (size) TypeSize(tSig)(tis: _*) else TypeAlign(tSig)(tis: _*)
             }
         }
 
@@ -3071,6 +3075,29 @@ trait CHIRParser
       }
     } else {
       LoadTypeInfo(t)
+    }
+  }
+
+  /** TypeInfos of the top-level subterms of `t`, one per term position the engine
+    * reads from IR1+i when binding holes of a `size`/`align` type symbol at runtime.
+    * Empty for closed signatures: they are folded by the engine rewriter instead.
+    * Must stay in sync with the argument count pinned by the TypeSize/TypeAlign protos.
+    */
+  private def genericTypeInfoArgs(t: SignatureType): Seq[Node] = {
+    import SignatureType.*
+    if (!t.containsTypeVariables) {
+      Seq.empty
+    } else {
+      t match {
+        case t: InstantiatedType => t.instantiatedTypeParameters.map(loadTypeInfo)
+        case t: ArraySlice       => Seq(loadTypeInfo(t.elemType))
+        case t: CangjieArray     => Seq(loadTypeInfo(t.elemType))
+        case t: VArray           => Seq(loadTypeInfo(t.elemType))
+        case t: Tuple            => t.params.map(loadTypeInfo)
+        case t: CangjieEnum      => t.params.map(loadTypeInfo)
+        case t: CPointer         => Seq(loadTypeInfo(t.pointee.asInstanceOf[SignatureType]))
+        case _                   => Seq.empty
+      }
     }
   }
 

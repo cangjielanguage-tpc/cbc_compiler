@@ -41,6 +41,8 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
 
     case _: LoadTypeInfoGeneric => loadTypeInfoGenericForm
 
+    case _: (TypeSize | TypeAlign) => typeSizeAlignForm
+
     case _: (LoadFieldSeq | StoreFieldSeq) => fieldChainOpForm
     case _: (LoadStaticFieldSeq | StoreStaticFieldSeq)  => fieldChainOpForm
 
@@ -145,6 +147,14 @@ trait NodesDescriptionCBC extends NodesDescription { self: Universe with BackEnd
     override protected def argumentRegisters(e: Edge): ResourceSet = {
       // 0th argument is inCtrl, so the rest of arguments are mapped to IR one-to-one
       setOf(IR.fromOrdinal(e.targetArgIndex))
+    }
+  }
+
+  private lazy val typeSizeAlignForm: NodeForm = new NodeForm {
+    override protected def argumentRegisters(e: Edge): ResourceSet = {
+      // No control edge, so value argument j is subterm j; the runtime hole bind
+      // reads it from IR(j+1) (iregs[0] is IRZ), like load.type.info.g
+      setOf(IR.fromOrdinal(e.targetArgIndex + 1))
     }
   }
 

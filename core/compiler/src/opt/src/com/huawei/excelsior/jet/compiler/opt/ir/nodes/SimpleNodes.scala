@@ -305,8 +305,10 @@ trait SimpleNodes { self: Universe with Nodes =>
   }
 
   /** Size in bytes of the instance layout of `target` as a zero-extended 64-bit
-    * unsigned value. `target` may contain type variables; the holes bind at runtime.
-    * The layout itself is resolved by the engine (TypeInfo), never by the compiler.
+    * unsigned value. `target` may contain type variables; the layout is resolved
+    * by the engine (TypeInfo), never by the compiler. An open `target` carries one
+    * TypeInfo input per signature subterm, staged into IR registers for the runtime
+    * bind (like load.type.info.g); a closed one is folded by the engine rewriter.
     */
   class TypeSize private (proto: TypeSize.Proto) extends FloatingNodeWithFixedArgs(proto) {
     def target: SignatureType = proto.target
@@ -314,11 +316,28 @@ trait SimpleNodes { self: Universe with Nodes =>
 
   object TypeSize {
     case class Proto private[TypeSize](target: SignatureType)
-      extends FixedArgs[TypeSize]()(LongType) with PrototypeStrictNodeClass[TypeSize, TypeSize] {
+      extends FixedArgs[TypeSize](Seq.fill(typeParamsCount(target))(AddrType): _*)(LongType)
+        with PrototypeStrictNodeClass[TypeSize, TypeSize] {
+      assert(typeParamsCount(target) <= 6, target)
       def newInstance() = new TypeSize(this)
     }
 
-    def apply(x: SignatureType) = proto(x)()
+    private def typeParamsCount(sig: SignatureType): Int = {
+      import SignatureType.*
+      if (!sig.containsTypeVariables) {
+        0
+      } else {
+        sig match {
+          case sig: InstantiatedType                                     => sig.instantiatedTypeParameters.size
+          case sig: Tuple                                                => sig.params.size
+          case sig: CangjieEnum                                          => sig.params.size
+          case _: ArraySlice | _: CangjieArray | _: VArray | _: CPointer => 1
+          case _                                                         => 0
+        }
+      }
+    }
+
+    def apply(x: SignatureType) = proto(x)
 
     def proto(x: SignatureType) = Prototype.intern(Proto(x))
 
@@ -326,7 +345,10 @@ trait SimpleNodes { self: Universe with Nodes =>
   }
 
   /** Alignment in bytes of the instance layout of `target` as a zero-extended 64-bit
-    * unsigned value. `target` may contain type variables; the holes bind at runtime.
+    * unsigned value. `target` may contain type variables; the layout is resolved
+    * by the engine (TypeInfo), never by the compiler. An open `target` carries one
+    * TypeInfo input per signature subterm, staged into IR registers for the runtime
+    * bind (like load.type.info.g); a closed one is folded by the engine rewriter.
     */
   class TypeAlign private (proto: TypeAlign.Proto) extends FloatingNodeWithFixedArgs(proto) {
     def target: SignatureType = proto.target
@@ -334,11 +356,28 @@ trait SimpleNodes { self: Universe with Nodes =>
 
   object TypeAlign {
     case class Proto private[TypeAlign](target: SignatureType)
-      extends FixedArgs[TypeAlign]()(LongType) with PrototypeStrictNodeClass[TypeAlign, TypeAlign] {
+      extends FixedArgs[TypeAlign](Seq.fill(typeParamsCount(target))(AddrType): _*)(LongType)
+        with PrototypeStrictNodeClass[TypeAlign, TypeAlign] {
+      assert(typeParamsCount(target) <= 6, target)
       def newInstance() = new TypeAlign(this)
     }
 
-    def apply(x: SignatureType) = proto(x)()
+    private def typeParamsCount(sig: SignatureType): Int = {
+      import SignatureType.*
+      if (!sig.containsTypeVariables) {
+        0
+      } else {
+        sig match {
+          case sig: InstantiatedType                                     => sig.instantiatedTypeParameters.size
+          case sig: Tuple                                                => sig.params.size
+          case sig: CangjieEnum                                          => sig.params.size
+          case _: ArraySlice | _: CangjieArray | _: VArray | _: CPointer => 1
+          case _                                                         => 0
+        }
+      }
+    }
+
+    def apply(x: SignatureType) = proto(x)
 
     def proto(x: SignatureType) = Prototype.intern(Proto(x))
 

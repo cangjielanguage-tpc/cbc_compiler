@@ -9,8 +9,8 @@ func alignOfGeneric<T>() : UIntNative where T <: CType {
 }
 
 main() {
-    // concrete types: no compile-time fold; size/align resolve through
-    // TypeInfo at runtime
+    // concrete types: emitted as size/align ops; the engine rewriter folds
+    // closed layouts at image preparation
     println(sizeOf<Int64>())
     println(alignOf<Int64>())
     println(sizeOf<Int32>())
