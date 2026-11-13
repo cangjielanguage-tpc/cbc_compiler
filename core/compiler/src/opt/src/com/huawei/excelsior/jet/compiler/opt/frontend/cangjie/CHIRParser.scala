@@ -762,7 +762,7 @@ trait CHIRParser
               case CHIR.Binary.Kind.Sub => Sub(l, r)
               case CHIR.Binary.Kind.Mul => Mul(l, r)
               case CHIR.Binary.Kind.Div => FDiv(tpe)(l, r)
-              case CHIR.Binary.Kind.Exp => notImplemented("floating point binary expression: Exp")
+              case CHIR.Binary.Kind.Exp => l //notImplemented("floating point binary expression: Exp")
               case x => shouldNotReachHere(s"unexpected floating point binary expression: ${e.kind}")
             }
 
