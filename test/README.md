@@ -14,6 +14,8 @@ A new suite is a `<name>_testsuite.py` defining one `TestSuite` subclass
 after running a test the runner writes a `run.sh` into the test's
 workdir which re-runs it via `python3 runner.py test --test <ID> --skip-build`.
 
+Python 3.11 or newer is required to run the runner.
+
 ## Running
 
 From `test/`:
