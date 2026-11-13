@@ -1866,9 +1866,14 @@ trait CHIRParser
                   // CPointer<Unit> means void*
                   Void()
                 } else {
+                  // FIXME: use sizeOf intrinsic if pointee.isTypeVariable
                   val mem = Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
                   if (pointee.isPrimitive) {
                     LoadMemory(pointee.toAsm, pointee, atomic = false)(mem)
+                  } else if (pointee.isTypeVariable) {
+                    val cpointerWrapper = SignatureType.Tuple(Seq(pointee))
+                    val field = createNoneReferenceNode(cpointerWrapper, pointee)
+                    LoadFieldSeq(DerivedPtr.Local(), mem, field, loadTypeInfo(pointee))
                   } else {
                     assert(pointee.isRecord)
                     Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
@@ -1892,9 +1897,15 @@ trait CHIRParser
                   // CPointer<Unit> means void*
                   // so do nothing
                 } else {
+                  // FIXME: use sizeOf intrinsic if pointee.isTypeVariable
                   val mem = Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
                   if (pointee.isPrimitive) {
                     StoreMemory(pointee.toAsm, pointee, atomic = false)(mem, value)
+                  } else if (pointee.isTypeVariable) {
+                    val cpointerWrapper = SignatureType.Tuple(Seq(pointee))
+                    val field = createNoneReferenceNode(cpointerWrapper, pointee)
+                    StoreFieldSeq(DerivedPtr.Local(), mem, value, field, loadTypeInfo(pointee))
+
                   } else {
                     assert(pointee.isRecord)
                     copy(pointee, mem, value)
