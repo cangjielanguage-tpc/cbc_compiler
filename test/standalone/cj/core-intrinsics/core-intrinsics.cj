@@ -9,20 +9,21 @@ func alignOfGeneric<T>() : UIntNative where T <: CType {
 }
 
 main() {
-    // concrete types: values come from std.core (native here)
+    // concrete types: the compiler folds these to compile-time constants
     println(sizeOf<Int64>())
     println(alignOf<Int64>())
     println(sizeOf<Int32>())
     println(sizeOf<Bool>())
     println(alignOf<Float64>())
     println(sizeOf<Unit>())
+    println(alignOf<Unit>())
     println(sizeOf<CPointer<Int64>>())
-    // generic type argument path
+    // generic bodies are compiled as ti.size/ti.align TypeInfo queries
     println(sizeOfGeneric<Int64>())
     println(alignOfGeneric<Int64>())
     println(sizeOfGeneric<UInt8>())
     println(alignOfGeneric<Int32>())
-    // string comparisons (CBC std.core implements them via the vector byte ops; native here)
+    // string equality: std.core implements it via the vector byte compare helper
     var s1 = "hello world, hello cangjie, long enough string!"
     var s2 = "hello world, hello cangjie, long enough string?"
     println(s1 == s1)
