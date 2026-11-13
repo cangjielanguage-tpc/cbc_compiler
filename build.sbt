@@ -26,7 +26,6 @@ lazy val xminizip                  = Build.xminizip
 lazy val xpackii                   = Build.xpackii
 lazy val chirLib                   = Build.chirLib
 lazy val cbcAsm                    = Build.cbcAsm
+lazy val patchGen                  = Build.patchGen
 
 inThisBuild(Build.thisBuildSettings)
-
-lazy val patchGen = Build.patchGen
