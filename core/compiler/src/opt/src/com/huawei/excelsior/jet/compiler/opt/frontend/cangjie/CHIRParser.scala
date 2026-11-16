@@ -1580,6 +1580,7 @@ trait CHIRParser
         proxy.replaceBy(BitFieldExtract.Truncate(state(e.condition)))
 
       case e: CHIR.Intrinsic =>
+        import CHIR.Intrinsic.Kind as IK
         e.kind match {
           case CHIR.Intrinsic.Kind.Preinitialize =>
             assert(pkg.packageInitFunc == func, method)
@@ -1954,30 +1955,23 @@ trait CHIRParser
             val ti = loadTypeInfo(tvSig)
             state(e) = LoadMemory(sig.toAsm, sig, atomic = false)(ti)
 
-          case kind =>
-            import CHIR.Intrinsic.Kind as IK
-            kind match {
-              case IK.OverflowCheckedAdd | IK.OverflowCheckedSub | IK.OverflowCheckedMul |
-                   IK.OverflowCheckedDiv | IK.OverflowCheckedMod | IK.OverflowCheckedPow |
-                   IK.OverflowCheckedInc | IK.OverflowCheckedDec | IK.OverflowCheckedNeg =>
-                state(e) = lowerCheckedOverflowIntrinsic(kind, e, e.args.map(state.apply))
+          case IK.OverflowCheckedAdd | IK.OverflowCheckedSub | IK.OverflowCheckedMul |
+               IK.OverflowCheckedDiv | IK.OverflowCheckedMod | IK.OverflowCheckedPow |
+               IK.OverflowCheckedInc | IK.OverflowCheckedDec | IK.OverflowCheckedNeg =>
+            state(e) = lowerCheckedOverflowIntrinsic(e.kind, e, e.args.map(state.apply))
 
-              case IK.OverflowThrowingInc   | IK.OverflowThrowingDec   | IK.OverflowThrowingNeg   |
-                   IK.OverflowSaturatingInc | IK.OverflowSaturatingDec | IK.OverflowSaturatingNeg |
-                   IK.OverflowWrappingInc   | IK.OverflowWrappingDec   | IK.OverflowWrappingNeg   =>
-                state(e) = lowerUnaryOverflowIntrinsic(method, e, kind, e.args.map(state.apply))
+          case IK.OverflowThrowingInc   | IK.OverflowThrowingDec   | IK.OverflowThrowingNeg   |
+               IK.OverflowSaturatingInc | IK.OverflowSaturatingDec | IK.OverflowSaturatingNeg |
+               IK.OverflowWrappingInc   | IK.OverflowWrappingDec   | IK.OverflowWrappingNeg   =>
+            state(e) = lowerUnaryOverflowIntrinsic(method, e, e.kind, e.args.map(state.apply))
 
-              case IK.OverflowThrowingAdd   | IK.OverflowThrowingSub   | IK.OverflowThrowingMul   |
-                   IK.OverflowThrowingDiv   | IK.OverflowThrowingMod   | IK.OverflowThrowingPow   |
-                   IK.OverflowSaturatingAdd | IK.OverflowSaturatingSub | IK.OverflowSaturatingMul |
-                   IK.OverflowSaturatingDiv | IK.OverflowSaturatingMod | IK.OverflowSaturatingPow |
-                   IK.OverflowWrappingAdd   | IK.OverflowWrappingSub   | IK.OverflowWrappingMul   |
-                   IK.OverflowWrappingDiv   | IK.OverflowWrappingMod   | IK.OverflowWrappingPow   =>
-                state(e) = lowerBinaryOverflowIntrinsic(method, e, kind, e.args.map(state.apply))
-
-              case _ =>
-                shouldNotReachHere(kind)
-            }
+          case IK.OverflowThrowingAdd   | IK.OverflowThrowingSub   | IK.OverflowThrowingMul   |
+               IK.OverflowThrowingDiv   | IK.OverflowThrowingMod   | IK.OverflowThrowingPow   |
+               IK.OverflowSaturatingAdd | IK.OverflowSaturatingSub | IK.OverflowSaturatingMul |
+               IK.OverflowSaturatingDiv | IK.OverflowSaturatingMod | IK.OverflowSaturatingPow |
+               IK.OverflowWrappingAdd   | IK.OverflowWrappingSub   | IK.OverflowWrappingMul   |
+               IK.OverflowWrappingDiv   | IK.OverflowWrappingMod   | IK.OverflowWrappingPow   =>
+            state(e) = lowerBinaryOverflowIntrinsic(method, e, e.kind, e.args.map(state.apply))
         }
 
       case e: CHIR.Spawn =>
@@ -2872,16 +2866,11 @@ trait CHIRParser
 
     /** Looks up a cbcengine-helper method by name and arity, instantiates it, and calls it. */
     private def callHelperMethod(name: String, typeArgs: Seq[SignatureType], retType: SignatureType, paramTypes: Seq[SignatureType], args: Seq[Node]): Node = {
-      def findHelperMethod(name: String, paramCount: Int): Method = {
-        val helperPkg = typeProvider.findClass(helperPkgName)
-        assert(helperPkg != null, "cbcengine-helper package")
-        val helper = helperPkg.getDeclaredMethods.find { m =>
-          m.getName.contains(name) && m.getSignature.parameterTypes.size == paramCount
-        }.getOrElse(null)
-        assert(helper != null, s"$name in cbcengine-helper")
-        helper
-      }
-      val helper = findHelperMethod(name, paramTypes.size)
+      val helperPkg = typeProvider.findClass(helperPkgName)
+      assert(helperPkg != null, "cbcengine-helper package")
+      val helper = helperPkg.getDeclaredMethods.find { m =>
+        m.getName.contains(name) && m.getSignature.parameterTypes.size == paramTypes.size
+      }.getOrElse(shouldNotReachHere(s"$name in cbcengine-helper"))
       val refType = fromSymType(helper.getDeclaringClass)
       val base = new MethodReference(helper, MAK.STATIC, CompiledType(refType))
       val target = if (typeArgs.nonEmpty) {
