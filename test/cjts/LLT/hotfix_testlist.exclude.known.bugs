@@ -649,9 +649,6 @@ compiler/CodegenCJNative/record/record_5.cj
 # bug 238 (Resources.scala: equirement failed: InstantiatedRecord)
 API/std/unittest/mock/compiler/createMock/mutableStruct.cj
 
-# bug 240 (Language constraint: all variables in `extend` should be used in the extended type)
-API/std/unittest/mock/compiler/createMock/defaultValues/customExtension.cj
-
 # bug 241 (method from class and interface extend conflicted and wrong one was selected)
 compiler/Sema/generics/generic_member/pkg01/main.cj
 
