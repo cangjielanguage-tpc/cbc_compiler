@@ -2801,21 +2801,15 @@ trait CHIRParser
         case tupleType: SignatureType.PackedTuple => tupleType.params
       }
       for (((arg, i), sig) <- args.zipWithIndex zip params) {
-        val fieldRef = createConstIndexNode(i, tupleType, sig)
+        val fields = fieldChain(tupleType, Seq(i.toLong), maybeBoxed = mem.tpe == TRefType)
         if (sig.isZST) {
           // Nothing to do
 
-        } else if (tupleType.isVariableSizeType) {
-          // TODO: use Box(tupleType) in fieldRef instead of explicit UnboxLea
-          val fields = if (sig.isVariableSizeType) Seq(fieldRef, loadTypeInfo(sig)) else Seq(fieldRef)
-          StoreFieldSeq(mem, UnboxLea(tupleType)(mem), arg, fields*)
-
-        } else if (needsCopy(sig)) {
-          val tupleField = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fieldRef)
+        } else if (!sig.isVariableSizeType && needsCopy(sig)) {
+          val tupleField = GetFieldSeqRef(maybeDerivedPtrBase(mem), mem, fields*)
           copy(sig, tupleField, arg)
-
         } else {
-          StoreFieldSeq(maybeDerivedPtrBase(mem), mem, arg, fieldRef)
+          StoreFieldSeq(maybeDerivedPtrBase(mem), mem, arg, fields*)
         }
       }
       mem
