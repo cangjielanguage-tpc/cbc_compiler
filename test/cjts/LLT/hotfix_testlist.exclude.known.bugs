@@ -254,9 +254,6 @@ compiler/CHIR/ComplicatedCodeBugfix/Bugfix25.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix32.cj
 compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
 
-# bug 125: storeFieldSeq for tuple with Varray
-compiler/CodegenCJNative/reflect/reflect_09.cj
-
 # bug 127: Unknown size for type ?std.core:Option<Nothing>
 compiler/Sema/call/call_error_report_04.cj
 
@@ -702,3 +699,6 @@ API/std/deriving/shrink_test.cj
 # bug 219: Unsupported C2I static virtual call
 API/std/deriving/arbitrary_t_test.cj
 API/std/unittest/examples/advance1.cj
+
+# bug 264: Hotfix plugin drops generic parameters from PatchImpl methods, causing genericTypeInfoParam assertion
+compiler/CodegenCJNative/reflect/reflect_09.cj
