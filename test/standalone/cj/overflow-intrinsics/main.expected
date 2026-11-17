@@ -1,0 +1,161 @@
+wrap add i8 120
+wrap add i8 ov -128
+wrap sub i8 7
+wrap sub i8 ov 127
+wrap mul i8 42
+wrap mul i8 ov 0
+wrap div i8 -128
+wrap mod i8 0
+wrap inc i8 -128
+wrap dec i8 127
+wrap neg i8 -128
+wrap add i64 27
+wrap add i64 ov -9223372036854775808
+wrap sub i64 -15
+wrap mul i64 35568
+wrap div i64 -9223372036854775808
+wrap mod i64 0
+wrap inc i64 -9223372036854775808
+wrap dec i64 9223372036854775807
+wrap neg i64 -9223372036854775808
+wrap pow 243
+wrap pow ov -9223372036854775808
+wrap add u8 250
+wrap add u8 ov 0
+wrap sub u8 ov 255
+wrap mul u8 ov 0
+wrap div u8 6
+wrap mod u8 2
+wrap inc u8 0
+wrap dec u8 255
+wrap neg u8 255
+wrap neg u8z 0
+wrap add u64 27
+wrap add u64 ov 0
+wrap sub u64 ov 18446744073709551615
+wrap mul u64 320
+wrap inc u64 0
+wrap dec u64 18446744073709551615
+wrap neg u64 18446744073709551615
+throw add i8 120
+throw add i8 pass
+throw sub i8 7
+throw sub i8 pass
+throw mul i8 42
+throw mul i8 pass
+throw div i8 pass
+throw mod i8 fail
+throw inc i8 pass
+throw dec i8 pass
+throw neg i8 pass
+throw add i64 27
+throw add i64 pass
+throw sub i64 -15
+throw mul i64 35568
+throw div i64 pass
+throw mod i64 fail
+throw inc i64 pass
+throw dec i64 pass
+throw neg i64 pass
+throw pow 243
+throw pow pass
+throw add u8 250
+throw add u8 pass
+throw sub u8 pass
+throw mul u8 pass
+throw div u8 6
+throw mod u8 2
+throw inc u8 pass
+throw dec u8 pass
+throw neg u8 pass
+throw neg u8z 0
+throw add u64 27
+throw add u64 pass
+throw sub u64 pass
+throw mul u64 320
+throw inc u64 pass
+throw dec u64 pass
+throw neg u64 pass
+sat add i8 127
+sat sub i8 -128
+sat mul i8 127
+sat div i8 127
+sat mod i8 0
+sat inc i8 127
+sat dec i8 -128
+sat neg i8 127
+sat add i8 ok -2
+sat add i64 9223372036854775807
+sat sub i64 -9223372036854775808
+sat mul i64 9223372036854775807
+sat div i64 9223372036854775807
+sat inc i64 9223372036854775807
+sat dec i64 -9223372036854775808
+sat neg i64 9223372036854775807
+sat pow 243
+sat pow ov 9223372036854775807
+sat add u8 255
+sat sub u8 0
+sat mul u8 255
+sat inc u8 255
+sat dec u8 0
+sat neg u8 0
+sat add u64 18446744073709551615
+sat sub u64 0
+sat inc u64 18446744073709551615
+sat dec u64 0
+sat neg u64 0
+chk add i8 Some(120)
+chk add i8 ov None
+chk sub i8 Some(7)
+chk sub i8 ov None
+chk mul i8 Some(42)
+chk mul i8 ov None
+chk div i8 Some(6)
+chk div i8 ov None
+chk mod i8 Some(2)
+chk mod i8 ov None
+chk inc i8 Some(1)
+chk inc i8 ov None
+chk dec i8 Some(-1)
+chk dec i8 ov None
+chk neg i8 Some(-2)
+chk neg i8 ov None
+chk add i64 Some(27)
+chk add i64 ov None
+chk sub i64 Some(-15)
+chk mul i64 Some(35568)
+chk div i64 ov None
+chk mod i64 ov None
+chk inc i64 ov None
+chk dec i64 ov None
+chk neg i64 ov None
+chk pow Some(243)
+chk pow0 Some(1)
+chk pow ov None
+chk add u8 Some(250)
+chk add u8 ov None
+chk sub u8 ov None
+chk mul u8 ov None
+chk div u8 Some(6)
+chk mod u8 Some(2)
+chk inc u8 ov None
+chk dec u8 ov None
+chk neg u8 ov None
+chk neg u8z Some(0)
+chk add u64 Some(27)
+chk add u64 ov None
+chk sub u64 ov None
+chk mul u64 Some(320)
+chk inc u64 ov None
+chk dec u64 ov None
+chk neg u64 ov None
+wrap div0 pass
+throw div0 pass
+sat div0 pass
+chk div0 pass
+wrap mod0 pass
+throw mod0 pass
+sat mod0 pass
+chk mod0 pass
+0
