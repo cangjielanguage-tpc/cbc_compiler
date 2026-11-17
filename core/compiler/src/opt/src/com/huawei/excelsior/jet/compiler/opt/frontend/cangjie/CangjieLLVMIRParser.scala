@@ -1867,7 +1867,7 @@ trait CangjieLLVMIRParser
               ref.refType match {
                 case inst: Ref.Instantiated[?] =>
                   val instantiatedTypeParameters = resolver.instantiatedTypeParameterSignatures(inst)
-                  val sigEq = MethodSignature.equalInstantiatedLegacy(instantiatedTypeParameters)
+                  val sigEq = shouldNotReachHere("legacy equalInstantiated")
                   val method = refType.findMethodOrNullWithSigEq(xstr(name), sig, sigEq) ensuring (_ != null, msg)
                   val target = new MethodReference(method, mak, CompiledType(refType))
 
@@ -2489,7 +2489,7 @@ trait CangjieLLVMIRParser
           //       and proper HLIR metadata is introduced for runtime intrinsics.
           val sig = if (name.startsWith(EXPORTED_SYMBOL_PREFIX)) null else cjSig
           val method = if (instantiatedTypeParameters.nonEmpty) {
-            refType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig, MethodSignature.equalInstantiatedLegacy(instantiatedTypeParameters))
+            refType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig, shouldNotReachHere("legacy equalInstantiated"))
           } else {
             refType.findDeclaredMethodOrNull(xstr(name), sig)
           }

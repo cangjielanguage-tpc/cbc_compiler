@@ -25,7 +25,7 @@ import com.huawei.excelsior.jet.compiler.options.BoolOption.{ContextTypesInParsi
 import com.huawei.excelsior.jet.compiler.symlevel.MethodType.SpecialParameter
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CangjieEnumWrapper, fromSymType}
 import com.huawei.excelsior.jet.compiler.symlevel.{CallConv, CallKind, CangjieFieldReference, Field, InstantiatedMethodReference, Method, MethodReference, MethodSignature, MethodType, SignatureType, ClassType as SymClassType, MethodReferenceAccessKind as MAK, Type as SymType}
-import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
+import com.huawei.excelsior.jet.compiler.symlevel.Type.{asClassType, asClassTypeOpt}
 import com.huawei.excelsior.jet.util.ScalaCollections.*
 import com.huawei.excelsior.jet.util.{Closure, Numbering, ScalaCollections}
 
@@ -216,9 +216,6 @@ trait CHIRParser
         val arrayType = n.arrayType
         val idxTpe = n.srcStart.tpe
 
-        // TODO: is not true if stdlib is compiled to CBC
-        assert(!arrayType.getArrayElemType.isTypeVariable)
-
         val entryGoto = Goto()
 
         val loopBlock = BBlock(entryGoto)
@@ -228,14 +225,8 @@ trait CHIRParser
         val bodyBlock = BBlock(loopContinue.trueExit)
         val srcIdx = Add(n.srcStart, idx)
         val dstIdx = Add(n.dstStart, idx)
-        if (arrayType.getArrayElemType.isRecord) {
-          val srcMem = GetFieldSeqRef(maybeDerivedPtrBase(n.src), n.src, arrayIndex(arrayType, srcIdx))
-          val dstMem = GetFieldSeqRef(maybeDerivedPtrBase(n.dst), n.dst, arrayIndex(arrayType, dstIdx))
-          copy(arrayType.getArrayElemType, dstMem, srcMem)
-        } else {
-          val value = arrayGet(arrayType, n.src, srcIdx)
-          arrayPut(arrayType, n.dst, dstIdx, value)
-        }
+        val value = arrayGet(arrayType, n.src, srcIdx)
+        arrayPut(arrayType, n.dst, dstIdx, value)
         val bodyGoto = Goto()
 
         loopBlock.addArg(bodyGoto)
@@ -659,7 +650,7 @@ trait CHIRParser
         val param = rootMethodParam(idx)
         val realParam = method.getParamType(idx) match {
           case SignatureType.Box(t: SignatureType.OptionLikeEnum) if t.someType.isTypeVariable => param
-          case t: SignatureType.Box => UnboxLea(t.base)(param)
+          case t: SignatureType.Box if !t.base.isVariableSizeType => UnboxLea(t.base)(param)
           case _ => param
         }
         state(rcv) = realParam
@@ -673,8 +664,21 @@ trait CHIRParser
     private def parseExpression(e: CHIR.Expression, block: Block, state: State): Unit = e match {
       case e: CHIR.Unary =>
         import SignatureType.*
-        val arg = state(e.operand)
+
         val sig = resolver.typeSig(e.resultTpe)
+
+        def adjustRes(n: Node) = if (sig == Float16) ValueConvert(AsmType.F32, AsmType.F16)(n) else n
+
+        def adjustArg(n: Node) = sig match {
+          case Float16 =>
+            ValueConvert(AsmType.F16, AsmType.F32)(n)
+          case sig: SignatureType.Integral if sig.isShortIntegral =>
+            BitFieldExtract(IntType, 0, sig.bits, signExtension = sig.signed, n)
+          case _ =>
+            n
+        }
+
+        val arg = adjustArg(state(e.operand))
         val tpe = if (sig == Float16) FloatType else arg.tpe
         assert(tpe != ValueType, arg)
 
@@ -697,7 +701,7 @@ trait CHIRParser
           case CHIR.Unary.Kind.Not => CondVal(negated = true)(Cmp(tpe, Condition.NE)(adjustBool(arg), IntegralConst(tpe)(0)))
           case CHIR.Unary.Kind.BitNot => Xor(arg, IntegralConst(tpe)(-1))
         }
-        state(e) = n
+        state(e) = adjustRes(n)
 
       case e: CHIR.Binary =>
         import SignatureType.*
@@ -1105,16 +1109,7 @@ trait CHIRParser
             case _ => SignatureType.fromSymType(declClass)
           }
 
-          def refineSuperTypes(refType: SignatureType): Iterator[SignatureType] = {
-            val cparams = genericParams(refType)
-            val lparams = Seq.empty
-
-            val refClass = asClassType(refType)
-            Option(refClass.getSuperClassSig).map(_.instantiate(cparams, lparams)).iterator ++
-              refClass.getDeclaredSuperInterfacesSig.map(_.instantiate(cparams, lparams))
-          }
-
-          val refType = (Iterator(declType) ++ refineSuperTypes(declType)).find(t => asClassType(t) == declClass).get
+          val refType = (Iterator(declType) ++ resolver.collectSuperTypes(declType)).find(t => asClassType(t) == declClass).get
 
           val name = resolver.symName(func)
           val _target = calcMethodRef(declClass, refType, name, func)
@@ -1247,13 +1242,7 @@ trait CHIRParser
             (sig, Seq(sig))
         }
 
-        def findVTableSlots(receiverType: SignatureType): Iterator[(CHIRVTable.Entry, SignatureType, Int)] = {
-          val vtable = asClassType(receiverType).getCHIRVTable
-          assert(vtable != null, receiverType)
-
-          // TODO: traverse extensions for "receiverType" as well
-
-          val cparams = genericParams(receiverType)
+        def slotsInVTable(vtable: CHIRVTable, cparams: Seq[SignatureType]): Iterator[(CHIRVTable.Entry, SignatureType, Int)] = {
           vtable.extDefs.iterator.flatMap { extDef =>
             val extType = extDef.extType.instantiate(cparams, Seq.empty)
             val extcparams = genericParams(extType)
@@ -1263,6 +1252,27 @@ trait CHIRParser
             }
             Option.when(vnum >= 0)(extDef.funcTable(vnum), extType, vnum)
           }
+        }
+
+        def findVTableSlots(receiverType: SignatureType): Iterator[(CHIRVTable.Entry, SignatureType, Int)] = {
+          val ownSlots = asClassTypeOpt(receiverType).iterator flatMap { rcvType =>
+            slotsInVTable(rcvType.getCHIRVTable, genericParams(receiverType))
+          }
+
+          // Extensions may declare additional slots for the receiver itself or for any of its
+          // super types (superclasses and interfaces, including interfaces added by extensions);
+          // collectSuperTypes is the closure and contains the receiver itself
+          val extensionSlots = resolver.collectSuperTypes(receiverType).iterator
+            .flatMap { t =>
+              resolver.extensionsOf(t).iterator.flatMap { ext =>
+                resolver.typeSig(ext.tpe).matchInstantiated(t).toSeq.flatMap { case (cparams, _) =>
+                  val extClass = asClassType(resolver.symType(ext).get)
+                  slotsInVTable(extClass.getCHIRVTable, cparams)
+                }
+              }
+            }
+
+          ownSlots ++ extensionSlots
         }
 
         val slots = vtableTypes.iterator.flatMap(findVTableSlots).toSeq
@@ -1935,10 +1945,10 @@ trait CHIRParser
             val sig = resolver.typeSig(e.resultTpe)
             val res = if (sig.isZST) {
               Void()
-            } else if (sig.isRecord) {
-              StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
             } else if (sig.isVariableSizeType) {
               ZeroValueGeneric(loadTypeInfo(sig))
+            } else if (sig.isRecord) {
+              StackAlloc.Local(sig, workaroundForNonZeroedTraceableRecords = true)
             } else {
               ZeroValueNode(ValueType.fromSig(sig))
             }
@@ -2008,7 +2018,7 @@ trait CHIRParser
           case v: CHIR.NullLiteral => if (resolver.typeSig(e.resultTpe).isTraceableReference) Null() else intConst(0, v)
           case v: CHIR.IntLiteral => intConst(v.value, v)
           case v: CHIR.FloatLiteral => v.tpe match {
-            case CHIR.BuiltinType.Float16 => notImplemented(s"FLOAT16: ${v.value}")
+            case CHIR.BuiltinType.Float16 => IConst(java.lang.Float.floatToRawIntBits(v.value.toFloat)) // TODO: proper Float16
             case CHIR.BuiltinType.Float32 => FConst(v.value.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.value)
           }
@@ -2453,7 +2463,8 @@ trait CHIRParser
         case refType: (SignatureType.InstantiatedType | SignatureType.CangjieEnum) =>
           val cparams = genericParams(refType)
           val lparams = Seq.empty[SignatureType] //FIXME
-          declType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig, MethodSignature.equalInstantiated(cparams, lparams))
+          declType.findDeclaredMethodOrNullWithSigEq(xstr(name), sig,
+            (x, y) => x.instantiate(cparams, lparams) == y.instantiate(cparams, lparams))
         case _ =>
           // TODO: generic extend funcs
           declType.findDeclaredMethodOrNull(xstr(name), sig)

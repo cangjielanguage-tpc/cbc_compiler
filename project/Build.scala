@@ -61,6 +61,7 @@ object Build {
 
   lazy val commonTestSettings = Seq(
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.14" % Test,
+    libraryDependencies += "org.scalatestplus" %% "scalacheck-1-17" % "3.2.14.0" % Test,
     Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oIC"),
     Test / run / javaOptions += "-ea",
     Test / parallelExecution := false,

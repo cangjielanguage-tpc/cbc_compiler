@@ -662,3 +662,12 @@ compiler/Driver/options/output_type/obj/obj_test6.cj
 API/std/unittest/new_bench/bench_disable_gc.cj
 API/std/unittest/new_bench/bench_explicit_gc.cj
 Runtime/CJNative/Exception/Expection42_NewObject.cj
+
+# bug 221 (`I<Unit> = CPointer()` crashes with StoreStaticFieldSeq[Plain] ...  got arg LConst[0])
+# CJC should fix it's own behavior first:
+# - https://gitcode.com/Cangjie/cangjie_compiler/issues/1270
+# - https://gitcode.com/Cangjie/cangjie_compiler/issues/1271
+compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
+compiler/CodegenCJNative/generic/generic_struct.cj
+compiler/CodegenCJNative/storeElementRef.cj
+compiler/Sema/ffi/cpointer_generic.cj

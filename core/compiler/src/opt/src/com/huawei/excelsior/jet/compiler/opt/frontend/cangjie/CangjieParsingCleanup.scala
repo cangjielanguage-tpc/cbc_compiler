@@ -22,12 +22,13 @@ trait CangjieParsingCleanup { self: Universe with HLIRNodes =>
         case _: FrameSlot.DebugVar =>
           // nothing to do, all debug var stack allocation slots should be preserved
 
-        case kind: FrameSlot.Typed if !kind.allocType.isRecord && n.uses.forall(_.isInstanceOf[LoadStoreMemoryAccess]) =>
+        case kind: FrameSlot.Typed if !kind.allocType.isRecord && n.uses.forall(_.isInstanceOf[LoadStoreMemoryAccess]) &&
+          n.uses.forall(_.asInstanceOf[LoadStoreMemoryAccess].signature == kind.allocType) =>
+
           // Note: local primitive slots can be passed by-reference to C FFI.
           withNewVar(ValueType.fromSig(kind.allocType)) { (assignAt, readAt) =>
             n.uses.toList foreach {
               case u: StoreMemory =>
-                assert(u.signature == kind.allocType, s"unexpected $u to $n")
                 assignAt(u.inCtrl, u.storedValue())
                 // If it is debug variable but we do not want to support its modification in debugger,
                 // we may replace LoadMemory but should preserve StoreMemory to track variable value in debugger.
@@ -36,7 +37,6 @@ trait CangjieParsingCleanup { self: Universe with HLIRNodes =>
                 }
 
               case u: LoadMemory =>
-                assert(u.signature == kind.allocType, s"unexpected $u from $n")
                 u.replaceBy(readAt(upperPoint(u)))
 
               case u => shouldNotReachHere(s"unexpected use of $n: $u")
