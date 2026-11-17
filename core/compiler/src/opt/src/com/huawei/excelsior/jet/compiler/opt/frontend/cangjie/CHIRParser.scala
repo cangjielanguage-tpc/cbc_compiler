@@ -1982,6 +1982,10 @@ trait CHIRParser
                IK.OverflowWrappingAdd   | IK.OverflowWrappingSub   | IK.OverflowWrappingMul   |
                IK.OverflowWrappingDiv   | IK.OverflowWrappingMod   | IK.OverflowWrappingPow   =>
             state(e) = lowerBinaryOverflowIntrinsic(method, e, e.kind, e.args.map(state.apply))
+
+          // std.core string helpers: 32-byte block compare and search over raw byte arrays.
+          case IK.VectorCompare32 | IK.VectorIndexByte32 =>
+            state(e) = lowerVectorIntrinsic(e.kind, e, e.args.map(state.apply))
         }
 
       case e: CHIR.Spawn =>
@@ -2908,6 +2912,24 @@ trait CHIRParser
         case _ => (Seq(intSig), Seq(intSig, intSig))
       }
       callHelperMethod(helperName, typeArgs, opt, paramTypes, args)
+    }
+
+    /** Lowers a std.core 32-byte block string helper to the matching cbcengine-helper method.
+      *
+      * The intrinsic operates on a `RawArray<Byte>`, which [[CHIRResolver]] resolves to
+      * `CangjieArray(UInt8)`; [[SignatureType]] has no separate raw array type, so the
+      * helper takes `Array<UInt8>` and indexes it with the same byte offsets.
+      */
+    private def lowerVectorIntrinsic(kind: CHIR.Intrinsic.Kind, e: CHIR.Intrinsic, args: Seq[Node]): Node = {
+      import CHIR.Intrinsic.Kind as IK
+      val helperName = kind match {
+        case IK.VectorCompare32 => "vectorCompare32"
+        case IK.VectorIndexByte32 => "vectorIndexByte32"
+        case _ => shouldNotReachHere(kind)
+      }
+      val paramTypes = e.args.map { case ValueSig(sig) => sig }
+      val retType = resolver.typeSig(e.resultTpe)
+      callHelperMethod(helperName, Seq.empty, retType, paramTypes, args)
     }
 
     private def lowerUnaryOverflowIntrinsic(method: Method, e: CHIR.Intrinsic, kind: CHIR.Intrinsic.Kind, args: Seq[Node]): Node = {
