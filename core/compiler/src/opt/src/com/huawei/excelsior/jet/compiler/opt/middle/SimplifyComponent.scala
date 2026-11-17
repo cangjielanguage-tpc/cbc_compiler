@@ -620,6 +620,29 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
     }
   }
 
+  private def haveSameCopySemantics(n: CopyStructureOperation, m: CopyStructureOperation): Boolean = {
+    (n, m) match {
+      case (n: CopyStructure, m: CopyStructure) =>
+        n.structureType == m.structureType
+      case (n: CopyStructureGeneric, m: CopyStructureGeneric) =>
+        n.structureType == m.structureType && n.typeInfo == m.typeInfo
+      case _ =>
+        false
+    }
+  }
+
+  private def isDeadCopy(n: CopyStructureOperation): Boolean = {
+    n.dst match {
+      case StackAlloc.Local(tpe) if tpe == n.structureType =>
+        n.dst.valueUses.toList match {
+          case List(use) => use eq n
+          case _ => false
+        }
+
+      case _ => false
+    }
+  }
+
   /** Eliminates unnecessary indirection in two consecutive copying operations:
     * {{{
     *   CopyStructure(X, Y)
@@ -635,11 +658,16 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
     * so it can be eliminated more efficiently via
     * [[com.huawei.excelsior.jet.compiler.opt.middle.explosion.Explosion.expressExplodeAllObjects express explosion]]
     */
-  private def optimizeCopyStructure(n: CopyStructure): Boolean = {
+  private def optimizeCopyStructure(n: CopyStructureOperation): Boolean = {
     cond(n.inMemory) {
-      case m: CopyStructure if m.dst == n.src =>
+      case m: CopyStructureOperation if m.dst == n.src && haveSameCopySemantics(n, m) =>
         n.srcBaseRef = m.srcBaseRef
         n.src = m.src
+
+        if (isDeadCopy(m)) {
+          strikeOut(m)
+        }
+
         true
     }
   }
@@ -920,11 +948,11 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
               case n: PutField if optimizePutField(n) =>
                 changed()
 
-              case n: CopyStructure if n.src == n.dst =>
+              case n: CopyStructureOperation if n.src == n.dst =>
                 strikeOut(n)
                 changed()
 
-              case n: CopyStructure if optimizeCopyStructure(n) =>
+              case n: CopyStructureOperation if optimizeCopyStructure(n) =>
                 changed()
 
               case arrayGet: ArrayGet if optimizeArrayGet(arrayGet) =>

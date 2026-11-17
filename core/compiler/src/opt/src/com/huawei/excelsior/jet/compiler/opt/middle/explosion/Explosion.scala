@@ -597,7 +597,7 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       case Put(obj, _)      => obj == n
       case Fill(arr)        => arr == n
       case u: ThinNew       => u.addr == n
-      case u: CopyStructure => u.dst == n
+      case u: CopyStructureOperation => u.dst == n
       case _ => false
     }
 
