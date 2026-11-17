@@ -815,6 +815,31 @@ trait CangjieNodes { self: Universe =>
       proto(arrayType)(src, dst, srcStart, dstStart, len)
   }
 
+  /** First differing byte in two 32-byte raw array blocks, or 32 if equal. */
+  class VectorCompare32 private extends NodeWithFixedArgs(VectorCompare32) with SpinalMemoryNode with ProducesValue {
+    def array1 = arg(2)
+    def offset1 = arg(3)
+    def array2 = arg(4)
+    def offset2 = arg(5)
+  }
+
+  object VectorCompare32 extends FixedArgs[VectorCompare32](ControlType, MemoryType, TRefType, LongType, TRefType, LongType)(LongType)
+    with ControlMemoryValueTagged[VectorCompare32] {
+    def newInstance() = new VectorCompare32
+  }
+
+  /** First matching byte in a 32-byte raw array block, or 32 if absent. */
+  class VectorIndexByte32 private extends NodeWithFixedArgs(VectorIndexByte32) with SpinalMemoryNode with ProducesValue {
+    def array = arg(2)
+    def offset = arg(3)
+    def target = arg(4)
+  }
+
+  object VectorIndexByte32 extends FixedArgs[VectorIndexByte32](ControlType, MemoryType, TRefType, LongType, IntType)(LongType)
+    with ControlMemoryValueTagged[VectorIndexByte32] {
+    def newInstance() = new VectorIndexByte32
+  }
+
   object AtomicOps {
 
     private def irType(field: CangjieFieldReference): Type = {

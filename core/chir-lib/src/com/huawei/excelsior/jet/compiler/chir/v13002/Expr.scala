@@ -187,6 +187,8 @@ class IntrinsicImpl(in: IntrinsicBase)(implicit provider: CHIRItemProvider) exte
     case IntrinsicKind.OVERFLOW_WRAPPING_INC => Intrinsic.Kind.OverflowWrappingInc
     case IntrinsicKind.OVERFLOW_WRAPPING_DEC => Intrinsic.Kind.OverflowWrappingDec
     case IntrinsicKind.OVERFLOW_WRAPPING_NEG => Intrinsic.Kind.OverflowWrappingNeg
+    case IntrinsicKind.VECTOR_COMPARE_32 => Intrinsic.Kind.VectorCompare32
+    case IntrinsicKind.VECTOR_INDEX_BYTE_32 => Intrinsic.Kind.VectorIndexByte32
     case k => notImplemented(s"intrinsic ${IntrinsicKind.name(k)}")
   }
   def args: Seq[CHIR.Value] = operands
