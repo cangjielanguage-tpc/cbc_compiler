@@ -518,6 +518,8 @@ API/std/unittest/type_parameters/error_parameter_missed_func.cj
 API/std/unittest/type_parameters/error_unknown_variable.cj
 API/std/unittest/type_parameters/error_unknown_variable_func.cj
 compiler/FFI/CFFI/cstring/compare.cj
+API/std/socket/redesign/regression/test_tcp_server_wrong_buffersize.cj
+API/std/socket/redesign/regression/test_unix_wrong_buffersize.cj
 
 # bug 261 (changed compiler diagnostics)
 API/std/libast/decls/classdecl/test_annotation_001.cj
