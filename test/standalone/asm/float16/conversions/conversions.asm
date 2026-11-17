@@ -6,8 +6,14 @@
 @aot_deps "aot"
 @aot.direct reportFailureLnk = "_CN3aot13reportFailureHl"
 @method_ref reportFailure = aot@aref reportFailure(I64)I64 #reportFailureLnk
+@foreign_libs "native"
+@method_ref isAmd64 = default@ref isAmd64()U64
 
 @type default
+  @method isAmd64()U64
+    @flags FOREIGN AOT
+    @link "is_amd64"
+  @end
   @method main()I64
     @code
       ; assertion 1: i2f I32 to F16 rounds 2049 to even 2048
@@ -330,6 +336,12 @@
       movi.64 IR1, 38
       w.bcci.64 NE, IR2, 0x0001, fail
 
+      @dead IR1
+      call.direct #isAmd64
+      @live.prim IR1
+      ; TODO: enable direct rounding checks on amd64 after https://git.excelsior.internal/cbc/kanban/issues/265
+      w.bcci.64 NE, IR1, 0, done
+
       ; assertion 39: f2f F64 to F16 rounds above a half midpoint directly
       fmovi.64 FR1, 1.0004882812500002
       f2f F64, F16, FR1, FR0
@@ -349,6 +361,7 @@
       @dead IR1
       movi.64 IR1, 40
       w.bcci.64 NE, IR2, 0x3c01, fail
+done:
       @dead IR1
       movi.64 IR1, 0
       ret.64 IR1

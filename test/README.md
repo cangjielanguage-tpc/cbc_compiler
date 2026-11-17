@@ -32,11 +32,9 @@ exclude lists (e.g. `cjts/LLT/hotfix_testlist.exclude.known.bugs`), not by
   executes `cbc-compiler.jar` from its own directory. To run the tests against
   a locally built compiler, install it into the toolchain first (see the
   "Toolchain" section in the main [README.md](../README.md)).
-- Native C companions use `clang` by default. Set `CC` env var to select another
-  compiler or wrapper, for example `CC='ccache clang'`. Float16 C ABI tests
-  require a compiler supporting `_Float16` (Clang 15+ on x86_64).
-  The Cangjie SDK's `libclang_rt-builtins.a` is linked when available to supply
-  conversion helpers, including on systems with an older libgcc.
+- Native C companions use `clang`. Float16 C ABI tests require a compiler
+  supporting `_Float16` (Clang 15+ on x86_64). On x86_64, companions are compiled
+  with `-mf16c` and require F16C hardware support, matching the engine build.
 - For the `hotfix` suite the toolchain must in addition contain the hotfix
   components: `tools/lib/libhotfix-plugin.so`, `tools/bin/patch-gen`,
   `tools/lib/libcbc-preload.so`, the interpreter engine libraries
@@ -78,8 +76,8 @@ A test under `standalone/cj/` is a directory with the main source
   `cbc-compiler` via `-cbcaotdeps`; it is never compiled to CHIR/CBC itself.
 - `<name>.int.cj` - intermediate package: compiled to a static archive and
   passed to `cbc-compiler` as an additional CHIR input.
-- `<name>.c` - native library: built with `clang -shared -fPIC` (or `CC`) and
-  passed via `-foreignlibs`.
+- `<name>.c` - native library: built with `clang -shared -fPIC` and passed via
+  `-foreignlibs`; x86_64 builds also use `-mf16c`.
 - `<name>.expected` - golden output: the program's stdout followed by its
   exit status. For the hotfix suite, a `<name>.hotfix.expected` file
   overrides it when present.
