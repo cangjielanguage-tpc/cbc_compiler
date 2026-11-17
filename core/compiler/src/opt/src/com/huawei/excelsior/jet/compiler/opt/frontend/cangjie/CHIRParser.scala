@@ -968,7 +968,7 @@ trait CHIRParser
                 }
               case Some(sf) =>
                 if (!lastField.fieldType.isVariableSizeType && needsCopy(lastField.fieldType)) {
-                  val addr = GetStaticFieldSeqRef(DerivedPtr.Global(), fields*)
+                  val addr = GetStaticFieldSeqRef(DerivedPtr.Global(), sf +: fields*)
                   copy(lastField.fieldType, addr, arg)
                 } else {
                   StoreStaticFieldSeq(DerivedPtr.Global(), arg, sf +: fields*)
