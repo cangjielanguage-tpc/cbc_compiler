@@ -2035,12 +2035,35 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.CStringInit =>
             state(e) = state(e.args.head)
 
-          // WORKAROUND(stdlib-to-cbc): pointer intrinsics faked as always
-          // returning a zero/null value of the correct type.
-          case CHIR.Intrinsic.Kind.CPointerAdd |
-               CHIR.Intrinsic.Kind.CPointerGetPointerAddress |
-               CHIR.Intrinsic.Kind.CStringConvertCstrToPtr =>
-            state(e) = fakeIntrinsicResult(e)
+          case CHIR.Intrinsic.Kind.CPointerAdd =>
+            val args = e.args
+            val ValueSig(cpointerType: SignatureType.CPointer) = args.head
+            val (base, offset) = args match {
+              case Seq(base, offset) => (state(base), state(offset))
+            }
+            cpointerType.pointee match {
+              case pointee: SignatureType if pointee.isZST =>
+                // CPointer<Unit> means void*; same convention as read/write: no scaling
+                state(e) = base
+              case tv: (SignatureType.ClassTypeVariable | SignatureType.LocalTypeVariable) =>
+                // Generic pointee: element size is only known at runtime; load it
+                // from the TypeInfo (mirrors sizeOfType<T>).
+                state(e) = Add(base, Mul(offset, TypeSize(loadTypeInfo(tv))))
+              case pointee: SignatureType =>
+                // Concrete pointee: fold the element size, mirroring CPointerRead.
+                state(e) = Add(base, Mul(offset, LConst(pointee.toAsm.sizeInBytes)))
+              case _ =>
+                shouldNotReachHere(cpointerType)
+            }
+
+          case CHIR.Intrinsic.Kind.CPointerGetPointerAddress =>
+            // CPointer is a raw address word; UIntNative is the same register kind (U64)
+            state(e) = state(e.args.head)
+
+          case CHIR.Intrinsic.Kind.CStringConvertCstrToPtr =>
+            // CString (BString) and CPointer<UInt8> are the same raw address word;
+            // exact inverse of CStringInit (also an identity)
+            state(e) = state(e.args.head)
 
           // WORKAROUND(stdlib-to-cbc): sync primitive intrinsics faked as no-ops;
           // only MutexTryLock reports success so that callers do not spin.
