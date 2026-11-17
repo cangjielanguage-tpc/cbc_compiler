@@ -16,9 +16,9 @@ workdir which re-runs it via `python3 runner.py test --test <ID> --skip-build`.
 
 Python 3.11 or newer is required to run the runner.
 
-Native C companions use `clang` by default; `CC` can select another compiler
-or wrapper. Float16 C ABI tests require `_Float16` support. The SDK's
-`libclang_rt-builtins.a` is linked when available for conversion helpers.
+Native C companions use `clang`. Float16 C ABI tests require `_Float16`
+support (Clang 15+ on x86_64). On x86_64, companions are compiled with `-mf16c`
+and require F16C hardware support, matching the engine build.
 
 ## Running
 
