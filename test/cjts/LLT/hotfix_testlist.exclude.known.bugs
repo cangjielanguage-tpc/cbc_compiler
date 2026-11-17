@@ -234,7 +234,6 @@ compiler/CHIR/UG/VTable/extend/extend4/main.cj
 compiler/CHIR/UG/VTable/extend/extend5/main.cj
 compiler/CodegenCJNative/LegacyTests/operatorParenExpr.cj
 compiler/Sema/Extend/extend_lookup/main.cj
-# moved from bug 175
 compiler/CHIR/UG/ClosureConversion/extendFunc01.cj
 compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
 
@@ -245,10 +244,6 @@ compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
 compiler/Sema/class/class_no_override_modifier_6.cj
 compiler/Sema/Extend/default_implement/default_implement_04.cj
-
-# ignore due to timeouts and environmental problems
-compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
-compiler/Sema/join_meet/join_perf.cj
 
 # bug 124: not implemented: cast from Option<Array<Int64>>.None to Option<Int64>
 compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
