@@ -6,7 +6,7 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cjc, run_in_toolchain
+from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cc, run_cjc, run_in_toolchain
 
 HERE = Path(__file__).resolve().parent
 SRC = HERE
@@ -90,9 +90,7 @@ class HotfixTestSuite(TestSuite):
             for c_file in sorted(test_copy.glob("*.c")):
                 native_name = c_file.stem
                 native_so = c_file.with_name(f"lib{native_name}{DYLIB_EXT}")
-                res = await run_in_toolchain(
-                    ["cc", "-shared", "-fPIC", "-o", str(native_so), str(c_file)],
-                    log=log_io, timings=self.timings)
+                res = await run_cc(c_file, native_so, log=log_io, timings=self.timings)
                 log_io.write(f"\n[native {native_name}] exit {res}\n")
                 if res != 0:
                     return _fail(log_io, wdir)
