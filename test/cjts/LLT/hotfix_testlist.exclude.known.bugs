@@ -234,6 +234,9 @@ compiler/CHIR/UG/VTable/extend/extend4/main.cj
 compiler/CHIR/UG/VTable/extend/extend5/main.cj
 compiler/CodegenCJNative/LegacyTests/operatorParenExpr.cj
 compiler/Sema/Extend/extend_lookup/main.cj
+# moved from bug 175
+compiler/CHIR/UG/ClosureConversion/extendFunc01.cj
+compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
 
 # bug 132 (Incorrect signature of return type)
 compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.cj
@@ -319,10 +322,6 @@ API/std/collection/test_collection_transformops_coverage.cj
 # bug 173 (mut interface function does not change struct fields)
 compiler/CodegenCJNative/generic/generic_struct2.cj
 compiler/CodegenCJNative/generic/generic_struct4.cj
-
-# bug 175 (CHIRParser.genericTypeInfoParam(CHIRParser.scala:2770))
-compiler/CHIR/UG/ClosureConversion/extendFunc01.cj
-compiler/CHIR/UG/VTable/generic/non_static/interface_extend03.cj
 
 # bug 177 (unexpected runSingleCase.lambda in stacktrace)
 API/std/unittest/exception_rendering.cj
