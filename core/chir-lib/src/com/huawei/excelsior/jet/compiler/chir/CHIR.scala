@@ -457,6 +457,42 @@ object CHIR {
       case PowI
       case GetTypeForTypeParameter
       case BlackBox
+      case OverflowCheckedAdd
+      case OverflowCheckedSub
+      case OverflowCheckedMul
+      case OverflowCheckedDiv
+      case OverflowCheckedMod
+      case OverflowCheckedPow
+      case OverflowCheckedInc
+      case OverflowCheckedDec
+      case OverflowCheckedNeg
+      case OverflowThrowingAdd
+      case OverflowThrowingSub
+      case OverflowThrowingMul
+      case OverflowThrowingDiv
+      case OverflowThrowingMod
+      case OverflowThrowingPow
+      case OverflowThrowingInc
+      case OverflowThrowingDec
+      case OverflowThrowingNeg
+      case OverflowSaturatingAdd
+      case OverflowSaturatingSub
+      case OverflowSaturatingMul
+      case OverflowSaturatingDiv
+      case OverflowSaturatingMod
+      case OverflowSaturatingPow
+      case OverflowSaturatingInc
+      case OverflowSaturatingDec
+      case OverflowSaturatingNeg
+      case OverflowWrappingAdd
+      case OverflowWrappingSub
+      case OverflowWrappingMul
+      case OverflowWrappingDiv
+      case OverflowWrappingMod
+      case OverflowWrappingPow
+      case OverflowWrappingInc
+      case OverflowWrappingDec
+      case OverflowWrappingNeg
     }
   }
 
