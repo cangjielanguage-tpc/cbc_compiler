@@ -406,6 +406,7 @@ compiler/FFI/CFFI/type_cast/type_cast_10.cj
 compiler/FFI/CFFI/type_cast/type_cast_8.cj
 compiler/FFI/CFFI/unsafe/unsafe.cj
 compiler/Sema/varray/varray_cffi/varray_inout04.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/foreignFunction/basic.cj
 
 # bug 203 (sigsegv on partially constructed TypeInfo: class with functional type field that references same class in signature)
 API/std/unittest/custom_assertions/nested_expect_inside_assert.cj
@@ -555,6 +556,8 @@ API/std/unittest/mock/compiler/createMock/genericsAnotherPackage.cj
 API/std/unittest/mock/compiler/createMock/sameGenericInstanceInDifferentPackages.cj
 API/std/unittest/mock/compiler/misc/genericPrivateMethodWithDefaultParam.cj
 compiler/Sema/Extend/generic_param_decl_call_in_member_func/generics_00100.cj
+API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
+compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
 
 # bug 222 (castIdentity: F16/F32/F64)
 API/std/libast/tokens/toString/test_004.cj
@@ -637,3 +640,19 @@ API/std/unittest/examples/advance1.cj
 
 # bug 264: Hotfix plugin drops generic parameters from PatchImpl methods, causing genericTypeInfoParam assertion
 compiler/CodegenCJNative/reflect/reflect_09.cj
+
+# bug 266 (extend with interface that has static function -- NoSuchElementException: None.get)
+compiler/Sema/Extend/extend_interface_static2.cj
+compiler/Sema/generics/generic_static_field_prop/generic_static_prop06.cj
+
+# bug 267 (const func receiver is (unexpectedly) NULL)
+compiler/FFI/CFFI/cfunc/conflict/conflict_9.cj
+compiler/Sema/const_evaluation/ok_class_variables.cj
+
+# bug 268 (should not reach here (extra information: symType for TypeVariable))
+compiler/CHIR/CHIR2HLIR/matchPattern/enum_exhaustive_03.cj
+compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_07.cj
+
+# bug 269 (foreign function: Called unresolved AOT method)
+API/std/time/datetime/test_local_time.cj
+compiler/CHIR/CHIR2HLIR/time/native3.cj
