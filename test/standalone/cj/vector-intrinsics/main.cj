@@ -1,11 +1,6 @@
 // Exercises the std.core 32-byte block string helpers (vectorCompare32 /
 // vectorIndexByte32), which are lowered to cbcengine-helper calls.
 //
-// NOTE: the intrinsics live inside std.core's own bodies. While std.core is
-// consumed as prebuilt AOT code, the compiler never sees the intrinsic nodes,
-// so this test only checks the resulting string behavior end to end. Once
-// std.core is compiled to CBC, the same test also covers the lowering.
-//
 // All strings are longer than 32 bytes so that the vectorized block paths in
 // std.core are taken; differences are placed inside a block, at the block
 // boundary (index 31/32) and at the very end to cover the tail handling.

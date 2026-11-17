@@ -1983,7 +1983,6 @@ trait CHIRParser
                IK.OverflowWrappingDiv   | IK.OverflowWrappingMod   | IK.OverflowWrappingPow   =>
             state(e) = lowerBinaryOverflowIntrinsic(method, e, e.kind, e.args.map(state.apply))
 
-          // std.core string helpers: 32-byte block compare and search over raw byte arrays.
           case IK.VectorCompare32 | IK.VectorIndexByte32 =>
             state(e) = lowerVectorIntrinsic(e.kind, e, e.args.map(state.apply))
         }
