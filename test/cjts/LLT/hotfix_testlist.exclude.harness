@@ -46,6 +46,8 @@ API/std/sort/test_stableSort.cj
 API/std/sort/test_arraySort.cj
 API/std/sort/test_sort_stable.cj
 compiler/ConditionalCompilation/node/finalizer_on.cj
+compiler/CHIR/ComplicatedCodeBugfix/Bugfix16.cj
+compiler/Sema/join_meet/join_perf.cj
 
 
 # environment: /usr/bin/env: ‘bash’: No such file or directory
@@ -54,8 +56,6 @@ compiler/Driver/cross_compile/toolchain_option/toolchain_mock.cj
 compiler/Driver/cross_compile/sysroot_option/sysroot_priority.cj
 
 # multi-step/multi-package issues, hotfix toolchain does not support such scenarios
-compiler/CHIR/UG/VTable/extend/extend4/main.cj
-compiler/CHIR/UG/VTable/extend/extend5/main.cj
 compiler/CodegenCommon/struct/main.cj
 
 # CHIR-for-cbc serialization is not stable, hotfix toolchain does not support such scenarios
