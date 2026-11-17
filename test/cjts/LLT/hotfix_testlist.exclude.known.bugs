@@ -260,10 +260,6 @@ compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
 # bug 127: Unknown size for type ?std.core:Option<Nothing>
 compiler/Sema/call/call_error_report_04.cj
 
-# bug 128: zero-sized struct assignment failed to compile
-compiler/CodegenCHIR/barrier/globalBarier5.cj
-Runtime/CJNative/barrier/static.agg/write/GlobalSSC-writeS.cj
-
 # bug 148 (LLT/compiler/ConstEval/Overflow: error: expected at least one source code file when compiling source code)
 compiler/ConstEval/Overflow
 
