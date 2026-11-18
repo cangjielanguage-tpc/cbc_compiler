@@ -1,0 +1,27 @@
+global vars
+global funcs
+_CAF7default3BoxIRNat6StringEE10printValueHv
+_CAO7default3BoxIRNat6StringEE10printValueHvK_iiHv
+_CAF7default3BoxIRNat6StringEE9printSameHY2_
+_CAO7default3BoxIRNat6StringEE9printSameHY2_K_iiHv
+_CAF7default3BoxIlE10printValueHv
+_CAO7default3BoxIlE10printValueHvK_iiHv
+_CAF7default3BoxIlE9printSameHl
+_CAO7default3BoxIlE9printSameHlK_iiHv
+_CAF7default3BoxIG_E10printValueHv
+_CAO7default3BoxIG_E10printValueHvK_iiHv
+_CAF7default3BoxIG_E9printSameHG_
+_CAO7default3BoxIG_E9printSameHG_K_iiHv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+$default$GVI
+$default$Patch$GC$Box$GC$printValue$$default.Box$I$_CN7default3BoxIRNat6StringEE10printValueHv$GF
+$default$Patch$GC$Box$GC$printSame$$default.Box$_std.core.String$I$_CN7default3BoxIRNat6StringEE9printSameHY2_$GF
+$default$Patch$GC$Box$GC$printValue$$default.Box$I$_CN7default3BoxIlE10printValueHv$GF
+$default$Patch$GC$Box$GC$printSame$$default.Box$_Int64$I$_CN7default3BoxIlE9printSameHl$GF
+$default$Patch$GC$Box$GC$printValue$$default.Box$GF
+$default$Patch$GC$Box$GC$printSame$$default.Box$_T$GF
+types
+$default$PatchImpl$GC

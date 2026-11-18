@@ -1,6 +1,5 @@
 global vars
 _CAO7default5Added6<init>HvK_E
-$default$Added$GC$init$$default.Added$GVF
 global funcs
 _CN7default5Added6<init>Hv
 _CAF7default5valueHv
@@ -18,6 +17,3 @@ $default$Patch$GC$value$GF
 types
 _CN7default5AddedE
 $default$PatchImpl$GC
-_CNat6OptionICNat6ObjectEE
-_CNat6OptionIlE
-_CNatXRNat5ArrayICNat6ObjectEEU00000004qpt8IK_IY3_E
