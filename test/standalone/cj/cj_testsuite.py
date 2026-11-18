@@ -5,7 +5,10 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cc, run_cjc, run_in_toolchain
+from runner_lib import (
+    DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite,
+    remove_engine_frames, run_cc, run_cjc, run_in_toolchain,
+)
 
 HERE = Path(__file__).resolve().parent
 MODES = ("default", "O2")
@@ -136,14 +139,15 @@ class CjTestSuite(TestSuite):
         (wdir / "run.log").write_text(stdout_txt)
         (wdir / "run.err").write_text(err_txt)
         (wdir / f"{name}.actual").write_text(stdout_txt + (err_txt if err_txt.strip() else f"{res}\n"))
-        return verify(wdir, name)
+        return verify(wdir, name, test_id.mode)
 
 
-def verify(wdir, name):
-    expected = wdir / f"{name}.expected"
+def verify(wdir, name, mode):
+    mode_expected = wdir / f"{name}.{mode}.expected"
+    expected = mode_expected if mode_expected.is_file() else wdir / f"{name}.expected"
     actual = wdir / f"{name}.actual"
-    exp_txt = expected.read_text() if expected.is_file() else None
-    act_txt = actual.read_text()
+    exp_txt = remove_engine_frames(expected.read_text()) if expected.is_file() else None
+    act_txt = remove_engine_frames(actual.read_text())
     if exp_txt is None or exp_txt != act_txt:
         diff_lines = difflib.unified_diff(exp_txt.splitlines(keepends=True) if exp_txt is not None else [],
                                           act_txt.splitlines(keepends=True),
