@@ -211,6 +211,10 @@ object PackageImpl {
       if (pending.nonEmpty) pkg.setTypes(pkg.getTypes ++ pending)
     }
 
+    def bindThis(bindings: Map[Long, Long]): Unit = {
+      bindings.foreach { (id, owner) => memo(id) = apply(owner) }
+    }
+
     private def specialize(original: TypeElemUnion, args: Array[Long]): Long = {
       val base = new TypeT
       base.setKind(typeBase(original.getValue).getKind)
@@ -501,7 +505,8 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
       (1L to length(model.getTypes).toLong).filter(id => getType[CHIR.Type](id).contains(CHIR.BuiltinType.This))
         .map(id => id -> ownerType.get).toMap
     } else Map.empty[Long, Long]
-    val remapType = new TypeRemapper(model, sourceGenerics.zip(targetGenerics).toMap ++ thisTypes)
+    val remapType = new TypeRemapper(model, sourceGenerics.zip(targetGenerics).toMap)
+    remapType.bindThis(thisTypes)
     sourceGenerics.zip(targetGenerics).foreach { (a, b) =>
       require(model.getTypes()(index(a)).getType == TypeElem.GenericType &&
         model.getTypes()(index(b)).getType == TypeElem.GenericType, "Expected generic types")
