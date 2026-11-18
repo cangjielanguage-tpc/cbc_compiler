@@ -31,8 +31,15 @@ LOCAL_PATCH_GEN = TEST_DIR.parents[1] / "scripts" / "patch-gen"
 def run(cmd, cwd, env, capture=False):
     if capture:
         return subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, text=True)
+                              stderr=subprocess.STDOUT, universal_newlines=True)
     return subprocess.run(cmd, cwd=cwd, env=env)
+
+
+def remove_file(path):
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def tool_env(toolchain: str) -> dict:
@@ -193,7 +200,7 @@ def main() -> int:
                             "--plugin", plugin, f"-{level}",
                             "-o", f"lib{name}.chir", "--emit-chir"]
             base_chir = work / f"lib{name}.chir"
-            base_chir.unlink(missing_ok=True)
+            remove_file(base_chir)
             if run(in_tool_env(env, compile_base), cwd=work, env=env).returncode != 0:
                 print("    Fail. Base compilation failed")
                 failed.append(f"{level}:{name}")
@@ -225,7 +232,7 @@ def main() -> int:
                     failed.append(f"{level}:{name}:model-checker")
                     continue
 
-            (work / patch_chir).unlink(missing_ok=True)
+            remove_file(work / patch_chir)
             result = run(in_tool_env(env, generator_command), cwd=work, env=env, capture=True)
             (work / f"{name}.{level}.actual").write_text(result.stdout)
             expected = exp.read_text()
