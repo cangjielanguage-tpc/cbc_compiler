@@ -52,6 +52,10 @@ python3 runner.py clean                                            # remove the 
   can be executed by hand; `--describe` prints its path.
 - Exit codes: `0` all passed, `1` failures, `2` hard error.
 
+The `cj` and `hotfix` suites omit `cangjie.runtime.cbcengine.*` stack frames
+when comparing output. Expected files omit these implementation details;
+raw logs and `.actual` files retain the complete trace.
+
 Hotfix builds isolate sources and dependencies per mode. Both the native throw
 stub and patched CHIR use the selected optimization level. Expected output is
 selected in this order: `<name>.hotfix.<mode>.expected`,

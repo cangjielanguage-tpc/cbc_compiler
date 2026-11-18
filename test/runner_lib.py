@@ -1,6 +1,7 @@
 import asyncio
 import asyncio.subprocess
 import os
+import re
 import sys
 import time
 from abc import ABC, abstractmethod
@@ -11,11 +12,19 @@ from typing import Dict
 MACOS = sys.platform == "darwin"
 DYLIB_EXT = ".dylib" if MACOS else ".so"
 DYLIB_PATH_VAR = "DYLD_LIBRARY_PATH" if MACOS else "LD_LIBRARY_PATH"
+ENGINE_FRAME = re.compile(r"^[ \t]+at cangjie\.runtime\.cbcengine(?:\.|::)")
 
 
 class MissingArtifacts(RuntimeError):
     """Raised by a testsuite when a testcase is run without its build artifacts."""
     pass
+
+
+def remove_engine_frames(text):
+    return "".join(
+        line for line in text.splitlines(keepends=True)
+        if not ENGINE_FRAME.match(line)
+    )
 
 
 def tool_sh():

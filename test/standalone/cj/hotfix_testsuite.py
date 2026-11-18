@@ -6,7 +6,10 @@ import os
 import shutil
 from pathlib import Path
 
-from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cjc, run_in_toolchain
+from runner_lib import (
+    DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite,
+    remove_engine_frames, run_cjc, run_in_toolchain,
+)
 
 HERE = Path(__file__).resolve().parent
 SRC = HERE
@@ -262,8 +265,8 @@ def verify(wdir, name, mode):
                   sources / f"{name}.expected"]
     expected = next((p for p in candidates if p.is_file()), candidates[-1])
     actual = wdir / f"{name}.actual"
-    exp_txt = expected.read_text() if expected.is_file() else None
-    act_txt = actual.read_text()
+    exp_txt = remove_engine_frames(expected.read_text()) if expected.is_file() else None
+    act_txt = remove_engine_frames(actual.read_text())
     if exp_txt is None or exp_txt != act_txt:
         diff_lines = difflib.unified_diff(exp_txt.splitlines(keepends=True) if exp_txt is not None else [],
                                           act_txt.splitlines(keepends=True),
