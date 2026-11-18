@@ -83,10 +83,9 @@ object Equality {
     case (a: Field, b: Field) => sameValues(a.base, b.base) && a.path == b.path
     case (a: Apply, b: Apply) =>
       sameValues(a.callee, b.callee) && a.thisType == b.thisType &&
-        (a.thisType.isEmpty || sameValues(a.thisArg, b.thisArg)) &&
         a.instantiatedTypeArgs == b.instantiatedTypeArgs && sameValues(a.args, b.args)
     case (a: Invoke, b: Invoke) =>
-      a.callee == b.callee && a.thisType == b.thisType && sameValues(a.thisArg, b.thisArg) &&
+      a.callee == b.callee && a.thisType == b.thisType &&
         a.instantiatedTypeArgs == b.instantiatedTypeArgs &&
         a.overflowStrategy == b.overflowStrategy && sameValues(a.args, b.args)
     case (a: GetRTTIStatic, b: GetRTTIStatic) => TypeKey(a.rttiType) == TypeKey(b.rttiType)
