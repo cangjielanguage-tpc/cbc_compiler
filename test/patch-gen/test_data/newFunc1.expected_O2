@@ -14,6 +14,13 @@ _CNat13ArrayIteratorICNat6ObjectEE6<init>HRNat5ArrayIY2_E
 _CNat5RangeIlE6<init>Hlllbbb
 _CNat5RangeIlE7isEmptyHv
 _CNat8IteratorIlE6<init>Hv
+_CNat5ArrayIhE6<init>Hv
+_CNat5ArrayIhE10rangeSliceHRNat5RangeIlEl
+_CNat5ArrayIhE7isLegalHll
+_CNat5ArrayIhE9normalizeHRNat5RangeIlE
+_CNatXRNat5ArrayIhE4sizepgHv
+_CNat8IteratorIhE6<init>Hv
+_CNat13ArrayIteratorIhE6<init>HRNat5ArrayIhE
 _CN7default4foo1Hv
 _CAF7default4foo1Hv
 _CAO7default4foo1HvK_iiHv
@@ -45,16 +52,18 @@ $default$GVI
 [unreachable] $default$Patch$GC$foo1$GF
 [unreachable] $default$Patch$GC$foo2$GF
 [unreachable] $default$Patch$GC$foo3$GF
-_CINat13ArrayIteratorIG_E4nextHv$c
 types
 _CN7default1SE
 _CNat5ArrayICNat6ObjectEE
 _CNat5RangeIlE
+_CNat5ArrayIhE
 _CN7default1CE
 _CNat8IteratorICNat6ObjectEE
 _CNat13ArrayIteratorICNat6ObjectEE
 _CNat8IteratorIlE
 _CNat13RangeIteratorIlE
+_CNat8IteratorIhE
+_CNat13ArrayIteratorIhE
 $default$PackageInitPatch$GC
 $default$Patch$GC
 $default$PatchImpl$GC
@@ -65,4 +74,6 @@ $CiF0CNat9ExceptionEvE
 $CiF0bcE
 _CNat6OptionICNat6ObjectEE
 _CNat6OptionIlE
+_CNat6OptionIhE
 _CNatXRNat5ArrayICNat6ObjectEEUnewFunc1$K_IY3_E
+_CNatXRNat5ArrayIhEUnewFunc1$K_IhE
