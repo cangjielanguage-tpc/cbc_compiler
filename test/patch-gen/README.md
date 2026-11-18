@@ -1,8 +1,8 @@
 # Patch-gen functional tests
 
 The suite checks patch generation, declaration dumps, expected diagnostics and
-serialization. Cases run at O0 and O1 by default. O2 can be selected explicitly
-and uses level-specific expectations where present.
+serialization. Cases run at O0, O1 and O2 by default, using level-specific expectations
+where present.
 
 ## Prerequisites
 
@@ -43,3 +43,17 @@ The default executable is `scripts/patch-gen`, backed by
 `core/cbc-patchgen/target/patch-gen.jar`. The checker is packaged as
 `core/chir-lib/target/chir-lib-tests.jar`. The SDK defaults to `CANGJIE_HOME`;
 `CANGJIE_STDX_PATH` can override the standard stdx directory.
+
+## Installing into a toolchain
+
+Build with `sbt 'patchGen/assembly'`, then install the wrapper and its sibling jar:
+
+```bash
+cp scripts/patch-gen "$CANGJIE_HOME/tools/bin/patch-gen"
+cp core/cbc-patchgen/target/patch-gen.jar "$CANGJIE_HOME/tools/bin/patch-gen.jar"
+source "$CANGJIE_HOME/envsetup.sh"
+patch-gen source.chir patched.chir
+```
+
+Preserve a copy of the existing native executable before replacing it. Java must
+be available on PATH. The wrapper finds the jar beside itself when installed.
