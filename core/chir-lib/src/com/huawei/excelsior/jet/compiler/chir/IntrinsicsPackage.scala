@@ -21,6 +21,8 @@ private final class IntrinsicsPackage extends CHIR.Package {
 
     def generateFunc(_id: Int): Option[CHIR.Func] = {
       Option(new CHIR.Func {
+        def genericDeclaration: Option[CHIR.Func] = None
+
         def tpe: CHIR.FuncType = new CHIR.FuncType {
           def paramTypes: Seq[CHIR.Type] = Seq.empty
 
@@ -183,6 +185,7 @@ private final class FakeFunc(
   val attributes: Seq[CHIR.Attribute],
   val declaringDef: Option[CHIR.CustomTypeDef]
 ) extends CHIR.Func {
+  def genericDeclaration: Option[CHIR.Func] = None
   def id: Long = 1L
   def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
   def body: Option[CHIR.BlockGroup] = None
