@@ -238,10 +238,41 @@ trait CHIRParser
       }
     }
 
+    /** Generates following search loop:
+      *
+      * {{{
+      * long idx;
+      * for (idx = 0; idx < 32; idx++) {
+      *   if (foundCond(idx)) {
+      *     break;
+      *   }
+      * }
+      * return idx;
+      * }}}
+      */
+    def genVectorLoop32(foundCond: Node => Node): Node = {
+      val entryGoto = Goto()
+      val header = BBlock(entryGoto)
+      val idx = Phi.raw(LongType)(header, LConst(0))
+      val continue = If(Cmp(LongType, Condition.LT)(idx, LConst(32)))
+
+      BBlock(continue.trueExit)
+      val break = If(foundCond(idx))
+
+      BBlock(break.falseExit)
+      header.addArg(Goto())
+      idx.addArg(Add(idx, LConst(1)))
+      commit(idx)
+
+      BBlock(break.trueExit, continue.falseExit)
+      idx
+    }
+
     for (n <- all[VectorCompare32]) {
       replaceByCode(n) {
+        // Find first differing byte in two 32-byte raw array blocks, or 32 if equal.
         val arrayType = SignatureType.CangjieArray(SignatureType.UInt8)
-        lowerVectorLoop { idx =>
+        genVectorLoop32 { idx =>
           val a = arrayGet(arrayType, n.array1, Add(n.offset1, idx))
           val b = arrayGet(arrayType, n.array2, Add(n.offset2, idx))
           Cmp(IntType, Condition.NE)(a, b)
@@ -251,8 +282,9 @@ trait CHIRParser
 
     for (n <- all[VectorIndexByte32]) {
       replaceByCode(n) {
+        // Find first matching byte in a 32-byte raw array block, or 32 if absent.
         val arrayType = SignatureType.CangjieArray(SignatureType.UInt8)
-        lowerVectorLoop { idx =>
+        genVectorLoop32 { idx =>
           val value = arrayGet(arrayType, n.array, Add(n.offset, idx))
           Cmp(IntType, Condition.EQ)(value, n.target)
         }
@@ -276,25 +308,6 @@ trait CHIRParser
     dbgPrinter.debugNodes("All graph after returns unification")
 
     ret
-  }
-
-  private def lowerVectorLoop(found: Node => Node): Node = {
-    val entryGoto = Goto()
-    val loopBlock = BBlock(entryGoto)
-    val idx = Phi.raw(LongType)(loopBlock, LConst(0))
-    val loopContinue = If(Cmp(LongType, Condition.LT)(idx, LConst(32)))
-
-    BBlock(loopContinue.trueExit)
-    val isFound = If(found(idx))
-
-    BBlock(isFound.falseExit)
-    val bodyGoto = Goto()
-    loopBlock.addArg(bodyGoto)
-    idx.addArg(Add(idx, LConst(1)))
-    commit(idx)
-
-    val exitBlock = BBlock(isFound.trueExit, loopContinue.falseExit)
-    Phi(LongType)(exitBlock, idx, LConst(32))
   }
 
   private class BlockMap {
