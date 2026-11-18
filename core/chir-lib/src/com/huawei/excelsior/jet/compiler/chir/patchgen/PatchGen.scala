@@ -48,8 +48,10 @@ final class PatchGen(source: Option[Package], pkg: EditableCHIR.Package) {
     }
     (f.identifier, f.srcCodeIdentifier, f.packageName, TypeKey(f.tpe), f.body.nonEmpty, imported(f), parent.map(definitionKey))
   }
-  private def definitionKey(d: CustomTypeDef): Product =
-    (d.identifier, d.srcCodeIdentifier, d.packageName, d.isInstanceOf[ClassDef], d.isInstanceOf[StructDef])
+  private def definitionKey(d: CustomTypeDef): Product = d match {
+    case d: ExtendDef => ("extend", d.srcCodeIdentifier, d.packageName, TypeKey(d.tpe), d.implementedInterfaces.map(TypeKey.apply))
+    case _ => (d.identifier, d.srcCodeIdentifier, d.packageName, d.isInstanceOf[ClassDef], d.isInstanceOf[StructDef])
+  }
   private def variableKey(g: GlobalVar): Product = (g.identifier, g.srcCodeIdentifier, g.packageName)
 
   def createPatch(): Unit = {
@@ -67,7 +69,16 @@ final class PatchGen(source: Option[Package], pkg: EditableCHIR.Package) {
         addAttribute(f, Attribute.Imported)
       }
       for (g <- importedVars) addAttribute(g, Attribute.Imported)
-      for (d <- importedTypes) addAttribute(d, Attribute.Imported)
+      for (d <- importedTypes) {
+        val localExtension = d match {
+          case d: ExtendDef => d.tpe match {
+            case t: CustomType => t.typeDef.methods.exists(f => !imported(f) && f.body.nonEmpty)
+            case _ => false
+          }
+          case _ => false
+        }
+        if (!localExtension) addAttribute(d, Attribute.Imported)
+      }
       removeEmptyInitializers()
       updatePackageInits()
     }
@@ -79,11 +90,20 @@ final class PatchGen(source: Option[Package], pkg: EditableCHIR.Package) {
         error(source.name == pkg.name, "packages differ")
         patches ++= Seq(pkg.packageInitFunc, pkg.packageInitLiteralFunc)
         val currentDefs = definitions.filterNot(imported).map(d => definitionKey(d) -> d).toMap
-        for (d <- source.typeDefs if !imported(d) && (d.isInstanceOf[ClassDef] || d.isInstanceOf[StructDef])) {
-          val kind = if (d.isInstanceOf[ClassDef]) "class" else "struct"
+        for (d <- source.typeDefs if !imported(d)) {
+          val kind = d match {
+            case _: ClassDef => "class"
+            case _: StructDef => "struct"
+            case _: EnumDef => "enum"
+            case _ => "extend"
+          }
           val found = currentDefs.get(definitionKey(d))
-          error(found.nonEmpty, s"$kind ${d.srcCodeIdentifier} was not found in patched version")
-          if (!patchClass.exists(_.srcCodeIdentifier == d.srcCodeIdentifier)) importedTypes += found.get
+          val eliminatedImport = found.isEmpty && d.packageName != pkg.name &&
+            (d.isInstanceOf[EnumDef] || d.isInstanceOf[ExtendDef])
+          if (!eliminatedImport) {
+            error(found.nonEmpty, s"$kind ${d.srcCodeIdentifier} was not found in patched version")
+            if (!patchClass.exists(_.srcCodeIdentifier == d.srcCodeIdentifier)) importedTypes += found.get
+          }
         }
         val sourceFuncs = source.values.collect { case f: Func => f }.toVector
         val sourceKeys = sourceFuncs.map(f => (f, functionKey(f)))
@@ -156,15 +176,20 @@ final class PatchGen(source: Option[Package], pkg: EditableCHIR.Package) {
   }
 
   private def removeNewGuards(): Unit = {
+    val nativeGuards = source.toSeq.flatMap(_.typeDefs).collect {
+      case d: ClassDef if d.srcCodeIdentifier == prefix + "$Patch$GC" => d
+    }.flatMap(_.vtables).flatMap(_.vMethods).map(_.name).toSet
     for (f <- fresh) {
       val method = PatchableName.guardMethod(f)
       val flag = GuardChecks.flag(f)
       GuardChecks.remove(f)
       addAttribute(flag, Attribute.Imported)
-      for (d <- guardClass.toSeq ++ patchClass.toSeq) pkg.edit(d).replaceMethods(d.methods.filterNot(_.srcCodeIdentifier == method))
-      val ctor = PatchableName.syntheticConstructor(f)
-      for (name <- (Seq(method) ++ ctor).distinct; g <- functionsByName.getOrElse(name, Seq.empty)) {
-        addAttribute(g, Attribute.Unreachable)
+      if (!nativeGuards(method)) {
+        for (d <- guardClass.toSeq ++ patchClass.toSeq) pkg.edit(d).replaceMethods(d.methods.filterNot(_.srcCodeIdentifier == method))
+        val ctor = PatchableName.syntheticConstructor(f)
+        for (name <- (Seq(method) ++ ctor).distinct; g <- functionsByName.getOrElse(name, Seq.empty)) {
+          addAttribute(g, Attribute.Unreachable)
+        }
       }
     }
   }
