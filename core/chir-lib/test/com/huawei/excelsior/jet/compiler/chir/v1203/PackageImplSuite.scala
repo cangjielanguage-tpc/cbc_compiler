@@ -525,15 +525,21 @@ class PackageImplSuite extends AnyFunSuite with Matchers {
     (q.data.serializeToBinary().sameElements(unchanged)) shouldBe true
   }
 
-  test("missing body type specialization rejects a move without partial remapping") {
+  test("moveBody creates a missing body type specialization") {
     val data = genericMoveData()
-    // Keep the type ID valid but remove the destination Ref<T> specialization.
     data.getTypes()(8).asType().setArgTys(Array(2L))
     val p = PackageImpl.fromBytes(data.serializeToBinary())
-    val before = p.data.serializeToBinary()
-    val error = intercept[IllegalArgumentException](p.edit(p.function(1)).moveBody(p.function(8)))
-    (error.getMessage.contains("Missing substituted composite type")) shouldBe true
-    (p.data.serializeToBinary().sameElements(before)) shouldBe true
+    p.edit(p.function(1)).moveBody(p.function(8))
+    p.function(1).body shouldBe None
+    val target = p.function(8)
+    val result = target.retVal.get.tpe.asInstanceOf[CHIR.RefType]
+    (result.baseType eq target.genericTypeParams.head) shouldBe true
+    p.validationIssues() shouldBe empty
+    roundTrip(p) { saved =>
+      val target = saved.function(8)
+      val result = target.retVal.get.tpe.asInstanceOf[CHIR.RefType]
+      (result.baseType eq target.genericTypeParams.head) shouldBe true
+    }
   }
 
   for ((sourceMember, targetMember) <- Seq(false -> false, false -> true, true -> false, true -> true)) {
