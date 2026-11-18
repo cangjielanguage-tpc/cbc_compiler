@@ -74,6 +74,7 @@ object CHIR {
     def params: Seq[Parameter]
     def retVal: Option[LocalVar]
     def sourceFile: Option[String]
+    def genericDeclaration: Option[Func]
 
     protected final def equalsImpl(that: FuncSig): Boolean = that match {
       case that: Func =>
