@@ -13,7 +13,7 @@ Pipeline per test (mirrors hotfix_tools build.py `run_patch_gen_tests_at_level`)
 
 By default this suite runs the local Scala patch-gen from scripts/patch-gen.
 Build it first with sbt patchGen/assembly. The --test flag requests the
-declaration dump. Compile levels default to O0/O1, matching hotfix_tools.
+declaration dump. Compile levels default to O0/O1/O2, matching hotfix_tools.
 """
 
 import argparse
@@ -104,7 +104,7 @@ def main() -> int:
     parser.add_argument("--filter", nargs="*", default=[],
                         help="run only tests whose names start with one of the prefixes")
     parser.add_argument("--compile-level", nargs="+", choices=["O0", "O1", "O2"],
-                        default=["O0", "O1"], help="optimization levels (default: O0 O1)")
+                        default=["O0", "O1", "O2"], help="optimization levels (default: O0 O1 O2)")
     parser.add_argument("--patch-gen", default="",
                         help="patch-gen binary to test (default: local scripts/patch-gen)")
     parser.add_argument("--native", action="store_true",
