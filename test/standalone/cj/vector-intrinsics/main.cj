@@ -1,5 +1,5 @@
 // Exercises the std.core 32-byte block string helpers (vectorCompare32 /
-// vectorIndexByte32), which are lowered to cbcengine-helper calls.
+// vectorIndexByte32).
 //
 // All strings are longer than 32 bytes so that the vectorized block paths in
 // std.core are taken; differences are placed inside a block, at the block

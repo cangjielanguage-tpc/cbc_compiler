@@ -238,6 +238,27 @@ trait CHIRParser
       }
     }
 
+    for (n <- all[VectorCompare32]) {
+      replaceByCode(n) {
+        val arrayType = SignatureType.CangjieArray(SignatureType.UInt8)
+        lowerVectorLoop { idx =>
+          val a = arrayGet(arrayType, n.array1, Add(n.offset1, idx))
+          val b = arrayGet(arrayType, n.array2, Add(n.offset2, idx))
+          Cmp(IntType, Condition.NE)(a, b)
+        }
+      }
+    }
+
+    for (n <- all[VectorIndexByte32]) {
+      replaceByCode(n) {
+        val arrayType = SignatureType.CangjieArray(SignatureType.UInt8)
+        lowerVectorLoop { idx =>
+          val value = arrayGet(arrayType, n.array, Add(n.offset, idx))
+          Cmp(IntType, Condition.EQ)(value, n.target)
+        }
+      }
+    }
+
     assert(all[EnumCast].isEmpty, "there should be no alive EnumCast nodes after parsing")
 
     if (simplifyLocalVariables()) {
@@ -255,6 +276,25 @@ trait CHIRParser
     dbgPrinter.debugNodes("All graph after returns unification")
 
     ret
+  }
+
+  private def lowerVectorLoop(found: Node => Node): Node = {
+    val entryGoto = Goto()
+    val loopBlock = BBlock(entryGoto)
+    val idx = Phi.raw(LongType)(loopBlock, LConst(0))
+    val loopContinue = If(Cmp(LongType, Condition.LT)(idx, LConst(32)))
+
+    BBlock(loopContinue.trueExit)
+    val isFound = If(found(idx))
+
+    BBlock(isFound.falseExit)
+    val bodyGoto = Goto()
+    loopBlock.addArg(bodyGoto)
+    idx.addArg(Add(idx, LConst(1)))
+    commit(idx)
+
+    val exitBlock = BBlock(isFound.trueExit, loopContinue.falseExit)
+    Phi(LongType)(exitBlock, idx, LConst(32))
   }
 
   private class BlockMap {
@@ -1983,8 +2023,13 @@ trait CHIRParser
                IK.OverflowWrappingDiv   | IK.OverflowWrappingMod   | IK.OverflowWrappingPow   =>
             state(e) = lowerBinaryOverflowIntrinsic(method, e, e.kind, e.args.map(state.apply))
 
-          case IK.VectorCompare32 | IK.VectorIndexByte32 =>
-            state(e) = lowerVectorIntrinsic(e.kind, e, e.args.map(state.apply))
+          case IK.VectorCompare32 =>
+            val Seq(array1, offset1, array2, offset2) = e.args.map(state.apply)
+            state(e) = VectorCompare32(array1, offset1, array2, offset2)
+
+          case IK.VectorIndexByte32 =>
+            val Seq(array, offset, target) = e.args.map(state.apply)
+            state(e) = VectorIndexByte32(array, offset, target)
         }
 
       case e: CHIR.Spawn =>
@@ -2911,24 +2956,6 @@ trait CHIRParser
         case _ => (Seq(intSig), Seq(intSig, intSig))
       }
       callHelperMethod(helperName, typeArgs, opt, paramTypes, args)
-    }
-
-    /** Lowers a std.core 32-byte block string helper to the matching cbcengine-helper method.
-      *
-      * The intrinsic operates on a `RawArray<Byte>`, which [[CHIRResolver]] resolves to
-      * `CangjieArray(UInt8)`; [[SignatureType]] has no separate raw array type, so the
-      * helper takes `Array<UInt8>` and indexes it with the same byte offsets.
-      */
-    private def lowerVectorIntrinsic(kind: CHIR.Intrinsic.Kind, e: CHIR.Intrinsic, args: Seq[Node]): Node = {
-      import CHIR.Intrinsic.Kind as IK
-      val helperName = kind match {
-        case IK.VectorCompare32 => "vectorCompare32"
-        case IK.VectorIndexByte32 => "vectorIndexByte32"
-        case _ => shouldNotReachHere(kind)
-      }
-      val paramTypes = e.args.map { case ValueSig(sig) => sig }
-      val retType = resolver.typeSig(e.resultTpe)
-      callHelperMethod(helperName, Seq.empty, retType, paramTypes, args)
     }
 
     private def lowerUnaryOverflowIntrinsic(method: Method, e: CHIR.Intrinsic, kind: CHIR.Intrinsic.Kind, args: Seq[Node]): Node = {

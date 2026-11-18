@@ -151,6 +151,7 @@ trait IOComponent extends BinaryIO { self: Universe =>
     VArrayFillByLambda.Proto,
     PowI.Proto,
     Pow.Proto,
+    VectorCompare32, VectorIndexByte32,
     // Add new prototypes above this line.
     "dummy last element for ease of rebase"
   )
