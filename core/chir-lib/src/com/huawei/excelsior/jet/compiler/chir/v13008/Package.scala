@@ -200,10 +200,51 @@ object PackageImpl {
 
   // Reuse existing destination type entries rather than mutating shared source
   // types. E.g. T_source -> T_target, and Ref<T_source> -> Ref<T_target>.
-  // Reject a missing composite specialization instead of retaining source T.
+  // Stage missing composite specializations until the body move is validated.
   private class TypeRemapper(pkg: CHIRPackageT, generics: Map[Long, Long]) {
     private val memo = scala.collection.mutable.Map.from(generics)
     private val active = scala.collection.mutable.Set.empty[Long]
+    private val pending = mutable.ArrayBuffer.empty[TypeElemUnion]
+
+    def commit(): Unit = {
+      if (pending.nonEmpty) pkg.setTypes(pkg.getTypes ++ pending)
+    }
+
+    private def specialize(original: TypeElemUnion, args: Array[Long]): Long = {
+      val base = new TypeT
+      base.setKind(typeBase(original.getValue).getKind)
+      base.setArgTys(args)
+      val payload: Object = original.getValue match {
+        case t: TypeT => base
+        case t: FuncTypeT =>
+          val f = new FuncTypeT
+          f.setBase(base)
+          f.setIsCfuncType(t.getIsCfuncType)
+          f.setHasVarArg(t.getHasVarArg)
+          f
+        case t: CustomTypeT =>
+          val c = new CustomTypeT
+          c.setBase(base)
+          c.setCustomTypeDef(t.getCustomTypeDef)
+          c
+        case t: RawArrayTypeT =>
+          val a = new RawArrayTypeT
+          a.setBase(base)
+          a.setDims(t.getDims)
+          a
+        case t: VArrayTypeT =>
+          val a = new VArrayTypeT
+          a.setBase(base)
+          a.setSize(t.getSize)
+          a
+        case _ => throw new IllegalArgumentException("Unsupported composite type substitution")
+      }
+      val entry = new TypeElemUnion
+      entry.setType(original.getType)
+      entry.setValue(payload)
+      pending += entry
+      length(pkg.getTypes).toLong + pending.length
+    }
 
     def apply(id: Long): Long = {
       if (id == 0) return 0
@@ -217,13 +258,13 @@ object PackageImpl {
           val args = ids(typeBase(original.getValue).getArgTys)
           val mappedArgs = args.map(apply)
           val mapped = if (args.sameElements(mappedArgs)) id else {
-            val candidate = pkg.getTypes().indexWhere { t =>
+            val entries = pkg.getTypes().toIndexedSeq ++ pending
+            val candidate = entries.indexWhere { t =>
               t.getType == original.getType &&
                 typeShape(t.getValue) == typeShape(original.getValue) &&
                 ids(typeBase(t.getValue).getArgTys).sameElements(mappedArgs)
             }
-            require(candidate >= 0, s"Missing substituted composite type for type ID $id")
-            candidate.toLong + 1
+            if (candidate >= 0) candidate.toLong + 1 else specialize(original, mappedArgs)
           }
           active -= id
           memo(id) = mapped
@@ -435,9 +476,14 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
 
     def value(id: Long): ValueElemUnion = valueTable(id)
 
-    require(from.getGenericDecl == 0 && to.getGenericDecl == 0,
-      "Generic instances are unsupported")
-    val sourceGenerics = ids(from.getGenericTypeParams)
+    val ownerGenerics = getDef[CHIR.CustomTypeDef](from.getBase.getDeclaredParent).toSeq.flatMap {
+      case d: CHIR.ExtendDef => d.genericTypeParams
+      case d => d.tpe match {
+        case t: CHIR.CustomType => t.genericTypeParams.collect { case t: CHIR.GenericType => t }
+        case _ => Seq.empty
+      }
+    }.map(typeId).toArray
+    val sourceGenerics = ownerGenerics ++ ids(from.getGenericTypeParams)
     val targetGenerics = ids(to.getGenericTypeParams)
     // Plugin patch methods can use the source's generic type IDs directly,
     // without redeclaring them. Signature checks below still require those
@@ -547,6 +593,7 @@ final class PackageImpl private (loaded: (CHIRPackageT, Boolean)) extends Editab
     changes.set(math.max(to.getBlockId, from.getBlockId))(to.setBlockId)
     changes.set(math.max(to.getBlockGroupId, from.getBlockGroupId))(to.setBlockGroupId)
 
+    remapType.commit()
     changes.commit()
     if (structConstructor || (classConstructor && to.getRetVal == 0)) {
       val target = getValue[CHIR.Func](targetId).get
