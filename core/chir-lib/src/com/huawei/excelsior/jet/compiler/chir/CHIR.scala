@@ -495,6 +495,9 @@ object CHIR {
       case OverflowWrappingNeg
       case VectorCompare32
       case VectorIndexByte32
+      case BitCast
+      case ObjectRefEq
+      case RawArrayRefEq
     }
   }
 

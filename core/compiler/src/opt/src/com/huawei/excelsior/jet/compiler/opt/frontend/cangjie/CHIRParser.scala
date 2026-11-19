@@ -2043,6 +2043,27 @@ trait CHIRParser
           case IK.VectorIndexByte32 =>
             val Seq(array, offset, target) = e.args.map(state.apply)
             state(e) = VectorIndexByte32(array, offset, target)
+
+          // Object and RawArray reference equality is a plain pointer comparison in cjnative
+          case IK.ObjectRefEq | IK.RawArrayRefEq =>
+            assert(e.args.size == 2, e.args)
+            val Seq(l, r) = e.args
+            state(e) = CondVal(Cmp(TRefType, Condition.EQ)(state(l), state(r)))
+
+          case IK.BitCast =>
+            assert(e.args.size == 1, e.args)
+            val Seq(arg) = e.args
+            val ValueSig(fromSig) = arg
+            val toSig = resolver.typeSig(e.resultTpe)
+            // A bitcast reinterprets raw bits, so both sides must occupy the same storage.
+            // Compare signature widths rather than IR widths: Float16 is represented as
+            // IntType in IR, so IR widths would wrongly accept bitCast<UInt16, Float32>
+            assert(fromSig.toAsm.sizeInBits == toSig.toAsm.sizeInBits, s"unexpected bitcast: $toSig <- $fromSig")
+            val value = state(arg)
+            val toTpe = ValueType.fromSig(toSig)
+            assert(value.tpe.isTraceableRefType == toTpe.isTraceableRefType,
+              s"bitcast must not hide or publish a reference, use ConcealRef/PublishRef: $toTpe <- ${value.tpe}")
+            state(e) = if (value.tpe == toTpe) value else ReinterpretCast(value.tpe, toTpe)(value)
         }
 
       case e: CHIR.Spawn =>
