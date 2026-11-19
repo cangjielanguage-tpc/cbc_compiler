@@ -162,13 +162,14 @@ $ cp core/compiler/target/aot/cbc-compiler.jar <toolchain>/tools/bin/
 
 ### Native Image Builds
 
-The compiler and the CBC assembler can also be built as
+The compiler, CBC assembler and Scala patch generator can also be built as
 [GraalVM native images](https://www.graalvm.org/latest/reference-manual/native-image/),
 which start up much faster than the corresponding jars:
 
 ```bash
 $ sbt compiler/nativeImage
 $ sbt cbcAsm/nativeImage
+$ sbt patchGen/nativeImage
 ```
 
 This requires the `native-image` utility from a GraalVM distribution,
@@ -181,6 +182,11 @@ graalvm=<graalvm>/bin/native-image
 The resulting binaries are located at [core/compiler/target/cbc-compiler-native](core/compiler/target/cbc-compiler-native)
 and [core/cbc-asm/target/cbc-asm-native](core/cbc-asm/target/cbc-asm-native). `<binary>.info` file is generated to save
 MD5 hashes of the source jar and of the binary itself.
+
+Scala patch-gen outputs are under `core/cbc-patchgen/target/`: `patch-gen`,
+`patch-gen.jar`, `patch-gen-native` and `patch-gen-native.info`. The launcher
+uses the native image when matching checksum metadata is present and otherwise
+runs the jar on the JVM.
 
 ### Supported CHIR versions
 
