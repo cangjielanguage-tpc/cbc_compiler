@@ -715,3 +715,15 @@ compiler/CHIR/CHIR2HLIR/exception/exception_pass_through_ffi/exception_pass_thro
 # bug 219 (Unsupported C2I static virtual call)
 API/std/deriving/arbitrary_t_test.cj
 API/std/unittest/examples/advance1.cj
+
+# Python script calls raw cjc (not cjc-wrapper)
+compiler/Driver/options/trim_path/trim_path4.cj
+compiler/Driver/options/trim_path/trim_path5.cj
+
+# Runtime API tests
+Runtime/CJNative/RuntimeApi/runtime_api_followup.cj
+Runtime/CJNative/RuntimeApi/runtime_api_task_loader.cj
+Runtime/CJNative/RuntimeApi/runtime_api_validation.cj
+
+# %run %run typo in test command
+compiler/CHIR/CHIR2HLIR/generic/generic_external_use_internal/main.cj
