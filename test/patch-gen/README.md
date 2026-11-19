@@ -14,6 +14,12 @@ Build the generator and integration checker from the repository root:
 sbt chirLibTest 'patchGen/assembly'
 ```
 
+For a GraalVM native executable, configure `graalvm` to point to the
+`native-image` executable and run `sbt patchGen/nativeImage`. The same
+`scripts/patch-gen` launcher selects the native image when its matching
+`patch-gen-native.info` file is beside the jar.
+
+
 ## Running
 
 ```bash
@@ -57,3 +63,12 @@ patch-gen source.chir patched.chir
 
 Preserve a copy of the existing native executable before replacing it. Java must
 be available on PATH. The wrapper finds the jar beside itself when installed.
+
+If a native image was built, also copy its binary and checksum metadata:
+
+```bash
+cp core/cbc-patchgen/target/patch-gen-native "$CANGJIE_HOME/tools/bin/"
+cp core/cbc-patchgen/target/patch-gen-native.info "$CANGJIE_HOME/tools/bin/"
+```
+
+The binary, jar and metadata must come from the same build.
