@@ -527,10 +527,6 @@ compiler/Sema/generics/generic_static_field_prop/generic_static_prop06.cj
 compiler/FFI/CFFI/cfunc/conflict/conflict_9.cj
 compiler/Sema/const_evaluation/ok_class_variables.cj
 
-# bug 268 (should not reach here (extra information: symType for TypeVariable))
-compiler/CHIR/CHIR2HLIR/matchPattern/enum_exhaustive_03.cj
-compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_07.cj
-
 # bug 269 (foreign function: Called unresolved AOT method)
 API/std/time/datetime/test_local_time.cj
 compiler/CHIR/CHIR2HLIR/time/native3.cj
