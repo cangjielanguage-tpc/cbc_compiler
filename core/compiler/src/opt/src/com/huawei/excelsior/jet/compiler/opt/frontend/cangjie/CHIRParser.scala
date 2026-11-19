@@ -1967,6 +1967,16 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.CPointerInit1 =>
             state(e) = state(e.args.head)
 
+          case CHIR.Intrinsic.Kind.ExclusiveScope =>
+            val Seq(executor, closure) = e.args
+            val ValueSig(executorType) = executor
+            val ValueSig(closureType) = closure
+            // the wrapper stores the user function's result in a captured field
+            // so the intrinsic itself returns Unit
+            assert(resolver.typeSig(e.resultTpe) == SignatureType.Unit)
+            CJIntrinsic.exclusiveScope(executorType, closureType)(state(executor), state(closure))
+            state(e) = Void()
+
           case CHIR.Intrinsic.Kind.CStringInit =>
             state(e) = state(e.args.head)
 

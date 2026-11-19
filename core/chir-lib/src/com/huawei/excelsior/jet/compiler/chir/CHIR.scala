@@ -687,6 +687,7 @@ object CHIR {
       case CPointerInit0
       case CPointerInit1
       case CStringInit
+      case ExclusiveScope
       case InoutParam
       case ObjectZeroValue
       case Sqrt
