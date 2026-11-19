@@ -520,6 +520,19 @@ API/std/unittest/type_parameters/error_unknown_variable_func.cj
 compiler/FFI/CFFI/cstring/compare.cj
 API/std/socket/redesign/regression/test_tcp_server_wrong_buffersize.cj
 API/std/socket/redesign/regression/test_unix_wrong_buffersize.cj
+API/std/database/sql/sql_interface_test.cj
+API/std/io/BufferedInputStream/bufferedInputStream_unreachable_branch_test.cj
+API/std/io/ByteBuffer/test_seekable.cj
+API/std/io/ChainedInputStream/chainedInputStream_unreachable_branch_test.cj
+API/std/net/ip_address_test.cj
+API/std/unittest/api/json/addTests/JsonValue/test_allnullbyte.cj
+API/std/unittest/api/json/json_test_JsonValue_exp_01.cj
+API/std/unittest/api/json/jsoninvalid/json_test_error.cj
+API/std/unittest/macro_errors/custom_assertion_macro/no_args_error.cj
+API/std/unittest/macro_errors/custom_assertion_macro/wrong_first_arg_error.cj
+API/std/unittest/type_parameters/recursive_types.cj
+Runtime/CJNative/array/array10.cj
+Runtime/CJNative/array/array9.cj
 
 # bug 261 (changed compiler diagnostics)
 API/std/libast/decls/classdecl/test_annotation_001.cj
@@ -578,6 +591,12 @@ compiler/Sema/PatternMatching/TypePattern/exhaustive_sealed.cj
 compiler/Sema/bottomType/function_return_bottom_01.cj
 compiler/Sema/if-let-expr/enhancedcondition/vars/samename_conditionandelse.cj
 compiler/Sema/varray/varray13.cj
+compiler/Driver/options/input/a/test_a_not_exist.cj
+compiler/Macro/feature/parser_support_sealed/sealed_match.cj
+compiler/Parser/class_extends/class_extends_multi_2.cj
+compiler/Sema/PatternMatching/Sealed/ABI_stable/non-exhaustive_err01.cj
+compiler/Sema/PatternMatching/Sealed/simple_exhaustive.cj
+compiler/Sema/array/array_invalid_api.cj
 
 # bug 112 (crash when calling function from extended interface)
 API/std/deriving/equatable_test.cj
@@ -659,6 +678,19 @@ API/std/collection/test_HashMap.cj
 compiler/Driver/options/output_type/obj/obj_test1.cj
 compiler/Driver/options/output_type/obj/obj_test3.cj
 compiler/Driver/options/output_type/obj/obj_test6.cj
+compiler/CHIR/AST2CHIR/BaseUseCase/lambdaExpr/lambda_func_03/file2.cj
+compiler/CHIR/AST2CHIR/ClosureConversion/imported_func_01/file2.cj
+compiler/Driver/incrementalCompile/modulePackageIncrementalCompileNoChange1/main.cj
+compiler/Driver/options/input/o/test_o_order.cj
+compiler/Driver/options/output_type/obj/obj_test2.cj
+compiler/Driver/options/output_type/test_staticlib.cj
+compiler/Package/org/import_multi_as.cj
+compiler/Package/org/import_multi_package_and_decl.cj
+compiler/Package/org/import_single.cj
+compiler/Sema/Extend/generic/same_func_in_different_pkg/main.cj
+compiler/Sema/Extend/generic/same_func_in_different_pkg_conflict/main.cj
+compiler/Sema/Extend/generic/use_internal_extend_in_external_generic_with_conflict/main.cj
+compiler/Sema/Extend/generic/use_internal_extend_in_external_generic_without_conflict/main.cj
 
 # bug 252 (OutOfMemory does not happen and other GC related tests)
 API/std/unittest/new_bench/bench_disable_gc.cj
@@ -673,3 +705,13 @@ compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_04.cj
 compiler/CodegenCJNative/generic/generic_struct.cj
 compiler/CodegenCJNative/storeElementRef.cj
 compiler/Sema/ffi/cpointer_generic.cj
+
+# bug 273 (cjts framework bug with regex)
+compiler/CodegenCJNative/stable_abi/memory_layout/VArray.cj
+
+# bug 197 (Support @C functions)
+compiler/CHIR/CHIR2HLIR/exception/exception_pass_through_ffi/exception_pass_through_ffi.cj
+
+# bug 219 (Unsupported C2I static virtual call)
+API/std/deriving/arbitrary_t_test.cj
+API/std/unittest/examples/advance1.cj
