@@ -1,0 +1,24 @@
+global vars
+global funcs
+_CAF7default3runHv
+_CAO7default3runHvK_iiHv
+_CAF7default4Base12printVirtualHv
+_CAO7default4Base12printVirtualHvK_iiHv
+_CAF7default4Base11printStaticHv
+_CAO7default4Base11printStaticHvK_iiHv
+_CAF7default4Base11printMemberHv
+_CAO7default4Base11printMemberHvK_iiHv
+_CAF7default7Derived12printVirtualHv
+_CAO7default7Derived12printVirtualHvK_iiHv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+$default$GVI
+$default$Patch$GC$run$GF
+$default$Patch$GC$Base$GC$printVirtual$$default.Base$GF
+$default$Patch$GC$Base$GC$printStatic$GF
+$default$Patch$GC$Base$GC$printMember$$default.Base$GF
+$default$Patch$GC$Derived$GC$printVirtual$$default.Derived$GF
+types
+$default$PatchImpl$GC

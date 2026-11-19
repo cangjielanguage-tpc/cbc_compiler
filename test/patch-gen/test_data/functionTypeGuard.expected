@@ -1,0 +1,18 @@
+global vars
+global funcs
+_CAF7default5applyHF0llEl
+_CAO7default5applyHF0llElK_iiHv
+_CAF7default12applyGenericIG_HF0G_G_EG_
+_CAO7default12applyGenericIG_HF0G_G_EG_K_iiHv
+_CAF7default11applyNestedHF0F0llEE
+_CAO7default11applyNestedHF0F0llEEK_iiHv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+$default$GVI
+$default$Patch$GC$apply$$(Int64)->Int64$_Int64$GF
+$default$Patch$GC$applyGeneric$$(T)->T$_T$GF
+$default$Patch$GC$applyNested$$()->(Int64)->Int64$GF
+types
+$default$PatchImpl$GC

@@ -16,6 +16,8 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRFuncGenerator {
 
   def generateFunc(_id: Int): Option[Func] = pkg.getFunc("user.main").map(userMain =>
     new CHIR.Func {
+      def genericDeclaration: Option[CHIR.Func] = None
+
       private var _retVal: CHIR.LocalVar = _
 
       def tpe: CHIR.FuncType = new CHIR.FuncType {

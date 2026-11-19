@@ -1,0 +1,15 @@
+global vars
+global funcs
+_CAF7default3BoxIG_E10printValueHv
+_CAO7default3BoxIG_E10printValueHvK_iiHv
+_CAF7default3BoxIG_E9printSameHG_
+_CAO7default3BoxIG_E9printSameHG_K_iiHv
+_CGP7defaultiiHv
+_CGP7defaultfiHv
+_CGP7defaultilHv
+_CGP7defaultflHv
+$default$GVI
+$default$Patch$GC$Box$GC$printValue$$default.Box$GF
+$default$Patch$GC$Box$GC$printSame$$default.Box$_T$GF
+types
+$default$PatchImpl$GC

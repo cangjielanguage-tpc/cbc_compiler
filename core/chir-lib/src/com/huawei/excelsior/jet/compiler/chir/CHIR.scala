@@ -1,14 +1,24 @@
 package com.huawei.excelsior.jet.compiler.chir
 
-import com.huawei.excelsior.common.CodeHelpers.*
+import java.nio.file.{Files, Path, Paths}
 
+/** Schema-independent read interfaces. Mutation is provided separately by
+  * EditableCHIR, sharing the same backing model and node views.
+  */
 object CHIR {
 
   val defaultVersion = CHIRConfig.defaultVersion
 
-  def newPackage(source: String, version: Int): Package = AugmentedPackage(CHIRConfig.newPackage(source, version))
+  def newPackage(source: String, version: Int): Package = AugmentedPackage(read(Paths.get(source), version))
 
   def newIntrinsicsPackage: Package = new IntrinsicsPackage
+
+  /** Load the serialized package itself, without compiler-generated overlays. */
+  def read(input: Path, version: Int = defaultVersion): Package =
+    fromBytes(Files.readAllBytes(input), version)
+
+  def fromBytes(bytes: Array[Byte], version: Int = defaultVersion): Package =
+    CHIRConfig.newPackage(bytes, version)
 
   trait Package {
     def name: String
@@ -64,6 +74,19 @@ object CHIR {
     def params: Seq[Parameter]
     def retVal: Option[LocalVar]
     def sourceFile: Option[String]
+    def genericDeclaration: Option[Func]
+
+    protected final def equalsImpl(that: FuncSig): Boolean = that match {
+      case that: Func =>
+        this.name == that.name &&
+        this.tpe == that.tpe &&
+        this.genericTypeParams == that.genericTypeParams &&
+        this.srcCodeIdentifier == that.srcCodeIdentifier &&
+        this.packageName == that.packageName &&
+        this.kind == that.kind &&
+        this.attributes == that.attributes
+      case _ => false
+    }
   }
 
   object Func {
@@ -106,18 +129,42 @@ object CHIR {
     def packageName: String
     def tpe: Type
     def initializer: Option[Value]
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: GlobalVar =>
+        this.identifier == that.identifier &&
+        this.srcCodeIdentifier == that.srcCodeIdentifier &&
+        this.packageName == that.packageName &&
+        this.tpe == that.tpe &&
+        this.attributes == that.attributes
+      case _ => false
+    }
+
+    final override def hashCode(): Int =
+      (identifier, srcCodeIdentifier, packageName, tpe, attributes).hashCode()
   }
 
   trait LocalVar extends Value {
+    def identifier: String
+    def srcCodeIdentifier: String
     def tpe: Type
     def associatedExpr: Expression
   }
 
+  object LocalVar {
+    def unapply(value: LocalVar): Some[Expression] = Some(value.associatedExpr)
+  }
+
   trait Parameter extends Value {
+    def identifier: String
+    def srcCodeIdentifier: String
     def tpe: Type
   }
 
-  object UnitLiteral extends Literal {
+  trait UnitLiteralValue extends Literal
+
+  object UnitLiteral extends UnitLiteralValue {
     def tpe: Type = BuiltinType.Unit
   }
 
@@ -152,8 +199,42 @@ object CHIR {
   trait Type {
   }
 
+  // TODO: Refactor type-key construction together with the type implementations,
+  // sharing common logic while preserving cycle-safe generic type identity.
+  private[chir] object TypeKey {
+    // Generic bounds can refer back to their generic declaration. Declaration
+    // matching uses the generic identity, not recursive expansion of its bounds.
+    def apply(tpe: Type): Product = tpe match {
+      case t: BuiltinType => Tuple1(t)
+      case t: GenericType => ("generic", t.identifier)
+      case t: RefType => ("ref", apply(t.baseType))
+      case t: BoxType => ("box", apply(t.baseType))
+      case t: CustomType =>
+        val d = t.typeDef
+        val kind = t match {
+          case _: ClassType => "class"
+          case _: StructType => "struct"
+          case _ => "enum"
+        }
+        (kind, d.identifier, d.packageName, d.srcCodeIdentifier, t.genericTypeParams.map(apply))
+      case t: FuncType => ("func", t.paramTypes.map(apply), apply(t.returnType), t.isC, t.hasVarArg)
+      case t: CPointerType => ("pointer", apply(t.elementType))
+      case t: RawArrayType => ("rawarray", apply(t.elementType))
+      case t: VArrayType => ("varray", apply(t.elementType), t.size)
+      case t: TupleType => ("tuple", t.fieldTypes.map(apply))
+    }
+  }
+
   trait BoxType extends Type {
     def baseType: Type
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: BoxType => this.baseType == that.baseType
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (classOf[BoxType], baseType).hashCode()
   }
 
   enum BuiltinType extends Type {
@@ -171,22 +252,61 @@ object CHIR {
   trait CustomType extends Type {
     def typeDef: CustomTypeDef
     def genericTypeParams: Seq[Type]
+
+    protected def equalsImpl(that: CustomType): Boolean
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: CustomType => equalsImpl(that)
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (typeDef, genericTypeParams).hashCode()
   }
 
   trait ClassType extends CustomType {
     def typeDef: ClassDef
+
+    protected final def equalsImpl(that: CustomType): Boolean = that match {
+      case that: ClassType =>
+        this.typeDef == that.typeDef &&
+        this.genericTypeParams == that.genericTypeParams
+      case _ => false
+    }
   }
 
   trait EnumType extends CustomType {
     def typeDef: EnumDef
+
+    protected final def equalsImpl(that: CustomType): Boolean = that match {
+      case that: EnumType =>
+        this.typeDef == that.typeDef &&
+        this.genericTypeParams == that.genericTypeParams
+      case _ => false
+    }
   }
 
   trait StructType extends CustomType {
     def typeDef: StructDef
+
+    protected final def equalsImpl(that: CustomType): Boolean = that match {
+      case that: StructType =>
+        this.typeDef == that.typeDef &&
+        this.genericTypeParams == that.genericTypeParams
+      case _ => false
+    }
   }
 
   trait CPointerType extends Type {
     def elementType: Type
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: CPointerType => this.elementType == that.elementType
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (classOf[CPointerType], elementType).hashCode()
   }
 
   trait FuncType extends Type {
@@ -196,15 +316,46 @@ object CHIR {
     def returnType: Type
     def isC: Boolean
     def hasVarArg: Boolean
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: FuncType =>
+        this.paramTypes == that.paramTypes &&
+        this.returnType == that.returnType &&
+        this.isC == that.isC &&
+        this.hasVarArg == that.hasVarArg
+      case _ => false
+    }
+
+    final override def hashCode(): Int =
+      (paramTypes, returnType, isC, hasVarArg).hashCode()
   }
 
   trait GenericType extends Type {
+    def srcCodeIdentifier: String = identifier
     def identifier: String
     def upperBounds: Seq[Type]
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: GenericType =>
+          this.identifier == that.identifier
+      case _ => false
+    }
+
+    final override def hashCode(): Int = identifier.hashCode()
   }
 
   trait RefType extends Type {
     def baseType: Type
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: RefType => this.baseType == that.baseType
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (classOf[RefType], baseType).hashCode()
   }
 
   object RefType {
@@ -217,15 +368,41 @@ object CHIR {
   trait RawArrayType extends Type {
     def elementType: Type
     def dimension: Long
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: RawArrayType =>
+        this.elementType == that.elementType && this.dimension == that.dimension
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (elementType, dimension).hashCode()
   }
 
   trait TupleType extends Type {
     def fieldTypes: Seq[Type]
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: TupleType => this.fieldTypes == that.fieldTypes
+      case _ => false
+    }
+
+    final override def hashCode(): Int = fieldTypes.hashCode()
   }
 
   trait VArrayType extends Type {
     def elementType: Type
     def size: Long
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: VArrayType =>
+        this.elementType == that.elementType && this.size == that.size
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (elementType, size).hashCode()
   }
 
   trait CustomTypeDef extends HasAttributes with HasAnnotations {
@@ -238,32 +415,81 @@ object CHIR {
     def methods: Seq[Func]
     def vtables: Seq[VTable]
     def implementedInterfaces: Seq[ClassType]
+
+    protected def equalsImpl(that: CustomTypeDef): Boolean
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: CustomTypeDef =>
+        this.packageName == that.packageName &&
+        this.identifier == that.identifier &&
+        this.srcCodeIdentifier == that.srcCodeIdentifier &&
+        this.attributes == that.attributes &&
+        equalsImpl(that)
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (packageName, identifier, srcCodeIdentifier, attributes).hashCode()
   }
 
   trait EnumDef extends CustomTypeDef {
     def nonExhaustive: Boolean
     def tpe: EnumType
     def ctors: Seq[EnumCtor]
+
+    protected final def equalsImpl(that: CustomTypeDef): Boolean = that match {
+      case that: EnumDef =>
+        this.nonExhaustive == that.nonExhaustive
+      case _ => false
+    }
   }
 
   trait ClassDef extends CustomTypeDef {
     def isClass: Boolean
     def tpe: ClassType
     def superClass: Option[ClassType]
+
+    protected final def equalsImpl(that: CustomTypeDef): Boolean = that match {
+      case that: ClassDef =>
+        this.isClass == that.isClass &&
+        this.superClass == that.superClass
+      case _ => false
+    }
   }
 
   trait StructDef extends CustomTypeDef {
     def tpe: StructType
+
+    protected final def equalsImpl(that: CustomTypeDef): Boolean = that match {
+      case _: StructDef => true
+      case _ => false
+    }
   }
 
   trait ExtendDef extends CustomTypeDef {
     def genericTypeParams: Seq[GenericType]
+
+    protected final def equalsImpl(that: CustomTypeDef): Boolean = that match {
+      case that: ExtendDef =>
+        this.genericTypeParams == that.genericTypeParams
+      case _ => false
+    }
   }
 
   trait FuncSig {
     def name: String
     def tpe: FuncType
     def genericTypeParams: Seq[Type]
+
+    protected def equalsImpl(that: FuncSig): Boolean
+
+    final override def equals(other: Any): Boolean = other match {
+      case that: AnyRef if this eq that => true
+      case that: FuncSig => equalsImpl(that)
+      case _ => false
+    }
+
+    final override def hashCode(): Int = (name, tpe, genericTypeParams).hashCode()
   }
 
   trait VTable {
@@ -276,6 +502,19 @@ object CHIR {
     def originalType: FuncType
     def parentType: Type
     def returnType: Type
+
+    protected final def equalsImpl(that: FuncSig): Boolean = that match {
+      case that: VMethod =>
+        this.name == that.name &&
+        this.tpe == that.tpe &&
+        this.genericTypeParams == that.genericTypeParams &&
+        this.instance == that.instance &&
+        this.originalType == that.originalType &&
+        this.parentType == that.parentType &&
+        this.returnType == that.returnType &&
+        this.attributes == that.attributes
+      case _ => false
+    }
   }
 
   trait EnumCtor {
@@ -286,6 +525,12 @@ object CHIR {
 
   trait Expression {
     def debugLoc: Option[DebugLocation]
+  }
+
+  /** Read-only views for schema operations not lowered by the parser. */
+  trait OpaqueExpression extends Expression {
+    def operationKey: Product
+    def valueOperands: Seq[Value]
   }
 
   trait Cast extends Expression {
@@ -327,6 +572,8 @@ object CHIR {
   }
 
   object Unary {
+    def unapply(expression: Unary): Some[(Unary.Kind, Value)] = Some((expression.kind, expression.operand))
+
     enum Kind {
       case Neg, Not, BitNot
     }
@@ -520,6 +767,10 @@ object CHIR {
     def location: Value
   }
 
+  object Load {
+    def unapply(expression: Load): Some[Value] = Some(expression.location)
+  }
+
   trait Store extends Expression {
     def value: Value
     def location: Value
@@ -563,6 +814,11 @@ object CHIR {
     def condition: Value
     def trueBlock: Block
     def falseBlock: Block
+  }
+
+  object Branch {
+    def unapply(expression: Branch): Some[(Value, Block, Block)] =
+      Some((expression.condition, expression.trueBlock, expression.falseBlock))
   }
 
   trait Exit extends Expression with Terminator

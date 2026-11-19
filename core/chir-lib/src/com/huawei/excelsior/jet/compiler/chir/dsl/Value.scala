@@ -40,4 +40,5 @@ final class Block extends CHIR.Block {
   }
 }
 
-final class LocalVar(val tpe: CHIR.Type, val associatedExpr: CHIR.Expression) extends CHIR.LocalVar
+final class LocalVar(val tpe: CHIR.Type, val associatedExpr: CHIR.Expression,
+                     val identifier: String, val srcCodeIdentifier: String) extends CHIR.LocalVar
