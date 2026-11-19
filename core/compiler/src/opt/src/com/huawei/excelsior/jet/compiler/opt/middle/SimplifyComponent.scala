@@ -948,13 +948,6 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
               case n: PutField if optimizePutField(n) =>
                 changed()
 
-              case n: CopyStructureOperation if n.src == n.dst =>
-                strikeOut(n)
-                changed()
-
-              case n: CopyStructureOperation if optimizeCopyStructure(n) =>
-                changed()
-
               case arrayGet: ArrayGet if optimizeArrayGet(arrayGet) =>
                 changed()
 
@@ -1016,6 +1009,13 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
                 changed()
 
               case op: InstanceFieldSeqOperation if optimizeFieldSeq(op) =>
+                changed()
+
+              case n: CopyStructureOperation if n.src == n.dst =>
+                strikeOut(n)
+                changed()
+
+              case n: CopyStructureOperation if optimizeCopyStructure(n) =>
                 changed()
 
               case node: NonControlNode =>
