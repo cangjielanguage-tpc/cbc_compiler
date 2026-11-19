@@ -2043,6 +2043,20 @@ trait CHIRParser
           case IK.VectorIndexByte32 =>
             val Seq(array, offset, target) = e.args.map(state.apply)
             state(e) = VectorIndexByte32(array, offset, target)
+
+          case IK.ObjectRefEq | IK.RawArrayRefEq =>
+            val Seq(l, r) = e.args
+            state(e) = CondVal(Cmp(TRefType, Condition.EQ)(state(l), state(r)))
+
+          case IK.BitCast =>
+            val Seq(arg) = e.args
+            val value = state(arg)
+            val ValueSig(fromSig) = arg
+            val toSig = resolver.typeSig(e.resultTpe)
+            assert(fromSig.toAsm.sizeInBits == toSig.toAsm.sizeInBits &&
+              fromSig.isTraceableReference == toSig.isTraceableReference,
+              s"unexpected bitcast from $fromSig to $toSig")
+            state(e) = ReinterpretCast(value.tpe, ValueType.fromSig(toSig))(value)
         }
 
       case e: CHIR.Spawn =>
