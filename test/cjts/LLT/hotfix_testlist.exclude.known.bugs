@@ -244,15 +244,16 @@ compiler/CodegenCJNative/record/override_enum_generic_return_with_concrete_type.
 compiler/CHIR/CHIR2HLIR/HLIR2LLVM/class/class_07.cj
 compiler/Sema/class/class_no_override_modifier_6.cj
 compiler/Sema/Extend/default_implement/default_implement_04.cj
+compiler/Sema/Extend/default_implement/default_implement_01/main.cj
 
-# bug 124: not implemented: cast from Option<Array<Int64>>.None to Option<Int64>
+# bug 124 (not implemented: cast from Option<Array<Int64>>.None to Option<Int64>)
 compiler/CHIR/CHIR2HLIR/typeCast/as_01.cj
 compiler/CodegenCommon/overflow/cmpfuzz/test_4_main.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix25.cj
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix32.cj
 compiler/CodegenCommon/overflow/cmpfuzz/test_9_main.cj
 
-# bug 127: Unknown size for type ?std.core:Option<Nothing>
+# bug 127 (Unknown size for type ?std.core:Option<Nothing>)
 compiler/Sema/call/call_error_report_04.cj
 
 # bug 148 (LLT/compiler/ConstEval/Overflow: error: expected at least one source code file when compiling source code)
@@ -570,6 +571,8 @@ compiler/CodegenCJNative/trycatch/unreachable.cj
 # bug 228 (container sandboxing fails some tests)
 API/std/posix/test_os_posix_processinfo.cj
 API/std/posix/test_os_posix_sysinfo_unix.cj
+API/std/fs/test_path_unix.cj
+compiler/Driver/options/input/a/test_a_not_a_file.cj
 
 # bug 229 (`--save-temps` while `--save-temps`)
 compiler/Driver/options/obfuscation/test_config/test_not_exist.cj
@@ -625,21 +628,15 @@ compiler/CHIR/UG/OpenGeneric/devirt.cj
 # bug 248 (`match(C(None))` should unpack into `None`, not `Some(None)`)
 API/std/unittest/powerAssert/nodeTypes/matchExpr.cj
 
-# bug 197 (Support @C functions)
-compiler/CHIR/CHIR2HLIR/exception/exception_pass_through_ffi/exception_pass_through_ffi.cj
-
 # bug 250 (fuzzer test: `arg#0 of DerivedPtrProxy is expected to have tag VALUE & type LongType`)
 compiler/CHIR/ComplicatedCodeBugfix/Bugfix31.cj
 
 # bug 251 (SIGSEGV in Execution::TypeArg)
 API/std/deriving/shrink_test.cj
 
-# bug 219: Unsupported C2I static virtual call
-API/std/deriving/arbitrary_t_test.cj
-API/std/unittest/examples/advance1.cj
-
-# bug 264: Hotfix plugin drops generic parameters from PatchImpl methods, causing genericTypeInfoParam assertion
+# bug 264 (Hotfix plugin drops generic parameters from PatchImpl methods, causing genericTypeInfoParam assertion)
 compiler/CodegenCJNative/reflect/reflect_09.cj
+compiler/Sema/Extend/extend_interface_static1.cj
 
 # bug 266 (extend with interface that has static function -- NoSuchElementException: None.get)
 compiler/Sema/Extend/extend_interface_static2.cj
@@ -656,3 +653,14 @@ compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_07.cj
 # bug 269 (foreign function: Called unresolved AOT method)
 API/std/time/datetime/test_local_time.cj
 compiler/CHIR/CHIR2HLIR/time/native3.cj
+compiler/CodegenCommon/atexit/atexit_08_C.cj
+
+# bug 271 (subclass-introduced interface method dispatches to wrong slot)
+compiler/Sema/class/class_inheritance_9.cj
+
+# bug 272 (`1 as Int64` prints Some(0))
+compiler/ConstEval/localConsts7.cj
+compiler/Sema/const_evaluation/ok_option.cj
+
+# bug 274 (no `ArithmeticException: Overshift`)
+compiler/CodegenCommon/overflow/overshift1.cj
