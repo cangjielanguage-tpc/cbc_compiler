@@ -493,6 +493,8 @@ object CHIR {
       case OverflowWrappingInc
       case OverflowWrappingDec
       case OverflowWrappingNeg
+      case VectorCompare32
+      case VectorIndexByte32
     }
   }
 
