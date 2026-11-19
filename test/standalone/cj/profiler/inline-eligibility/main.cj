@@ -148,11 +148,74 @@ func rejectedLiteralLoad(value: Int64): Int64 {
 }
 
 @OverflowWrapping
-func rejectedBranchingCaller(value: Int64): Int64 {
+func branchingCaller(value: Int64): Int64 {
     if (value >= 0) {
-        return allowedAdd(value)
+        return allowedArithmetic(value, 3)
     }
     return value - 1
+}
+
+@OverflowWrapping
+func loopCaller(value: Int64): Int64 {
+    var result = value
+    var iteration: Int64 = 1
+    while (iteration <= 3) {
+        result = allowedArithmetic(result, iteration)
+        iteration++
+    }
+    return result
+}
+
+@OverflowWrapping
+func loopWithTwoCallsCaller(value: Int64): Int64 {
+    var result = value
+    var iteration: Int64 = 0
+    while (iteration < 2) {
+        result = allowedArithmetic(result, 2)
+        result = allowedArithmetic(result, 3)
+        iteration++
+    }
+    return result
+}
+
+@OverflowWrapping
+func loopControlCaller(value: Int64): Int64 {
+    var result = value
+    var iteration: Int64 = 0
+    while (iteration < 4) {
+        iteration++
+        if (iteration == 2) {
+            continue
+        }
+        result = allowedArithmetic(result, iteration)
+        if (result < 0) {
+            break
+        }
+    }
+    return result
+}
+
+@OverflowWrapping
+func forLoopCaller(value: Int64, limit: Int64): Int64 {
+    var result = value
+    for (iteration in 0..limit) {
+        if (iteration == 1) {
+            continue
+        }
+        result = allowedArithmetic(result, 3)
+    }
+    return result
+}
+
+@OverflowWrapping
+func nestedForLoopCaller(value: Int64, outerLimit: Int64, innerLimit: Int64): Int64 {
+    var result = value
+    for (_ in 0..outerLimit) {
+        for (_ in 0..innerLimit) {
+            result = allowedArithmetic(result, 3)
+        }
+    }
+    return result
 }
 
 func rejectedRecursion(value: Int64, depth: Int64): Int64 {
@@ -250,7 +313,12 @@ func hotCaller(input: Int64): Int64 {
     allowedFloat32Arithmetic(1.5f32, 2.0f32)
     allowedFloat64Arithmetic(1.5f64, 2.0f64)
     rejectedLiteralLoad(value)
-    rejectedBranchingCaller(value)
+    branchingCaller(value)
+    loopCaller(1)
+    loopWithTwoCallsCaller(1)
+    loopControlCaller(1)
+    forLoopCaller(1, 3)
+    nestedForLoopCaller(1, 2, 2)
     value = rejectedRecursion(value, 1)
     value = rejectedTooLarge(value)
     value = rejectedStackSlots(value)
