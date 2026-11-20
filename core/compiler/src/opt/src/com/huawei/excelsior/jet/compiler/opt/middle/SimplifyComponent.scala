@@ -959,6 +959,13 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
               case n: PutField if optimizePutField(n) =>
                 changed()
 
+              case n: CopyStructureOperation if n.src == n.dst =>
+                strikeOut(n)
+                changed()
+
+              case n: CopyStructureOperation if optimizeCopyStructure(n) =>
+                changed()
+
               case arrayGet: ArrayGet if optimizeArrayGet(arrayGet) =>
                 changed()
 
