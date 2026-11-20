@@ -8,12 +8,9 @@
 
 package com.huawei.excelsior.jet.compiler.opt.middle.explosion
 
-import com.huawei.excelsior.common.Arch.CBC
 import com.huawei.excelsior.jet.compiler.StatsKind
 import com.huawei.excelsior.jet.compiler.bytecode.Position
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.compiler.Env.targetArch
-import com.huawei.excelsior.jet.compiler.opt.CompilerPhases.CompilerPhase
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
 import com.huawei.excelsior.jet.compiler.opt.middle.LivenessAnalysis
 import com.huawei.excelsior.jet.compiler.opt.middle.escape.EscapeAnalysis
@@ -112,18 +109,6 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       true
   }
 
-  def isExplosionOfCangjieStringAllowed: Boolean = {
-    // Stack alloc for string record should not be exploded in CBC
-    // in order not to expose fields of String implementation.
-    if (targetArch == CBC) {
-      return false
-    }
-
-    // We should not explode stack alloc for string record earlier than serialization,
-    // since serialized IR could be used for both AOT and CBC targetArch.
-    CompilerPhase.PostInline <= currentPhase && currentPhase <= CompilerPhase.Lowering
-  }
-
   private def isExplosive(n: Node) = cond(n) {
     case n: AnyNew if implicitlyEscapedType(n.allocType.symType) =>
       // It is better not to mess with these types.
@@ -151,11 +136,7 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       // Will check for memory uses later because there can be
       // both safe uses by other new thins of the same group
       // and unsafe uses.
-      // And we don't want to explode stack alloc for string record in CBC too early,
-      // more info in `isExplosionOfCangjieStringAllowed`.
-      t.isThinClass || (t.isRecord
-        && (Cangjie.Support.String.symType != t.symType || isExplosionOfCangjieStringAllowed)
-        && !t.isUniversalGeneric) // FIXME-UG temporarily exclude UG types explosion
+      t.isThinClass || (t.isRecord && !t.isUniversalGeneric)
 
     case _: StackAlloc => false
 
@@ -587,11 +568,14 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
     *
     * This is strictly a compilation time optimization pass,
     * that explodes most trivial cases more efficiently than the general explosion pass.
+    * `onlyDeadCopies` keeps the O1 path limited to eliminating copy intermediates.
     */
-  def expressExplodeAllObjects(): Boolean = {
+  def expressExplodeAllObjects(onlyDeadCopies: Boolean = false): Boolean = {
     if (env.enabled(NoExplosion) || !env.enabled(ExpressExplosion)) {
       return false
     }
+
+    case class DeadLocalCopy(slot: StackAlloc, casts: Vector[ReinterpretCast], copy: CopyStructureOperation)
 
     def isExpressExplosive(n: Node) = isExplosive(n) && !allocHasSideEffects(n) && n.valueUses.forall {
       case Put(obj, _)      => obj == n
@@ -601,16 +585,60 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       case _ => false
     }
 
-    val explosives = (all[SpinalNode] ++ all[StackAlloc]) filter isExpressExplosive
-    if (explosives.isEmpty) {
+    def soleValueUse(n: Node): Option[Node] = n.valueUses.toList match {
+      case List(use) => Some(use)
+      case _ => None
+    }
+
+    def findDeadLocalCopy(slot: StackAlloc): Option[DeadLocalCopy] = slot match {
+      case StackAlloc.Local(tpe) =>
+        def find(node: Node, casts: Vector[ReinterpretCast]): Option[DeadLocalCopy] = {
+          soleValueUse(node) match {
+            case Some(cast: ReinterpretCast) if cast.arg == node =>
+              find(cast, casts :+ cast)
+            case Some(copy: CopyStructureOperation)
+              if copy.dst == node && copy.structureType == tpe =>
+              Some(DeadLocalCopy(slot, casts, copy))
+            case _ => None
+          }
+        }
+
+        find(slot, Vector.empty)
+      case _ => None
+    }
+
+    val deadCopies = all[StackAlloc].flatMap(findDeadLocalCopy).toSeq
+    val deadCopySlots = deadCopies.iterator.map(copy => copy.slot: Node).toSet
+    val regularExplosives = if (onlyDeadCopies) {
+        Seq.empty
+      } else {
+        (all[SpinalNode] ++ all[StackAlloc])
+          .filterNot(deadCopySlots.contains)
+          .filter(isExpressExplosive)
+          .toSeq
+      }
+
+    if (deadCopies.isEmpty && regularExplosives.isEmpty) {
       return false
     }
 
     Explosion.log.inSession("express explosion", codeUnit) {
-      for (allocNode <- explosives) {
+      def logExplosion(allocNode: Node): Unit = {
         Explosion.log(s"- explosion of ${allocNode.name}", allocNode)
         stats.count(StatsKind.NewOptimization, s"successful explosion of ${allocNode.simpleName}", allocNode)
+      }
 
+      for (DeadLocalCopy(slot, casts, copy) <- deadCopies) {
+        logExplosion(slot)
+        strikeOut(copy)
+        casts.reverseIterator.foreach(decommit)
+        slot.replaceValueUsesByNoValue()
+        decommit(slot)
+        Explosion.log(s"  struck out successfully")
+      }
+
+      for (allocNode <- regularExplosives) {
+        logExplosion(allocNode)
         allocNode.valueUses.distinct.asInstanceOf[Iterator[SpinalNode]].toSeq foreach strikeOut
         allocNode match {
           case n: SpinalNode => replaceValueUsesByNoValueAndStrikeOut(n)

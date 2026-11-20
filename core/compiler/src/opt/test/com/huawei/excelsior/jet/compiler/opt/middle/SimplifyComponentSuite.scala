@@ -310,7 +310,7 @@ class SimplifyComponentSuite extends CompilerSuite
 
     simplifyIR()
 
-    firstCopy.isCommitted shouldBe (differentTI || addRead)
+    firstCopy.isCommitted shouldBe true
 
     if (differentTI) {
       secondCopy.src shouldBe secondSrc
@@ -319,6 +319,9 @@ class SimplifyComponentSuite extends CompilerSuite
       secondCopy.src shouldBe src
       secondCopy.srcBaseRef shouldBe DerivedPtr.Global()
     }
+
+    expressExplodeAllObjects(onlyDeadCopies = true)
+    firstCopy.isCommitted shouldBe (differentTI || addRead)
   }
 
   test("copy optimization") {
@@ -369,7 +372,7 @@ class SimplifyComponentSuite extends CompilerSuite
 
     simplifyIR()
 
-    firstCopy.isCommitted shouldBe (differentTI || addRead)
+    firstCopy.isCommitted shouldBe true
 
     if (differentTI) {
       secondCopy.src shouldBe tmp
@@ -378,6 +381,9 @@ class SimplifyComponentSuite extends CompilerSuite
       secondCopy.src shouldBe src
       secondCopy.srcBaseRef shouldBe DerivedPtr.Global()
     }
+
+    expressExplodeAllObjects(onlyDeadCopies = true)
+    firstCopy.isCommitted shouldBe (differentTI || addRead)
   }
 
   test("generic copy optimization") {

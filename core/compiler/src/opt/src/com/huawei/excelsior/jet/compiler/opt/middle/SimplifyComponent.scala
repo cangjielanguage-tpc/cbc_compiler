@@ -630,30 +630,15 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
   }
 
   private def haveSameTypeInfo(n: Node, m: Node): Boolean = {
-    if (n eq m) {
-      true
-    } else {
-      (n, m) match {
-        case (n: LoadTypeInfo, m: LoadTypeInfo) => n.proto == m.proto
-        case (n: LoadTypeInfoGeneric, m: LoadTypeInfoGeneric) =>
-          n.proto == m.proto && n.notControlArgs.lazyZip(m.notControlArgs).forall(haveSameTypeInfo)
-        case (n: GenericTypeArg, m: GenericTypeArg) =>
-          n.proto == m.proto && haveSameTypeInfo(n.typeInfo, m.typeInfo)
-        case _ => false
-      }
+    (n, m) match {
+      case _ if n == m => true
+      case (n: LoadTypeInfo, m: LoadTypeInfo) => n.proto == m.proto
+      case (n: LoadTypeInfoGeneric, m: LoadTypeInfoGeneric) =>
+        n.proto == m.proto && n.notControlArgs.lazyZip(m.notControlArgs).forall(haveSameTypeInfo)
+      case (n: GenericTypeArg, m: GenericTypeArg) =>
+        n.proto == m.proto && haveSameTypeInfo(n.typeInfo, m.typeInfo)
+      case _ => false
     }
-  }
-
-  private def isDeadCopy(n: CopyStructureOperation): Boolean = {
-    def isExclusiveTemporary(value: Node, use: Node): Boolean = {
-      value.valueUses.toList == List(use) && (value match {
-        case rc: ReinterpretCast => isExclusiveTemporary(rc.arg, rc)
-        case StackAlloc.Local(tpe) => tpe == n.structureType
-        case _ => false
-      })
-    }
-
-    isExclusiveTemporary(n.dst, n)
   }
 
   /** Eliminates unnecessary indirection in two consecutive copying operations:
@@ -667,17 +652,15 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
     *   CopyStructure(Z, Y)
     * }}}
     *
-    * If `X` is an exclusively used local temporary, the first copy is removed.
+    * Additionally this transformation removes "read" use of `X`,
+    * so it can be eliminated more efficiently via
+    * [[com.huawei.excelsior.jet.compiler.opt.middle.explosion.Explosion.expressExplodeAllObjects express explosion]]
     */
   private def optimizeCopyStructure(n: CopyStructureOperation): Boolean = {
     cond(n.inMemory) {
       case m: CopyStructureOperation if m.dst == n.src && haveSameCopySemantics(n, m) =>
         n.srcBaseRef = m.srcBaseRef
         n.src = m.src
-
-        if (isDeadCopy(m)) {
-          strikeOut(m)
-        }
 
         true
     }
@@ -842,9 +825,9 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
   }
 
   private def optimizeInitStringRecord(init: InitStringRecord): Boolean = {
-    if (!isExplosionOfCangjieStringAllowed) {
-      // If explosion of cangjie string stack alloc is not allowed, then either our target is CBC or
-      // our target is any of amd/arm and this is not yet time to explode them.
+    if (targetArch == CBC ||
+        currentPhase < CompilerPhase.PostInline ||
+        currentPhase > CompilerPhase.Lowering) {
       return false
     }
 
