@@ -320,7 +320,7 @@ class SimplifyComponentSuite extends CompilerSuite
       secondCopy.srcBaseRef shouldBe DerivedPtr.Global()
     }
 
-    expressExplodeAllObjects(onlyDeadCopies = true)
+    expressExplodeAllObjects()
     firstCopy.isCommitted shouldBe (differentTI || addRead)
   }
 
@@ -382,7 +382,7 @@ class SimplifyComponentSuite extends CompilerSuite
       secondCopy.srcBaseRef shouldBe DerivedPtr.Global()
     }
 
-    expressExplodeAllObjects(onlyDeadCopies = true)
+    expressExplodeAllObjects()
     firstCopy.isCommitted shouldBe (differentTI || addRead)
   }
 

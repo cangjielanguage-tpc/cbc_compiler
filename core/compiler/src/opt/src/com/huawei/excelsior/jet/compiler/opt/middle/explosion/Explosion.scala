@@ -110,7 +110,7 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
   }
 
   private def isExplosive(n: Node) = cond(n) {
-    case n: AnyNew if implicitlyEscapedType(n.allocType.symType) =>
+    case n: AnyNew if implicitlyEscapedType(n.allocType) =>
       // It is better not to mess with these types.
       false
 
@@ -568,9 +568,8 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
     *
     * This is strictly a compilation time optimization pass,
     * that explodes most trivial cases more efficiently than the general explosion pass.
-    * `onlyDeadCopies` keeps the O1 path limited to eliminating copy intermediates.
     */
-  def expressExplodeAllObjects(onlyDeadCopies: Boolean = false): Boolean = {
+  def expressExplodeAllObjects(): Boolean = {
     if (env.enabled(NoExplosion) || !env.enabled(ExpressExplosion)) {
       return false
     }
@@ -609,14 +608,10 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
 
     val deadCopies = all[StackAlloc].flatMap(findDeadLocalCopy).toSeq
     val deadCopySlots = deadCopies.iterator.map(copy => copy.slot: Node).toSet
-    val regularExplosives = if (onlyDeadCopies) {
-        Seq.empty
-      } else {
-        (all[SpinalNode] ++ all[StackAlloc])
-          .filterNot(deadCopySlots.contains)
-          .filter(isExpressExplosive)
-          .toSeq
-      }
+    val regularExplosives = (all[SpinalNode] ++ all[StackAlloc])
+      .filterNot(deadCopySlots.contains)
+      .filter(isExpressExplosive)
+      .toSeq
 
     if (deadCopies.isEmpty && regularExplosives.isEmpty) {
       return false
