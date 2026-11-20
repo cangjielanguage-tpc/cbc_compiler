@@ -2,6 +2,8 @@ import difflib
 import glob
 import io
 import os
+import platform
+import shlex
 import shutil
 from pathlib import Path
 
@@ -10,8 +12,62 @@ from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifi
 HERE = Path(__file__).resolve().parent
 
 
+def runtime_lib_dir() -> Path:
+    """The toolchain runtime library directory of the host architecture
+    (the one that holds cbc-intrinsics.cbc and cbcengine-helper.chir)."""
+    machine = platform.machine().lower()
+    arch = "aarch64" if machine in ("arm64", "aarch64") else "x86_64"
+    toolchain = os.environ.get("TOOLCHAIN") or os.environ.get("CANGJIE_HOME")
+    if not toolchain:
+        raise MissingArtifacts("Neither TOOLCHAIN nor CANGJIE_HOME is set")
+    dirs = sorted(Path(toolchain).glob(f"runtime/lib/*_{arch}_cjnative"))
+    if len(dirs) != 1:
+        raise MissingArtifacts(
+            f"Expected exactly one runtime/lib/*_{arch}_cjnative directory in the toolchain, found: {dirs}"
+        )
+    return dirs[0]
+
+
+async def prepare_helper_cbc(workdir: Path, timings: dict[str, float]) -> Path:
+    """Builds cbcengine-helper.cbc in a dedicated tmp directory under the
+    work directory and returns the directory to pass to the launcher via
+    --cbc-path.
+
+    Hand-written asm images embed no cangjie.runtime.cbcengine.helper package
+    with real thrower bodies, which the cbc-intrinsics throwers delegate to;
+    without it engine init fails. The launcher gets --cbc-path pointing at the
+    tmp directory, so the package gets loaded before cbc-intrinsics.cbc (whose
+    own copy of the package is declaration-only). Built unconditionally to
+    stay in sync with the toolchain helper chir.
+    """
+    helper_dir = workdir / "tmp"
+    if helper_dir.exists():
+        shutil.rmtree(helper_dir)
+    helper_dir.mkdir(parents=True)
+    chir = runtime_lib_dir() / "cbcengine-helper.chir"
+    if not chir.is_file():
+        raise MissingArtifacts(f"cbcengine-helper.chir not found in the toolchain: {chir}")
+    shutil.copy(chir, helper_dir / chir.name)
+
+    log_io = io.StringIO()
+    res = await run_in_toolchain(
+        ["cbc-compiler", "-outputname=cbcengine-helper", "+GenLibrary", chir.name, "+IgnoreSourceFileNameForCbc"],
+        cwd=str(helper_dir), log=log_io, stderr_log=log_io, timings=timings
+    )
+    if res != 0 or not (helper_dir / "cbcengine-helper.cbc").is_file():
+        raise MissingArtifacts(f"Failed to build cbcengine-helper.cbc from {chir}:\n{log_io.getvalue()}")
+    return helper_dir
+
+
 class AsmTestSuite(TestSuite):
     SUITE = "asm"
+
+    def __init__(self):
+        super().__init__()
+        self.helper_dir: Path | None = None
+
+    async def setup(self, workdir: Path) -> None:
+        self.helper_dir = await prepare_helper_cbc(workdir, self.timings)
 
     async def discover(self) -> list[TestIdentifier]:
         ids = []
@@ -68,7 +124,9 @@ class AsmTestSuite(TestSuite):
         if not cbc.is_file():
             raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
-        cmd = f'{DYLIB_PATH_VAR}="{wdir}:${DYLIB_PATH_VAR}" launcher "{wdir}/{name}.cbc"'
+        if self.helper_dir is None:
+            raise MissingArtifacts(f"{test_id}: helper.cbc was not prepared (suite setup did not run)")
+        cmd = f'{DYLIB_PATH_VAR}="{wdir}:${DYLIB_PATH_VAR}" launcher --cbc-path {shlex.quote(str(self.helper_dir))} "{wdir}/{name}.cbc"'
         out_io = io.StringIO()
         err_io = io.StringIO()
         res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io,
