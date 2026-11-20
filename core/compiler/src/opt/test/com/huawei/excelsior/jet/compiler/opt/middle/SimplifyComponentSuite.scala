@@ -15,7 +15,8 @@ import com.huawei.excelsior.jet.compiler.opt.ir.CheckLevels
 import com.huawei.excelsior.jet.compiler.types.Guards.PointGuard
 import com.huawei.excelsior.jet.compiler.opt.middle.devirtualization.TauInfo.PGO
 import com.huawei.excelsior.jet.compiler.opt.testutils.DSLs.GlobalNodesBuilder
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType
+import com.huawei.excelsior.jet.compiler.symlevel.{SignatureType, TypeKind}
+import com.huawei.excelsior.jet.compiler.symlevel.impl.fake.FakeType
 import com.huawei.excelsior.jet.util.ScalaCollections.singleElement
 import com.huawei.excelsior.jet.util.ScalaCollections
 import org.scalatest.Inside.inside
@@ -274,6 +275,121 @@ class SimplifyComponentSuite extends CompilerSuite
 
     singleElement(n("u1").valueArgs).asInstanceOf[FakeControlled].inCtrl should be (b(10))
     singleElement(n("u2").valueArgs).asInstanceOf[Phi] should be (n("p2"))
+  }
+
+  private def checkOptimizeCopy(differentTI: Boolean, addRead: Boolean): Unit = {
+    makeCFG(1)
+
+    val firstTpe = FakeType(TypeKind.RECORD).markAsCangjieType()
+    val secondTpe = FakeType(TypeKind.RECORD).markAsCangjieType()
+    env.typesResolution.put(firstTpe.getXName, firstTpe)
+    env.typesResolution.put(secondTpe.getXName, secondTpe)
+    val firstSig = SignatureType.Record(firstTpe.getName)
+    val secondSig = SignatureType.Record(secondTpe.getName)
+
+    val (src, secondSrc, firstCopy, secondCopy) = makeNodes { at =>
+      val sig = if (differentTI) secondSig else firstSig
+      val src = Param(ValueType(firstSig), 1)
+      val tmp = StackAlloc.Local(firstSig)
+      val secondSrc = if (differentTI) ReinterpretCast(tmp.tpe, ValueType(sig))(tmp) else tmp
+      val dst = Param(ValueType(sig), 3)
+
+      at(1)
+      val firstCopy = CopyStructure(firstSig)(DerivedPtr.Local(), tmp, DerivedPtr.Global(), src)
+      val secondCopy = CopyStructure(sig)(DerivedPtr.Local(), dst, DerivedPtr.Local(), secondSrc)
+
+      if (addRead) {
+        val secondDst = Param(ValueType(firstSig), 4)
+        CopyStructure(firstSig)(DerivedPtr.Local(), secondDst, DerivedPtr.Local(), tmp)
+      }
+
+      (src, secondSrc, firstCopy, secondCopy)
+    }
+
+    secondCopy.inMemory shouldBe firstCopy
+
+    simplifyIR()
+
+    firstCopy.isCommitted shouldBe (differentTI || addRead)
+
+    if (differentTI) {
+      secondCopy.src shouldBe secondSrc
+      secondCopy.srcBaseRef shouldBe firstCopy.dstBaseRef
+    } else {
+      secondCopy.src shouldBe src
+      secondCopy.srcBaseRef shouldBe DerivedPtr.Global()
+    }
+  }
+
+  test("copy optimization") {
+    checkOptimizeCopy(differentTI = false, addRead = false)
+  }
+
+  test("copy optimization with different record type") {
+    checkOptimizeCopy(differentTI = true, addRead = false)
+  }
+
+  test("copy optimization with extra use of first copy") {
+    checkOptimizeCopy(differentTI = false, addRead = true)
+  }
+
+  private def checkOptimizeCopyGeneric(differentTI: Boolean, addRead: Boolean): Unit = {
+    makeCFG(1)
+
+    val recordType = FakeType(TypeKind.RECORD).markAsCangjieType()
+    env.typesResolution.put(recordType.getXName, recordType)
+    val genericType = SignatureType.InstantiatedRecord(recordType.getName, Seq(SignatureType.LocalTypeVariable(0)))
+
+    val (src, tmp, firstCopy, secondCopy) = makeNodes { at =>
+      val ti = Param(AddrIntType, 0)
+      val src = Param(AddrIntType, 1)
+      val tmpSlot = StackAlloc.Local(genericType)
+      val tmp = ReinterpretCast(tmpSlot.tpe, AddrIntType)(tmpSlot)
+      val dst = Param(AddrIntType, 3)
+
+      at(1)
+      val firstTypeArg = GenericTypeArg(0)(ti)
+      val firstLoadTI = LoadTypeInfoGeneric(genericType)(firstTypeArg)
+      val firstCopy = CopyStructureGeneric(genericType)(DerivedPtr.Local(), tmp, DerivedPtr.Global(), src, firstLoadTI)
+
+      val secondTI = if (differentTI) Param(AddrIntType, 2) else ti
+      val secondTypeArg = GenericTypeArg(0)(secondTI)
+      val secondLoadTI = LoadTypeInfoGeneric(genericType)(secondTypeArg)
+      val secondCopy = CopyStructureGeneric(genericType)(DerivedPtr.Local(), dst, DerivedPtr.Local(), tmp, secondLoadTI)
+
+      if (addRead) {
+        val secondDst = Param(AddrIntType, 4)
+        CopyStructureGeneric(genericType)(DerivedPtr.Local(), secondDst, DerivedPtr.Local(), tmp, secondLoadTI)
+      }
+
+      (src, tmp, firstCopy, secondCopy)
+    }
+
+    secondCopy.inMemory shouldBe firstCopy
+
+    simplifyIR()
+
+    firstCopy.isCommitted shouldBe (differentTI || addRead)
+
+    if (differentTI) {
+      secondCopy.src shouldBe tmp
+      secondCopy.srcBaseRef shouldBe firstCopy.dstBaseRef
+    } else {
+      secondCopy.src shouldBe src
+      secondCopy.srcBaseRef shouldBe DerivedPtr.Global()
+    }
+  }
+
+  test("generic copy optimization") {
+    checkOptimizeCopyGeneric(differentTI = false, addRead = false)
+  }
+
+  test("generic copy optimization with different type info") {
+    checkOptimizeCopyGeneric(differentTI = true, addRead = false)
+  }
+
+  test("generic copy optimization with extra use of first copy") {
+    checkOptimizeCopyGeneric(differentTI = false, addRead = true)
   }
 
   {
