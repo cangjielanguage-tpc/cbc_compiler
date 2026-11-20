@@ -625,22 +625,41 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
       case (n: CopyStructure, m: CopyStructure) =>
         n.structureType == m.structureType
       case (n: CopyStructureGeneric, m: CopyStructureGeneric) =>
-        n.structureType == m.structureType && n.typeInfo == m.typeInfo
+        n.structureType == m.structureType && haveSameTypeInfo(n.typeInfo, m.typeInfo)
       case _ =>
         false
     }
   }
 
-  private def isDeadCopy(n: CopyStructureOperation): Boolean = {
-    n.dst match {
-      case StackAlloc.Local(tpe) if tpe == n.structureType =>
-        n.dst.valueUses.toList match {
-          case List(use) => use eq n
-          case _ => false
-        }
-
-      case _ => false
+  private def haveSameTypeInfo(n: Node, m: Node): Boolean = {
+    if (n eq m) {
+      true
+    } else {
+      (n, m) match {
+        case (n: LoadTypeInfo, m: LoadTypeInfo) =>
+          n.proto == m.proto
+        case (n: LoadTypeInfoGeneric, m: LoadTypeInfoGeneric) =>
+          n.proto == m.proto && haveSameTypeInfoArgs(n.notControlArgs, m.notControlArgs)
+        case (n: GenericTypeArg, m: GenericTypeArg) =>
+          n.proto == m.proto && haveSameTypeInfo(n.typeInfo, m.typeInfo)
+        case _ => false
+      }
     }
+  }
+
+  private def haveSameTypeInfoArgs(ns: Seq[Node], ms: Seq[Node]): Boolean =
+    ns.size == ms.size && ns.lazyZip(ms).forall(haveSameTypeInfo)
+
+  private def isDeadCopy(n: CopyStructureOperation): Boolean = {
+    def isExclusiveTemporary(value: Node, use: Node): Boolean = {
+      value.valueUses.toList == List(use) && (value match {
+        case rc: ReinterpretCast => isExclusiveTemporary(rc.arg, rc)
+        case StackAlloc.Local(tpe) => tpe == n.structureType
+        case _ => false
+      })
+    }
+
+    isExclusiveTemporary(n.dst, n)
   }
 
   /** Eliminates unnecessary indirection in two consecutive copying operations:
@@ -654,8 +673,8 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
     *   CopyStructure(Z, Y)
     * }}}
     *
-    * Additionally this transformation removes "read" use of `X`,
-    * so it can be eliminated more efficiently via
+    * If `X` is an exclusively used local temporary, the first copy is removed.
+    * Otherwise this transformation removes "read" use of `X`, so it can be eliminated via
     * [[com.huawei.excelsior.jet.compiler.opt.middle.explosion.Explosion.expressExplodeAllObjects express explosion]]
     */
   private def optimizeCopyStructure(n: CopyStructureOperation): Boolean = {
