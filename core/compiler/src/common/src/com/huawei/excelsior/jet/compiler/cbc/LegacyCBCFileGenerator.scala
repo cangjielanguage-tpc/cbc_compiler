@@ -21,7 +21,6 @@ import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.NotImplementedFeature.CBC_FILE_ONE_REGION_LIMIT_EXCEEDED
 import com.huawei.excelsior.jet.compiler.RTConst.{LinkageAccessKind, TypeTag}
 import com.huawei.excelsior.jet.compiler.abi.XTableGenerator
-import com.huawei.excelsior.jet.compiler.cangjie.CangjieMath
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
 import com.huawei.excelsior.jet.compiler.cbc.LegacyCBCFileGenerator.*
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.GenerationTarget
@@ -1536,8 +1535,7 @@ class LegacyCBCFileGenerator(env: Environment, outputName: String, segment: Segm
   }
 
   private def initForeignLibs(): Unit = {
-    foreignLibs = CangjieMath.updateForeignLibsList(Option(env.valueOfOrNull(ForeignLibs)),
-      allClasses.iterator.flatMap(_.getDeclaredMethods)).orNull
+    foreignLibs = env.valueOfOrNull(ForeignLibs)
 
     if (foreignLibs != null) {
       strings(foreignLibs) = 0

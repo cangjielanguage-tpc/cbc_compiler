@@ -11,14 +11,14 @@ package com.huawei.excelsior.jet.compiler.chir
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker.NO_LLVM_INDEX
 import com.huawei.excelsior.jet.compiler.{Environment, TypeProvider}
-import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTable, CangjieEnumInfo, CangjieMath, UMLWriter}
+import com.huawei.excelsior.jet.compiler.cangjie.{CHIRSymLevelBuilder, CHIRVTable, CangjieEnumInfo, UMLWriter}
 import com.huawei.excelsior.jet.compiler.chir.EnumKind
 import com.huawei.excelsior.jet.compiler.ir.Modifiers
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier
 import com.huawei.excelsior.jet.compiler.ir.Modifiers.Modifier.{ABSTRACT, PUBLIC, STATIC}
 import com.huawei.excelsior.jet.compiler.options.BoolOption
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
-import com.huawei.excelsior.jet.compiler.symlevel.{GenericInfo, Method, SignatureType, ClassType as SymClassType, Type as SymType}
+import com.huawei.excelsior.jet.compiler.symlevel.{Method, SignatureType, ClassType as SymClassType, Type as SymType}
 import com.huawei.excelsior.jet.compiler.types.CompiledType
 import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.{ReferenceType, ClassType as RefClassType, InterfaceType as RefInterfaceType}
 
@@ -491,21 +491,6 @@ object CHIRBuilder {
         }
 
       case _ =>
-    }
-
-    val hasFloatingPointExp = pkg.values.exists {
-      case f: CHIR.Func => f.body.exists(_.blocks.exists(_.expressions.exists {
-        case e: CHIR.Binary => e.kind == CHIR.Binary.Kind.Exp && e.resultTpe == CHIR.BuiltinType.Float64
-        case _ => false
-      }))
-      case _ => false
-    }
-    if (hasFloatingPointExp) { // add declarations for the native power helpers
-      for ((name, sig) <- CangjieMath.powerMethods) {
-        builder.addMethod(symPackage, name, sig, name,
-          Modifiers(Modifier.STATIC, Modifier.NATIVE, Modifier.CJ_FOREIGN).value, GenericInfo.none,
-          ABI.Description(isCFunc = true), None, None)
-      }
     }
 
     // -----------------------------------------------

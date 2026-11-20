@@ -13,9 +13,9 @@ import com.huawei.excelsior.jet.assembler.{AsmType, Width}
 import com.huawei.excelsior.jet.compiler.{PreparationRequired, RTSProc, Stage, StatsKind}
 import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.bytecode.{ArithOp, BytecodePosition}
-import com.huawei.excelsior.jet.compiler.cangjie.{CHIRVTable, CangjieMath}
+import com.huawei.excelsior.jet.compiler.cangjie.CHIRVTable
 import com.huawei.excelsior.jet.compiler.chir.CHIR.Attribute
-import com.huawei.excelsior.jet.compiler.chir.{CHIR, CHIRLoader, CHIRResolver}
+import com.huawei.excelsior.jet.compiler.chir.{CHIR, CHIRFloatExpHelperGenerator, CHIRLoader, CHIRResolver}
 import com.huawei.excelsior.jet.compiler.ir.{BytecodeOffset, ColumnNumber, LineNumber}
 import com.huawei.excelsior.jet.compiler.opt.ir.{CheckLevels, ConstBranchElimination, Universe}
 import com.huawei.excelsior.jet.compiler.opt.ir.nodes.HLIRNodes
@@ -818,12 +818,12 @@ trait CHIRParser
               case CHIR.Binary.Kind.Div => FDiv(tpe)(l, r)
               case CHIR.Binary.Kind.Exp =>
                 assert(sig == Float64 && resSig == Float64)
-                val (name, signature) = rsig match {
-                  case Float64 => (CangjieMath.float64PowerName, CangjieMath.float64PowerSignature)
-                  case Int64 => (CangjieMath.float64PowerInt64Name, CangjieMath.float64PowerInt64Signature)
+                val name = rsig match {
+                  case Float64 => CHIRFloatExpHelperGenerator.float64PowerName
+                  case Int64   => CHIRFloatExpHelperGenerator.float64PowerInt64Name
                   case _ => shouldNotReachHere(s"unexpected floating point exponent type: $rsig")
                 }
-                val target = resolver.findClass(pkg.name).get.findDeclaredMethodOrNull(xstr(name), signature)
+                val target = resolver.findClass(pkg.name).get.findDeclaredMethodOrNull(xstr(name), null)
                 callMethod(new MethodReference(target, MAK.STATIC), None, None, Float64,
                   Seq(Float64, rsig), Seq(l, r), None)
               case x => shouldNotReachHere(s"unexpected floating point binary expression: ${e.kind}")

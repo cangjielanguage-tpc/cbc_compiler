@@ -17,7 +17,7 @@ import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveSt
 import com.huawei.excelsior.jet.assembler.cbc.{CbcFileEncoder, CbcFileFormat, ExceptionTable, SourceCodeInfo}
 import com.huawei.excelsior.jet.compiler.TypeProvider
 import com.huawei.excelsior.jet.compiler.abi.XTableGenerator
-import com.huawei.excelsior.jet.compiler.cangjie.{CangjieEnumInfo, CangjieMath}
+import com.huawei.excelsior.jet.compiler.cangjie.CangjieEnumInfo
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.GenerationTarget.CBC
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.{GenerationTarget, env}
 import com.huawei.excelsior.jet.compiler.cbc.CbcSignatureAdapter.toCbc
@@ -94,8 +94,8 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
       builder.setAotDeps((Option(env.valueOfOrNull(StrOption.CbcAOTDeps)) ++ aotDeps.flatMap(packageToLibName)).mkString(":"))
     }
 
-    CangjieMath.updateForeignLibsList(Option(env.valueOfOrNull(StrOption.ForeignLibs)),
-      allClasses.iterator.flatMap(_.getDeclaredMethods)).foreach(builder.setForeignLibs)
+    val foreignLibs = Option(env.valueOfOrNull(StrOption.ForeignLibs)).toSeq.flatMap(_.split(":"))
+    builder.setForeignLibs((foreignLibs :+ "cangjie-std-core").distinct.mkString(":"))
 
     val result = builder.build()
     Using.resource(DataOutput.from(output)) { out =>
