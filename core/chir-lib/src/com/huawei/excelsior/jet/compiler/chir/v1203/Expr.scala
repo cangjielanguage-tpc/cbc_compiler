@@ -134,6 +134,7 @@ class IntrinsicImpl(in: IntrinsicBaseT)(implicit val provider: CHIRItemProvider)
     case IntrinsicKind.CPOINTER_INIT0 => Intrinsic.Kind.CPointerInit0
     case IntrinsicKind.CPOINTER_INIT1 => Intrinsic.Kind.CPointerInit1
     case IntrinsicKind.CSTRING_INIT => Intrinsic.Kind.CStringInit
+    case IntrinsicKind.EXCLUSIVE_SCOPE => Intrinsic.Kind.ExclusiveScope
     case IntrinsicKind.INOUT_PARAM => Intrinsic.Kind.InoutParam
     case IntrinsicKind.CPOINTER_READ => Intrinsic.Kind.CPointerRead
     case IntrinsicKind.CPOINTER_WRITE => Intrinsic.Kind.CPointerWrite

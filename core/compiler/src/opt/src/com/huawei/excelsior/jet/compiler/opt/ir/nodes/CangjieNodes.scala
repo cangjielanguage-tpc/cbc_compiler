@@ -976,11 +976,11 @@ trait CangjieNodes { self: Universe =>
 
   /** Factory for cangjie intrinsics that should be generated as call to some runtime function.
    *
-   * To add new intrinsic you need to add it to `CJIntrinsicType` enum and add case to `signature` func
+   * To add a new intrinsic, add its runtime symbol to `CJIntrinsicType` and a factory with its call signature.
    */
   object CJIntrinsic {
-    def intrinsic(intrinsic: CJIntrinsicType, arrayElemType: SignatureType)(args: Node*) = {
-      val mt = MethodType(intrinsic.signature(arrayElemType))
+    private def intrinsic(intrinsic: CJIntrinsicType, signature: MethodSignature)(args: Node*) = {
+      val mt = MethodType(signature)
       val mr = new MethodReference(mt, STATIC)
       val target = CJIntrinsicTarget(intrinsic)()
       Call(mr)(target +: args: _*)
@@ -994,14 +994,25 @@ trait CangjieNodes { self: Universe =>
      * // but can't return until GC finish current work.
      * }}}
      */
-    def acquireRawData(arrayElemType: SignatureType)(array: Node, isCopy: Node): Node = intrinsic(CJIntrinsicType.AcquireRawData, arrayElemType)(array, isCopy)
+    def acquireRawData(arrayElemType: SignatureType)(array: Node, isCopy: Node): Node = {
+      val signature = MethodSignature(CangjieArray(arrayElemType), CPointer(AddrUInt))(CPointer(arrayElemType))
+      intrinsic(CJIntrinsicType.AcquireRawData, signature)(array, isCopy)
+    }
 
     /** `extern "C" void MCC_ReleaseRawData(ArrayRef array, void* rawPtr)`
      * {{{
      * // Release the raw pointer
      * }}}
      */
-    def releaseRawData(elemType: SignatureType)(array: Node, cpointer: Node): Node = intrinsic(CJIntrinsicType.ReleaseRawData, elemType)(array, cpointer)
+    def releaseRawData(elemType: SignatureType)(array: Node, cpointer: Node): Node = {
+      val signature = MethodSignature(CangjieArray(elemType), CPointer(elemType))(SignatureType.Void)
+      intrinsic(CJIntrinsicType.ReleaseRawData, signature)(array, cpointer)
+    }
+
+    def exclusiveScope(executorType: SignatureType, closureType: SignatureType)(executor: Node, closure: Node): Node = {
+      val signature = MethodSignature(executorType, closureType)(SignatureType.Void)
+      intrinsic(CJIntrinsicType.ExclusiveScope, signature)(executor, closure)
+    }
 
     def unapply(call: Call): Option[CJIntrinsicType] = condOpt(call.target) {
       case intrinsicTarget: CJIntrinsicTarget => intrinsicTarget.target
@@ -1011,11 +1022,7 @@ trait CangjieNodes { self: Universe =>
   enum CJIntrinsicType(val name: String) {
     case AcquireRawData extends CJIntrinsicType("CJ_MCC_AcquireRawData")
     case ReleaseRawData extends CJIntrinsicType("CJ_MCC_ReleaseRawData")
-
-    def signature(elemType: SignatureType): MethodSignature = this match {
-      case CJIntrinsicType.AcquireRawData =>  MethodSignature(CangjieArray(elemType), CPointer(AddrUInt))(CPointer(elemType))
-      case CJIntrinsicType.ReleaseRawData =>  MethodSignature(CangjieArray(elemType), CPointer(elemType))(SignatureType.Void)
-    }
+    case ExclusiveScope extends CJIntrinsicType("CJ_MCC_ExclusiveScope")
   }
 
   sealed trait CangjieReferenceNode extends FloatingNode {
