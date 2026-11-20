@@ -745,6 +745,8 @@ object CHIR {
       case BitCast
       case ObjectRefEq
       case RawArrayRefEq
+      case FillInStackTrace
+      case DecodeStackTrace
     }
   }
 

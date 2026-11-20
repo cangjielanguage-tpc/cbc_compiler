@@ -1970,6 +1970,22 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.CStringInit =>
             state(e) = state(e.args.head)
 
+          case CHIR.Intrinsic.Kind.FillInStackTrace =>
+            val Seq(_, msgArray) = e.args
+            val ValueSig(msgArrayType: SignatureType.CangjieArray) = msgArray
+            val resultType = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.CangjieArray]
+            state(e) = CJIntrinsic.fillInStackTrace(msgArrayType.elemType, resultType)(
+              loadTypeInfo(resultType), state(msgArray))
+
+          case CHIR.Intrinsic.Kind.DecodeStackTrace =>
+            val Seq(ip, pc, funcDesc) = e.args
+            val recordType = resolver.typeSig(e.resultTpe)
+            val sret = StackAlloc.Local(recordType, workaroundForNonZeroedTraceableRecords = true)
+            CJIntrinsic.decodeStackTrace(recordType)(
+              sret, state(ip), state(pc), state(funcDesc),
+              loadTypeInfo(SignatureType.CangjieArray(SignatureType.UInt8)))
+            state(e) = sret
+
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {
               case g: CHIR.GlobalVar =>
