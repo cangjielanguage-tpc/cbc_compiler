@@ -78,6 +78,10 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
       // 2) It will complicate PhiWebsTranslation
       false
 
+    case _: DerivedPtr.Proxy =>
+      // Exclusion from constants folding
+      false
+
     case _: SynchronizedRegion =>
       // sync regions form tree-structure with constant root. Should not be folded.
       false

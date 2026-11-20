@@ -9,13 +9,17 @@
 package com.huawei.excelsior.jet.compiler.symlevel
 
 import com.huawei.excelsior.jet.compiler.CompilerSuite
+import com.huawei.excelsior.jet.compiler.TypeProvider
 import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.*
 import com.huawei.excelsior.jet.compiler.symlevel.TypeKind.*
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
 import com.huawei.excelsior.jet.compiler.symlevel.impl.fake.FakeType
+import com.huawei.excelsior.jet.compiler.types.TypesToolbox
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-class SignatureSuite extends CompilerSuite with ScalaCheckPropertyChecks {
+class SignatureSuite extends CompilerSuite with ScalaCheckPropertyChecks with TypesToolbox {
+
+  implicit def typeProvider: TypeProvider = env.getTypeProvider
 
   def resolve(name: String): Type = {
     val tkind = if (name.head == 'R') TypeKind.RECORD else TypeKind.CLASS
@@ -472,6 +476,79 @@ class SignatureSuite extends CompilerSuite with ScalaCheckPropertyChecks {
         case Some((c2, l2)) => m.instantiate(c2, l2) shouldBe y
         case None => fail(s"expected $m to match its instantiation $y")
       }
+    }
+  }
+
+  private def zstRecord(name: String, fields: (String, SignatureType)*): SignatureType = {
+    val sym = makeSymRecord(name)
+    for ((fieldName, fieldType) <- fields) {
+      makeSymField(fieldName, fieldType, sym)
+    }
+    env.registerFake(sym)
+    Record(sym)
+  }
+
+  private val allZSTRecord = zstRecord("AllZST", "a" -> Unit, "b" -> Void)
+  private val mixedZSTRecord = zstRecord("MixedZST", "a" -> Unit, "b" -> Int64)
+  private val onlyLiveRecord = zstRecord("OnlyLive", "a" -> Int64)
+  private val emptyRecord = zstRecord("Empty")
+  private val zeroSizedPayload = zstRecord("WrapSSSS", "xxxx" -> Unit)
+
+  for ((sig, res) <- Seq(
+    // Types that carry no data at all.
+    (Void, true),
+    (Unit, true),
+    (Nothing, true),
+    (ZeroSizedEnum("E", Seq.empty), true),
+
+    // A record is zero-sized only when *all* of its fields are: one live field
+    // makes the whole record variable-sized, even next to a `Unit` field.
+    (allZSTRecord, true),
+    (emptyRecord, true),
+    (mixedZSTRecord, false),
+    (onlyLiveRecord, false),
+
+    // Same for a tuple. `Tuple(UInt32, SSSS)` is the deconstruction tuple of
+    // bug 84: it carries a live tag next to a zero-sized payload.
+    (Tuple(Seq(Unit, Void)), true),
+    (Tuple(Seq.empty), true),
+    (Tuple(Seq(UInt32, zeroSizedPayload)), false),
+    (Tuple(Seq(UInt32, Unit)), false),
+
+    // A varray stores its elements inline with a statically known length, so it
+    // is zero-sized exactly when its element type is.
+    (VArray(Void, 0), true),
+    (VArray(Unit, 2), true),
+    (VArray(Int32, 2), false),
+
+    // Everything else always occupies storage.
+    (Int32, false),
+    (Boolean, false),
+    (BString, false),
+    (CangjieReference("Roo"), false),
+    (NullableWrapper(CangjieReference("Roo")), false),
+    (NonNullableWrapper(JavaArray(Int32, 1)), false),
+    (Box(Int64), false),
+    (CPointer(Int32), false),
+    (CangjieArray(Int32), false),
+    (ArraySlice(Int32), false),
+    // A packed tuple is the representation of a union enum, so it always carries a
+    // live tag and is never zero-sized (asserted by `isZST` itself).
+    (PackedTuple(Seq(UInt32)), false),
+    (PackedTuple(Seq(UInt32, zeroSizedPayload)), false),
+    (PrimitiveBasedEnum("PE", Seq.empty), false),
+    (UnionBasedEnum("UE", Seq.empty), false),
+    (ClassBasedEnum("CE", Seq.empty), false),
+
+    // An option-like enum always has to distinguish `None` from `Some`, so it
+    // occupies storage even when its payload is zero-sized itself.
+    (OptionLikeEnum("OLZ", Seq.empty, Unit), false),
+    (OptionLikeEnum("OLR", Seq.empty, CangjieReference("Roo")), false),
+    (OptionLikeEnum("OLT", Seq.empty, LocalTypeVariable(0)), false),
+    (OptionLikeEnum("OLC", Seq.empty, ClassTypeVariable(0)), false),
+  )) {
+    test(s"isZST $sig") {
+      sig.isZST shouldBe res
     }
   }
 }

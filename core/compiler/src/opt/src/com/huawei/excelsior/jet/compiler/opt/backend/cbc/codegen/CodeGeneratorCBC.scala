@@ -1247,7 +1247,13 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           val IReg(ti) = n.baseTypeInfo
           asm.boxGeneric(src, dst, ti)
         case Reg(src) => asm.box(src, dst, n.base.toCbc)
-        case _: Void  => asm.box(IR.IRZ, dst, n.base.toCbc)
+        case _: Void  =>
+          if (n.base.containsTypeVariables) {
+            val IReg(ti) = n.baseTypeInfo
+            asm.boxGeneric(IR.IRZ, dst, ti)
+          } else {
+            asm.box(IR.IRZ, dst, n.base.toCbc)
+          }
       }
       addXSite(n)
       saveGCState(n)

@@ -213,11 +213,6 @@ compiler/Sema/if-let-expr/enhancedcondition/or_left_exhaustive.cj
 compiler/CodegenCJNative/demangle/decl/exception_throw2.cj
 compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
 
-# bug 84 (ZeroSizedEnum in match expression)
-compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
-compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_03.cj
-compiler/CodegenCJNative/LegacyTests/enum_nest.cj
-
 # bug 92 (Support extends of AOT types)
 compiler/CHIR/CHIR2HLIR/extend/extend_primitive_overload_operator.cj
 compiler/CHIR/CHIR2HLIR/generic/call31.cj

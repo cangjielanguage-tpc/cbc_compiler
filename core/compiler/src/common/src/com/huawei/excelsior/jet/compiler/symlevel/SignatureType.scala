@@ -270,9 +270,22 @@ sealed abstract class SignatureType extends Signature {
     case _: CangjieEnum => false
   }
 
-  final def isZST: Boolean = this match {
+  final def isZST(implicit typeProvider: TypeProvider): Boolean = Wrapper.skip(this) match {
     case Void | Unit | Nothing | _: ZeroSizedEnum => true
-    case _ => false
+    case x: Record =>
+      val fields = asClassType(x.symType).getFields.filterNot(_.isStatic)
+      fields.forall(_.getType.isZST)
+    case x: InstantiatedRecord =>
+      val fields = asClassType(x.symType).getFields.filterNot(_.isStatic)
+      fields.forall { f =>
+        f.getType.instantiate(x.instantiatedTypeParameters, Seq.empty).isZST
+      }
+    case x: Tuple => x.params.forall(_.isZST)
+    case x: PackedTuple => assert(!x.params.forall(_.isZST)); false
+    case x: VArray => x.elemType.isZST
+    case _: Primitive | BString | _: CPointer | _: TypeVariable | ThisTypeInfo | _: ArraySlice |
+         _: CangjieArray | _: JavaArray | _: Reference | _: InstantiatedReference | _: Box |
+         _: PrimitiveBasedEnum | _: OptionLikeEnum | _: UnionBasedEnum | _: ClassBasedEnum => false
   }
 
   final def isCangjieClosure: Boolean = this match {
