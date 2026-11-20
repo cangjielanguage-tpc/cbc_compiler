@@ -578,46 +578,46 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       return false
     }
 
-    case class DeadLocalCopy(slot: StackAlloc, casts: Vector[ReinterpretCast], copy: CopyStructureOperation)
+    def collectRemovableUses(n: Node): Option[Seq[Node]] = {
+      val result = Seq.newBuilder[Node]
+      val uses = n.valueUses.distinct
 
-    def isExpressExplosive(n: Node) = isExplosive(n) && !allocHasSideEffects(n) && n.valueUses.forall {
-      case Put(obj, _)      => obj == n
-      case Fill(arr)        => arr == n
-      case u: ThinNew       => u.addr == n
-      case u: CopyStructureOperation => u.dst == n
-      case _ => false
-    }
-
-    def soleValueUse(n: Node): Option[Node] = n.valueUses.toList match {
-      case List(use) => Some(use)
-      case _ => None
-    }
-
-    def findDeadLocalCopy(slot: StackAlloc): Option[DeadLocalCopy] = slot match {
-      case StackAlloc.Local(tpe) =>
-        def find(node: Node, casts: Vector[ReinterpretCast]): Option[DeadLocalCopy] = {
-          soleValueUse(node) match {
-            case Some(cast: ReinterpretCast) if cast.arg == node =>
-              find(cast, casts :+ cast)
-            case Some(copy: CopyStructureOperation)
-              if copy.dst == node && copy.structureType == tpe =>
-              Some(DeadLocalCopy(slot, casts, copy))
-            case _ => None
-          }
+      while (uses.hasNext) {
+        uses.next() match {
+          case cast: ReinterpretCast if cast.arg == n =>
+            collectRemovableUses(cast) match {
+              case Some(castUses) => result.addAll(castUses).addOne(cast)
+              case None => return None
+            }
+          case p @ Put(obj, _) if obj == n => result += p
+          case f @ Fill(arr) if arr == n => result += f
+          case tn: ThinNew if tn.addr == n => result += tn
+          case c: CopyStructureOperation if c.dst == n => result += c
+          case _ => return None
         }
+      }
 
-        find(slot, Vector.empty)
-      case _ => None
+      Some(result.result())
     }
 
-    val deadCopies = all[StackAlloc].flatMap(findDeadLocalCopy).toSeq
-    val deadCopySlots = deadCopies.iterator.map(copy => copy.slot: Node).toSet
-    val regularExplosives = (all[SpinalNode] ++ all[StackAlloc])
-      .filterNot(deadCopySlots.contains)
-      .filter(isExpressExplosive)
+    def removableUses(allocNode: Node): Option[Seq[Node]] = {
+      val canExpressExplode = allocNode match {
+        case StackAlloc.Local(_) => true
+        case _ => isExplosive(allocNode)
+      }
+
+      if (!canExpressExplode || allocHasSideEffects(allocNode)) {
+        None
+      } else {
+        collectRemovableUses(allocNode)
+      }
+    }
+
+    val explosives = (all[SpinalNode] ++ all[StackAlloc])
+      .flatMap(allocNode => removableUses(allocNode).map(allocNode -> _))
       .toSeq
 
-    if (deadCopies.isEmpty && regularExplosives.isEmpty) {
+    if (explosives.isEmpty) {
       return false
     }
 
@@ -627,18 +627,15 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
         stats.count(StatsKind.NewOptimization, s"successful explosion of ${allocNode.simpleName}", allocNode)
       }
 
-      for (DeadLocalCopy(slot, casts, copy) <- deadCopies) {
-        logExplosion(slot)
-        strikeOut(copy)
-        casts.reverseIterator.foreach(decommit)
-        slot.replaceValueUsesByNoValue()
-        decommit(slot)
-        Explosion.log(s"  struck out successfully")
-      }
-
-      for (allocNode <- regularExplosives) {
+      for ((allocNode, uses) <- explosives) {
         logExplosion(allocNode)
-        allocNode.valueUses.distinct.asInstanceOf[Iterator[SpinalNode]].toSeq foreach strikeOut
+        uses.distinct.foreach {
+          case use: SpinalNode => strikeOut(use)
+          case use: FloatingNode =>
+            assert(use.uses.isEmpty)
+            decommit(use)
+          case use => shouldNotReachHere(use)
+        }
         allocNode match {
           case n: SpinalNode => replaceValueUsesByNoValueAndStrikeOut(n)
           case n: StackAlloc =>
