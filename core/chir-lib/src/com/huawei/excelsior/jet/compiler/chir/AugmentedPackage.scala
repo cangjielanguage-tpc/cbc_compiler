@@ -2,11 +2,9 @@ package com.huawei.excelsior.jet.compiler.chir
 
 object AugmentedPackage {
   def apply(pkg: CHIR.Package): AugmentedPackage = {
-    val funcGenerators = Seq(
-      CHIRCJEntryGenerator(pkg)
-    )
+    val funcGenerators = CHIRCJEntryGenerator(pkg) +: CHIRFloatExpHelperGenerator.forPackage(pkg)
 
-    val startingId: Int = pkg.values.length
+    val startingId: Int = pkg.values.length + 1
 
     val ids = startingId until (startingId + funcGenerators.length)
     val generatedFuncs = funcGenerators.zip(ids).flatMap((generator, id) => generator.generateFunc(id))

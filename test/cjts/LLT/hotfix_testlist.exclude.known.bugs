@@ -20,19 +20,6 @@ compiler/CHIR/CHIR2HLIR/typeCast/float2uintExceed.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642Int8_2.cj
 compiler/CodegenCommon/typecast/FPToSI/fp642UIntNative_01.cj
 
-# bug 141 (not implemented: floating point binary expression: Exp)
-compiler/CHIR/ComplicatedCodeBugfix/Bugfix6/test.cj
-compiler/Sema/binary/f64expo.cj
-compiler/Sema/function/defaultParameter_pkg_02/test.cj
-compiler/Sema/type_infer/lambda_param_01.cj
-compiler/Sema/const_evaluation/ok_class_ctor.cj
-API/std/core/test_mathextension.cj
-compiler/Mangle/MangledName/new_mangle_fuzz_01.cj
-API/std/unittest/delta_comparison/assert/user_defined_types/comparison_fail.cj
-API/std/unittest/delta_comparison/assert/user_defined_types/comparison_success.cj
-API/std/unittest/delta_comparison/expect/user_defined_types/comparison_fail.cj
-API/std/unittest/delta_comparison/expect/user_defined_types/comparison_success.cj
-
 # bug 135 (not implemented: FLOAT16)
 compiler/ConstEval/testFloat.cj
 compiler/CodegenCJNative/LegacyTests/typesFp16.cj
@@ -456,6 +443,7 @@ API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
 compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
 
 # bug 222 (castIdentity: F16/F32/F64)
+API/std/core/test_mathextension.cj
 API/std/libast/tokens/toString/test_004.cj
 compiler/CHIR/AST2CHIR/bugfix/bugfix4/test.cj
 compiler/CHIR/package/package01/test1.cj
