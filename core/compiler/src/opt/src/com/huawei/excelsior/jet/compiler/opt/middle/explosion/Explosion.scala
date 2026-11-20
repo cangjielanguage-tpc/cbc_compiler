@@ -118,6 +118,10 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       // TODO: maybe explode them
       false
 
+    case _: NewArrayGeneric =>
+      // TODO: support generic array explosion
+      false
+
     case _: NewString =>
       // We ignore them in current implementation.
       // TODO: explode key strings
