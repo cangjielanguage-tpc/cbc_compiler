@@ -54,3 +54,7 @@ class CHIRLoader(source: String) {
 class IntrinsicsCHIRLoader extends CHIRLoader(IntrinsicsPackage.intrinsicsSourceName) {
   override protected def genPackage(_env: Environment): CHIR.Package = CHIR.newIntrinsicsPackage
 }
+
+class EngineHelperPackageLoader extends CHIRLoader(EngineHelperPackage.sourceName) {
+  override protected def genPackage(_env: Environment): CHIR.Package = CHIR.newEngineHelperPackage
+}

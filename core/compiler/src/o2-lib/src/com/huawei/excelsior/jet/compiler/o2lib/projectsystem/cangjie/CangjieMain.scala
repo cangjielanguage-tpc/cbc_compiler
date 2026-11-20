@@ -15,7 +15,7 @@ import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.GenerationTarget.{EXE, STDLIB}
-import com.huawei.excelsior.jet.compiler.chir.{CHIRLoader, EngineHelperChir, IntrinsicsPackage, IntrinsicsCHIRLoader}
+import com.huawei.excelsior.jet.compiler.chir.{CHIRLoader, EngineHelperChir, EngineHelperPackage, EngineHelperPackageLoader, IntrinsicsPackage, IntrinsicsCHIRLoader}
 import com.huawei.excelsior.jet.compiler.debug.dwarf.Dwarf
 import com.huawei.excelsior.jet.compiler.delayed.DelayedIntrinsicsUsageTracker
 import com.huawei.excelsior.jet.compiler.driver.CompilationMode.O2
@@ -240,6 +240,8 @@ object CangjieMain {
         assert(p.files.isEmpty)
         chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(IntrinsicsPackage.intrinsicsSourceName))
         IntrinsicsCHIRLoader().load(chirBuilder)
+        chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(EngineHelperPackage.sourceName))
+        EngineHelperPackageLoader().load(chirBuilder)
       } else {
         loadEngineHelperChir(p, chirBuilder)
         for ((f, i) <- p.files.zipWithIndex) {

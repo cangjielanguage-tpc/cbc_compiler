@@ -13,6 +13,9 @@ object CHIR {
 
   def newIntrinsicsPackage: Package = new IntrinsicsPackage
 
+  def newEngineHelperPackage: Package = EngineHelperPackage
+
+
   /** Load the serialized package itself, without compiler-generated overlays. */
   def read(input: Path, version: Int = defaultVersion): Package =
     fromBytes(Files.readAllBytes(input), version)
