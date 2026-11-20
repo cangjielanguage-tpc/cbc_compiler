@@ -2083,11 +2083,38 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.MutexTryLock =>
             state(e) = IConst(1)
 
+          // `fillInStackTrace(pc: RawArray<UInt64>, message: RawArray<UInt8>)` allocates the
+          // resulting array itself, so the runtime is given the TypeInfo to allocate with
+          // instead of the preallocated `pc` array; `message` is still needed.
+          case CHIR.Intrinsic.Kind.FillInStackTrace =>
+            val (msgArray, resultType) = e.args match {
+              case Seq(_, msg) => msg -> (resolver.typeSig(e.resultTpe) match {
+                case t: SignatureType.CangjieArray => t
+                case t => shouldNotReachHere(s"unexpected fillInStackTrace result $t")
+              })
+              case args => shouldNotReachHere(s"unexpected fillInStackTrace args $args")
+            }
+            val ValueSig(msgArrayType: SignatureType.CangjieArray) = msgArray
+            state(e) = CJIntrinsic.fillInStackTrace(msgArrayType.elemType, resultType)(
+              loadTypeInfo(resultType), state(msgArray))
+
+          // `decodeStackTrace` returns `StackTraceData` through a hidden `RetByVal` pointer,
+          // so the record is materialized in a stack slot which then holds the expression value.
+          case CHIR.Intrinsic.Kind.DecodeStackTrace =>
+            val (ip, pc, funcDesc) = e.args match {
+              case Seq(ip, pc, funcDesc) => (ip, pc, funcDesc)
+              case args => shouldNotReachHere(s"unexpected decodeStackTrace args $args")
+            }
+            val recordType = resolver.typeSig(e.resultTpe)
+            val sret = StackAlloc.Local(recordType, workaroundForNonZeroedTraceableRecords = true)
+            CJIntrinsic.decodeStackTrace(recordType)(
+              sret, state(ip), state(pc), state(funcDesc),
+              loadTypeInfo(SignatureType.CangjieArray(SignatureType.UInt8)))
+            state(e) = sret
+
           // WORKAROUND(stdlib-to-cbc): core-runtime intrinsics faked as no-ops
           // returning a zero/null value of the correct result type.
-          case CHIR.Intrinsic.Kind.FillInStackTrace |
-               CHIR.Intrinsic.Kind.Sleep |
-               CHIR.Intrinsic.Kind.DecodeStackTrace |
+          case CHIR.Intrinsic.Kind.Sleep |
                CHIR.Intrinsic.Kind.DumpAllThreadsInfo |
                CHIR.Intrinsic.Kind.DumpCurrentThreadInfo |
                CHIR.Intrinsic.Kind.ExclusiveScope |

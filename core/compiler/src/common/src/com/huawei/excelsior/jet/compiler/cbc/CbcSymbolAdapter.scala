@@ -59,11 +59,14 @@ trait CbcSymbolAdapter extends SymbolAdapter {
 
   def adaptIntrinsic(methodReference: MethodReference, intrinsicSymbol: String): CbcFileFormat.MethodReference = {
     val aotData = DirectCallAotData(intrinsicSymbol)
-    val sig = methodReference.methodType.signature.toCbc
-    // TODO: add flags if needed
-    val flags = mutable.ArrayBuffer.empty[MethodRefFlag]
+    val mt = methodReference.methodType
+    // CBC encodes the source signature: the hidden parameters are not a part of it, they
+    // are described by the reference flags instead (see `MethodRefFlag.SRET` and friends).
+    val params = mt.parameterTypes
+      .slice(mt.startSpecialParamsCount, mt.parameterCount - mt.endSpecialParamsCount).toSeq
+    val sig = CbcFileFormat.Functional(params.map(_.toCbc), mt.returnType.toCbc)
     val refType = CbcFileFormat.AotTypeSignature.ref(CbcFileEncoderAdapter.intrinsicsTypeName)
-    CbcFileFormat.MethodReference(intrinsicSymbol, refType, sig, MethodRefFlags(flags), Some(aotData))
+    CbcFileFormat.MethodReference(intrinsicSymbol, refType, sig, methodRefFlags(mt), Some(aotData))
   }
 
   def adapt(symbol: Symbol): CbcFileFormat.BytecodeReference = symbol match {
