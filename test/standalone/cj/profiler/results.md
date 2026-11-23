@@ -88,11 +88,13 @@ func main() {
 
 ### Time
 
-No inline: 5014.7 ms
+No inline: 4963.0 ms
 
-Inline (`my_abs`): 4744.3 ms
+Inline (`my_abs`): 4772.7 ms
 
-Inline (`my_abs` + `compute`): 4250.4 ms
+Inline (`my_abs` + `compute`): 4045.8 ms
+
+Inline with profiler (`my_abs` is allowed) 4726.2 ms
 
 ### Cbc code size
 
