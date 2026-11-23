@@ -167,6 +167,13 @@ class TestSuite(ABC):
     async def discover(self) -> list[TestIdentifier]:
         ...
 
+    async def setup(self, workdir: Path) -> None:
+        """Prepares suite-wide resources in the work directory.
+
+        Called once in the beginning of the testsuite run, before any testcase
+        is built or run, but only for suites that have testcases selected."""
+
+
     @abstractmethod
     async def build(self, test_id: TestIdentifier, workdir: Path) -> int:
         ...
