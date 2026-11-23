@@ -498,9 +498,6 @@ compiler/Sema/enum/enum40_indirect_box_after_instantiation.cj
 compiler/Sema/nonExhaustiveEnum/binaryCompat/change_lib.cj
 compiler/Sema/record/static_init/generic_struct_static_init_01/main.cj
 
-# bug 246 (assertion failed in `asClassType`)
-compiler/CHIR/UG/OpenGeneric/devirt.cj
-
 # bug 248 (`match(C(None))` should unpack into `None`, not `Some(None)`)
 API/std/unittest/powerAssert/nodeTypes/matchExpr.cj
 
