@@ -578,43 +578,35 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       return false
     }
 
-    def collectRemovableUses(n: Node): Option[Seq[Node]] = {
-      val result = Seq.newBuilder[Node]
-      val uses = n.valueUses.distinct
+    def isExpressExplosive(n: Node): Boolean = (n match {
+        case StackAlloc.Local(_) => true
+        case _                   => isExplosive(n)
+      }) && !allocHasSideEffects(n)
 
-      while (uses.hasNext) {
-        uses.next() match {
-          case cast: ReinterpretCast if cast.arg == n =>
-            collectRemovableUses(cast) match {
-              case Some(castUses) => result.addAll(castUses).addOne(cast)
-              case None => return None
-            }
-          case p @ Put(obj, _) if obj == n => result += p
-          case f @ Fill(arr) if arr == n => result += f
-          case tn: ThinNew if tn.addr == n => result += tn
-          case c: CopyStructureOperation if c.dst == n => result += c
-          case _ => return None
+    def collectRemovableUses(node: Node): Option[Seq[Node]] = {
+      val result = Seq.newBuilder[Node]
+
+      def collectUses(n: Node): Boolean = {
+        n.valueUses.distinct.forall { use =>
+          val removable = use match {
+            case cast: ReinterpretCast     => cast.arg == n && collectUses(cast)
+            case Put(obj, _)               => obj == n
+            case Fill(arr)                 => arr == n
+            case u: ThinNew                => u.addr == n
+            case u: CopyStructureOperation => u.dst == n
+            case _                         => false
+          }
+          if (removable) result += use
+          removable
         }
       }
 
-      Some(result.result())
-    }
-
-    def removableUses(allocNode: Node): Option[Seq[Node]] = {
-      val canExpressExplode = allocNode match {
-        case StackAlloc.Local(_) => true
-        case _ => isExplosive(allocNode)
-      }
-
-      if (!canExpressExplode || allocHasSideEffects(allocNode)) {
-        None
-      } else {
-        collectRemovableUses(allocNode)
-      }
+      Option.when(collectUses(node))(result.result())
     }
 
     val explosives = (all[SpinalNode] ++ all[StackAlloc])
-      .flatMap(allocNode => removableUses(allocNode).map(allocNode -> _))
+      .filter(isExpressExplosive)
+      .flatMap(allocNode => collectRemovableUses(allocNode).map(allocNode -> _))
       .toSeq
 
     if (explosives.isEmpty) {
@@ -622,19 +614,16 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
     }
 
     Explosion.log.inSession("express explosion", codeUnit) {
-      def logExplosion(allocNode: Node): Unit = {
+      for ((allocNode, uses) <- explosives) {
         Explosion.log(s"- explosion of ${allocNode.name}", allocNode)
         stats.count(StatsKind.NewOptimization, s"successful explosion of ${allocNode.simpleName}", allocNode)
-      }
 
-      for ((allocNode, uses) <- explosives) {
-        logExplosion(allocNode)
         uses.distinct.foreach {
-          case use: SpinalNode => strikeOut(use)
-          case use: FloatingNode =>
-            assert(use.uses.isEmpty)
-            decommit(use)
-          case use => shouldNotReachHere(use)
+          case u: SpinalNode => strikeOut(u)
+          case u: FloatingNode =>
+            assert(u.uses.isEmpty)
+            decommit(u)
+          case u => shouldNotReachHere(u)
         }
         allocNode match {
           case n: SpinalNode => replaceValueUsesByNoValueAndStrikeOut(n)
