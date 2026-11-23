@@ -131,10 +131,12 @@ class IntrinsicImpl(in: IntrinsicBaseT)(implicit val provider: CHIRItemProvider)
     case IntrinsicKind.ATOMIC_SWAP => Intrinsic.Kind.AtomicSwap
     case IntrinsicKind.BEGIN_CATCH => Intrinsic.Kind.BeginCatch
     case IntrinsicKind.PREINITIALIZE => Intrinsic.Kind.Preinitialize
+    case IntrinsicKind.CPOINTER_GET_POINTER_ADDRESS => Intrinsic.Kind.CPointerGetPointerAddress
     case IntrinsicKind.CPOINTER_INIT0 => Intrinsic.Kind.CPointerInit0
     case IntrinsicKind.CPOINTER_INIT1 => Intrinsic.Kind.CPointerInit1
     case IntrinsicKind.CSTRING_INIT => Intrinsic.Kind.CStringInit
     case IntrinsicKind.EXCLUSIVE_SCOPE => Intrinsic.Kind.ExclusiveScope
+    case IntrinsicKind.CSTRING_CONVERT_CSTR_TO_PTR => Intrinsic.Kind.CStringConvertCstrToPtr
     case IntrinsicKind.INOUT_PARAM => Intrinsic.Kind.InoutParam
     case IntrinsicKind.MUTEX_INIT => Intrinsic.Kind.MutexInit
     case IntrinsicKind.CJ_MUTEX_LOCK => Intrinsic.Kind.CjMutexLock
@@ -151,6 +153,7 @@ class IntrinsicImpl(in: IntrinsicBaseT)(implicit val provider: CHIRItemProvider)
     case IntrinsicKind.MULTICONDITION_NOTIFY_ALL => Intrinsic.Kind.MultiConditionNotifyAll
     case IntrinsicKind.CPOINTER_READ => Intrinsic.Kind.CPointerRead
     case IntrinsicKind.CPOINTER_WRITE => Intrinsic.Kind.CPointerWrite
+    case IntrinsicKind.CPOINTER_ADD => Intrinsic.Kind.CPointerAdd
     case IntrinsicKind.OBJECT_ZERO_VALUE => Intrinsic.Kind.ObjectZeroValue
     case IntrinsicKind.SQRT => Intrinsic.Kind.Sqrt
     case IntrinsicKind.POW => Intrinsic.Kind.Pow
@@ -221,6 +224,8 @@ class IntrinsicImpl(in: IntrinsicBaseT)(implicit val provider: CHIRItemProvider)
     case IntrinsicKind.RAW_ARRAY_REFEQ => Intrinsic.Kind.RawArrayRefEq
     case IntrinsicKind.FILL_IN_STACK_TRACE => Intrinsic.Kind.FillInStackTrace
     case IntrinsicKind.DECODE_STACK_TRACE => Intrinsic.Kind.DecodeStackTrace
+    case IntrinsicKind.SIZE_OF => Intrinsic.Kind.SizeOf
+    case IntrinsicKind.ALIGN_OF => Intrinsic.Kind.AlignOf
     case k => notImplemented(s"intrinsic ${IntrinsicKind.name(k)}")
   }
 

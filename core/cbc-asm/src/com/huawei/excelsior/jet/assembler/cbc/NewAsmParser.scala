@@ -1493,6 +1493,12 @@ private object InstructionParser {
   instr("st.raw.f32") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F32, s.int) }
   instr("st.raw.f64") { (a, s) => a.storeRawMemory(s.freg, s.ireg, ST_F64, s.int) }
 
+  // size/align
+  instr("size")  { (a, s) => a.typeSize(s.ireg, s.tpe) }
+  instr("align") { (a, s) => a.typeAlign(s.ireg, s.tpe) }
+  instr("size.g")  { (a, s) => a.typeSize(s.ireg, s.ireg) }
+  instr("align.g") { (a, s) => a.typeAlign(s.ireg, s.ireg) }
+
   // calls
   instr("call.direct")    { (a, s) => a.callDirect(s.method, s.params) }
   instr("call.virt")      { (a, s) => a.callVirt(s.method, s.params) }

@@ -1917,7 +1917,6 @@ trait CHIRParser
                 state(e) = Abs(x)
             }
 
-          // TODO write cangjie tests (use -cbcaotdeps)
           case CHIR.Intrinsic.Kind.CPointerRead =>
             val args = e.args
             val ValueSig(cpointerType: SignatureType.CPointer) = args.head
@@ -1930,12 +1929,17 @@ trait CHIRParser
                   // CPointer<Unit> means void*
                   Void()
                 } else {
-                  val mem = Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
+                  val mem = Add(base, Mul(typeSize(pointee), idx))
                   if (pointee.isPrimitive) {
                     LoadMemory(pointee.toAsm, pointee, atomic = false)(mem)
+                  } else if (pointee.isVariableSizeType) {
+                    val field = createNoneReferenceNode(cpointerType, pointee)
+                    LoadFieldSeq(DerivedPtr.Local(), mem, field, loadTypeInfo(pointee))
                   } else {
                     assert(pointee.isRecord)
-                    Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
+                    val local = StackAlloc.Local(pointee)
+                    copy(pointee, local, mem)
+                    local
                   }
                 }
               case _ =>
@@ -1943,7 +1947,6 @@ trait CHIRParser
                 shouldNotReachHere(cpointerType)
             }
 
-          // TODO write cangjie tests (use -cbcaotdeps)
           case CHIR.Intrinsic.Kind.CPointerWrite =>
             val args = e.args
             val ValueSig(cpointerType: SignatureType.CPointer) = args.head
@@ -1956,9 +1959,12 @@ trait CHIRParser
                   // CPointer<Unit> means void*
                   // so do nothing
                 } else {
-                  val mem = Add(base, Mul(LConst(pointee.toAsm.sizeInBytes), idx))
+                  val mem = Add(base, Mul(typeSize(pointee), idx))
                   if (pointee.isPrimitive) {
                     StoreMemory(pointee.toAsm, pointee, atomic = false)(mem, value)
+                  } else if (pointee.isVariableSizeType) {
+                    val field = createNoneReferenceNode(cpointerType, pointee)
+                    StoreFieldSeq(DerivedPtr.Local(), mem, value, field, loadTypeInfo(pointee))
                   } else {
                     assert(pointee.isRecord)
                     copy(pointee, mem, value)
@@ -2033,6 +2039,31 @@ trait CHIRParser
 
           case CHIR.Intrinsic.Kind.FuncRefeq =>
             notImplemented("function reference identity comparison")
+
+          case CHIR.Intrinsic.Kind.CPointerAdd =>
+            val args = e.args
+            val ValueSig(cpointerType: SignatureType.CPointer) = args.head
+            val (base, offset) = args match {
+              case Seq(base, offset) => (state(base), state(offset))
+            }
+            cpointerType.pointee match {
+              case pointee: SignatureType if pointee.isZST =>
+                // Zero-sized pointees do not advance the address.
+                state(e) = base
+              case pointee: SignatureType =>
+                state(e) = Add(base, Mul(offset, typeSize(pointee)))
+              case _ =>
+                shouldNotReachHere(cpointerType)
+            }
+
+          case CHIR.Intrinsic.Kind.CPointerGetPointerAddress =>
+            // CPointer is a raw address word; UIntNative is the same register kind (U64)
+            state(e) = state(e.args.head)
+
+          case CHIR.Intrinsic.Kind.CStringConvertCstrToPtr =>
+            // CString (BString) and CPointer<UInt8> are the same raw address word;
+            // exact inverse of CStringInit (also an identity)
+            state(e) = state(e.args.head)
 
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {
@@ -2121,6 +2152,12 @@ trait CHIRParser
               fromSig.isTraceableReference == toSig.isTraceableReference,
               s"unexpected bitcast from $fromSig to $toSig")
             state(e) = ReinterpretCast(value.tpe, ValueType.fromSig(toSig))(value)
+
+          case IK.SizeOf | IK.AlignOf =>
+            val Seq(t) = e.instantiatedTypeArgs
+            val sig = resolver.typeSig(t)
+            assert(ValueType.fromSig(resolver.typeSig(e.resultTpe)) == LongType, e.resultTpe)
+            state(e) = if (e.kind == IK.SizeOf) typeSize(sig) else typeAlign(sig)
         }
 
       case e: CHIR.Spawn =>
@@ -3245,6 +3282,28 @@ trait CHIRParser
       LoadFieldSeq(maybeDerivedPtrBase(value), value, createNoneReferenceNode(base, base), loadTypeInfo(base))
     } else {
       Box(base)(loadTypeInfo(base), value)
+    }
+  }
+
+  private def typeSize(t: SignatureType): Node = {
+    // TODO: Strength-reduce generic nodes to non-generic versions when specialization makes
+    // their type arguments known, including after future inlining, instead of relying on parser checks.
+    if (t.containsTypeVariables) {
+      TypeSizeGeneric(loadTypeInfo(t))
+    } else if (t.isRecord) {
+      TypeSize(t)
+    } else {
+      LConst(t.symKindErased.size)
+    }
+  }
+
+  private def typeAlign(t: SignatureType): Node = {
+    if (t.containsTypeVariables) {
+      TypeAlignGeneric(loadTypeInfo(t))
+    } else if (t.isRecord) {
+      TypeAlign(t)
+    } else {
+      LConst(t.symKindErased.alignment)
     }
   }
 

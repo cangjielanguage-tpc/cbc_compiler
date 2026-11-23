@@ -260,6 +260,7 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
       | SpawnFuture | SpawnClosure
       | OptionTagGeneric | OptionPayloadGeneric | NewNoneOptionGeneric | NewSomeOptionGeneric | SaveCallRefTypeInfo
       | AssignGeneric | InstanceOfGeneric | NewGeneric
+      | TypeSize | TypeAlign | TypeSizeGeneric | TypeAlignGeneric
       | AtomicOps.AtomicNode | DerivedPtr.Local | DerivedPtr.Global | ZeroValueGeneric
       | LoadFieldSeq | LoadStaticFieldSeq | StoreFieldSeq | StoreStaticFieldSeq
       | CangjieReferenceNode) => true

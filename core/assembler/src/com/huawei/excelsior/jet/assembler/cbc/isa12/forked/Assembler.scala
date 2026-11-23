@@ -778,6 +778,24 @@ trait ForkedAssembler {
       .sleb(scut4(offset))
   }
 
+  def typeSize(dst: IR, sig: Signature): Unit = instr {
+    regSymGroup(RegSymGroup.TypeSize, analyzer.prim(dst), sig)
+  }
+
+  def typeSize(dst: IR, ti: IR): Unit = instr {
+    analyzer.prim(dst)
+    stream.opc8(Opcode.TypeSize).bits(_.w4(dst).w4(analyzer.usePrim(ti)))
+  }
+
+  def typeAlign(dst: IR, sig: Signature): Unit = instr {
+    regSymGroup(RegSymGroup.TypeAlign, analyzer.prim(dst), sig)
+  }
+
+  def typeAlign(dst: IR, ti: IR): Unit = instr {
+    analyzer.prim(dst)
+    stream.opc8(Opcode.TypeAlign).bits(_.w4(dst).w4(analyzer.usePrim(ti)))
+  }
+
   def jmp(target: Label): Unit = doJmp(target)
   def bcc(op: BranchOp, lhs: IR, rhs: IR, width: AsmWidth, target: Label): Unit = doBcc(op, lhs, rhs, width, target)
   def bcc(op: BranchOp, lhs: FR, rhs: FR, width: AsmWidth, target: Label): Unit = doBcc(op, lhs, rhs, width, target)
@@ -1584,14 +1602,16 @@ object Assembler {
     case Bcc16
     case Scc16
     case FMathUn16
+    case TypeSize
+    case TypeAlign
   }
 
   enum RegSymGroup extends Ordinal {
     case LoadTypeInfoSig
     case LoadTypeInfoGeneric
     case NewObj
-    case Unused0
-    case Unused1
+    case TypeSize
+    case TypeAlign
     case Unused2
     case Spawn
     case SpawnFuture

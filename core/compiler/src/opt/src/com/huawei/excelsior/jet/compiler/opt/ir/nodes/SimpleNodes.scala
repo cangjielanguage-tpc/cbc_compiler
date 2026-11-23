@@ -237,6 +237,64 @@ trait SimpleNodes { self: Universe with Nodes =>
     def unapply(n: PowI) = Some((n.base, n.exp))
   }
 
+  class TypeSize private (proto: TypeSize.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def target: SignatureType = proto.target
+  }
+
+  object TypeSize {
+    case class Proto private[TypeSize](target: SignatureType)
+      extends FixedArgs[TypeSize]()(LongType) with PrototypeStrictNodeClass[TypeSize, TypeSize] {
+      assert(!target.containsTypeVariables, target)
+
+      def newInstance() = new TypeSize(this)
+    }
+
+    def proto(target: SignatureType) = Prototype.intern(Proto(target))
+    def apply(target: SignatureType): TypeSize = proto(target)()
+  }
+
+  class TypeAlign private (proto: TypeAlign.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def target: SignatureType = proto.target
+  }
+
+  object TypeAlign {
+    case class Proto private[TypeAlign](target: SignatureType)
+      extends FixedArgs[TypeAlign]()(LongType) with PrototypeStrictNodeClass[TypeAlign, TypeAlign] {
+      assert(!target.containsTypeVariables, target)
+
+      def newInstance() = new TypeAlign(this)
+    }
+
+    def proto(target: SignatureType) = Prototype.intern(Proto(target))
+    def apply(target: SignatureType): TypeAlign = proto(target)()
+  }
+
+  class TypeSizeGeneric private (proto: TypeSizeGeneric.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def typeInfo = arg(0)
+  }
+
+  object TypeSizeGeneric {
+    case class Proto private[TypeSizeGeneric]() extends FixedArgs[TypeSizeGeneric](AddrType)(LongType) {
+      def newInstance() = new TypeSizeGeneric(this)
+    }
+
+    def proto() = Prototype.intern(Proto())
+    def apply(typeInfo: Node): Node = proto()(typeInfo)
+  }
+
+  class TypeAlignGeneric private (proto: TypeAlignGeneric.Proto) extends FloatingNodeWithFixedArgs(proto) {
+    def typeInfo = arg(0)
+  }
+
+  object TypeAlignGeneric {
+    case class Proto private[TypeAlignGeneric]() extends FixedArgs[TypeAlignGeneric](AddrType)(LongType) {
+      def newInstance() = new TypeAlignGeneric(this)
+    }
+
+    def proto() = Prototype.intern(Proto())
+    def apply(typeInfo: Node): Node = proto()(typeInfo)
+  }
+
   class CheckedUnary(proto: CheckedUnary.Proto) extends NodeWithFixedArgs(proto) with SpinalNode with CanThrow with ProducesValue {
     def asmType = proto.asmType
     def kind = proto.kind
