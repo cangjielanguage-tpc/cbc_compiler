@@ -195,6 +195,8 @@ class IntrinsicImpl(in: IntrinsicBaseT)(implicit val provider: CHIRItemProvider)
     case IntrinsicKind.BIT_CAST => Intrinsic.Kind.BitCast
     case IntrinsicKind.OBJECT_REFEQ => Intrinsic.Kind.ObjectRefEq
     case IntrinsicKind.RAW_ARRAY_REFEQ => Intrinsic.Kind.RawArrayRefEq
+    case IntrinsicKind.FILL_IN_STACK_TRACE => Intrinsic.Kind.FillInStackTrace
+    case IntrinsicKind.DECODE_STACK_TRACE => Intrinsic.Kind.DecodeStackTrace
     case k => notImplemented(s"intrinsic ${IntrinsicKind.name(k)}")
   }
 

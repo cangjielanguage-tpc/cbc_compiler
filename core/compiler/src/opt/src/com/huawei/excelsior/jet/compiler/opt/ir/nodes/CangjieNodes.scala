@@ -14,9 +14,9 @@ import com.huawei.excelsior.jet.compiler.opt.ir.Resources.FrameSlot
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
 
 import PartialFunction.condOpt
+import com.huawei.excelsior.jet.compiler.abi.ABI
 import com.huawei.excelsior.jet.compiler.chir.CHIR
 import com.huawei.excelsior.jet.compiler.symlevel.MethodReferenceAccessKind.STATIC
-import com.huawei.excelsior.jet.compiler.symlevel.SignatureType.{AddrUInt, CPointer, CangjieArray, Void}
 import com.huawei.excelsior.jet.compiler.symlevel.{CangjieFieldReference, Field, MethodReference, MethodSignature, MethodType, SignatureType}
 import com.huawei.excelsior.jet.util.Closure
 import com.huawei.excelsior.jet.util.ScalaCollections.mapWith
@@ -977,10 +977,16 @@ trait CangjieNodes { self: Universe =>
   /** Factory for cangjie intrinsics that should be generated as call to some runtime function.
    *
    * To add a new intrinsic, add its runtime symbol to `CJIntrinsicType` and a factory with its call signature.
+   *
+   * The signature is the source one. Hidden ABI parameters are derived from `ABI.Description`.
    */
   object CJIntrinsic {
-    private def intrinsic(intrinsic: CJIntrinsicType, signature: MethodSignature)(args: Node*) = {
-      val mt = MethodType(signature)
+    import SignatureType.*
+
+    private def intrinsic(intrinsic: CJIntrinsicType, signature: MethodSignature,
+                          desc: ABI.Description = ABI.Description())(args: Node*) = {
+      val (abiSig, specialParams) = ABI.makeABISignature(signature, desc)
+      val mt = MethodType(abiSig, specialParams)
       val mr = new MethodReference(mt, STATIC)
       val target = CJIntrinsicTarget(intrinsic)()
       Call(mr)(target +: args: _*)
@@ -1014,6 +1020,31 @@ trait CangjieNodes { self: Universe =>
       intrinsic(CJIntrinsicType.ExclusiveScope, signature)(executor, closure)
     }
 
+    /** `extern "C" ArrayRef CJ_MCC_FillInStackTrace(const TypeInfo* arrayInfo, const ArrayRef exceptionMessage)`
+     * {{{
+     * // Record lite frame infos of the current stack and return them as a fresh array whose
+     * // TypeInfo is `arrayInfo`. Each frame contains three 64-bit words: pc, startpc, and funcDesc.
+     * // The array is allocated by the runtime itself, hence `arrayInfo` instead of an array.
+     * }}}
+     */
+    def fillInStackTrace(arrayType: SignatureType.CangjieArray)(arrayInfo: Node, msgArray: Node): Node = {
+      intrinsic(CJIntrinsicType.FillInStackTrace,
+        MethodSignature(CPointer(AddrUInt), CangjieArray(UInt8))(arrayType))(arrayInfo, msgArray)
+    }
+
+    /** `extern "C" StackTraceData CJ_MCC_DecodeStackTrace(uint64_t ip, uint64_t pc, uint64_t funcDesc, const TypeInfo* charArray)`
+     * {{{
+     * // Decode one recorded frame into a `StackTraceData` record. The record is returned
+     * // through the hidden `RetByVal` pointer derived by `ABI.makeABISignature`.
+     * // Character arrays of the decoded names are allocated with `charArray` as their TypeInfo.
+     * }}}
+     */
+    def decodeStackTrace(recordType: SignatureType)(sret: Node, ip: Node, pc: Node, funcDesc: Node, charArrayInfo: Node): Node = {
+      intrinsic(CJIntrinsicType.DecodeStackTrace,
+        MethodSignature(UInt64, UInt64, UInt64, CPointer(AddrUInt))(recordType))(
+        sret, ip, pc, funcDesc, charArrayInfo)
+    }
+
     def unapply(call: Call): Option[CJIntrinsicType] = condOpt(call.target) {
       case intrinsicTarget: CJIntrinsicTarget => intrinsicTarget.target
     }
@@ -1023,6 +1054,8 @@ trait CangjieNodes { self: Universe =>
     case AcquireRawData extends CJIntrinsicType("CJ_MCC_AcquireRawData")
     case ReleaseRawData extends CJIntrinsicType("CJ_MCC_ReleaseRawData")
     case ExclusiveScope extends CJIntrinsicType("CJ_MCC_ExclusiveScope")
+    case FillInStackTrace extends CJIntrinsicType("CJ_MCC_FillInStackTrace")
+    case DecodeStackTrace extends CJIntrinsicType("CJ_MCC_DecodeStackTrace")
   }
 
   sealed trait CangjieReferenceNode extends FloatingNode {
