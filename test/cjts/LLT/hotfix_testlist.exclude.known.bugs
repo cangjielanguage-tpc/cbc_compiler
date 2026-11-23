@@ -504,9 +504,6 @@ compiler/CHIR/UG/OpenGeneric/devirt.cj
 # bug 248 (`match(C(None))` should unpack into `None`, not `Some(None)`)
 API/std/unittest/powerAssert/nodeTypes/matchExpr.cj
 
-# bug 250 (fuzzer test: `arg#0 of DerivedPtrProxy is expected to have tag VALUE & type LongType`)
-compiler/CHIR/ComplicatedCodeBugfix/Bugfix31.cj
-
 # bug 251 (SIGSEGV in Execution::TypeArg)
 API/std/deriving/shrink_test.cj
 

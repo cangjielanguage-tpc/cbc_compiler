@@ -2607,7 +2607,8 @@ trait CHIRParser
           case _: AnyNull =>
             if (!arrayType.elemType.isZST) {
               val value = state(e.initValue)
-              VArrayFill(arrayType)(maybeDerivedPtrBase(mem), mem, maybeDerivedPtrBase(value), value)
+              val valueRef = if (arrayType.elemType.isPrimitive) DerivedPtr.Local() else maybeDerivedPtrBase(value)
+              VArrayFill(arrayType)(maybeDerivedPtrBase(mem), mem, valueRef, value)
             }
 
           case _ =>
