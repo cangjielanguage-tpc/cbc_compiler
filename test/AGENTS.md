@@ -17,7 +17,11 @@ programs against a Cangjie toolchain (SDK distribution):
   and run in `default` and `O2` modes.
 - `asm` (`standalone/asm/`, `asm_testsuite.py`) - tests written directly in
   CBC assembly (`*.asm`): the optional AOT part is compiled by `cjc` into a
-  dylib, `cbc-asm` assembles the assembly, and `launcher` executes it.
+  dylib, `cbc-asm` assembles the assembly, and `launcher --cbc-path` executes
+  it. At suite startup the helper cbc is built into `workdir/tmp` from the
+  toolchain chir and the flag points there: asm images embed no helper
+  package, while the cbc-intrinsics throwers delegate to it, and the engine
+  prepares those helpers at init.
 - `hotfix` (`standalone/cj/hotfix_testsuite.py`) - reuses the `cj` sources
   for the hotfix/patching pipeline: `cjc` with `libhotfix-plugin.so` produces
   a throw-stub binary (it must abort with `Exception: should not reach
