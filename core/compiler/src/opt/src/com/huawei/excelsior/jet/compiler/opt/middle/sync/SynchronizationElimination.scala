@@ -70,7 +70,7 @@ trait SynchronizationElimination extends EscapeAnalysis { self: Universe =>
 
     assert(currentPhase > CompilerPhase.InterProceduralAnalysis)
 
-    if (implicitlyEscapedType(newOp.allocType.symType)) {
+    if (implicitlyEscapedType(newOp.allocType)) {
       // don't mess with these types
       false
 

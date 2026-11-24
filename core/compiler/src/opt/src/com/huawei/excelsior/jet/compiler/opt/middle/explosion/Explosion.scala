@@ -8,12 +8,9 @@
 
 package com.huawei.excelsior.jet.compiler.opt.middle.explosion
 
-import com.huawei.excelsior.common.Arch.CBC
 import com.huawei.excelsior.jet.compiler.StatsKind
 import com.huawei.excelsior.jet.compiler.bytecode.Position
 import com.huawei.excelsior.common.CodeHelpers.{notImplemented, shouldNotReachHere}
-import com.huawei.excelsior.jet.compiler.Env.targetArch
-import com.huawei.excelsior.jet.compiler.opt.CompilerPhases.CompilerPhase
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
 import com.huawei.excelsior.jet.compiler.opt.middle.LivenessAnalysis
 import com.huawei.excelsior.jet.compiler.opt.middle.escape.EscapeAnalysis
@@ -112,25 +109,17 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       true
   }
 
-  def isExplosionOfCangjieStringAllowed: Boolean = {
-    // Stack alloc for string record should not be exploded in CBC
-    // in order not to expose fields of String implementation.
-    if (targetArch == CBC) {
-      return false
-    }
-
-    // We should not explode stack alloc for string record earlier than serialization,
-    // since serialized IR could be used for both AOT and CBC targetArch.
-    CompilerPhase.PostInline <= currentPhase && currentPhase <= CompilerPhase.Lowering
-  }
-
   private def isExplosive(n: Node) = cond(n) {
-    case n: AnyNew if implicitlyEscapedType(n.allocType.symType) =>
+    case n: AnyNew if implicitlyEscapedType(n.allocType) =>
       // It is better not to mess with these types.
       false
 
     case _: NewArrayCopy =>
       // TODO: maybe explode them
+      false
+
+    case _: NewArrayGeneric =>
+      // TODO: support generic array explosion
       false
 
     case _: NewString =>
@@ -151,11 +140,7 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       // Will check for memory uses later because there can be
       // both safe uses by other new thins of the same group
       // and unsafe uses.
-      // And we don't want to explode stack alloc for string record in CBC too early,
-      // more info in `isExplosionOfCangjieStringAllowed`.
-      t.isThinClass || (t.isRecord
-        && (Cangjie.Support.String.symType != t.symType || isExplosionOfCangjieStringAllowed)
-        && !t.isUniversalGeneric) // FIXME-UG temporarily exclude UG types explosion
+      t.isThinClass || t.isRecord
 
     case _: StackAlloc => false
 
@@ -593,12 +578,17 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       return false
     }
 
-    def isExpressExplosive(n: Node) = isExplosive(n) && !allocHasSideEffects(n) && n.valueUses.forall {
-      case Put(obj, _)      => obj == n
-      case Fill(arr)        => arr == n
-      case u: ThinNew       => u.addr == n
-      case u: CopyStructure => u.dst == n
-      case _ => false
+    def valueUsesWithoutCast(n: Node) = n.valueUses.flatMap {
+      case c: ReinterpretCast => c.valueUses
+      case u                  => Iterator.single(u)
+    }
+
+    def isExpressExplosive(n: Node) = isExplosive(n) && !allocHasSideEffects(n) && valueUsesWithoutCast(n).forall {
+      case Put(obj, _)               => ReinterpretCast.skip(obj) == n
+      case Fill(arr)                 => ReinterpretCast.skip(arr) == n
+      case u: ThinNew                => ReinterpretCast.skip(u.addr) == n
+      case u: CopyStructureOperation => ReinterpretCast.skip(u.dst) == n
+      case _                         => false
     }
 
     val explosives = (all[SpinalNode] ++ all[StackAlloc]) filter isExpressExplosive
@@ -611,7 +601,9 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
         Explosion.log(s"- explosion of ${allocNode.name}", allocNode)
         stats.count(StatsKind.NewOptimization, s"successful explosion of ${allocNode.simpleName}", allocNode)
 
-        allocNode.valueUses.distinct.asInstanceOf[Iterator[SpinalNode]].toSeq foreach strikeOut
+        valueUsesWithoutCast(allocNode).distinct.asInstanceOf[Iterator[SpinalNode]].toSeq foreach strikeOut
+        allocNode.valueUses.distinct.map(_.asInstanceOf[ReinterpretCast] ensuring (_.uses.isEmpty)).toSeq foreach decommit
+
         allocNode match {
           case n: SpinalNode => replaceValueUsesByNoValueAndStrikeOut(n)
           case n: StackAlloc =>

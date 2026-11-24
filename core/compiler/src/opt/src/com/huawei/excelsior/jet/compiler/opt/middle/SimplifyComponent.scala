@@ -620,6 +620,27 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
     }
   }
 
+  private def haveSameCopySemantics(n: CopyStructureOperation, m: CopyStructureOperation): Boolean = {
+    (n, m) match {
+      case (n: CopyStructure, m: CopyStructure) => n.structureType == m.structureType
+      case (n: CopyStructureGeneric, m: CopyStructureGeneric) =>
+        n.structureType == m.structureType && haveSameTypeInfo(n.typeInfo, m.typeInfo)
+      case _ => false
+    }
+  }
+
+  private def haveSameTypeInfo(n: Node, m: Node): Boolean = {
+    (n, m) match {
+      case _ if n == m => true
+      case (n: LoadTypeInfo, m: LoadTypeInfo) => n.proto == m.proto
+      case (n: LoadTypeInfoGeneric, m: LoadTypeInfoGeneric) =>
+        n.proto == m.proto && n.notControlArgs.lazyZip(m.notControlArgs).forall(haveSameTypeInfo)
+      case (n: GenericTypeArg, m: GenericTypeArg) =>
+        n.proto == m.proto && haveSameTypeInfo(n.typeInfo, m.typeInfo)
+      case _ => false
+    }
+  }
+
   /** Eliminates unnecessary indirection in two consecutive copying operations:
     * {{{
     *   CopyStructure(X, Y)
@@ -635,11 +656,12 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
     * so it can be eliminated more efficiently via
     * [[com.huawei.excelsior.jet.compiler.opt.middle.explosion.Explosion.expressExplodeAllObjects express explosion]]
     */
-  private def optimizeCopyStructure(n: CopyStructure): Boolean = {
+  private def optimizeCopyStructure(n: CopyStructureOperation): Boolean = {
     cond(n.inMemory) {
-      case m: CopyStructure if m.dst == n.src =>
+      case m: CopyStructureOperation if m.dst == n.src && haveSameCopySemantics(n, m) =>
         n.srcBaseRef = m.srcBaseRef
         n.src = m.src
+
         true
     }
   }
@@ -803,9 +825,9 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
   }
 
   private def optimizeInitStringRecord(init: InitStringRecord): Boolean = {
-    if (!isExplosionOfCangjieStringAllowed) {
-      // If explosion of cangjie string stack alloc is not allowed, then either our target is CBC or
-      // our target is any of amd/arm and this is not yet time to explode them.
+    if (targetArch == CBC ||
+        currentPhase < CompilerPhase.PostInline ||
+        currentPhase > CompilerPhase.Lowering) {
       return false
     }
 
@@ -920,11 +942,11 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
               case n: PutField if optimizePutField(n) =>
                 changed()
 
-              case n: CopyStructure if n.src == n.dst =>
+              case n: CopyStructureOperation if n.src == n.dst =>
                 strikeOut(n)
                 changed()
 
-              case n: CopyStructure if optimizeCopyStructure(n) =>
+              case n: CopyStructureOperation if optimizeCopyStructure(n) =>
                 changed()
 
               case arrayGet: ArrayGet if optimizeArrayGet(arrayGet) =>
@@ -988,6 +1010,13 @@ trait SimplifyComponent extends DivisionByConstantOptimizations with OptExtraInf
                 changed()
 
               case op: InstanceFieldSeqOperation if optimizeFieldSeq(op) =>
+                changed()
+
+              case n: CopyStructureOperation if n.src == n.dst =>
+                strikeOut(n)
+                changed()
+
+              case n: CopyStructureOperation if optimizeCopyStructure(n) =>
                 changed()
 
               case node: NonControlNode =>
