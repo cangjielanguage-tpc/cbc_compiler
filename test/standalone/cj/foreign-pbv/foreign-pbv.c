@@ -33,12 +33,6 @@ struct N24 { struct S16i p; struct S8i q; };
 struct N32f { struct S16f p, q; };
 struct N40 { struct S24i p; struct S16i q; };
 
-/* Float16 is not supported by the cbc toolchain yet.
-struct S2f16 { _Float16 a; };
-struct S4f16 { _Float16 a, b; };
-struct S6f16 { _Float16 a, b, c; };
-struct S8f16 { _Float16 a, b, c, d; };
-*/
 
 int64_t pbvS0(int64_t x, struct S0 s, int64_t y)
 {
@@ -184,25 +178,3 @@ double pbvMixG(int64_t a, int64_t b, int64_t c, int64_t d, int64_t e, int64_t f,
 {
     return (double)(a + 2 * b + 3 * c + 4 * d + 5 * e + 6 * f) + 7.0 * (double)s.a + 8.0 * s.b;
 }
-
-/* Float16 is not supported by the cbc toolchain yet.
-double pbvS2f16(struct S2f16 s)
-{
-    return s.a;
-}
-
-double pbvS4f16(struct S4f16 s)
-{
-    return s.a + 2.0 * s.b;
-}
-
-double pbvS6f16(struct S6f16 s)
-{
-    return s.a + 2.0 * s.b + 3.0 * s.c;
-}
-
-double pbvS8f16(struct S8f16 s)
-{
-    return s.a + 2.0 * s.b + 3.0 * s.c + 4.0 * s.d;
-}
-*/
