@@ -688,6 +688,19 @@ object CHIR {
       case CPointerInit1
       case CStringInit
       case ExclusiveScope
+      case MutexInit
+      case CjMutexLock
+      case MutexTryLock
+      case MutexCheckStatus
+      case MutexUnlock
+      case MonitorInit
+      case WaitQueueInit
+      case MoitiorWait
+      case MoitiorNotify
+      case MoitiorNotifyAll
+      case MultiConditionWait
+      case MultiConditionNotify
+      case MultiConditionNotifyAll
       case InoutParam
       case ObjectZeroValue
       case Sqrt
@@ -741,6 +754,17 @@ object CHIR {
       case OverflowWrappingInc
       case OverflowWrappingDec
       case OverflowWrappingNeg
+      case FutureIsComplete
+      case FutureWait
+      case FutureNotifyAll
+      case Sleep
+      case DumpAllThreadsInfo
+      case DumpCurrentThreadInfo
+      case FutureInit
+      case IsThreadObjectInited
+      case GetThreadObject
+      case SetThreadObject
+      case FuncRefeq
       case VectorCompare32
       case VectorIndexByte32
       case BitCast

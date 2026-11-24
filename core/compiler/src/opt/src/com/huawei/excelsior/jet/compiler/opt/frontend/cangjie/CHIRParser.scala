@@ -2004,6 +2004,36 @@ trait CHIRParser
               loadTypeInfo(SignatureType.CangjieArray(SignatureType.UInt8)))
             state(e) = sret
 
+          case CHIR.Intrinsic.Kind.MutexInit |
+               CHIR.Intrinsic.Kind.CjMutexLock |
+               CHIR.Intrinsic.Kind.MutexTryLock |
+               CHIR.Intrinsic.Kind.MutexCheckStatus |
+               CHIR.Intrinsic.Kind.MutexUnlock |
+               CHIR.Intrinsic.Kind.MonitorInit |
+               CHIR.Intrinsic.Kind.WaitQueueInit |
+               CHIR.Intrinsic.Kind.MoitiorWait |
+               CHIR.Intrinsic.Kind.MoitiorNotify |
+               CHIR.Intrinsic.Kind.MoitiorNotifyAll |
+               CHIR.Intrinsic.Kind.MultiConditionWait |
+               CHIR.Intrinsic.Kind.MultiConditionNotify |
+               CHIR.Intrinsic.Kind.MultiConditionNotifyAll =>
+            notImplemented("synchronization primitives (mutex, monitor, waitqueue, multicondition)")
+
+          case CHIR.Intrinsic.Kind.Sleep |
+               CHIR.Intrinsic.Kind.DumpAllThreadsInfo |
+               CHIR.Intrinsic.Kind.DumpCurrentThreadInfo |
+               CHIR.Intrinsic.Kind.FutureInit |
+               CHIR.Intrinsic.Kind.FutureIsComplete |
+               CHIR.Intrinsic.Kind.FutureWait |
+               CHIR.Intrinsic.Kind.FutureNotifyAll |
+               CHIR.Intrinsic.Kind.IsThreadObjectInited |
+               CHIR.Intrinsic.Kind.GetThreadObject |
+               CHIR.Intrinsic.Kind.SetThreadObject =>
+            notImplemented("thread and future intrinsics")
+
+          case CHIR.Intrinsic.Kind.FuncRefeq =>
+            notImplemented("function reference identity comparison")
+
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {
               case g: CHIR.GlobalVar =>
