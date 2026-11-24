@@ -457,10 +457,6 @@ API/std/posix/test_os_posix_sysinfo_unix.cj
 API/std/fs/test_path_unix.cj
 compiler/Driver/options/input/a/test_a_not_a_file.cj
 
-# bug 234 (incorrrect overflow exception message suffixes)
-compiler/CodegenCommon/overflow/case_6.cj
-compiler/CodegenCommon/overflow/case_7.cj
-
 # bug 235 (SIGABRT for decimal tests)
 API/std/math/numeric/decimal/test_arithmetic_operation.cj
 API/std/math/numeric/decimal/test_compare.cj
