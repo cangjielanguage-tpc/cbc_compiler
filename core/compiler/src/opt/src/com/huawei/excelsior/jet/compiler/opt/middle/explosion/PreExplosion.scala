@@ -64,7 +64,7 @@ trait PreExplosion extends DCEComponent with ReconPlacement with Explosion {
         def unapply(allocNode: SpinalNode): Option[(SpinalNode, SignatureType, Sets[Node]#QSet)] = {
 
           val explosive = cond(allocNode) {
-            case n: AnyNew if implicitlyEscapedType(n.allocType.symType) =>
+            case n: AnyNew if implicitlyEscapedType(n.allocType) =>
               // It is better not to mess with these types.
               false
 
@@ -73,7 +73,7 @@ trait PreExplosion extends DCEComponent with ReconPlacement with Explosion {
             case n: NewArray => isExplosiveArray(n) && !allocHasSideEffects(n) && !n.allocType.isRecordArray
 
             case b: BoxedValue =>
-              assert(!implicitlyEscapedType(b.boxType.symType))
+              assert(!implicitlyEscapedType(SignatureType.fromSymType(b.boxType.symType)))
               !b.hasSideEffects
 
             // TODO string pre-explosion

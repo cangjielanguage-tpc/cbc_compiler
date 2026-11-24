@@ -128,7 +128,7 @@ trait StackAllocAnalysis extends EscapeAnalysis { self: Universe =>
       } else if (node.allocType.isInstanceOf[InstantiatedType]) {
         Failure("Instantiated type") // TODO: support stack alloc of concrete generic types
 
-      } else if (implicitlyEscapedType(allocType)) {
+      } else if (implicitlyEscapedType(node.allocType)) {
         Failure("implicitly escaped type")
 
       } else if (allocType.getHeapObjectSize > RTConst.SmallAllocConfig.MAX_SMALL_OBJ_SIZE.intValue) {

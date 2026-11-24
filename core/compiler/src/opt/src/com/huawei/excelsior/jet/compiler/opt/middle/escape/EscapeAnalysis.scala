@@ -11,6 +11,7 @@ package com.huawei.excelsior.jet.compiler.opt.middle.escape
 import com.huawei.excelsior.jet.compiler.opt.CompilerPhases.CompilerPhase
 import com.huawei.excelsior.jet.compiler.opt.ir.Universe
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
+import com.huawei.excelsior.jet.compiler.Env.isStandalone
 import com.huawei.excelsior.jet.compiler.ir.{CallEscapeKind, EscapeKind, EscapeKindTuple, NewEscapeKind}
 import com.huawei.excelsior.jet.compiler.opt.middle.devirtualization.CallTargetInfos
 import com.huawei.excelsior.jet.compiler.opt.middle.devirtualization.CallTargetSearchResults.*
@@ -21,7 +22,7 @@ import com.huawei.excelsior.jet.compiler.types.ReferenceTypes.ReferenceType
 import com.huawei.excelsior.jet.compiler.types.References.{Cone, Point, ReferenceApprox}
 import com.huawei.excelsior.jet.compiler.options.BoolOption
 import com.huawei.excelsior.jet.compiler.symlevel.Type.asClassType
-import com.huawei.excelsior.jet.compiler.symlevel.{Method, Type as SymType}
+import com.huawei.excelsior.jet.compiler.symlevel.{Method, SignatureType, Type as SymType}
 import com.huawei.excelsior.jet.compiler.util.{Log, Sets}
 
 import scala.annotation.nowarn
@@ -466,9 +467,14 @@ trait EscapeAnalysis extends ClassReceiverEscapeAnalysis with CallTargetInfos { 
     }
   }
 
-  def implicitlyEscapedType(allocType: SymType): Boolean =
-    allocType.finalizable ||
-      (typeProvider.getReferenceType isAssignableFrom allocType) ||
-      (typeProvider.getAJWeakRefType isAssignableFrom allocType) ||
-      (typeProvider.isCangjieWeakRef(allocType))
+  def implicitlyEscapedType(allocType: SignatureType): Boolean =
+    if (isStandalone) {
+      false
+    } else {
+      val symType = allocType.symType
+      symType.finalizable ||
+      (typeProvider.getReferenceType isAssignableFrom symType) ||
+      (typeProvider.getAJWeakRefType isAssignableFrom symType) ||
+      (typeProvider.isCangjieWeakRef(symType))
+    }
 }

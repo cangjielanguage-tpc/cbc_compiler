@@ -220,6 +220,8 @@ trait Optimize extends IRTransformationsCollection
         // and result in False() reaching Backend again.
         optimize("simplify", simplifyIR())
 
+        optimize("express explosion", expressExplodeAllObjects())
+
         // These transformations significantly reduce IR (especially of AJ-inline noodles) and accelerate backend.
         transform(EmptyBlocksElimination)
         transform(MultiEdgeElimination)
