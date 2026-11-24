@@ -578,11 +578,9 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       return false
     }
 
-    def valueUsesWithoutCast(n: Node): Iterator[Node] = {
-      n.valueUses.flatMap {
-        case c: ReinterpretCast => c.valueUses
-        case u                  => Iterator.single(u)
-      }
+    def valueUsesWithoutCast(n: Node) = n.valueUses.flatMap {
+      case c: ReinterpretCast => c.valueUses
+      case u                  => Iterator.single(u)
     }
 
     def isExpressExplosive(n: Node) = isExplosive(n) && !allocHasSideEffects(n) && valueUsesWithoutCast(n).forall {
