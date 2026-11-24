@@ -4,6 +4,7 @@ const dataSize: Int64 = 100
 const iterations: Int64 = 1000000
 const modulus: Int64 = 1000003
 
+@OverflowWrapping
 func complexFastPath(data: Array<Int64>, len: Int64, flag: Bool): Int64 {
     var result: Int64 = 0
 
@@ -44,6 +45,7 @@ func complexFastPath(data: Array<Int64>, len: Int64, flag: Bool): Int64 {
     return result
 }
 
+@OverflowWrapping
 main(): Int64 {
     let data = Array<Int64>(dataSize) { i => i * 13 + 17 }
 

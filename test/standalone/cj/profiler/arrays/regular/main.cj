@@ -3,6 +3,7 @@ import std.time.*
 const arraySize: Int64 = 100
 const iterations: Int64 = 200000
 
+@OverflowWrapping
 func my_abs(x: Int64): Int64 {
     if (x < 0) {
         return -x
@@ -11,6 +12,7 @@ func my_abs(x: Int64): Int64 {
     }
 }
 
+@OverflowWrapping
 func compute(
     a: Array<Int64>,
     b: Array<Int64>,
@@ -25,6 +27,7 @@ func compute(
     }
 }
 
+@OverflowWrapping
 main(): Int64 {
     let a = Array<Int64>(arraySize) { i => i - 50 }
     let b = Array<Int64>(arraySize) { i => i * 2 - 100 }

@@ -4,6 +4,7 @@ const dataSize: Int64 = 100
 const iterations: Int64 = 1000000
 var flag: Bool = true
 
+@OverflowWrapping
 main(): Int64 {
     let data = Array<Int64>(dataSize) { i => i * 13 + 17 }
     let imm: Int64 = 7

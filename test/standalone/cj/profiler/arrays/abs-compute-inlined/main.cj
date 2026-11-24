@@ -3,6 +3,7 @@ import std.time.*
 const arraySize: Int64 = 100
 const iterations: Int64 = 200000
 
+@OverflowWrapping
 main(): Int64 {
     let a = Array<Int64>(arraySize) { i => i - 50 }
     let b = Array<Int64>(arraySize) { i => i * 2 - 100 }

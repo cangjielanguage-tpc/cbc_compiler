@@ -4,6 +4,7 @@ const dataSize: Int64 = 100
 const iterations: Int64 = 1000000
 const modulus: Int64 = 1000003
 
+@OverflowWrapping
 main(): Int64 {
     let data = Array<Int64>(dataSize) { i => i * 13 + 17 }
     var checksum: Int64 = 0

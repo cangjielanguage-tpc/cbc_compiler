@@ -7,12 +7,14 @@ class Node <: Tree {
     public let left: Tree
     public let right: Tree
 
+    @OverflowWrapping
     init(left: Tree, right: Tree) {
         this.left = left
         this.right = right
     }
 }
 
+@OverflowWrapping
 func buildTree(depth: Int64): Tree {
     if (depth <= 0) {
         return Empty()
@@ -21,6 +23,7 @@ func buildTree(depth: Int64): Tree {
     return Node(buildTree(depth - 1), buildTree(depth - 1))
 }
 
+@OverflowWrapping
 func visit_inlined(tree: Tree): Int64 {
     var result = 1
     match (tree) {
@@ -46,6 +49,7 @@ const treeDepth: Int64 = 16
 const iterations: Int64 = 2000
 const expectedSum: Int64 = 262142000
 
+@OverflowWrapping
 main(): Int64 {
     let root = buildTree(treeDepth)
     var sum: Int64 = 0

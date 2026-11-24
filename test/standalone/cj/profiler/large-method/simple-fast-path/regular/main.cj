@@ -3,6 +3,7 @@ import std.time.*
 const dataSize: Int64 = 100
 const iterations: Int64 = 1000000
 
+@OverflowWrapping
 func simpleFastPath(imm: Int64, data: Array<Int64>, len: Int64, flag: Bool): Int64 {
     var result: Int64 = 0
 
@@ -40,6 +41,7 @@ func simpleFastPath(imm: Int64, data: Array<Int64>, len: Int64, flag: Bool): Int
     return result
 }
 
+@OverflowWrapping
 main(): Int64 {
     let data = Array<Int64>(dataSize) { i => i * 13 + 17 }
     let imm: Int64 = 7
