@@ -140,7 +140,7 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       // Will check for memory uses later because there can be
       // both safe uses by other new thins of the same group
       // and unsafe uses.
-      t.isThinClass || (t.isRecord && !t.isUniversalGeneric)
+      t.isThinClass || t.isRecord
 
     case _: StackAlloc => false
 
@@ -578,53 +578,34 @@ trait Explosion extends EscapeAnalysis with LivenessAnalysis { self: Universe =>
       return false
     }
 
-    def isExpressExplosive(n: Node): Boolean = (n match {
-        case StackAlloc.Local(_) => true
-        case _                   => isExplosive(n)
-      }) && !allocHasSideEffects(n)
-
-    def collectRemovableUses(node: Node): Option[Seq[Node]] = {
-      val result = Seq.newBuilder[Node]
-
-      def collectUses(n: Node): Boolean = {
-        n.valueUses.distinct.forall { use =>
-          val removable = use match {
-            case cast: ReinterpretCast     => cast.arg == n && collectUses(cast)
-            case Put(obj, _)               => obj == n
-            case Fill(arr)                 => arr == n
-            case u: ThinNew                => u.addr == n
-            case u: CopyStructureOperation => u.dst == n
-            case _                         => false
-          }
-          if (removable) result += use
-          removable
-        }
+    def valueUsesWithoutCast(n: Node): Iterator[Node] = {
+      n.valueUses.flatMap {
+        case c: ReinterpretCast => c.valueUses
+        case u                  => Iterator.single(u)
       }
-
-      Option.when(collectUses(node))(result.result())
     }
 
-    val explosives = (all[SpinalNode] ++ all[StackAlloc])
-      .filter(isExpressExplosive)
-      .flatMap(allocNode => collectRemovableUses(allocNode).map(allocNode -> _))
-      .toSeq
+    def isExpressExplosive(n: Node) = isExplosive(n) && !allocHasSideEffects(n) && valueUsesWithoutCast(n).forall {
+      case Put(obj, _)               => ReinterpretCast.skip(obj) == n
+      case Fill(arr)                 => ReinterpretCast.skip(arr) == n
+      case u: ThinNew                => ReinterpretCast.skip(u.addr) == n
+      case u: CopyStructureOperation => ReinterpretCast.skip(u.dst) == n
+      case _                         => false
+    }
 
+    val explosives = (all[SpinalNode] ++ all[StackAlloc]) filter isExpressExplosive
     if (explosives.isEmpty) {
       return false
     }
 
     Explosion.log.inSession("express explosion", codeUnit) {
-      for ((allocNode, uses) <- explosives) {
+      for (allocNode <- explosives) {
         Explosion.log(s"- explosion of ${allocNode.name}", allocNode)
         stats.count(StatsKind.NewOptimization, s"successful explosion of ${allocNode.simpleName}", allocNode)
 
-        uses.distinct.foreach {
-          case u: SpinalNode => strikeOut(u)
-          case u: FloatingNode =>
-            assert(u.uses.isEmpty)
-            decommit(u)
-          case u => shouldNotReachHere(u)
-        }
+        valueUsesWithoutCast(allocNode).distinct.asInstanceOf[Iterator[SpinalNode]].toSeq foreach strikeOut
+        allocNode.valueUses.distinct.map(_.asInstanceOf[ReinterpretCast] ensuring (_.uses.isEmpty)).toSeq foreach decommit
+
         allocNode match {
           case n: SpinalNode => replaceValueUsesByNoValueAndStrikeOut(n)
           case n: StackAlloc =>
