@@ -686,7 +686,10 @@ object CHIR {
       case CPointerWrite
       case CPointerInit0
       case CPointerInit1
+      case CPointerAdd
+      case CPointerGetPointerAddress
       case CStringInit
+      case CStringConvertCstrToPtr
       case ExclusiveScope
       case MutexInit
       case CjMutexLock
@@ -772,6 +775,8 @@ object CHIR {
       case RawArrayRefEq
       case FillInStackTrace
       case DecodeStackTrace
+      case SizeOf
+      case AlignOf
     }
   }
 

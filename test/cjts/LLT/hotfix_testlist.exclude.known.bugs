@@ -418,10 +418,6 @@ compiler/Sema/interface/use_interface_default_impl_01/use_interface_def_imple_00
 Runtime/CJNative/GC/gc_async_allocation_finalizer.cj
 Runtime/CJNative/GC/gc_wcollector_finalizer.cj
 
-# bug 215 (not implemented: intrinsic CPOINTER_ADD)
-compiler/CHIROptTest/SancovPass/traceMemCmpArray3.cj
-compiler/CHIROptTest/SancovPass/traceStringCmpIndexOf.cj
-
 # bug 181 (Support reflection)
 compiler/CodegenCJNative/compitability/non_open_generic_class_reflection/main.cj
 compiler/CodegenCJNative/reflect/reflect_01.cj

@@ -133,7 +133,10 @@ class IntrinsicImpl(in: IntrinsicBaseT)(implicit val provider: CHIRItemProvider)
     case IntrinsicKind.PREINITIALIZE => Intrinsic.Kind.Preinitialize
     case IntrinsicKind.CPOINTER_INIT0 => Intrinsic.Kind.CPointerInit0
     case IntrinsicKind.CPOINTER_INIT1 => Intrinsic.Kind.CPointerInit1
+    case IntrinsicKind.CPOINTER_ADD => Intrinsic.Kind.CPointerAdd
+    case IntrinsicKind.CPOINTER_GET_POINTER_ADDRESS => Intrinsic.Kind.CPointerGetPointerAddress
     case IntrinsicKind.CSTRING_INIT => Intrinsic.Kind.CStringInit
+    case IntrinsicKind.CSTRING_CONVERT_CSTR_TO_PTR => Intrinsic.Kind.CStringConvertCstrToPtr
     case IntrinsicKind.EXCLUSIVE_SCOPE => Intrinsic.Kind.ExclusiveScope
     case IntrinsicKind.INOUT_PARAM => Intrinsic.Kind.InoutParam
     case IntrinsicKind.MUTEX_INIT => Intrinsic.Kind.MutexInit
@@ -221,6 +224,8 @@ class IntrinsicImpl(in: IntrinsicBaseT)(implicit val provider: CHIRItemProvider)
     case IntrinsicKind.RAW_ARRAY_REFEQ => Intrinsic.Kind.RawArrayRefEq
     case IntrinsicKind.FILL_IN_STACK_TRACE => Intrinsic.Kind.FillInStackTrace
     case IntrinsicKind.DECODE_STACK_TRACE => Intrinsic.Kind.DecodeStackTrace
+    case IntrinsicKind.SIZE_OF => Intrinsic.Kind.SizeOf
+    case IntrinsicKind.ALIGN_OF => Intrinsic.Kind.AlignOf
     case k => notImplemented(s"intrinsic ${IntrinsicKind.name(k)}")
   }
 
