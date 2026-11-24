@@ -82,6 +82,11 @@ compiler/CHIROpt/O2Optimization
 # ignore tests that rely on particular level of optimization ("[Devirtualization] The function call to foo at [29,9] was optimized.")
 compiler/CHIROpt/Devirtualization
 
+# ignore tests that rely on particular level of optimization (The expected `InvokeStatic(Class-_CN7default2A1...->@_CN7default1A...foo...)` is missing from the devirtualization dump)
+compiler/CHIROptTest/DevirtStatics/generic_class_not_supported.cj
+compiler/CHIROptTest/DevirtStatics/generic_function_not_supported.cj
+compiler/CHIROptTest/DevirtStatics/generic_inst_class.cj
+
 # ignore tests that rely on particular level of optimization ("The field node in the line:102 and the column:37 was optimized by The opt: SROA")
 compiler/CHIR/ScalarReplacementOfArray
 
