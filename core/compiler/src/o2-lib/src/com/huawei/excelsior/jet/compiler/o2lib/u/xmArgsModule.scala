@@ -11,6 +11,7 @@ package com.huawei.excelsior.jet.compiler.o2lib.u
 import com.huawei.excelsior.common.JetDirs
 import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.o2lib.xmlib.FSModule
+import com.huawei.excelsior.jet.compiler.options.CommandLineArguments
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -28,7 +29,7 @@ object xmArgsModule {
 
     override def parse(): Unit = {
       if (parsed) return
-      argList = ArrayBuffer.from(args)
+      argList = ArrayBuffer.from(args.iterator.flatMap(CommandLineArguments.expand))
       parsed = true
     }
 
