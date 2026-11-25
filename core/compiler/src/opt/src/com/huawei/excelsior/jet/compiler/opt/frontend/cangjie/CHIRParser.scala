@@ -1434,11 +1434,14 @@ trait CHIRParser
         val shouldGenerateCheckedCast: Boolean = (from, to) match {
           case (from: Integral, to: Integral) =>
             // Throwing integral casts should be checked in two scenarios:
-            // 1. You cast from unsigned type to signed or the other way around.
-            // 2. You cast from wider type to narrower type.
+            // 1. You cast from unsigned type to signed and size of the type you are casting to
+            // is smaller/equal(since u8 will always be fine in i16, u16 in i32, etc.).
+            // 2. You cast from signed type to unsigned.
+            // 3. You cast from wider type to narrower type.
             val isSameSignedness = fromAsm.signed != toAsm.signed
             val sizeCriteria = fromAsm.width > toAsm.width
-            throwingCast && (isSameSignedness || sizeCriteria)
+            val unsignedToWiderSignedCast = fromAsm.isUnsigned && toAsm.width > fromAsm.width
+            throwingCast && !unsignedToWiderSignedCast && (isSameSignedness || sizeCriteria)
 
           case (from: FloatingPoint, to: Integral) => throwingCast
           case _ => false
