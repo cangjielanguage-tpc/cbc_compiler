@@ -19,6 +19,10 @@ distribution):
 - `asm` (`suites/asm.py`, sources in `standalone/asm/`) - tests written directly in
   CBC assembly (`*.asm`): the optional AOT part is compiled by `cjc` into a
   dylib, `cbc-asm` assembles the assembly, and `launcher` executes it.
+- `cjcbc` (`suites/cjcbc.py`) - subclasses the cj suite: reuses its sources
+  and pipeline, but lowers the std packages from the toolchain CHIRs
+  (`tools/lib/std-packages`) into the test's cbc instead of the AOT std
+  library. Only the final lowering (`CjTestSuite._link`) is overridden.
 - `hotfix` (`suites/hotfix.py`) - reuses the `cj` sources
   for the hotfix/patching pipeline: `cjc` with `libhotfix-plugin.so` produces
   a throw-stub binary (it must abort with `Exception: should not reach

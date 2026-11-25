@@ -11,12 +11,13 @@ from pathlib import Path
 from runner_lib import MissingArtifacts, TestIdentifier, TestSuite
 from suites.asm import AsmTestSuite
 from suites.cj import CjTestSuite
+from suites.cjcbc import CjCbcStdTestSuite
 from suites.hotfix import HotfixTestSuite
 
 ROOT = Path(__file__).resolve().parent
 EXCLUDES_CFG = ROOT / "excludes.cfg"
 
-SUITES = (AsmTestSuite, CjTestSuite, HotfixTestSuite)
+SUITES = (AsmTestSuite, CjTestSuite, CjCbcStdTestSuite, HotfixTestSuite)
 
 
 def load_suites() -> list[tuple[str, TestSuite]]:

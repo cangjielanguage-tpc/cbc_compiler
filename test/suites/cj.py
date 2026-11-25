@@ -9,7 +9,7 @@ from runner_lib import (
     compare_output, run_cc, run_cjc, run_in_toolchain,
 )
 
-# Test sources live in standalone/cj;
+# Test sources live in standalone/cj (reused by the cjcbc suite as well);
 # this module is part of the suites/ package.
 SRC = Path(__file__).resolve().parents[1] / "standalone" / "cj"
 MODES = ("default", "O2")
