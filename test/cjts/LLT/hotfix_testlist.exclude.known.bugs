@@ -498,10 +498,6 @@ API/std/deriving/shrink_test.cj
 compiler/CodegenCJNative/reflect/reflect_09.cj
 compiler/Sema/Extend/extend_interface_static1.cj
 
-# bug 266 (extend with interface that has static function -- NoSuchElementException: None.get)
-compiler/Sema/Extend/extend_interface_static2.cj
-compiler/Sema/generics/generic_static_field_prop/generic_static_prop06.cj
-
 # bug 267 (const func receiver is (unexpectedly) NULL)
 compiler/FFI/CFFI/cfunc/conflict/conflict_9.cj
 compiler/Sema/const_evaluation/ok_class_variables.cj
