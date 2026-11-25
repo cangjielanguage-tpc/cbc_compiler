@@ -95,7 +95,8 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
     }
 
     val foreignLibs = Option(env.valueOfOrNull(StrOption.ForeignLibs)).toSeq.flatMap(_.split(":"))
-    builder.setForeignLibs((foreignLibs :+ "cangjie-std-core").distinct.mkString(":"))
+    val implicitForeignLibs = CbcForeignLibraries.forPackages(aotDeps.map(_.getName).toSeq, cbcDeps.map(_.getName).toSeq)
+    builder.setForeignLibs((foreignLibs ++ implicitForeignLibs).distinct.mkString(":"))
 
     val result = builder.build()
     Using.resource(DataOutput.from(output)) { out =>
