@@ -7,7 +7,9 @@ Suites (code in `suites/`, registered explicitly in `runner.py`; test
 sources live under `standalone/`):
 - `cj` (cjc -> cbc-compiler -> launcher, `default` + `O2` modes);
 - `asm` (CBC assembly via `cbc-asm`);
-- `hotfix` (cj sources rebuilt as hotfix patches, `default` + `O2` modes).
+- `hotfix` (cj sources rebuilt as hotfix patches, `default` + `O2` modes);
+- `cjcbc` (cj sources with the std packages lowered from the toolchain
+  CHIRs into the test's cbc instead of the AOT std library).
 
 A new suite is a module in `suites/` defining a `TestSuite` subclass (from
 `runner_lib`) that implements async `discover` / `build` / `run`, added to

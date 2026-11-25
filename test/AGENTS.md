@@ -23,6 +23,10 @@ distribution):
   toolchain chir and the flag points there: asm images embed no helper
   package, while the cbc-intrinsics throwers delegate to it, and the engine
   prepares those helpers at init.
+- `cjcbc` (`suites/cjcbc.py`) - subclasses the cj suite: reuses its sources
+  and pipeline, but lowers the std packages from the toolchain CHIRs
+  (`tools/lib/std-packages`) into the test's cbc instead of the AOT std
+  library. Only the final lowering (`CjTestSuite._link`) is overridden.
 - `hotfix` (`suites/hotfix.py`) - reuses the `cj` sources
   for the hotfix/patching pipeline: `cjc` with `libhotfix-plugin.so` produces
   a throw-stub binary (it must abort with `Exception: should not reach
