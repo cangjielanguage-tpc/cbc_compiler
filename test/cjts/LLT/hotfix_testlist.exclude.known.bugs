@@ -479,11 +479,6 @@ compiler/CHIR/CHIR2HLIR/class_and_interface/class_and_interface_01.cj
 compiler/CHIR/CHIR2HLIR/package/global_variable_init/main.cj
 compiler/Modules/Package/global_variable_init_bugfix/main.cj
 
-# bug 244 (unicode in file names crashes cbc-compiler)
-compiler/Lexer/Unicode/macro.cj
-compiler/Lexer/Unicode/NFC/package_name_good.cj
-compiler/Lexer/Unicode/package.cj
-
 # bug 245 (silent incorrect exit code (option of function pointer of enum))
 compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_41.cj
 compiler/CHIR/CHIR2HLIR/package/finalizer/main.cj
