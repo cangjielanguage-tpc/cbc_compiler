@@ -127,6 +127,69 @@ class IdentitiesSuite extends CompilerSuite with Identities with GlobalNodesBuil
     ReinterpretCast(LongType,   DoubleType)(lc(0x4042800000000000L)) should be (dc(37.0d))
   }
 
+  test("same-type floating conversion identity for non-constant values") {
+    for (asmType <- Seq(F16, F32, F64)) {
+      val value = Param(ValueType(asmType), 0)
+      withClue(s"$asmType: ") {
+        ValueConvert(asmType, asmType)(value) shouldBe value
+      }
+    }
+  }
+
+  test("same-type floating conversion preserves constant bit patterns") {
+    // F16 values use IntType in IR and must retain their original half bits.
+    for (bits <- Seq(0x0000, 0x8000, 0x0001, 0x0400, 0x7bff, 0x7c00, 0xfc00, 0x7e01)) {
+      val value = ic(bits)
+      ValueConvert(F16, F16)(value) shouldBe value
+    }
+
+    for (bits <- Seq(0x00000000, 0x80000000, 0x00000001, 0x00800000,
+                    0x7f7fffff, 0x7f800000, 0xff800000, 0x7fc00001)) {
+      val value = fc(java.lang.Float.intBitsToFloat(bits))
+      ValueConvert(F32, F32)(value) shouldBe value
+    }
+
+    for (bits <- Seq(0x0000000000000000L, 0x8000000000000000L,
+                    0x0000000000000001L, 0x0010000000000000L,
+                    0x7fefffffffffffffL, 0x7ff0000000000000L,
+                    0xfff0000000000000L, 0x7ff8000000000001L)) {
+      val value = dc(java.lang.Double.longBitsToDouble(bits))
+      ValueConvert(F64, F64)(value) shouldBe value
+    }
+  }
+
+  test("floating conversions between different types are not identities") {
+    for {
+      from <- Seq(F16, F32, F64)
+      to <- Seq(F16, F32, F64)
+      if from != to
+    } {
+      val value = Param(ValueType(from), 0)
+      val converted = ValueConvert(from, to)(value)
+      withClue(s"$from to $to: ") {
+        converted should not be value
+        converted should matchPattern {
+          case ValueConvert(`from`, `to`, `value`) =>
+        }
+      }
+    }
+  }
+
+  test("same-type value conversion retains integral invariant") {
+    for (asmType <- Seq(I8, I16, I32, I64, U16)) {
+      val value = Param(ValueType(asmType), 0)
+      ValueConvert(asmType, asmType)(value) shouldBe value
+    }
+
+    // Integral truncation and extension belong to BFX, not unsigned ValueConvert identities.
+    for (asmType <- Seq(U8, U32, U64)) {
+      val value = Param(ValueType(asmType), 0)
+      an [AssertionError] should be thrownBy {
+        ValueConvert(asmType, asmType)(value)
+      }
+    }
+  }
+
   test("short integral extend getMemOp identity") {
     makeCFG(0)
 
