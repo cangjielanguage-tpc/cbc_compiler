@@ -8,17 +8,18 @@ land. The user-facing overview (running, options, results) lives in
 
 ## Suites and pipelines
 
-`runner.py` discovers every `*_testsuite.py` under `test/` and drives the
-`TestSuite` subclasses they define. All suites compile and execute test
-programs against a Cangjie toolchain (SDK distribution):
+`runner.py` drives the `TestSuite` subclasses registered in its `SUITES`
+(suite code lives in `suites/`, test sources under `standalone/`). All
+suites compile and execute test programs against a Cangjie toolchain (SDK
+distribution):
 
-- `cj` (`standalone/cj/`, `cj_testsuite.py`) - the main pipeline:
+- `cj` (`suites/cj.py`, sources in `standalone/cj/`) - the main pipeline:
   `cjc --emit-chir` -> `cbc-compiler` -> `launcher`. Each test is compiled
   and run in `default` and `O2` modes.
-- `asm` (`standalone/asm/`, `asm_testsuite.py`) - tests written directly in
+- `asm` (`suites/asm.py`, sources in `standalone/asm/`) - tests written directly in
   CBC assembly (`*.asm`): the optional AOT part is compiled by `cjc` into a
   dylib, `cbc-asm` assembles the assembly, and `launcher` executes it.
-- `hotfix` (`standalone/cj/hotfix_testsuite.py`) - reuses the `cj` sources
+- `hotfix` (`suites/hotfix.py`) - reuses the `cj` sources
   for the hotfix/patching pipeline: `cjc` with `libhotfix-plugin.so` produces
   a throw-stub binary (it must abort with `Exception: should not reach
   here`), then a patched CHIR; `chir-dis` disassembles CHIRs, `patch-gen`

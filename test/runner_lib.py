@@ -1,5 +1,6 @@
 import asyncio
 import asyncio.subprocess
+import difflib
 import os
 import platform
 import re
@@ -27,6 +28,21 @@ def remove_engine_frames(text):
         line for line in text.splitlines(keepends=True)
         if not ENGINE_FRAME.match(line)
     )
+
+
+def compare_output(expected: Path | None, actual: Path, wdir: Path) -> int:
+    """Compares the actual output against the expected file (None = no
+    expected file): engine frames are stripped from both sides, a mismatch
+    writes diff.log and returns 1."""
+    exp_txt = remove_engine_frames(expected.read_text()) if expected is not None and expected.is_file() else None
+    act_txt = remove_engine_frames(actual.read_text())
+    if exp_txt is None or exp_txt != act_txt:
+        diff_lines = difflib.unified_diff(exp_txt.splitlines(keepends=True) if exp_txt is not None else [],
+                                          act_txt.splitlines(keepends=True),
+                                          "expected", "actual")
+        (wdir / "diff.log").write_text("".join(diff_lines))
+        return 1
+    return 0
 
 
 def tool_sh():

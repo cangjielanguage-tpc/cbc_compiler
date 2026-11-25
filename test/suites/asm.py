@@ -7,7 +7,8 @@ from pathlib import Path
 
 from runner_lib import DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite, run_cc, run_cjc, run_in_toolchain
 
-HERE = Path(__file__).resolve().parent
+# Asm test sources live in standalone/asm; this module is part of suites/.
+SRC = Path(__file__).resolve().parents[1] / "standalone" / "asm"
 
 
 class AsmTestSuite(TestSuite):
@@ -15,15 +16,15 @@ class AsmTestSuite(TestSuite):
 
     async def discover(self) -> list[TestIdentifier]:
         ids = []
-        for f in sorted(glob.glob(str(HERE / "**" / "*.asm"), recursive=True)):
-            rel = os.path.relpath(f, HERE)[:-len(".asm")]
+        for f in sorted(glob.glob(str(SRC / "**" / "*.asm"), recursive=True)):
+            rel = os.path.relpath(f, SRC)[:-len(".asm")]
             ids.append(TestIdentifier(self.SUITE, rel, ""))
         return ids
 
     async def build(self, test_id: TestIdentifier, workdir: Path) -> int:
         rel = test_id.test_name
         name = Path(rel).name
-        src_dir = HERE / Path(rel).parent
+        src_dir = SRC / Path(rel).parent
         wdir = workdir
         log_path = wdir / "build.log"
         shutil.copytree(src_dir, wdir, dirs_exist_ok=True)

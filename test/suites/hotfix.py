@@ -1,34 +1,18 @@
 import asyncio
-import difflib
-import glob
 import io
 import os
 import shutil
 from pathlib import Path
 
 from runner_lib import (
-    DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier, TestSuite,
-    remove_engine_frames, run_cc, run_cjc, run_in_toolchain,
+    DYLIB_EXT, DYLIB_PATH_VAR, MissingArtifacts, TestIdentifier,
+    compare_output, run_cjc, run_in_toolchain,
 )
+from .cj import (CjTestSuite, _fail, _import_flags, build_aot_deps,
+                 build_int_chirs, build_native_deps, mode_flags)
 
-HERE = Path(__file__).resolve().parent
-SRC = HERE
-MODES = ("default", "O2")
-
-
-def mode_flags(mode):
-    return ["-O2"] if mode == "O2" else []
-
-
-def _import_flags(paths):
-    # Flatten a list of Paths into repeated --import-path args for cjc.
-    return [arg for path in paths for arg in ("--import-path", str(path))]
-
-
-def _fail(log_io, wdir):
-    # Persist the build log for post-mortem and signal failure.
-    (wdir / "build.log").write_text(log_io.getvalue())
-    return 1
+# Reuses the cj suite sources (standalone/cj); this module is part of suites/.
+SRC = Path(__file__).resolve().parents[1] / "standalone" / "cj"
 
 
 def _build_env(test_copy):
@@ -43,7 +27,7 @@ def _build_env(test_copy):
     return env
 
 
-class HotfixTestSuite(TestSuite):
+class HotfixTestSuite(CjTestSuite):
     SUITE = "hotfix"
 
     def __init__(self):
@@ -60,19 +44,10 @@ class HotfixTestSuite(TestSuite):
             log_io.write(f"CHIR disassembly failed ({chir}): {res}\n")
         return res
 
-    async def discover(self) -> list[TestIdentifier]:
-        ids = []
-        for f in sorted(glob.glob(str(SRC / "**" / "*.cj"), recursive=True)):
-            if f.endswith((".aot.cj", ".int.cj")):
-                continue
-            rel = os.path.relpath(f, SRC)[:-len(".cj")]
-            for mode in MODES:
-                ids.append(TestIdentifier(self.SUITE, rel, mode))
-        return ids
-
     async def build(self, test_id: TestIdentifier, workdir: Path) -> int:
         rel = test_id.test_name
         name = Path(rel).name
+        mode = test_id.mode
         wdir = workdir.absolute()       # per-mode area
         test_copy = wdir / "sources"    # isolated sources and dependencies per mode
         log_io = io.StringIO()
@@ -81,52 +56,22 @@ class HotfixTestSuite(TestSuite):
         async with self._copy_lock(str(test_id)):
             if not test_copy.exists():
                 shutil.copytree(SRC / Path(rel).parent, test_copy, dirs_exist_ok=True)
-
-            # AOT packages -> native dylibs, later linked via -cbcaotdeps.
-            aot_names = []
-            for aot_file in sorted(test_copy.glob("*.aot.cj")):
-                aot_name = aot_file.name[:-len(".aot.cj")]
-                aot_so = aot_file.with_name(f"lib{aot_name}{DYLIB_EXT}")
-                res = await run_cjc(str(aot_file), str(aot_so), output_type="dylib", log=log_io,
-                                    timings=self.timings)
-                log_io.write(f"\n[aot {aot_name}] exit {res}\n")
-                if res != 0:
-                    return _fail(log_io, wdir)
-                aot_names.append(aot_name)
-
-            # Foreign C -> native dylibs, later linked via -foreignlibs.
-            native_names = []
-            for c_file in sorted(test_copy.glob("*.c")):
-                native_name = c_file.stem
-                native_so = c_file.with_name(f"lib{native_name}{DYLIB_EXT}")
-                res = await run_cc(c_file, native_so, log=log_io, timings=self.timings)
-                log_io.write(f"\n[native {native_name}] exit {res}\n")
-                if res != 0:
-                    return _fail(log_io, wdir)
-                native_names.append(native_name)
+            aot_names = await build_aot_deps(test_copy, log_io, self.timings)
+            if aot_names is None:
+                return _fail(log_io, wdir)
+            native_names = await build_native_deps(test_copy, log_io, self.timings)
+            if native_names is None:
+                return _fail(log_io, wdir)
 
         wdir.mkdir(parents=True, exist_ok=True)
 
         # cjc import search paths; widened as more packages are compiled in.
         import_paths = [test_copy] if aot_names else []
-
-        # Intermediate packages -> CHIR, handed to cbc-compiler as extra inputs.
-        int_chir_files = []
-        int_files = sorted(test_copy.glob("*.int.cj"))
-        if int_files:
-            temp_dir = wdir / "temp"
-            temp_dir.mkdir(exist_ok=True)
-            import_paths.append(temp_dir)
-            for int_file in int_files:
-                pkg = int_file.name[:-len(".int.cj")]
-                res = await run_cjc(str(int_file), str(temp_dir / pkg), output_type="staticlib",
-                                    additional_args=["--save-temps", str(temp_dir)]
-                                    + _import_flags(import_paths) + mode_flags(test_id.mode),
-                                    log=log_io, timings=self.timings)
-                log_io.write(f"\n[int {pkg}] exit {res}\n")
-                if res != 0:
-                    return _fail(log_io, wdir)
-                int_chir_files.append(f"temp/{pkg}.chir")
+        int_pair = await build_int_chirs(test_copy, wdir, mode, import_paths, log_io, self.timings)
+        if int_pair is None:
+            return _fail(log_io, wdir)
+        int_chir_files, int_import_paths = int_pair
+        import_paths += int_import_paths
 
         # Link inputs shared by both cjc invocations: dylibs, int archives
         # (extensionless staticlibs copied to .a so cjc accepts them) and
@@ -138,7 +83,7 @@ class HotfixTestSuite(TestSuite):
             archive = wdir / int_chir[:-len(".chir")]
             shutil.copy2(archive, f"{archive}.a")
             link_args.append(f"{archive}.a")
-        common_args = _import_flags(import_paths) + link_args + mode_flags(test_id.mode) + ["--link-options=--export-dynamic"]
+        common_args = _import_flags(import_paths) + link_args + mode_flags(mode) + ["--link-options=--export-dynamic"]
 
         # cjc and the plugin write intermediate files into cwd; drop stale
         # top-level artifacts so the CHIR scan below sees exactly one file.
@@ -211,20 +156,7 @@ class HotfixTestSuite(TestSuite):
             return _fail(log_io, wdir)
 
         # 5) Compile the patch CHIR into the CBC binary consumed at run time.
-        aot_deps = [f"-cbcaotdeps={':'.join(aot_names)}"] if aot_names else []
-        foreign_libs = [f"-foreignlibs={':'.join(native_names)}"] if native_names else []
-        jc_options = os.environ.get("CBC_JC_OPTIONS", "")
-        cbc_cmd = (["cbc-compiler", f"-outputname={patch_name}", f"{patch_name}.chir",
-                    f"+IgnoreSourceFileNameForCbc {jc_options}"]
-                   + aot_deps + foreign_libs + int_chir_files)
-        cbc_err = io.StringIO()
-        res = await run_in_toolchain(cbc_cmd, cwd=str(wdir), log=log_io, stderr_log=cbc_err,
-                                     timings=self.timings)
-        log_io.write(f"\n[cbc] exit {res}\n")
-        if cbc_err.getvalue().strip():
-            log_io.write(cbc_err.getvalue())
-        (wdir / "build.log").write_text(log_io.getvalue())
-        return 0 if res == 0 else 1
+        return await self._link(wdir, patch_name, mode, log_io, aot_names, native_names, int_chir_files)
 
     async def run(self, test_id: TestIdentifier, workdir: Path) -> int:
         name = Path(test_id.test_name).name
@@ -262,13 +194,4 @@ def verify(wdir, name, mode):
                   sources / f"{name}.{mode}.expected",
                   sources / f"{name}.expected"]
     expected = next((p for p in candidates if p.is_file()), candidates[-1])
-    actual = wdir / f"{name}.actual"
-    exp_txt = remove_engine_frames(expected.read_text()) if expected.is_file() else None
-    act_txt = remove_engine_frames(actual.read_text())
-    if exp_txt is None or exp_txt != act_txt:
-        diff_lines = difflib.unified_diff(exp_txt.splitlines(keepends=True) if exp_txt is not None else [],
-                                          act_txt.splitlines(keepends=True),
-                                          "expected", "actual")
-        (wdir / "diff.log").write_text("".join(diff_lines))
-        return 1
-    return 0
+    return compare_output(expected, wdir / f"{name}.actual", wdir)

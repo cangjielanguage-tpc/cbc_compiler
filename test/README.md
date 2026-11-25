@@ -1,18 +1,19 @@
 # CBC tests
 
-`runner.py` discovers pluggable test suites (`**/*_testsuite.py`), builds and
-runs them against a Cangjie toolchain, and diffs program output against
-`.expected` files.
+`runner.py` builds and runs the registered test suites against a Cangjie
+toolchain, and diffs program output against `.expected` files.
 
-Suites: 
+Suites (code in `suites/`, registered explicitly in `runner.py`; test
+sources live under `standalone/`):
 - `cj` (cjc -> cbc-compiler -> launcher, `default` + `O2` modes);
 - `asm` (CBC assembly via `cbc-asm`);
 - `hotfix` (cj sources rebuilt as hotfix patches, `default` + `O2` modes).
 
-A new suite is a `<name>_testsuite.py` defining one `TestSuite` subclass
-(from `runner_lib`) that implements async `discover` / `build` / `run`;
-after running a test the runner writes a `run.sh` into the test's
-workdir which re-runs it via `python3 runner.py test --test <ID> --skip-build`.
+A new suite is a module in `suites/` defining a `TestSuite` subclass (from
+`runner_lib`) that implements async `discover` / `build` / `run`, added to
+`runner.py`'s `SUITES`; after running a test the runner writes a `run.sh`
+into the test's workdir which re-runs it via
+`python3 runner.py test --test <ID> --skip-build`.
 
 Python 3.11 or newer is required to run the runner.
 

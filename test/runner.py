@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import fnmatch
-import importlib.util
 import os
 import shlex
 import shutil
@@ -10,32 +9,18 @@ from os.path import isfile
 from pathlib import Path
 
 from runner_lib import MissingArtifacts, TestIdentifier, TestSuite
+from suites.asm import AsmTestSuite
+from suites.cj import CjTestSuite
+from suites.hotfix import HotfixTestSuite
 
 ROOT = Path(__file__).resolve().parent
 EXCLUDES_CFG = ROOT / "excludes.cfg"
 
+SUITES = (AsmTestSuite, CjTestSuite, HotfixTestSuite)
+
 
 def load_suites() -> list[tuple[str, TestSuite]]:
-    suites = []
-    for f in sorted(ROOT.glob("**/*_testsuite.py")):
-        if "workdir" in f.parts:
-            continue
-        mod_name = "testsuite_mod_" + f.stem
-        spec = importlib.util.spec_from_file_location(mod_name, f)
-        if spec is None or spec.loader is None:
-            raise SystemExit(f"Cannot load testsuite module from {f}")
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules[mod_name] = mod
-        spec.loader.exec_module(mod)
-        classes = [obj for obj in vars(mod).values()
-                   if isinstance(obj, type) and issubclass(obj, TestSuite) and obj is not TestSuite]
-        if len(classes) != 1:
-            raise SystemExit(f"Suite {f.name} must define exactly one TestSuite subclass, found {len(classes)}")
-        suite = classes[0]()
-        suites.append((suite.SUITE, suite))
-    if not suites:
-        raise SystemExit("No testsuites found (expected files named {name}_testsuite.py)")
-    return suites
+    return [(cls.SUITE, cls()) for cls in SUITES]
 
 
 def read_id_list(path: str | Path) -> list[str]:
