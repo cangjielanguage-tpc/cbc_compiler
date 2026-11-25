@@ -345,9 +345,9 @@ object CbcFileFormat {
     def newExtensionBuilder(): Extension.Builder
     def setBytecodeVersion(version: Int): Unit
     def setMainTypeName(name: String): Unit
-    def setCbcDeps(libs: String): Unit
-    def setAotDeps(libs: String): Unit
-    def setForeignLibs(libs: String): Unit
+    def addCbcDeps(libs: String): Unit
+    def addAotDeps(libs: String): Unit
+    def addForeignLibs(libs: String): Unit
     def build(): CbcFile  }
 
   object Type {
@@ -435,9 +435,29 @@ private class CbcFileFormatBuilder extends CbcFileFormat.Builder {
   override def setBytecodeVersion(version: Int): Unit = this.bytecodeVersion = version
   override def setMainTypeName(name: String): Unit = this.mainTypeName = name
 
-  override def setCbcDeps(deps: String): Unit = this.cbcDeps = deps
-  override def setAotDeps(deps: String): Unit = this.aotDeps = deps
-  override def setForeignLibs(libs: String): Unit = this.foreignLibs = libs
+  override def addCbcDeps(deps: String): Unit = {
+    if (cbcDeps == null) {
+      cbcDeps = deps
+    } else {
+      cbcDeps = s"$cbcDeps:$deps"
+    }
+  }
+
+  override def addAotDeps(deps: String): Unit = {
+    if (aotDeps == null) {
+      aotDeps = deps
+    } else {
+      aotDeps = s"$aotDeps:$deps"
+    }
+  }
+
+  override def addForeignLibs(libs: String): Unit = {
+    if (foreignLibs == null) {
+      foreignLibs = libs
+    } else {
+      foreignLibs = s"$foreignLibs:$libs"
+    }
+  }
 
   override def newTypeBuilder(): CbcFileFormat.Type.Builder = {
     val builder = new TypeBuilder()

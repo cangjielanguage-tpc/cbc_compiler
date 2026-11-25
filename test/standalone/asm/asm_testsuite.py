@@ -51,7 +51,7 @@ class AsmTestSuite(TestSuite):
         res = 1
         if not deps_failed:
             asm_err = io.StringIO()
-            res = await run_in_toolchain(["cbc-asm", str(wdir / f"{name}.asm")],
+            res = await run_in_toolchain(["cbc-compiler", "+GenLibrary", str(wdir / f"{name}.asm")],
                                          cwd=str(wdir), log=log_io, stderr_log=asm_err,
                                          timings=self.timings)
             log_io.write(f"\n[asm] exit {res}\n")
