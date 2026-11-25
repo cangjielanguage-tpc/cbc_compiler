@@ -1045,6 +1045,56 @@ trait CangjieNodes { self: Universe =>
         sret, ip, pc, funcDesc, charArrayInfo)
     }
 
+    // These signatures mirror the CJ_MCC/CJ_MRT declarations in std.core's LLVM IR.
+    // Unit.Type is empty there, so use Void to avoid adding a hidden Unit sret.
+    // Future synchronization storage belongs to the runtime, not the CHIR fields.
+    def futureInit(futureType: SignatureType)(future: Node): Node = {
+      intrinsic(CJIntrinsicType.FutureInit, MethodSignature(futureType)(SignatureType.Void))(future)
+    }
+
+    def futureIsComplete(futureType: SignatureType)(future: Node): Node = {
+      intrinsic(CJIntrinsicType.FutureIsComplete, MethodSignature(futureType)(Boolean))(future)
+    }
+
+    def futureWait(futureType: SignatureType)(future: Node, timeout: Node): Node = {
+      intrinsic(CJIntrinsicType.FutureWait, MethodSignature(futureType, Int64)(SignatureType.Void))(future, timeout)
+    }
+
+    def futureNotifyAll(futureType: SignatureType)(future: Node): Node = {
+      intrinsic(CJIntrinsicType.FutureNotifyAll, MethodSignature(futureType)(SignatureType.Void))(future)
+    }
+
+    def sleep(timeout: Node): Node = {
+      intrinsic(CJIntrinsicType.Sleep, MethodSignature(Int64)(SignatureType.Void))(timeout)
+    }
+
+    def setThreadObject(threadType: SignatureType)(thread: Node): Node = {
+      intrinsic(CJIntrinsicType.SetThreadObject, MethodSignature(threadType)(SignatureType.Void))(thread)
+    }
+
+    def isThreadObjectInited(): Node = {
+      intrinsic(CJIntrinsicType.IsThreadObjectInited, MethodSignature()(Boolean))()
+    }
+
+    def getThreadObject(threadType: SignatureType)(): Node = {
+      intrinsic(CJIntrinsicType.GetThreadObject, MethodSignature()(threadType))()
+    }
+
+    // ArrayRef CJ_MCC_GetAllThreadSnapshot(TypeInfo* snapshots, TypeInfo* frames, TypeInfo* chars)
+    def dumpAllThreadsInfo(arrayType: CangjieArray)(arrayInfo: Node, stackTraceInfo: Node, charArrayInfo: Node): Node = {
+      intrinsic(CJIntrinsicType.DumpAllThreadsInfo,
+        MethodSignature(CPointer(AddrUInt), CPointer(AddrUInt), CPointer(AddrUInt))(arrayType))(
+        arrayInfo, stackTraceInfo, charArrayInfo)
+    }
+
+    // ThreadSnapshotInfo CJ_MCC_GetCurrentThreadSnapshot(TypeInfo* frames, TypeInfo* chars)
+    // Like decodeStackTrace, the record result is passed through the ABI's hidden sret.
+    def dumpCurrentThreadInfo(recordType: SignatureType)(sret: Node, stackTraceInfo: Node, charArrayInfo: Node): Node = {
+      intrinsic(CJIntrinsicType.DumpCurrentThreadInfo,
+        MethodSignature(CPointer(AddrUInt), CPointer(AddrUInt))(recordType))(
+        sret, stackTraceInfo, charArrayInfo)
+    }
+
     def unapply(call: Call): Option[CJIntrinsicType] = condOpt(call.target) {
       case intrinsicTarget: CJIntrinsicTarget => intrinsicTarget.target
     }
@@ -1056,6 +1106,16 @@ trait CangjieNodes { self: Universe =>
     case ExclusiveScope extends CJIntrinsicType("CJ_MCC_ExclusiveScope")
     case FillInStackTrace extends CJIntrinsicType("CJ_MCC_FillInStackTrace")
     case DecodeStackTrace extends CJIntrinsicType("CJ_MCC_DecodeStackTrace")
+    case FutureInit extends CJIntrinsicType("CJ_MCC_FutureInit")
+    case FutureIsComplete extends CJIntrinsicType("CJ_MCC_FutureIsComplete")
+    case FutureWait extends CJIntrinsicType("CJ_MCC_FutureWait")
+    case FutureNotifyAll extends CJIntrinsicType("CJ_MCC_FutureNotifyAll")
+    case Sleep extends CJIntrinsicType("CJ_MRT_Sleep")
+    case SetThreadObject extends CJIntrinsicType("CJ_MCC_SetCurrentCJThreadObject")
+    case IsThreadObjectInited extends CJIntrinsicType("CJ_MCC_IsThreadObjectInited")
+    case GetThreadObject extends CJIntrinsicType("CJ_MCC_GetCurrentCJThreadObject")
+    case DumpAllThreadsInfo extends CJIntrinsicType("CJ_MCC_GetAllThreadSnapshot")
+    case DumpCurrentThreadInfo extends CJIntrinsicType("CJ_MCC_GetCurrentThreadSnapshot")
   }
 
   sealed trait CangjieReferenceNode extends FloatingNode {

@@ -2025,18 +2025,6 @@ trait CHIRParser
                CHIR.Intrinsic.Kind.MultiConditionNotifyAll =>
             notImplemented("synchronization primitives (mutex, monitor, waitqueue, multicondition)")
 
-          case CHIR.Intrinsic.Kind.Sleep |
-               CHIR.Intrinsic.Kind.DumpAllThreadsInfo |
-               CHIR.Intrinsic.Kind.DumpCurrentThreadInfo |
-               CHIR.Intrinsic.Kind.FutureInit |
-               CHIR.Intrinsic.Kind.FutureIsComplete |
-               CHIR.Intrinsic.Kind.FutureWait |
-               CHIR.Intrinsic.Kind.FutureNotifyAll |
-               CHIR.Intrinsic.Kind.IsThreadObjectInited |
-               CHIR.Intrinsic.Kind.GetThreadObject |
-               CHIR.Intrinsic.Kind.SetThreadObject =>
-            notImplemented("thread and future intrinsics")
-
           case CHIR.Intrinsic.Kind.FuncRefeq =>
             notImplemented("function reference identity comparison")
 
@@ -2064,6 +2052,61 @@ trait CHIRParser
             // CString (BString) and CPointer<UInt8> are the same raw address word;
             // exact inverse of CStringInit (also an identity)
             state(e) = state(e.args.head)
+
+          case CHIR.Intrinsic.Kind.FutureInit =>
+            val Seq(future) = e.args
+            val ValueSig(futureType) = future
+            state(e) = CJIntrinsic.futureInit(futureType)(state(future))
+
+          case CHIR.Intrinsic.Kind.FutureIsComplete =>
+            val Seq(future) = e.args
+            val ValueSig(futureType) = future
+            state(e) = CJIntrinsic.futureIsComplete(futureType)(state(future))
+
+          case CHIR.Intrinsic.Kind.FutureWait =>
+            val Seq(future, timeout) = e.args
+            val ValueSig(futureType) = future
+            state(e) = CJIntrinsic.futureWait(futureType)(state(future), state(timeout))
+
+          case CHIR.Intrinsic.Kind.FutureNotifyAll =>
+            val Seq(future) = e.args
+            val ValueSig(futureType) = future
+            state(e) = CJIntrinsic.futureNotifyAll(futureType)(state(future))
+
+          case CHIR.Intrinsic.Kind.Sleep =>
+            val Seq(timeout) = e.args
+            state(e) = CJIntrinsic.sleep(state(timeout))
+
+          case CHIR.Intrinsic.Kind.SetThreadObject =>
+            val Seq(thread) = e.args
+            val ValueSig(threadType) = thread
+            state(e) = CJIntrinsic.setThreadObject(threadType)(state(thread))
+
+          case CHIR.Intrinsic.Kind.IsThreadObjectInited =>
+            require(e.args.isEmpty)
+            state(e) = CJIntrinsic.isThreadObjectInited()
+
+          case CHIR.Intrinsic.Kind.GetThreadObject =>
+            require(e.args.isEmpty)
+            state(e) = CJIntrinsic.getThreadObject(resolver.typeSig(e.resultTpe))()
+
+          case CHIR.Intrinsic.Kind.DumpAllThreadsInfo =>
+            require(e.args.isEmpty)
+            val resultType = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.CangjieArray]
+            val stackTraceType = SignatureType.CangjieArray(fromSymType(resolver.findClass("std.core:StackTraceData").get))
+            state(e) = CJIntrinsic.dumpAllThreadsInfo(resultType)(
+              loadTypeInfo(resultType), loadTypeInfo(stackTraceType),
+              loadTypeInfo(SignatureType.CangjieArray(SignatureType.UInt8)))
+
+          case CHIR.Intrinsic.Kind.DumpCurrentThreadInfo =>
+            require(e.args.isEmpty)
+            val recordType = resolver.typeSig(e.resultTpe)
+            val stackTraceType = SignatureType.CangjieArray(fromSymType(resolver.findClass("std.core:StackTraceData").get))
+            val sret = StackAlloc.Local(recordType, workaroundForNonZeroedTraceableRecords = true)
+            CJIntrinsic.dumpCurrentThreadInfo(recordType)(
+              sret, loadTypeInfo(stackTraceType),
+              loadTypeInfo(SignatureType.CangjieArray(SignatureType.UInt8)))
+            state(e) = sret
 
           case CHIR.Intrinsic.Kind.InoutParam =>
             e.args.head match {
