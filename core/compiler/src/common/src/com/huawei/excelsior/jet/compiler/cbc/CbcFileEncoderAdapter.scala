@@ -95,7 +95,14 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
     }
 
     val foreignLibs = Option(env.valueOfOrNull(StrOption.ForeignLibs)).toSeq.flatMap(_.split(":"))
-    builder.setForeignLibs((foreignLibs :+ "cangjie-std-core").distinct.mkString(":"))
+    // CBC std.core still calls native @C functions (printing, string helpers,
+    // math, etc.). The SDK supplies them in stdFFI without AOT std.core code.
+    // Keep bootstrap images without std.core free of either dependency.
+    val implicitForeignLibs =
+      if (cbcDeps.map(_.getName).contains("std.core")) Seq("stdFFI")
+      else if (aotDeps.map(_.getName).contains("std.core")) Seq("cangjie-std-core")
+      else Seq.empty
+    builder.setForeignLibs((foreignLibs ++ implicitForeignLibs).distinct.mkString(":"))
 
     val result = builder.build()
     Using.resource(DataOutput.from(output)) { out =>
