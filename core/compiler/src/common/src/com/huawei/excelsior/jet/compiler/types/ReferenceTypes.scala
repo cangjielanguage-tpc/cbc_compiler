@@ -316,7 +316,7 @@ object ReferenceTypes {
                 else              iter(t1.cohenSuper, l1 - 1, t2.cohenSuper, l2 - 1)
               }
 
-              iter(t1, t1.cohenLevel, t2, t2.cohenLevel)
+              Option(iter(t1, t1.cohenLevel, t2, t2.cohenLevel)).getOrElse(ReferenceType.cangjieStdCoreObject)
 
             case (_, _) if isStandalone => ReferenceType.cangjieStdCoreObject
 
