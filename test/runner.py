@@ -325,9 +325,6 @@ async def run_tests(args: argparse.Namespace) -> int:
         print("No testcases to run")
         return 0
 
-    for suite in {discovered[test_id] for test_id in ids}:
-        await suite.setup(workdir)
-
     parallelism = max(1, int(args.parallelism)) if args.parallelism is not None else autodetect_parallelism()
     results: list[tuple[TestIdentifier, str]] = []
     mode = auto_status() if args.status == "auto" else args.status
