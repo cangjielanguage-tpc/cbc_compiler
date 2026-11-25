@@ -23,11 +23,26 @@ private[chir] object GuardChecks {
 
   def hasFlag(function: Func): Boolean = getFlag(function).nonEmpty
 
+  private def isInterpreterInitializedCall(call: Apply): Boolean = call.callee match {
+    case f: Func => f.identifier.stripPrefix("@") == "is_interpreter_initialized"
+    case _ => false
+  }
+
   def remove(function: EditableCHIR.Func): Unit = {
     val pkg = function.pkg
     val initializer = (function eq pkg.packageInitFunc) || (function eq pkg.packageInitLiteralFunc)
     require(initializer || hasFlag(function), "guard var flag check was not found")
-    val entry = function.body.get.entryBlock
+    val body = function.body.get
+    val entry = if (initializer) {
+      body.entryBlock.terminator match {
+        case Branch(LocalVar(a: Apply), initialized, _) if isInterpreterInitializedCall(a) =>
+          // The native wrapper checks whether the interpreter is initialized before calling the CBC initializer.
+          val guardBlock = pkg.edit(initialized)
+          body.entryBlock.replaceExpressions(Seq.empty, pkg.newGoto(guardBlock, a.debugLoc))
+          guardBlock
+        case _ => body.entryBlock
+      }
+    } else body.entryBlock
     val branch = entry.terminator.asInstanceOf[Branch]
     require(branch.falseBlock.terminator.isInstanceOf[Branch], "guard check was not found")
     val prefix = entry.nonTerminatorExpressions
