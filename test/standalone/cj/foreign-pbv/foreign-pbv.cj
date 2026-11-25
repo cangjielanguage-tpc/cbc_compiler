@@ -319,6 +319,10 @@ foreign func pbvMixC(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64,
 foreign func pbvMixD(a: Int64, b: Int64, c: Int64, d: Int64, e: Int64, s: S16i): Int64
 foreign func pbvMixG(a: Int64, b: Int64, c: Int64, d: Int64, e: Int64, f: Int64, s: S16m): Float64
 
+foreign func pbvStackHfa1(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64, f: Float64, g: Float64, h: Float64, s: S4f1, marker: Float32): Int64
+foreign func pbvStackHfa3(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64, f: Float64, g: Float64, h: Float64, s: S12f3, marker: Float32): Int64
+foreign func pbvStackHfaAligned(a: Int64, b: Int64, c: Int64, d: Int64, e: Int64, f: Int64, g: Int64, h: Int64, p: Float64, q: Float64, r: Float64, s: Float64, t: Float64, u: Float64, v: Float64, w: Float64, prefix: Int8, value: S12f3, marker: Float32): Int64
+
 main(): Int64 {
     var passed = 0
 
@@ -500,8 +504,26 @@ main(): Int64 {
         println("pbvMixG failed")
     }
 
+    if (unsafe { pbvStackHfa1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, S4f1(9.5f32), -10.25f32) } == 1) {
+        passed += 1
+    } else {
+        println("pbvStackHfa1 failed")
+    }
+
+    if (unsafe { pbvStackHfa3(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, S12f3(9.5f32, -10.25f32, 11.75f32), -12.5f32) } == 1) {
+        passed += 1
+    } else {
+        println("pbvStackHfa3 failed")
+    }
+
+    if (unsafe { pbvStackHfaAligned(1, 2, 3, 4, 5, 6, 7, 8, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, -101, S12f3(9.5f32, -10.25f32, 11.75f32), -12.5f32) } == 1) {
+        passed += 1
+    } else {
+        println("pbvStackHfaAligned failed")
+    }
+
     println("passed ${passed}")
-    if (passed == 29) {
+    if (passed == 32) {
         return 0
     }
     return 1

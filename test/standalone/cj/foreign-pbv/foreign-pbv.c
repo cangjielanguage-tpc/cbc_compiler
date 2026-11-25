@@ -69,6 +69,32 @@ double pbvS12f3(struct S12f3 s)
     return s.a + 2.0 * s.b + 3.0 * s.c;
 }
 
+int64_t pbvStackHfa1(
+    double a, double b, double c, double d, double e, double f, double g, double h,
+    struct S4f1 s, float marker)
+{
+    return a == 1.0 && b == 2.0 && c == 3.0 && d == 4.0 && e == 5.0 && f == 6.0 &&
+           g == 7.0 && h == 8.0 && s.a == 9.5f && marker == -10.25f;
+}
+
+int64_t pbvStackHfa3(
+    double a, double b, double c, double d, double e, double f, double g, double h,
+    struct S12f3 s, float marker)
+{
+    return a == 1.0 && b == 2.0 && c == 3.0 && d == 4.0 && e == 5.0 && f == 6.0 &&
+           g == 7.0 && h == 8.0 && s.a == 9.5f && s.b == -10.25f && s.c == 11.75f && marker == -12.5f;
+}
+
+int64_t pbvStackHfaAligned(
+    int64_t a, int64_t b, int64_t c, int64_t d, int64_t e, int64_t f, int64_t g, int64_t h,
+    double p, double q, double r, double s, double t, double u, double v, double w,
+    int8_t prefix, struct S12f3 value, float marker)
+{
+    return a == 1 && b == 2 && c == 3 && d == 4 && e == 5 && f == 6 && g == 7 && h == 8 &&
+           p == 1.0 && q == 2.0 && r == 3.0 && s == 4.0 && t == 5.0 && u == 6.0 && v == 7.0 && w == 8.0 &&
+           prefix == -101 && value.a == 9.5f && value.b == -10.25f && value.c == 11.75f && marker == -12.5f;
+}
+
 int64_t pbvS16i(struct S16i s)
 {
     return s.a + 2 * s.b;
