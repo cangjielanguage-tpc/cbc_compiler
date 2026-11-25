@@ -732,3 +732,9 @@ Runtime/CJNative/RuntimeApi/runtime_api_validation.cj
 
 # %run %run typo in test command
 compiler/CHIR/CHIR2HLIR/generic/generic_external_use_internal/main.cj
+
+# Hotfix toolchain cannot work without CANGJIE_HOME
+compiler/Driver/cangjie_home/test_no_cangjie_home.cj
+
+# cjc-wrapper unconditionally creates --save-temps violating test expectancy
+compiler/Driver/options/save_temps/test_invalid_dir.cj
