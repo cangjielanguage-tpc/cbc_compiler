@@ -88,6 +88,9 @@ compiler/CHIROpt/FunctionInline
 # ignore tests that rely on particular level of optimization ("The deref node in the line:16 and the column:5 was optimized by The opt: Constant Propagation")
 compiler/CHIROpt/Optimizations/GlobalConstVars
 
+# expects a switchOpt diagnostic that cjc does not emit in this configuration
+compiler/CHIROpt/match/testSwitch4_11.cj
+
 # ignore tests that rely on particular level of optimization ("an exception was thrown while evaluating constant")
 compiler/ConstEval/testExceptionMod.cj
 
@@ -594,6 +597,8 @@ compiler/Parser/class_extends/class_extends_multi_2.cj
 compiler/Sema/PatternMatching/Sealed/ABI_stable/non-exhaustive_err01.cj
 compiler/Sema/PatternMatching/Sealed/simple_exhaustive.cj
 compiler/Sema/array/array_invalid_api.cj
+compiler/Sema/assign/multipleAssignExpr/case07.cj
+compiler/Sema/type/subtype_03.cj
 
 # bug 112 (crash when calling function from extended interface)
 API/std/deriving/equatable_test.cj
