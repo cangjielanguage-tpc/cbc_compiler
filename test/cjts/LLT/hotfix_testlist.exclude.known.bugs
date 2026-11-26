@@ -433,10 +433,7 @@ compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_t
 compiler/CHIR/UG/ClosureConversion/staticFunc04.cj
 
 # bug 222 (castIdentity: F16/F32/F64)
-API/std/core/test_mathextension.cj
-API/std/libast/tokens/toString/test_004.cj
 compiler/CHIR/AST2CHIR/bugfix/bugfix4/test.cj
-compiler/CHIR/package/package01/test1.cj
 
 # bug 180 (Stack trace printing issues)
 compiler/CodegenCJNative/trycatch/unreachable.cj
