@@ -496,6 +496,7 @@ object SignatureType {
       case TypeKind.CHAR => UInt16
       case TypeKind.INT => Int32
       case TypeKind.LONG => Int64
+      case TypeKind.HALF => Float16
       case TypeKind.FLOAT => Float32
       case TypeKind.DOUBLE => Float64
     }
@@ -536,13 +537,13 @@ object SignatureType {
       case Int64 | UInt64 => TypeKind.LONG
       case _: AddressWide => TypeKind.address
 
-      case Float16 => TypeKind.SHORT
+      case Float16 => TypeKind.HALF
       case Float32 => TypeKind.FLOAT
       case Float64 => TypeKind.DOUBLE
     }
 
     override def calcSymType(implicit typeProvider: TypeProvider): Type =
-      typeProvider.getPrimitiveType(kind)
+      typeProvider.getPrimitiveType(if (kind == TypeKind.HALF) TypeKind.SHORT else kind)
   }
 
   case object Void extends Primitive

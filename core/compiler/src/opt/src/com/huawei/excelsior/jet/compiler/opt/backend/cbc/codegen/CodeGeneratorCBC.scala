@@ -399,6 +399,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
       def maybeImmValue(value: Node): Option[Long] = value match {
         case _: AnyNull => Some(0L)
         case IntegralConst(c) => Some(c)
+        case HConst(bits) => Some(bits.toLong)
         case FConst(c) => Some(java.lang.Float.floatToRawIntBits(c))
         case DConst(c) => Some(java.lang.Double.doubleToRawLongBits(c))
         case Reg(r) => None
@@ -1160,6 +1161,9 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           val mr = asm.adapter.method(new MethodReference(m, MethodReferenceAccessKind.STATIC).getPermanent)
           asm.lea_cforeign(dst, mr)
 
+        case (FReg(dst), HConst(bits)) =>
+          asm.fmovi16Bits(dst, bits)
+
         case (FReg(dst), FConst(c)) =>
           asm.fmovi(dst, c, W32)
 
@@ -1210,6 +1214,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             asm.storeUntypedImm(c, dst)
           case (_, LConst(c)) =>
             asm.storeUntypedImm(c, dst)
+          case (_, HConst(bits)) =>
+            asm.storeUntypedImm(bits, dst)
           case (_, FConst(c)) =>
             asm.storeUntypedImm(java.lang.Float.floatToRawIntBits(c), dst)
           case (_, DConst(c)) =>
@@ -1646,6 +1652,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
     case ThinType | _: FragilePointerType     => CbcTypeKind.U64
     case IntType                              => CbcTypeKind.I32
     case LongType                             => CbcTypeKind.I64
+    case HalfType                             => CbcTypeKind.F16
     case FloatType                            => CbcTypeKind.F32
     case DoubleType                           => CbcTypeKind.F64
     case HolderType(sig)                      =>

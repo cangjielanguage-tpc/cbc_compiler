@@ -22,7 +22,7 @@ class ABICBCAArch64 private[cbc](_methodType: MethodType) extends ABI[IR, FR](_m
 
   override protected lazy val resultRegsImpl: Array[AnyReg] = RetType(methodType) match {
     case RetType.I | RetType.L => Array(cc.baseIRegs.headArea(0))
-    case RetType.F | RetType.D => Array(cc.baseFRegs.headArea(0))
+    case RetType.H | RetType.F | RetType.D => Array(cc.baseFRegs.headArea(0))
     case RetType.Void => Array.empty[AnyReg]
   }
 

@@ -147,6 +147,7 @@ trait Types { this: CompilerEnvironment =>
   case object NumericType extends ValueType {
     def apply(kind: SignatureType): NumericType = (kind: @unchecked) match {
       case    SignatureType.Boolean       => IntType
+      case    SignatureType.Float16       => HalfType
       case _: SignatureType.Integral      => IntegralType(kind.symKindErased)
       case _: SignatureType.FloatingPoint => FloatingPointType(kind.symKindErased)
     }
@@ -163,6 +164,7 @@ trait Types { this: CompilerEnvironment =>
         case AsmType.I64 |
              AsmType.U64 |
              AsmType.PTR => LongType
+        case AsmType.F16 => HalfType
         case AsmType.F32 => FloatType
         case AsmType.F64 => DoubleType
       }
@@ -196,12 +198,14 @@ trait Types { this: CompilerEnvironment =>
   }
   case object FloatingPointType extends ValueType {
     def apply(kind: TKind): FloatingPointType = kind match {
+      case TKind.HALF => HalfType
       case TKind.FLOAT => FloatType
       case TKind.DOUBLE => DoubleType
       case _ => shouldNotReachHere(kind)
     }
   }
 
+  case object HalfType extends FloatingPointType(TKind.HALF)
   case object FloatType extends FloatingPointType(TKind.FLOAT)
   case object DoubleType extends FloatingPointType(TKind.DOUBLE)
 
@@ -325,9 +329,7 @@ trait Types { this: CompilerEnvironment =>
         case _: AddressWide   => AddrType
         case Float32 => FloatType
         case Float64 => DoubleType
-        case Float16 => IntType // Half type is implemented as value type over primitive short,
-                                // so we consider it as an integral type in our IR.
-                                // Operations with half values should convert them to float values in advance.
+        case Float16 => HalfType
         case BString | _: CPointer => AddrType
         case ThisTypeInfo => AddrType
         case _: TypeVariable => assert(!isStandalone); HolderType(sigType)
@@ -381,6 +383,7 @@ trait Types { this: CompilerEnvironment =>
     def unapply(tpe: Type): Option[AsmType] = condOpt(tpe) {
       case IntType    => AsmType.I32
       case LongType   => AsmType.I64
+      case HalfType   => AsmType.F16
       case FloatType  => AsmType.F32
       case DoubleType => AsmType.F64
 

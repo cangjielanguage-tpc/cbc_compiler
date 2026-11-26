@@ -425,6 +425,7 @@ trait CangjieNodes { self: Universe =>
       case _: StructureType => AnyNull(tpe)
       case LongType => LConst(0L)
       case IntType => IConst(0)
+      case HalfType => HConst(0.0)
       case FloatType => FConst(0.0f)
       case DoubleType => DConst(0.0)
     }

@@ -465,7 +465,7 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
 
   private def castIdentity(cast: Cast): Node = {
     cast match {
-      case ValueConvert(from, to, arg) if from == to => assert(from.isSigned || from == U16, s"$from"); arg
+      case ValueConvert(from, to, arg) if from == to => assert(from.isSigned || from.isFloatingPoint || from == U16, s"$from"); arg
       case ReinterpretCast(from, to, arg) if from == to || arg.tpe == to => arg
       case ReinterpretCast(_, to, ReinterpretCast(from, _, x)) => ReinterpretCast(from, to)(x)
 

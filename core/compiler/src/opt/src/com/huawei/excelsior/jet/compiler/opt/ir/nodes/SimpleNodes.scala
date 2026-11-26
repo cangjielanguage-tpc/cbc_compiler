@@ -1359,6 +1359,16 @@ trait SimpleNodes { self: Universe with Nodes =>
   }
 
 
+  /** Half float constant. */
+  class HConst private (val bits: Int) extends CachedLeafNode[HConst](HalfType) with CompileTimeValue {
+    def cacheKey = bits
+  }
+
+  object HConst {
+    def apply(x: Double) = Prototype.intern(new HConst(com.huawei.excelsior.jet.assembler.cbc.isa12.Float16.bits(x)))()
+    def unapply(x: HConst) = Some(x.bits)
+  }
+
   /** Float constant. */
   class FConst private (val value: Float) extends CachedLeafNode[FConst](FloatType) with CompileTimeValue {
     private def bits = floatToRawIntBits(value)
@@ -1386,6 +1396,7 @@ trait SimpleNodes { self: Universe with Nodes =>
 
   object FloatingPointConst {
     def apply(tpe: Type)(v: Double): Node = tpe match {
+      case HalfType => HConst(v)
       case DoubleType => DConst(v)
       case FloatType => FConst(v.toFloat)
     }

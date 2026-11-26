@@ -8,6 +8,8 @@
 
 package com.huawei.excelsior.jet.compiler.abi.amd64
 
+import com.huawei.excelsior.common.CodeHelpers.notImplemented
+
 import com.huawei.excelsior.jet.assembler.Location
 import com.huawei.excelsior.jet.assembler.Location.AnyReg
 import com.huawei.excelsior.jet.assembler.amd64.{GPR, Register8, XMM}
@@ -41,6 +43,7 @@ class ABIAmd64 private[amd64](_methodType: MethodType) extends ABI[GPR, XMM](_me
   override protected lazy val resultRegsImpl: Array[AnyReg] = (cc.isJET, RetType(methodType)) match {
     case (true,  RetType.I | RetType.L) => Array(cc.baseIRegs.headArea(0))
     case (false, RetType.I | RetType.L) => Array(RAX)
+    case (_, RetType.H) => notImplemented("Float16 return in native AMD64 backend")
     case (true,  RetType.F | RetType.D) => Array(cc.baseFRegs.headArea(0))
     case (false, RetType.F | RetType.D) => Array(XMM0)
     case (_, RetType.Void) => Array.empty[AnyReg]

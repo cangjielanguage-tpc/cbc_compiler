@@ -87,11 +87,12 @@ object ABI {
   }
 
   enum RetType {
-    case I, L, F, D, Void
+    case I, L, H, F, D, Void
   }
 
   object RetType {
     def apply(methodType: MethodType) = methodType.returnType match {
+      case Primitive(TypeKind.HALF) => H
       case Primitive(TypeKind.VOID) => Void
       case Primitive(TypeKind.FLOAT) => F
       case Primitive(TypeKind.DOUBLE) => D

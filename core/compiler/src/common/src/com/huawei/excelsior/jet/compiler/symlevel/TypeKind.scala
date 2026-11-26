@@ -37,6 +37,7 @@ enum TypeKind(private val bcSignatureChar: Char, val width: Width, _basicType: I
   case ARRAY     extends TypeKind('[', WPTR, 9, 3)
   case THIN      extends TypeKind('L', WPTR, -1, -1)
   case RECORD    extends TypeKind('X', WPTR, -1, -1)
+  case HALF      extends TypeKind('H', W16, -1, -1)
 
   private val basicType = _basicType.toByte
   private val bcTypeKind = _bcTypeKind.toByte
@@ -44,7 +45,7 @@ enum TypeKind(private val bcSignatureChar: Char, val width: Width, _basicType: I
   /** Returns log2 size of type kind in memory. */
   def log2Size = this match {
     case BOOLEAN | BYTE => 0
-    case CHAR | SHORT => 1
+    case CHAR | SHORT | HALF => 1
     case INT | FLOAT => 2
     case ARRAY | INTERFACE | CLASS | THIN | RECORD => addressLog2Size
     case DOUBLE | LONG => 3
@@ -83,7 +84,7 @@ enum TypeKind(private val bcSignatureChar: Char, val width: Width, _basicType: I
   def isThin = this == THIN
   def isVoid = this == VOID
 
-  def isFloatingPoint = (this == FLOAT) || (this == DOUBLE)
+  def isFloatingPoint = (this == HALF) || (this == FLOAT) || (this == DOUBLE)
   def isIntegral = isShortIntegral || (this == INT) || (this == LONG)
   def isShortIntegral = (this == BOOLEAN) || (this == BYTE) || (this == SHORT) || (this == CHAR)
 
@@ -103,6 +104,7 @@ enum TypeKind(private val bcSignatureChar: Char, val width: Width, _basicType: I
     case CHAR           => AsmType.U16
     case INT            => AsmType.I32
     case LONG           => AsmType.I64
+    case HALF           => AsmType.F16
     case FLOAT          => AsmType.F32
     case DOUBLE         => AsmType.F64
     case CLASS | THIN | INTERFACE | RECORD | ARRAY => AsmType.PTR
@@ -111,7 +113,7 @@ enum TypeKind(private val bcSignatureChar: Char, val width: Width, _basicType: I
 
 object TypeKind {
   // JET-14216: Hard-coded because this value might be used by the interpreter before this class is initialized.
-  val COUNT = 14
+  val COUNT = 15
 
   assert(COUNT == TypeKind.values.length)
 

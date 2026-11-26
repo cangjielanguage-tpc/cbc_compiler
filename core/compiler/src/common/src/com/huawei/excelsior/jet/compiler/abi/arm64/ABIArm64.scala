@@ -8,6 +8,8 @@
 
 package com.huawei.excelsior.jet.compiler.abi.arm64
 
+import com.huawei.excelsior.common.CodeHelpers.notImplemented
+
 import com.huawei.excelsior.jet.assembler.Location
 import com.huawei.excelsior.jet.assembler.Location.AnyReg
 import com.huawei.excelsior.jet.assembler.arm64.IRegister.X.*
@@ -28,6 +30,7 @@ class ABIArm64 private[arm64](_methodType: MethodType) extends ABI[IRegister.X, 
 
   override protected lazy val resultRegsImpl: Array[AnyReg] = RetType(methodType) match {
     case RetType.I | RetType.L => Array(X0)
+    case RetType.H => notImplemented("Float16 return in native ARM64 backend")
     case RetType.F | RetType.D => Array(D0)
     case RetType.Void => Array.empty[AnyReg]
   }

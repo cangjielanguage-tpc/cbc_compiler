@@ -38,6 +38,9 @@ trait MachineDescriptionCBC extends MachineDescription { self: Universe with Bac
   }
 
   override def temporaryResourcesForTransfer(to: ResourceKind, from: ResourceKind, source: Node): Option[ResourceSet] = (to, from, source) match {
+    case (FRegResourceKind, ImmResourceKind, _: HConst) =>
+      None
+
     case (_: RegResourceKind, ImmResourceKind, _: ConstString | _: AJString) =>
       None
 

@@ -1376,7 +1376,7 @@ trait CHIRParser
       case e: CHIR.InstanceOf =>
         val tpe = resolver.typeSig(e.testType)
         val obj = state(e.obj)
-        val (refTpe, refObj) = if (tpe.isTraceableReference) {
+        val (refTpe, refObj) = if (tpe.isTraceableReference && !tpe.isInstanceOf[SignatureType.OptionLikeEnum]) {
           (tpe, obj)
         } else {
           val ValueSig(objTpe) = e.obj
@@ -1576,6 +1576,17 @@ trait CHIRParser
           case (Int32 | UInt32 | _: PrimitiveBasedEnum, Int32 | UInt32 | _: PrimitiveBasedEnum) =>
             value
 
+          case (from: OptionLikeEnum, to: OptionLikeEnum)
+              if e.isInstanceOf[CHIR.StaticCast] && !from.isVariableSizeType && !to.isVariableSizeType =>
+            if (from == to) {
+              value
+            } else {
+              val boxed = createBox(from, value)
+              val typeInfo = loadTypeInfo(to)
+              if (to.isNullableOption) Unbox(to)(typeInfo, boxed)
+              else UnboxRec(to)(typeInfo, boxed)
+            }
+
           case (from @ OptionLikeEnum(_, _, x), to @ Tuple(Seq(Boolean, y))) =>
             // Have to account for erasure in case of recursive option types
             assert(x == y || (x == ReferenceType.cangjieStdCoreObject.sigType && y.isTraceableReference), s"cast from $from to $to")
@@ -1682,6 +1693,7 @@ trait CHIRParser
                   case _: CHIR.NullLiteral => IntegralConst(ValueType.fromSig(field.getType))(0)
                   case v: CHIR.IntLiteral => IntegralConst(ValueType.fromSig(field.getType))(v.value)
                   case v: CHIR.FloatLiteral => field.getType match {
+                    case SignatureType.Float16 => HConst(v.value)
                     case SignatureType.Float32 => FConst(v.value.toFloat)
                     case SignatureType.Float64 => DConst(v.value)
                     case t => notImplemented(s"unexpected static field type ${t.toJETSignature} of field $field")
@@ -2276,7 +2288,7 @@ trait CHIRParser
           case v: CHIR.NullLiteral => if (resolver.typeSig(e.resultTpe).isTraceableReference) Null() else intConst(0, v)
           case v: CHIR.IntLiteral => intConst(v.value, v)
           case v: CHIR.FloatLiteral => v.tpe match {
-            case CHIR.BuiltinType.Float16 => IConst(java.lang.Float.floatToRawIntBits(v.value.toFloat)) // TODO: proper Float16
+            case CHIR.BuiltinType.Float16 => HConst(v.value)
             case CHIR.BuiltinType.Float32 => FConst(v.value.toFloat)
             case CHIR.BuiltinType.Float64 => DConst(v.value)
           }
