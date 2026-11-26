@@ -8,7 +8,8 @@ subsequent fixes. It is not a new test result or a complete suite result.
 Ten completed batches contain 200 cases: 178 passed and 22 failed, across
 14 source programs. All 200 compiled successfully. Batch 11 is incomplete;
 its four completed passes are not included in these totals. Testing was
-stopped at the user's request. No tests were run during the fix work below.
+stopped at the user's request. The initial fixes below were not runtime-tested;
+later dated sections record subsequent verification.
 
 Logs and the exact failed IDs are preserved locally at:
 
@@ -118,6 +119,53 @@ and `std.sync` libraries being loaded, including native core. Adding
 Logs are under `/tmp/opencode/atexit-design/core-env-tests/`, with the summary
 in `/tmp/opencode/atexit-design/core-env-tests.log` and loader tracing in
 `/tmp/opencode/atexit-design/loader-debug.log`.
+
+## Generic optional atomic references (2026-11-26)
+
+Compiling the full native dependency closure as CBC inputs initially failed in
+`std.sync.AtomicOptionReference<T>.init(Option<T>)`: `AtomicOps.irType` passed
+generic `Option<T>` to `ValueType.fromSig`, which deliberately rejects that
+signature. Generic field loads and option construction already represent these
+values as traced references. Atomic load/store/CAS/swap now use the same IR
+representation, retaining the original field signature for runtime layout.
+The CBC assembler also tracks generic atomic payloads and optional payloads
+as references rather than primitive registers.
+
+`AtomicOptionReferenceSuite` reproduces the original assertion without requiring
+all of `std.sync` to compile. `AtomicReferenceLivenessSuite` separately exercises
+strict liveness checking for all four operations. The generic cases failed
+before the fix and pass afterward; concrete reference and integer cases are
+also covered. Verification passed for 16 focused assembler/liveness tests and
+all 2,844 optimizer tests (two additional tests ignored), followed by `sbt jar`.
+
+After installing that jar, Fibonacci and spawn hello-world were retried in
+default and O2 modes, sequentially (`-j 1`), with this `CBC_STD_PKGS` override:
+
+```text
+std.core:std.math:std.collection:std.io:std.convert:std.binary:std.time:std.fs:std.sync:std.sort:std.env
+```
+
+All four builds now stop in `std.sync.TimerScheduler.add` at
+`Intrinsic(mutexLock)` (`timer.cj:399`), reaching the explicit unsupported
+synchronization branch in `CHIRParser.scala`. Mutex, monitor, waitqueue and
+multicondition lowering remains unimplemented. This is the next observed
+blocker, not proof that the remainder of those packages compiles. No fallback
+bodies or mixed-standard-library workaround was introduced. The repository's
+default CBC input list remains `std.core:std.env`.
+
+The existing `cj::atomic` and `cj::atomic-spawn` programs also compiled in both
+modes, but all four executions aborted before main with `cannot install CBC
+primitive metadata for Int8: native type metadata is already registered`.
+These AOT-standard-library runs do not exercise the generic CBC library body
+and are not runtime verification of the optional-reference fix.
+
+Local evidence under `/tmp/opencode/atexit-design/`:
+
+- `atomic-ir-before.log`, `atomic-assembler-before.log`,
+  `atomic-regression-after.log`: focused regression results.
+- `atomic-validation-build.log`: optimizer tests and jar build.
+- `atomic-fixed-transitive-tests.log`: serial Fibonacci/spawn results.
+- `atomic-fixed-cj-tests.log`: existing atomic test results.
 
 ## Mixed interface ABI
 

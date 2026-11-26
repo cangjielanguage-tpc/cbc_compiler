@@ -842,12 +842,12 @@ trait CangjieNodes { self: Universe =>
 
   object AtomicOps {
 
-    private def irType(field: CangjieFieldReference): Type = {
-      if (field.fieldType.isTypeVariable) {
-        TRefType
-      } else {
-        ValueType(field.fieldType)
-      }
+    private def irType(field: CangjieFieldReference): Type = field.fieldType match {
+      // Generic options have the same traced representation as generic field loads.
+      // Keep the original field signature for runtime layout and instantiation.
+      case t: SignatureType.OptionLikeEnum if t.someType.isTypeVariable => TRefType
+      case t if t.isTypeVariable => TRefType
+      case t                     => ValueType(t)
     }
 
     sealed trait AtomicNode extends SpinalMemoryNode {

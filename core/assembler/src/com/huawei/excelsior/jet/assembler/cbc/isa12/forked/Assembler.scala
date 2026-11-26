@@ -244,9 +244,17 @@ trait ForkedAssembler {
   def sulsli(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.ULsl, w, d, l, imm)
   def sulsri(d: IR, l: IR, imm: Long, w: AsmWidth): Unit = genSaturatingBinaryImm(Saturating.Lsr, w, d, l, imm)
 
+  private def atomicFieldIsReference(f: FieldReference): Boolean = f.asInstanceOf[SingleFieldReference].fieldType match {
+    // AtomicReference<T> and AtomicOptionReference<T> constrain T to Object.
+    // Their generic signatures still use traced registers, even before instantiation.
+    case _: CbcFileFormat.TypeVariable                                           => true
+    case CbcFileFormat.OptionSignature(_, Seq(_: CbcFileFormat.TypeVariable), _, _) => true
+    case t                                                                       => t.isReference
+  }
+
   def atomicLoad(dst: IR, obj: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
-    if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
+    if (atomicFieldIsReference(f)) {
       analyzer.ref(dst)
     } else {
       analyzer.prim(dst)
@@ -259,7 +267,7 @@ trait ForkedAssembler {
 
   def atomicStore(src: IR, obj: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
-    if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
+    if (atomicFieldIsReference(f)) {
       analyzer.useRef(src)
     } else {
       analyzer.usePrim(src)
@@ -273,7 +281,7 @@ trait ForkedAssembler {
   def cas(dst: IR, obj: IR, src1: IR, src2: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
     analyzer.prim(dst)
-    if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
+    if (atomicFieldIsReference(f)) {
       analyzer.useRef(src1)
       analyzer.useRef(src2)
     } else {
@@ -296,7 +304,7 @@ trait ForkedAssembler {
 
   private def genAtomicOp(o: Opcode, dst: IR, obj: IR, src: IR, f: FieldReference): Unit = instr {
     analyzer.useRef(obj)
-    if (f.asInstanceOf[SingleFieldReference].fieldType.isReference) {
+    if (atomicFieldIsReference(f)) {
       analyzer.ref(dst)
       analyzer.useRef(src)
     } else {
