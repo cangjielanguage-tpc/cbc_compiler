@@ -1467,6 +1467,9 @@ trait CHIRParser
         }
 
         val n = (from, to) match {
+          case _ if from == to =>
+            value
+
           case (from: (Reference | InstantiatedReference | TypeVariable), to: (Reference | InstantiatedReference)) =>
             // TODO: remove this case when numeric cast will handle only *numeric* types
             CheckCast(to, trusted = true)(value)
