@@ -283,8 +283,10 @@ object ReferenceTypes {
     lazy val scalaRefType = ClassType(typeProvider.getScalaRefType)
     lazy val cangjieRefType = ClassType(typeProvider.getCangjieRefType)
 
-    lazy val cangjieStdCoreObject = ClassType(SignatureType.Reference("std.core:Object", jbc = false))
-    lazy val cangjieStdCoreStackTraceData = ClassType(SignatureType.Reference("std.core:StackTraceData", jbc = false))
+    lazy val cangjieStdCoreObjectSig = SignatureType.Reference("std.core:Object", jbc = false)
+    lazy val cangjieStdCoreObject = ClassType(cangjieStdCoreObjectSig)
+    lazy val cangjieStdCoreStackTraceDataSig = SignatureType.Reference("std.core:StackTraceData", jbc = false)
+    lazy val cangjieStdCoreStackTraceData = ClassType(cangjieStdCoreStackTraceDataSig)
 
     object LanguageRoot {
       def unapply(t: ClassType): Option[Language] = {

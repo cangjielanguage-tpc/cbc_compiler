@@ -146,7 +146,7 @@ object ABI {
         // Split mut record param into pair (AddrUInt, RefType)
         assert(desc.receiver.isEmpty)
         specialParamMap(SMutRecord) = SignatureType.Address
-        specialParamMap(SMutObject) = ReferenceType.cangjieStdCoreObject.sigType
+        specialParamMap(SMutObject) = ReferenceType.cangjieStdCoreObjectSig
 
       } else {
         // Split mut record param into pair (AddrUInt, RefType)

@@ -209,7 +209,7 @@ class CHIRResolver(val pkg: CHIR.Package, private val env: Environment) {
             val baseSig = base match {
               case _: CHIR.RefType =>
                 // Erase immediately to avoid infinite recursion.
-                ReferenceType.cangjieStdCoreObject.sigType
+                ReferenceType.cangjieStdCoreObjectSig
               case _ =>
                 typeSig(base).instantiate(params, Seq.empty)
             }
