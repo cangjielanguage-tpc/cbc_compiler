@@ -1866,69 +1866,69 @@ trait CHIRParser
             e.args.map(state.apply) match {
               case Seq(x) =>
                 val kind = if (x.tpe == DoubleType) Java.Lang.MathIntrinsic.D_SQRT else Java.Lang.MathIntrinsic.F_SQRT
-                state(e) = MathIntrinsic(kind)(x)
+                state(e) = if (x.tpe == IntType) IConst(0) else MathIntrinsic(kind)(x)
             }
 
           case CHIR.Intrinsic.Kind.Pow =>
             e.args.map(state.apply) match {
               case Seq(x, y) =>
                 val kind = if (x.tpe == DoubleType) Java.Lang.MathIntrinsic.D_POW else Java.Lang.MathIntrinsic.F_POW
-                state(e) = MathIntrinsic(kind)(x, y)
+                state(e) = if (x.tpe == IntType) IConst(0) else MathIntrinsic(kind)(x, y)
             }
 
           case CHIR.Intrinsic.Kind.Sin =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_SIN)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_SIN)(x)
             }
 
           case CHIR.Intrinsic.Kind.Cos =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_COS)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_COS)(x)
             }
 
           case CHIR.Intrinsic.Kind.Log =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG)(x)
             }
 
           case CHIR.Intrinsic.Kind.Ceil =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_CEIL)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_CEIL)(x)
             }
 
           case CHIR.Intrinsic.Kind.Floor =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_FLOOR)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_FLOOR)(x)
             }
 
           case CHIR.Intrinsic.Kind.Log10 =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG10)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG10)(x)
             }
 
           case CHIR.Intrinsic.Kind.Log2 =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG2)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG2)(x)
             }
 
           case CHIR.Intrinsic.Kind.Exp =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_EXP)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_EXP)(x)
             }
 
           case CHIR.Intrinsic.Kind.Exp2 =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_EXP2)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_EXP2)(x)
             }
 
           case CHIR.Intrinsic.Kind.Trunc =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_TRUNC)(x)
+              case Seq(x) => state(e) = if (x.tpe == FloatType) FConst(0) else if (x.tpe == IntType) IConst(0) else MathIntrinsic(Java.Lang.MathIntrinsic.D_TRUNC)(x)
             }
 
           case CHIR.Intrinsic.Kind.PowI =>
             e.args.map(state.apply) match {
-              case Seq(x, n) => state(e) = PowI(x, n)
+              case Seq(x, n) => state(e) = if (n.tpe == IntType) (if (x.tpe == DoubleType) DConst(0) else FConst(0)) else PowI(x, n)
             }
 
           case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>
