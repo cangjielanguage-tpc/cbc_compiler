@@ -145,10 +145,10 @@ default and O2 modes, sequentially (`-j 1`), with this `CBC_STD_PKGS` override:
 std.core:std.math:std.collection:std.io:std.convert:std.binary:std.time:std.fs:std.sync:std.sort:std.env
 ```
 
-All four builds now stop in `std.sync.TimerScheduler.add` at
+At that point all four builds stopped in `std.sync.TimerScheduler.add` at
 `Intrinsic(mutexLock)` (`timer.cj:399`), reaching the explicit unsupported
 synchronization branch in `CHIRParser.scala`. Mutex, monitor, waitqueue and
-multicondition lowering remains unimplemented. This is the next observed
+multicondition lowering was still unimplemented. This was the next observed
 blocker, not proof that the remainder of those packages compiles. No fallback
 bodies or mixed-standard-library workaround was introduced. The repository's
 default CBC input list remains `std.core:std.env`.
@@ -166,6 +166,56 @@ Local evidence under `/tmp/opencode/atexit-design/`:
 - `atomic-validation-build.log`: optimizer tests and jar build.
 - `atomic-fixed-transitive-tests.log`: serial Fibonacci/spawn results.
 - `atomic-fixed-cj-tests.log`: existing atomic test results.
+
+## Synchronization runtime forwarders (2026-11-26)
+
+All 13 mutex, monitor, waitqueue and multicondition intrinsics now lower to
+managed `CJIntrinsic` runtime calls, following Future/thread lowering. The
+signatures were checked against the SDK's std.sync LLVM and runtime exports.
+Monitor initialization uses `CJ_MCC_WaitQueueForMonitorInit`, distinct from
+`CJ_MCC_WaitQueueInit`. Mutex locking uses the full `CJ_MCC_MutexLock`, not
+the slow-path entry that requires native inline fast-path code. Bool results
+are preserved and empty runtime Unit results use Void without hidden sret.
+The full mapping is in [future-thread-lowering.md](future-thread-lowering.md).
+
+Verification passed for seven focused Future/thread and sync tests, all 2,848
+optimizer tests (two additional tests ignored), and the jar build. After
+installing the jar, Fibonacci and spawn hello-world were retried in default
+and O2 modes with the same full `CBC_STD_PKGS` list above, sequentially with
+`-j 1`. All four now stop in:
+
+```text
+std.collection:TreeMapEntryView._CNac16TreeMapEntryViewIG_G0_E5valuepsHNNat6OptionIG0_E$withoutTI(EOstd.core:Option;TC1<TC1>)U
+```
+
+The assertion reports `arg#2` of the `TreeMapEntryView.key` getter's
+`InvokeSpecialTarget`: expected tag `VALUE` and type `Plain`, but received
+`Param[(LongType,1)]` with tag `VALUE` and type `LongType`. The stack reaches
+`CHIRParser.callMethod` and `InvokeTarget.instance`; the generic-call ABI
+mismatch is the next observed compiler blocker, not fixed in this change.
+
+The new `test/standalone/cj/sync-primitives/sync-primitives.cj` exercises Mutex,
+Monitor and MultiConditionMonitor operations, including notifications and
+nanosecond timed waits. Its source compiles in both modes (with expected
+monitor deprecation warnings), but both full-closure CBC builds hit the same
+TreeMapEntryView assertion. A separate pure AOT build/run in each mode
+confirmed its golden output (`false`, `false`, exit status zero). This checks
+the test's source semantics, not CBC runtime forwarding.
+
+No CBC execution succeeded in these retries. The runtime's hidden sync-object
+storage/pinning remains a separate unresolved issue: native std.sync uses
+168-byte `CJ_MCC_NewPinnedObject` allocations for Mutex, Monitor and WaitQueue
+in this SDK. The forwarders alone do not supply that allocation behavior.
+There are no fallback bodies or mixed-standard-library workarounds, and the
+default CBC input list remains `std.core:std.env`.
+
+Local evidence under `/tmp/opencode/atexit-design/`:
+
+- `std.sync.ll`, `std.sync.chirtxt`: SDK signatures and intrinsic operands.
+- `sync-forwarders-build.log`: focused tests, optimizer tests and jar build.
+- `sync-forwarders-tests.log`: serial Fibonacci/spawn build failures.
+- `sync-primitives-tests.log`: serial synchronization regression build failures.
+- `sync-primitives-aot/`: default/O2 pure AOT build logs and verified output.
 
 ## Mixed interface ABI
 

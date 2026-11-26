@@ -1064,6 +1064,61 @@ trait CangjieNodes { self: Universe =>
       intrinsic(CJIntrinsicType.FutureNotifyAll, MethodSignature(futureType)(SignatureType.Void))(future)
     }
 
+    // Signatures match std.sync's runtime calls. Empty Unit results use Void,
+    // as for Future, while initialization and wait/status results are real Bool values.
+    def mutexInit(mutexType: SignatureType)(mutex: Node): Node = {
+      intrinsic(CJIntrinsicType.MutexInit, MethodSignature(mutexType)(Boolean))(mutex)
+    }
+
+    def mutexLock(mutexType: SignatureType)(mutex: Node): Node = {
+      // The full entry point includes the fast path omitted by CBC lowering.
+      intrinsic(CJIntrinsicType.MutexLock, MethodSignature(mutexType)(SignatureType.Void))(mutex)
+    }
+
+    def mutexTryLock(mutexType: SignatureType)(mutex: Node): Node = {
+      intrinsic(CJIntrinsicType.MutexTryLock, MethodSignature(mutexType)(Boolean))(mutex)
+    }
+
+    def mutexCheckStatus(mutexType: SignatureType)(mutex: Node): Node = {
+      intrinsic(CJIntrinsicType.MutexCheckStatus, MethodSignature(mutexType)(Boolean))(mutex)
+    }
+
+    def mutexUnlock(mutexType: SignatureType)(mutex: Node): Node = {
+      intrinsic(CJIntrinsicType.MutexUnlock, MethodSignature(mutexType)(SignatureType.Void))(mutex)
+    }
+
+    def monitorInit(monitorType: SignatureType)(monitor: Node): Node = {
+      intrinsic(CJIntrinsicType.MonitorInit, MethodSignature(monitorType)(Boolean))(monitor)
+    }
+
+    def waitQueueInit(waitQueueType: SignatureType)(waitQueue: Node): Node = {
+      intrinsic(CJIntrinsicType.WaitQueueInit, MethodSignature(waitQueueType)(Boolean))(waitQueue)
+    }
+
+    def monitorWait(monitorType: SignatureType)(monitor: Node, timeout: Node): Node = {
+      intrinsic(CJIntrinsicType.MonitorWait, MethodSignature(monitorType, Int64)(Boolean))(monitor, timeout)
+    }
+
+    def monitorNotify(monitorType: SignatureType)(monitor: Node): Node = {
+      intrinsic(CJIntrinsicType.MonitorNotify, MethodSignature(monitorType)(SignatureType.Void))(monitor)
+    }
+
+    def monitorNotifyAll(monitorType: SignatureType)(monitor: Node): Node = {
+      intrinsic(CJIntrinsicType.MonitorNotifyAll, MethodSignature(monitorType)(SignatureType.Void))(monitor)
+    }
+
+    def multiConditionWait(monitorType: SignatureType, waitQueueType: SignatureType)(monitor: Node, waitQueue: Node, timeout: Node): Node = {
+      intrinsic(CJIntrinsicType.MultiConditionWait, MethodSignature(monitorType, waitQueueType, Int64)(Boolean))(monitor, waitQueue, timeout)
+    }
+
+    def multiConditionNotify(monitorType: SignatureType, waitQueueType: SignatureType)(monitor: Node, waitQueue: Node): Node = {
+      intrinsic(CJIntrinsicType.MultiConditionNotify, MethodSignature(monitorType, waitQueueType)(SignatureType.Void))(monitor, waitQueue)
+    }
+
+    def multiConditionNotifyAll(monitorType: SignatureType, waitQueueType: SignatureType)(monitor: Node, waitQueue: Node): Node = {
+      intrinsic(CJIntrinsicType.MultiConditionNotifyAll, MethodSignature(monitorType, waitQueueType)(SignatureType.Void))(monitor, waitQueue)
+    }
+
     def sleep(timeout: Node): Node = {
       intrinsic(CJIntrinsicType.Sleep, MethodSignature(Int64)(SignatureType.Void))(timeout)
     }
@@ -1110,6 +1165,19 @@ trait CangjieNodes { self: Universe =>
     case FutureIsComplete extends CJIntrinsicType("CJ_MCC_FutureIsComplete")
     case FutureWait extends CJIntrinsicType("CJ_MCC_FutureWait")
     case FutureNotifyAll extends CJIntrinsicType("CJ_MCC_FutureNotifyAll")
+    case MutexInit extends CJIntrinsicType("CJ_MCC_MutexInit")
+    case MutexLock extends CJIntrinsicType("CJ_MCC_MutexLock")
+    case MutexTryLock extends CJIntrinsicType("CJ_MCC_MutexTryLock")
+    case MutexCheckStatus extends CJIntrinsicType("CJ_MCC_MutexCheckStatus")
+    case MutexUnlock extends CJIntrinsicType("CJ_MCC_MutexUnlock")
+    case MonitorInit extends CJIntrinsicType("CJ_MCC_WaitQueueForMonitorInit")
+    case WaitQueueInit extends CJIntrinsicType("CJ_MCC_WaitQueueInit")
+    case MonitorWait extends CJIntrinsicType("CJ_MCC_MonitorWait")
+    case MonitorNotify extends CJIntrinsicType("CJ_MCC_MonitorNotify")
+    case MonitorNotifyAll extends CJIntrinsicType("CJ_MCC_MonitorNotifyAll")
+    case MultiConditionWait extends CJIntrinsicType("CJ_MCC_MultiConditionMonitorWait")
+    case MultiConditionNotify extends CJIntrinsicType("CJ_MCC_MultiConditionMonitorNotify")
+    case MultiConditionNotifyAll extends CJIntrinsicType("CJ_MCC_MultiConditionMonitorNotifyAll")
     case Sleep extends CJIntrinsicType("CJ_MRT_Sleep")
     case SetThreadObject extends CJIntrinsicType("CJ_MCC_SetCurrentCJThreadObject")
     case IsThreadObjectInited extends CJIntrinsicType("CJ_MCC_IsThreadObjectInited")

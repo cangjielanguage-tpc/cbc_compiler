@@ -2011,20 +2011,73 @@ trait CHIRParser
               loadTypeInfo(SignatureType.CangjieArray(SignatureType.UInt8)))
             state(e) = sret
 
-          case CHIR.Intrinsic.Kind.MutexInit |
-               CHIR.Intrinsic.Kind.CjMutexLock |
-               CHIR.Intrinsic.Kind.MutexTryLock |
-               CHIR.Intrinsic.Kind.MutexCheckStatus |
-               CHIR.Intrinsic.Kind.MutexUnlock |
-               CHIR.Intrinsic.Kind.MonitorInit |
-               CHIR.Intrinsic.Kind.WaitQueueInit |
-               CHIR.Intrinsic.Kind.MoitiorWait |
-               CHIR.Intrinsic.Kind.MoitiorNotify |
-               CHIR.Intrinsic.Kind.MoitiorNotifyAll |
-               CHIR.Intrinsic.Kind.MultiConditionWait |
-               CHIR.Intrinsic.Kind.MultiConditionNotify |
-               CHIR.Intrinsic.Kind.MultiConditionNotifyAll =>
-            notImplemented("synchronization primitives (mutex, monitor, waitqueue, multicondition)")
+          case CHIR.Intrinsic.Kind.MutexInit =>
+            val Seq(mutex) = e.args
+            val ValueSig(mutexType) = mutex
+            state(e) = CJIntrinsic.mutexInit(mutexType)(state(mutex))
+
+          case CHIR.Intrinsic.Kind.CjMutexLock =>
+            val Seq(mutex) = e.args
+            val ValueSig(mutexType) = mutex
+            state(e) = CJIntrinsic.mutexLock(mutexType)(state(mutex))
+
+          case CHIR.Intrinsic.Kind.MutexTryLock =>
+            val Seq(mutex) = e.args
+            val ValueSig(mutexType) = mutex
+            state(e) = CJIntrinsic.mutexTryLock(mutexType)(state(mutex))
+
+          case CHIR.Intrinsic.Kind.MutexCheckStatus =>
+            val Seq(mutex) = e.args
+            val ValueSig(mutexType) = mutex
+            state(e) = CJIntrinsic.mutexCheckStatus(mutexType)(state(mutex))
+
+          case CHIR.Intrinsic.Kind.MutexUnlock =>
+            val Seq(mutex) = e.args
+            val ValueSig(mutexType) = mutex
+            state(e) = CJIntrinsic.mutexUnlock(mutexType)(state(mutex))
+
+          case CHIR.Intrinsic.Kind.MonitorInit =>
+            val Seq(monitor) = e.args
+            val ValueSig(monitorType) = monitor
+            state(e) = CJIntrinsic.monitorInit(monitorType)(state(monitor))
+
+          case CHIR.Intrinsic.Kind.WaitQueueInit =>
+            val Seq(waitQueue) = e.args
+            val ValueSig(waitQueueType) = waitQueue
+            state(e) = CJIntrinsic.waitQueueInit(waitQueueType)(state(waitQueue))
+
+          case CHIR.Intrinsic.Kind.MoitiorWait =>
+            val Seq(monitor, timeout) = e.args
+            val ValueSig(monitorType) = monitor
+            state(e) = CJIntrinsic.monitorWait(monitorType)(state(monitor), state(timeout))
+
+          case CHIR.Intrinsic.Kind.MoitiorNotify =>
+            val Seq(monitor) = e.args
+            val ValueSig(monitorType) = monitor
+            state(e) = CJIntrinsic.monitorNotify(monitorType)(state(monitor))
+
+          case CHIR.Intrinsic.Kind.MoitiorNotifyAll =>
+            val Seq(monitor) = e.args
+            val ValueSig(monitorType) = monitor
+            state(e) = CJIntrinsic.monitorNotifyAll(monitorType)(state(monitor))
+
+          case CHIR.Intrinsic.Kind.MultiConditionWait =>
+            val Seq(monitor, waitQueue, timeout) = e.args
+            val ValueSig(monitorType) = monitor
+            val ValueSig(waitQueueType) = waitQueue
+            state(e) = CJIntrinsic.multiConditionWait(monitorType, waitQueueType)(state(monitor), state(waitQueue), state(timeout))
+
+          case CHIR.Intrinsic.Kind.MultiConditionNotify =>
+            val Seq(monitor, waitQueue) = e.args
+            val ValueSig(monitorType) = monitor
+            val ValueSig(waitQueueType) = waitQueue
+            state(e) = CJIntrinsic.multiConditionNotify(monitorType, waitQueueType)(state(monitor), state(waitQueue))
+
+          case CHIR.Intrinsic.Kind.MultiConditionNotifyAll =>
+            val Seq(monitor, waitQueue) = e.args
+            val ValueSig(monitorType) = monitor
+            val ValueSig(waitQueueType) = waitQueue
+            state(e) = CJIntrinsic.multiConditionNotifyAll(monitorType, waitQueueType)(state(monitor), state(waitQueue))
 
           case CHIR.Intrinsic.Kind.FuncRefeq =>
             notImplemented("function reference identity comparison")
