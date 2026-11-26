@@ -1070,7 +1070,17 @@ trait CHIRParser
         val chirPath = e.path
 
         host match {
-          case _: SignatureType.ZeroSizedEnum | _: SignatureType.PrimitiveBasedEnum => shouldNotReachHere(host)
+          case _: SignatureType.PrimitiveBasedEnum => shouldNotReachHere(host)
+
+          // A zero-sized enum has no tag field in memory, but cjc still emits `Field(e, 0)`
+          // (the tag read) in e.g. pattern matching, and it survives at O0 even when the
+          // value is never used afterwards. The tag of a zero-sized enum is always 0.
+          case _: SignatureType.ZeroSizedEnum =>
+            val res = chirPath match {
+              case Seq(0) => IConst(0)
+            }
+            state(e) = res
+
           case host: SignatureType.OptionLikeEnum if host.isNullableOption =>
             val res = chirPath match {
               case Seq(0) =>
@@ -1619,10 +1629,13 @@ trait CHIRParser
             // native ABI; its arg/result types are governed by ValueType.fromSig(enumType).
             EnumCast(SignatureType.PackedTuple(to.params))(value)
 
+          case (from: ZeroSizedEnum, to: Tuple) =>
+            LConst(0)
+
           case (from: ZeroSizedEnum, UInt32) =>
             IConst(0)
 
-          case (UInt32, to: ZeroSizedEnum) =>
+          case (UInt32 | _: Tuple, to: ZeroSizedEnum) =>
             self.Void()
 
           case (_: CPointer, _: VArray) =>
@@ -2440,7 +2453,7 @@ trait CHIRParser
             import SignatureType.*
             (resolver.typeSig(resTpe): @unchecked) match {
               case _: ZeroSizedEnum =>
-              // nothing to do
+                state(e) = self.Void()
 
               case _: PrimitiveBasedEnum =>
                 state(e) = e.elementValues.map(state.apply) match {
@@ -2634,13 +2647,14 @@ trait CHIRParser
 
       case e: CHIR.VArrayBuilder =>
         val arrayType = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.VArray]
-        val mem = StackAlloc.Local(arrayType)
+        val mem: Node = if (arrayType.isZST) Void() else StackAlloc.Local(arrayType)
         val initializer = state(e.initializer)
         initializer match {
           case _: AnyNull =>
             if (!arrayType.elemType.isZST) {
               val value = state(e.initValue)
-              VArrayFill(arrayType)(maybeDerivedPtrBase(mem), mem, maybeDerivedPtrBase(value), value)
+              val valueRef = if (arrayType.elemType.isPrimitive) DerivedPtr.Local() else maybeDerivedPtrBase(value)
+              VArrayFill(arrayType)(maybeDerivedPtrBase(mem), mem, valueRef, value)
             }
 
           case _ =>
@@ -2752,7 +2766,8 @@ trait CHIRParser
           assert(receiverType.get.isVariableSizeType)
           UnboxLea(receiverType.get)(rcv)
         } else {
-          rcv
+          // Need any dummy address here to simulate ZST record
+          if (receiverType.get.isZST) LConst(0) else rcv
         }
       }
 

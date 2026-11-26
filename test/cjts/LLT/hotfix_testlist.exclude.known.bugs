@@ -213,11 +213,6 @@ compiler/Sema/if-let-expr/enhancedcondition/or_left_exhaustive.cj
 compiler/CodegenCJNative/demangle/decl/exception_throw2.cj
 compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
 
-# bug 84 (ZeroSizedEnum in match expression)
-compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_02.cj
-compiler/CodegenCJNative/enum/02_EXHAUSTIVE_ZERO_SIZE/main_03.cj
-compiler/CodegenCJNative/LegacyTests/enum_nest.cj
-
 # bug 92 (Support extends of AOT types)
 compiler/CHIR/CHIR2HLIR/extend/extend_primitive_overload_operator.cj
 compiler/CHIR/CHIR2HLIR/generic/call31.cj
@@ -294,11 +289,6 @@ API/std/libast/tokens/toTokens/test_primitive_totokens_001.cj
 compiler/CodegenCJNative/generic/generic_enum_in_class.cj
 compiler/Sema/enum/enum36.cj
 compiler/Sema/enum/enum_interface_box_01.cj
-
-# bug 165 (java.lang.NullPointerException: Cannot invoke "com.huawei.excelsior.jet.compiler.types.ReferenceTypes$ReferenceType.isFinal()" because "root" is null)
-API/std/unittest/mock/compiler/ensurePreparedToMock/onlyTestMode.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/properWritingHandlerDecls.cj
-API/std/unittest/mock/compiler/ensurePreparedToMock/topLevelFunctions.cj
 
 # bug 170 (crash in MapleRuntime::IdleBarrier::ReadStruct)
 API/std/collection/test_Operation.cj
@@ -484,11 +474,6 @@ compiler/CHIR/CHIR2HLIR/class_and_interface/class_and_interface_01.cj
 compiler/CHIR/CHIR2HLIR/package/global_variable_init/main.cj
 compiler/Modules/Package/global_variable_init_bugfix/main.cj
 
-# bug 244 (unicode in file names crashes cbc-compiler)
-compiler/Lexer/Unicode/macro.cj
-compiler/Lexer/Unicode/NFC/package_name_good.cj
-compiler/Lexer/Unicode/package.cj
-
 # bug 245 (silent incorrect exit code (option of function pointer of enum))
 compiler/CHIR/AST2CHIR/BaseUseCase/member_access/member_access_41.cj
 compiler/CHIR/CHIR2HLIR/package/finalizer/main.cj
@@ -503,14 +488,8 @@ compiler/Sema/enum/enum40_indirect_box_after_instantiation.cj
 compiler/Sema/nonExhaustiveEnum/binaryCompat/change_lib.cj
 compiler/Sema/record/static_init/generic_struct_static_init_01/main.cj
 
-# bug 246 (assertion failed in `asClassType`)
-compiler/CHIR/UG/OpenGeneric/devirt.cj
-
 # bug 248 (`match(C(None))` should unpack into `None`, not `Some(None)`)
 API/std/unittest/powerAssert/nodeTypes/matchExpr.cj
-
-# bug 250 (fuzzer test: `arg#0 of DerivedPtrProxy is expected to have tag VALUE & type LongType`)
-compiler/CHIR/ComplicatedCodeBugfix/Bugfix31.cj
 
 # bug 251 (SIGSEGV in Execution::TypeArg)
 API/std/deriving/shrink_test.cj
@@ -519,17 +498,9 @@ API/std/deriving/shrink_test.cj
 compiler/CodegenCJNative/reflect/reflect_09.cj
 compiler/Sema/Extend/extend_interface_static1.cj
 
-# bug 266 (extend with interface that has static function -- NoSuchElementException: None.get)
-compiler/Sema/Extend/extend_interface_static2.cj
-compiler/Sema/generics/generic_static_field_prop/generic_static_prop06.cj
-
 # bug 267 (const func receiver is (unexpectedly) NULL)
 compiler/FFI/CFFI/cfunc/conflict/conflict_9.cj
 compiler/Sema/const_evaluation/ok_class_variables.cj
-
-# bug 268 (should not reach here (extra information: symType for TypeVariable))
-compiler/CHIR/CHIR2HLIR/matchPattern/enum_exhaustive_03.cj
-compiler/CodegenCJNative/enum/07_EXHAUSTIVE_OTHER/main_07.cj
 
 # bug 269 (foreign function: Called unresolved AOT method)
 API/std/time/datetime/test_local_time.cj
