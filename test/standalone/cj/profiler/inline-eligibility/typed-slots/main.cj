@@ -54,8 +54,18 @@ func checkTypedSlots(seed: Int64): Int64 {
         println("typedSlotBranch failed")
         return 1
     }
+    
+     if (typedSlotBranch(seed, selector) != expectedBranch) {
+        println("typedSlotBranch failed")
+        return 1
+    }
 
     let expectedCopy = if (rounds == 1) { 5 * seed + 14 } else { 8 * seed + 33 }
+    if (typedSlotLoopCaller(seed, rounds) != expectedCopy) {
+        println("typedSlotLoopCaller failed")
+        return 1
+    }
+
     if (typedSlotLoopCaller(seed, rounds) != expectedCopy) {
         println("typedSlotLoopCaller failed")
         return 1

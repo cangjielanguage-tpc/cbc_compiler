@@ -2,6 +2,8 @@ import std.time.*
 
 const calls: Int64 = 53000000
 
+// on stack replacement
+
 @OverflowWrapping
 func mix(x: Int64, n: Int64): Int64 {
     var a = x

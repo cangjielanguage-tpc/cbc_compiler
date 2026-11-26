@@ -37,7 +37,7 @@ func literalValueCaller(x: Int64): Int64 {
 }
 
 @OverflowWrapping
-func rejectedLiteralBranchDelta(x0: Int64, longPath: Bool): Int64 {
+func allowedLiteralBranchDelta(x0: Int64, longPath: Bool): Int64 {
     var x = x0
     if (longPath) {
         // Keep the arithmetic unrolled so the branch skips more than 2047 runtime CBC bytes.
@@ -86,8 +86,14 @@ func rejectedLiteralBranchDelta(x0: Int64, longPath: Bool): Int64 {
 }
 
 @OverflowWrapping
+func literalBranchDeltaCaller(x: Int64, longPath: Bool): Int64 {
+    return allowedLiteralBranchDelta(x, longPath) ^ 65537
+}
+
+@OverflowWrapping
 main(): Int64 {
-    if (rejectedLiteralBranchDelta(0, true) != 0) {
+    let longResult = allowedLiteralBranchDelta(1, true)
+    if (longResult == 1) {
         return 1
     }
 
@@ -99,9 +105,14 @@ main(): Int64 {
         if (allowedLiteralLoad(i) != i + 8 || rejectedInstruction(i) != i + 8) {
             return 1
         }
-        if (rejectedLiteralBranchDelta(i, false) != i) {
+        if (literalBranchDeltaCaller(i, false) != (i ^ 65537)) {
             return 1
         }
+    }
+
+    if (literalBranchDeltaCaller(1, true) != (longResult ^ 65537) ||
+        literalBranchDeltaCaller(1, false) != (1 ^ 65537)) {
+        return 1
     }
 
     println("OK")
