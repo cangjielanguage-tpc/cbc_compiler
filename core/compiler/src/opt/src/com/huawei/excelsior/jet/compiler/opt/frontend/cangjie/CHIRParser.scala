@@ -2769,6 +2769,18 @@ trait CHIRParser
         (_args.headOption, _paramTypes.headOption, _args.tail, _paramTypes.tail)
       }
 
+      lazy val nonMutReceiver = receiver.map {
+        case rcv: Param if rootMethod.hasMutRecordParameter && rootMethod.getMutRecordArgIdx == rcv.num =>
+          val rcvType = receiverType.get
+          val field = createNoneReferenceNode(SignatureType.Tuple(Seq(rcvType)), rcvType)
+          if (rcvType.isVariableSizeType) {
+            LoadFieldSeq(maybeDerivedPtrBase(rcv), rcv, field, loadTypeInfo(rcvType))
+          } else {
+            LoadFieldSeq(maybeDerivedPtrBase(rcv), rcv, field)
+          }
+        case rcv => rcv
+      }
+
       lazy val mutReceiver = receiver.map { rcv =>
         if (rcv.tpe.isTraceableRefType) {
           assert(receiverType.get.isVariableSizeType)
@@ -2848,13 +2860,13 @@ trait CHIRParser
           }
 
           Seq(abiRetVal)
-        case Receiver => receiver.map(adjustArg(_, receiverType.get, target.methodType.parameterType(target.methodType.getReceiverArgIdx))) ensuring (_.nonEmpty)
+        case Receiver => nonMutReceiver.map(adjustArg(_, receiverType.get, target.methodType.parameterType(target.methodType.getReceiverArgIdx))) ensuring (_.nonEmpty)
         case SMutRecord => Seq(mutReceiver.get)
         case SMutObject => Seq(DerivedPtr.Proxy(mutReceiver.get))
         case OuterTypeInfo =>
           val t = outerTypeInfo.get
           if (t.isCangjieClosure) {
-            Seq(ThisTypeInfoBy(receiver.get))
+            Seq(ThisTypeInfoBy(nonMutReceiver.get))
           } else {
             Seq(loadTypeInfo(t))
           }
