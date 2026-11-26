@@ -1644,6 +1644,10 @@ trait CHIRParser
           case (_: CPointer, _: VArray) =>
             ReinterpretCast(fromTpe, toTpe)(value)
 
+          case (from: Tuple, to: Tuple) =>
+            assert(from.params.size == to.params.size, s"$from -> $to")
+            ReinterpretCast(fromTpe, toTpe)(value)
+
           case _ => notImplemented(s"cast from ${from.toJETSignature} to ${to.toJETSignature}")
         }
 
