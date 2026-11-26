@@ -86,8 +86,7 @@ private final class IntrinsicsPackage extends CHIR.Package {
       def hasVarArg: Boolean = false
     },
     kind = CHIR.Func.Kind.Default,
-    // Abstract declarations keep calls package-resolved; Imported would select AOT linkage.
-    attributes = Seq(CHIR.Attribute.Public, CHIR.Attribute.Abstract),
+    attributes = Seq(CHIR.Attribute.Public, CHIR.Attribute.Imported),
     declaringDef = None,
     id = id
   )

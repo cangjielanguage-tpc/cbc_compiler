@@ -10,12 +10,13 @@ package com.huawei.excelsior.jet.compiler.o2lib.projectsystem.cangjie
 import com.huawei.excelsior.common.Arch.CBC
 import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.common.{JetDirs, Language}
+import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat
 import com.huawei.excelsior.jet.common.XString
 import com.huawei.excelsior.jet.compiler.Env.*
 import com.huawei.excelsior.jet.compiler.cangjie.CangjieSymLevelMaker
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator
 import com.huawei.excelsior.jet.compiler.cbc.CBCFileGenerator.GenerationTarget.{EXE, STDLIB}
-import com.huawei.excelsior.jet.compiler.chir.{CHIRLoader, EngineHelperChir, IntrinsicsPackage, IntrinsicsCHIRLoader}
+import com.huawei.excelsior.jet.compiler.chir.{CHIRLoader, EngineHelperChir, IntrinsicsCHIRLoader, IntrinsicsPackage}
 import com.huawei.excelsior.jet.compiler.debug.dwarf.Dwarf
 import com.huawei.excelsior.jet.compiler.delayed.DelayedIntrinsicsUsageTracker
 import com.huawei.excelsior.jet.compiler.driver.CompilationMode.O2
@@ -40,6 +41,8 @@ import com.huawei.excelsior.jet.compiler.symlevel.impl.light.LightweightEnvironm
 import com.huawei.excelsior.jet.compiler.{Pass, Stage}
 import xscala.io.{DataInput, DataOutput, Path}
 import xscala.util.UInt
+import java.nio.file.{Files, Paths}
+import com.huawei.excelsior.jet.assembler.cbc.NewAsmParser
 
 import scala.collection.mutable
 import scala.util.Using
@@ -224,7 +227,8 @@ object CangjieMain {
     }
   }
 
-  private def parsingStage(p: CangjieProject): Unit = {
+  private def parsingStage(builder: CbcFileFormat.Builder, p: CangjieProject): Unit = {
+
     xiEnv.info.print("\\n------------------------  Parsing Stage  ---------------------------------------\\n\\n")
 
     if (workerMode) {
@@ -236,21 +240,26 @@ object CangjieMain {
 
     if (isStandalone) {
       val chirBuilder = new CHIRSymLevelBuilderImpl
-      if (env.enabled(GenCbcIntrinsics)) {
-        assert(p.files.isEmpty)
-        chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(IntrinsicsPackage.intrinsicsSourceName))
-        IntrinsicsCHIRLoader().load(chirBuilder)
-      } else {
-        loadEngineHelperChir(p, chirBuilder)
-        for ((f, i) <- p.files.zipWithIndex) {
-          printProgress(f, i, p.files.size)
-          val src = xfs.sys.createFileDescriptor(f)
-          if (src.getName.toString.endsWith(".chir")) {
-            chirBuilder.srcFD = src
-            CHIRLoader(src.getName.toString).load(chirBuilder)
-          } else {
-            shouldNotReachHere(s"Unknown input file format: ${src.getName}")
+      chirBuilder.srcFD = xfs.sys.createFileDescriptor(XString(IntrinsicsPackage.intrinsicsSourceName))
+      IntrinsicsCHIRLoader().load(chirBuilder)
+      loadEngineHelperChir(p, chirBuilder)
+      for ((f, i) <- p.files.zipWithIndex) {
+        printProgress(f, i, p.files.size)
+        val src = xfs.sys.createFileDescriptor(f)
+        val name = src.getName.toString
+        if (name.endsWith(".chir")) {
+          chirBuilder.srcFD = src
+          CHIRLoader(name).load(chirBuilder)
+        } else if (name.endsWith(".asm")) {
+          import scala.jdk.CollectionConverters.*
+          val path = Paths.get(name).normalize()
+          val lines = Files.readAllLines(path)
+          val successful = NewAsmParser(builder, lines.asScala.toSeq).parse()
+          if (!successful) {
+            shouldNotReachHere(s"Failed to parse: $name")
           }
+        } else {
+          shouldNotReachHere(s"Unknown input file format: ${src.getName}")
         }
       }
       chirBuilder.build()
@@ -491,32 +500,11 @@ object CangjieMain {
     }
   }
 
-  private def genAOTReflectionInfo(): Unit = {
-    if (targetArch != CBC) {
-      if (xiEnv.config.option("GenAOTReflectionInfo") && !workerMode && isDynamicBundle) {
-        val stdlibCbcPath = JetDirs.jetHome / "profile/develop/lib/lres/stdlib.cbc"
-        xiEnv.config.setEquation("stdlibCbcPath", stdlibCbcPath.toString)
-        val cbcPath = if (cangjieStdLibCompiling) {
-          stdlibCbcPath
-        } else {
-          val metaCbcPath = getMetaCbcPath
-          xiEnv.config.setEquation("metaCbcPath", metaCbcPath.toString)
-          metaCbcPath
-        }
-        if (isProgressShowable) {
-          xiEnv.info.print("%s", s"Generating AOT metadata file (stdlib = $cangjieStdLibCompiling): $cbcPath\n")
-        }
-
-        // Gather cold strings and other meta-info into .cbc file before AOT codeGenStage.
-        CBCFileGenerator.generate(cbcPath, generationTarget = if (cangjieStdLibCompiling) STDLIB else EXE)
-      }
-    }
-  }
-
   def main(p: CangjieProject): Unit = O2Env.stage(Stage.CangjieMain) {
     // Here new options can be used
+    val cbcBuilder = CbcFileFormat.newBuilder()
     initialize()
-    parsingStage(p)
+    parsingStage(cbcBuilder, p)
     setOutputName()
 
     checkMains()
@@ -532,7 +520,6 @@ object CangjieMain {
 
       writeOrReadFileDescriptors()
       middleStage()
-      genAOTReflectionInfo()
       codeGenStage()
     }
 
@@ -540,7 +527,7 @@ object CangjieMain {
 
     if (targetArch == CBC) {
       O2Env.stage(Stage.CBCFileGenerator) {
-        CBCFileGenerator.generate(getOutputCbcPath)
+        CBCFileGenerator.generate(cbcBuilder, getOutputCbcPath)
       }
       xPDB.closeAll()
     } else {

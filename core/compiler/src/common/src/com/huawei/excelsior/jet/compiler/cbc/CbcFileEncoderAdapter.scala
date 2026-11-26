@@ -37,7 +37,7 @@ import scala.annotation.targetName
 import scala.collection.mutable
 import scala.util.Using
 
-object CbcFileEncoderAdapter extends CBCFileGenerator {
+object CbcFileEncoderAdapter {
 
   implicit val typeProvider: TypeProvider = env.getTypeProvider
   private val allClasses = typeProvider.getAllClasses.toArray
@@ -54,8 +54,7 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
     "$P$" + aotName
   }
 
-  def generate(output: Path, generationTarget: GenerationTarget = CBC): Unit = {
-    val builder = CbcFileFormat.newBuilder()
+  def generate(builder: CbcFileFormat.Builder, output: Path, generationTarget: GenerationTarget = CBC): Unit = {
     for (t <- typeDefs.accumulate) {
       TypeWrapper(t).build(builder.newTypeBuilder())
       if (t.isCangjieExtend && t.getDeclaredSuperInterfaces.nonEmpty && t.isCHIRDef) {
@@ -87,15 +86,15 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
     builder.setBytecodeVersion(Assembler.BYTECODE_VERSION)
 
     val (cbcDeps, aotDeps) = allClasses.filter(_.isCangjiePackage).partition(_.isCHIRDef)
-    builder.setCbcDeps(cbcDeps.map(_.getName).mkString(":"))
+    builder.addCbcDeps(cbcDeps.map(_.getName).mkString(":"))
     if (env.defined(StrOption.AllCbcAOTDeps)) {
-      builder.setAotDeps(env.valueOf(StrOption.AllCbcAOTDeps))
+      builder.addAotDeps(env.valueOf(StrOption.AllCbcAOTDeps))
     } else {
-      builder.setAotDeps((Option(env.valueOfOrNull(StrOption.CbcAOTDeps)) ++ aotDeps.flatMap(packageToLibName)).mkString(":"))
+      builder.addAotDeps((Option(env.valueOfOrNull(StrOption.CbcAOTDeps)) ++ aotDeps.flatMap(packageToLibName)).mkString(":"))
     }
 
     val foreignLibs = Option(env.valueOfOrNull(StrOption.ForeignLibs)).toSeq.flatMap(_.split(":"))
-    builder.setForeignLibs((foreignLibs :+ "cangjie-std-core").distinct.mkString(":"))
+    builder.addForeignLibs((foreignLibs :+ "cangjie-std-core").distinct.mkString(":"))
 
     val result = builder.build()
     Using.resource(DataOutput.from(output)) { out =>

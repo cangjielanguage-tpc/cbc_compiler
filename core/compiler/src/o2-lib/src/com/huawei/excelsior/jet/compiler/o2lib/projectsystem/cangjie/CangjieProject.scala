@@ -22,7 +22,7 @@ class CangjieProject extends AbstractProject[Unit] {
   val files: ArrayBuffer[XString] = ArrayBuffer()
 
   override def appendFile(fileName:  XString): Unit = {
-    if (!fileName.toString.endsWith(".bc") && !fileName.toString.endsWith(".chir")) {
+    if (!fileName.toString.endsWith(".asm") && !fileName.toString.endsWith(".chir")) {
       error(WRONG_EXTENSION_ERROR, fileName)
     }
 

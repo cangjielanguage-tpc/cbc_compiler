@@ -9,7 +9,7 @@
 package com.huawei.excelsior.jet.compiler.cbc
 
 import com.huawei.excelsior.jet.assembler.Segment
-import com.huawei.excelsior.jet.assembler.cbc.{ExceptionTable, SourceCodeInfo}
+import com.huawei.excelsior.jet.assembler.cbc.{CbcFileFormat, ExceptionTable, SourceCodeInfo}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector
 import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessInfoCollector.LiveState
 import com.huawei.excelsior.jet.compiler.Env.isStandalone
@@ -28,24 +28,13 @@ object CBCFileGenerator {
 
   val coldStringsForWorkersOut = "cold_strings.pdb"
 
-  private lazy val instance: CBCFileGenerator = if (isStandalone) CbcFileEncoderAdapter else LegacyCBCFileGenerator
   private var _env: Environment = _
   def env = _env
   def env_=(newEnv: Environment): Unit = this._env = newEnv
 
-  def generate(output: Path, generationTarget: GenerationTarget = CBC): Unit = {
-    instance.generate(output, generationTarget)
+  def generate(builder: CbcFileFormat.Builder, output: Path, generationTarget: GenerationTarget = CBC): Unit = {
+    CbcFileEncoderAdapter.generate(builder, output, generationTarget)
   }
 
-  def sendCode = instance.sendCode
-}
-
-trait CBCFileGenerator {
-  def generate(output: Path, generationTarget: GenerationTarget = CBC): Unit
-  def sendCode(m: Method, seg: Segment, literalsOffset: Int,
-               xinfo: XTableGenerator.PackedXInfo, sourceCodeInfo: SourceCodeInfo, exTable: ExceptionTable, liveness: LivenessInfoCollector.AllStates,
-               tailParamCount: Int, untypedStackSlotsCount: Int,
-               usedNonVolIRegsMask: Int, usedNonVolFRegsMask: Int, maxCalleeStackArgsCount: Int,
-               mayHaveNativeCalls: Boolean,
-               stackAllocatedTypeSigs: Seq[SignatureType], variableSizeTypes: Seq[SignatureType]): Unit
+  def sendCode = CbcFileEncoderAdapter.sendCode
 }

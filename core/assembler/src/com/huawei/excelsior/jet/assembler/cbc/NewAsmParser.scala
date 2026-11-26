@@ -8,7 +8,6 @@
 
 package com.huawei.excelsior.jet.assembler.cbc
 
-import com.huawei.excelsior.common.CodeHelpers.shouldNotReachHere
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.*
 import com.huawei.excelsior.jet.assembler.cbc.CbcFileFormat.BuiltinSignature.Nothing
 import com.huawei.excelsior.jet.assembler.cbc.CbcTypeKind.INVALID
@@ -18,21 +17,21 @@ import com.huawei.excelsior.jet.assembler.cbc.StackSlot.*
 import com.huawei.excelsior.jet.assembler.cbc.Token.*
 import com.huawei.excelsior.jet.assembler.cbc.Token.KeywordKind.{Type, *}
 import com.huawei.excelsior.jet.assembler.cbc.Token.StructuralKind.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W32, W64}
-import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessAnalyzer
-import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.LoadAccessKind.*
 import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.StoreAccessKind.*
-import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.{Assembler, ForkedAssembler}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.Width.{W32, W64}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.Assembler.{LoadAccessKind, StoreAccessKind}
+import com.huawei.excelsior.jet.assembler.cbc.isa12.LivenessAnalyzer
+import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler
 import com.huawei.excelsior.jet.assembler.cbc.isa12.forked.Assembler.FloatMathOperaions
 import com.huawei.excelsior.jet.assembler.{AsmType, Label, Segment, Width}
 import com.huawei.excelsior.jet.codeemitter.BranchOp
+import com.huawei.excelsior.jet.util.ScalaCollections
 import xscala.io.*
 
 import scala.PartialFunction.condOpt
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
-import com.huawei.excelsior.jet.util.ScalaCollections
 
 /**
   * Assembler that utilizes per-line tokenization.
@@ -455,13 +454,13 @@ class NewAsmParser(builder: CbcFileFormat.Builder, val allLines: Seq[String]) {
         tb.setName(name)
         Push(TypeParser(tb))
       case Kw(Cbcdeps) =>
-        builder.setCbcDeps(stream.parseStr())
+        builder.addCbcDeps(stream.parseStr())
         Continue
       case Kw(Foreignlibs) =>
-        builder.setForeignLibs(stream.parseStr())
+        builder.addForeignLibs(stream.parseStr())
         Continue
       case Kw(Aotdeps) =>
-        builder.setAotDeps(stream.parseStr())
+        builder.addAotDeps(stream.parseStr())
         Continue
       case Kw(Maintype) =>
         builder.setMainTypeName(stream.parseStr())
