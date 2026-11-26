@@ -429,7 +429,7 @@ API/std/unittest/mock/compiler/ensurePreparedToMock/default_methods.cj
 compiler/CodegenCJNative/record/override_cpointer_wrapper_return_with_concrete_type.cj
 compiler/CHIR/UG/ClosureConversion/staticFunc04.cj
 
-# bug 222 (castIdentity: F16/F32/F64)
+# bug 285 (Collapsing distinct closure captures with the same name)
 compiler/CHIR/AST2CHIR/bugfix/bugfix4/test.cj
 
 # bug 180 (Stack trace printing issues)
