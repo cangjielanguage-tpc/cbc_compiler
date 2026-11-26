@@ -843,10 +843,10 @@ trait CangjieNodes { self: Universe =>
   object AtomicOps {
 
     private def irType(field: CangjieFieldReference): Type = {
-      if (field.fieldType.isTypeVariable) {
-        TRefType
-      } else {
-        ValueType(field.fieldType)
+      field.fieldType match {
+        case t: SignatureType.OptionLikeEnum if t.someType.isTypeVariable => TRefType
+        case t: SignatureType.TypeVariable => TRefType
+        case _ => ValueType(field.fieldType)
       }
     }
 
