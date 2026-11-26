@@ -16,12 +16,7 @@ API/std/runtime/test_thread_info.cj
 API/std/math/test_math_round_NaN.cj
 
 # tests folder creation/copying, failures seem to be configuration-specific
-compiler/Driver/options/output_file/test_dir.cj
-compiler/Driver/options/output_dir/test.cj
-compiler/Driver/options/output_dir/test_default_output.cj
-compiler/Driver/options/output_file/no_read_permission_dir.cj
 compiler/Driver/options/library_and_library_path/cjnative/library_priority.cj
-compiler/Driver/options/obfuscation/test_config/test_dir.cj
 compiler/Driver/options/obfuscation/test_layout/export_symbol_cmdline3.info
 compiler/Driver/options/obfuscation/test_layout/obf_line_number3.info
 compiler/Driver/temporary_files/TMPDIR_illegal_1.cj
@@ -54,9 +49,6 @@ compiler/Sema/join_meet/join_perf.cj
 compiler/Driver/cross_compile/sysroot_option/sysroot_mock.cj
 compiler/Driver/cross_compile/toolchain_option/toolchain_mock.cj
 compiler/Driver/cross_compile/sysroot_option/sysroot_priority.cj
-
-# multi-step/multi-package issues, hotfix toolchain does not support such scenarios
-compiler/CodegenCommon/struct/main.cj
 
 # CHIR-for-cbc serialization is not stable, hotfix toolchain does not support such scenarios
 compiler/CHIR/Serialize
