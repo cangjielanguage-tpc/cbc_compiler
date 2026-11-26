@@ -1376,30 +1376,61 @@ trait CHIRParser
       case e: CHIR.InstanceOf =>
         val tpe = resolver.typeSig(e.testType)
         val obj = state(e.obj)
-        val (refTpe, refObj) = if (tpe.isTraceableReference && !tpe.isInstanceOf[SignatureType.OptionLikeEnum]) {
-          (tpe, obj)
-        } else {
-          val ValueSig(objTpe) = e.obj
-          val ref = objTpe match {
-            case objTpe: SignatureType.OptionLikeEnum =>
-              if (objTpe.someType.isTypeVariable) {
-                obj
-              } else {
-                createBox(objTpe, obj)
+        val ValueSig(objTpe) = e.obj
+
+        def tupleChecks(from: SignatureType, to: SignatureType, path: Seq[Long]): Option[Seq[(Seq[Long], SignatureType)]] = {
+          (from, to) match {
+            case (x, y) if x == y => Some(Seq.empty)
+            case (x: SignatureType.Tuple, y: SignatureType.Tuple)
+                if x.params.size == y.params.size && !x.isVariableSizeType && !y.isVariableSizeType =>
+              val checks = x.params.zip(y.params).zipWithIndex.map { case ((a, b), i) =>
+                tupleChecks(a, b, path :+ i.toLong)
               }
-            case objTpe =>
-              if (objTpe.isTypeVariable || objTpe.isTraceableReference) {
-                obj
-              } else {
-                createBox(objTpe, obj)
-              }
+              Option.when(checks.forall(_.isDefined))(checks.flatten.flatten)
+            case (x: (SignatureType.Reference | SignatureType.InstantiatedReference),
+                  y: (SignatureType.Reference | SignatureType.InstantiatedReference))
+                if x.isTraceableReference && y.isTraceableReference && !y.containsTypeVariables =>
+              Some(Seq((path, y)))
+            case _ => None
           }
-          (SignatureType.Box(tpe), ref)
         }
-        state(e) = if (tpe.containsTypeVariables) {
-          InstanceOfGeneric(refTpe)(refObj, loadTypeInfo(tpe))
-        } else {
-          InstanceOf(refTpe)(refObj)
+
+        val checks = (objTpe, tpe) match {
+          case (_: SignatureType.Tuple, _: SignatureType.Tuple) => tupleChecks(objTpe, tpe, Seq.empty)
+          case _ => None
+        }
+        state(e) = checks match {
+          case Some(fields) =>
+            fields.map { case (path, target) =>
+              val refs = fieldChain(objTpe, path)
+              val field = LoadFieldSeq(maybeDerivedPtrBase(obj), obj, refs*)
+              InstanceOf(target)(field): Node
+            }.reduceOption((a, b) => And(a, b)).getOrElse(IConst(1))
+          case None =>
+            val (refTpe, refObj) = if (tpe.isTraceableReference && !tpe.isInstanceOf[SignatureType.OptionLikeEnum]) {
+              (tpe, obj)
+            } else {
+              val ref = objTpe match {
+                case objTpe: SignatureType.OptionLikeEnum =>
+                  if (objTpe.someType.isTypeVariable) {
+                    obj
+                  } else {
+                    createBox(objTpe, obj)
+                  }
+                case objTpe =>
+                  if (objTpe.isTypeVariable || objTpe.isTraceableReference) {
+                    obj
+                  } else {
+                    createBox(objTpe, obj)
+                  }
+              }
+              (SignatureType.Box(tpe), ref)
+            }
+            if (tpe.containsTypeVariables) {
+              InstanceOfGeneric(refTpe)(refObj, loadTypeInfo(tpe))
+            } else {
+              InstanceOf(refTpe)(refObj)
+            }
         }
 
       case e: (CHIR.NumericCast | CHIR.StaticCast) =>
@@ -1466,6 +1497,16 @@ trait CHIRParser
           Or(And(notMask, v), And(mask, boundC))
         }
 
+        def preservesTupleLayout(from: SignatureType, to: SignatureType): Boolean = (from, to) match {
+          case (x, y) if x == y => true
+          case (x: Tuple, y: Tuple) =>
+            !x.isVariableSizeType && !y.isVariableSizeType && x.params.size == y.params.size &&
+              x.params.zip(y.params).forall { case (a, b) => preservesTupleLayout(a, b) }
+          case (x: (Reference | InstantiatedReference), y: (Reference | InstantiatedReference)) =>
+            x.isTraceableReference && y.isTraceableReference
+          case _ => false
+        }
+
         val n = (from, to) match {
           case (from: (Reference | InstantiatedReference | TypeVariable), to: (Reference | InstantiatedReference)) =>
             // TODO: remove this case when numeric cast will handle only *numeric* types
@@ -1478,6 +1519,11 @@ trait CHIRParser
 
           case (from: (Record | InstantiatedRecord), to: Tuple) =>
             // TODO: assert from is enum!
+            ReinterpretCast(fromTpe, toTpe)(value)
+
+          case (from: Tuple, to: Tuple)
+              if e.isInstanceOf[CHIR.StaticCast] && !from.isVariableSizeType && !to.isVariableSizeType &&
+                preservesTupleLayout(from, to) =>
             ReinterpretCast(fromTpe, toTpe)(value)
 
           case (from: TypeVariable, to: TypeVariable) =>

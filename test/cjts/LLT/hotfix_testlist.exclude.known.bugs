@@ -186,23 +186,6 @@ compiler/Sema/ffi/c_type_in_generictype.cj
 API/std/unittest/prop_test/coverage_guided/dbg.cj
 compiler/Mangle/MangledName/mangle11_func.cj
 
-# bug 145 (not implemented: cast from TU<*>)
-compiler/CHIROpt/match/testSwitch4_11.cj
-compiler/CodegenCHIR/tryCatch/tryTypeCast/tryTypeCast_10.cj
-compiler/CodegenCJNative/runtime/addrspacecast_verifier.cj
-compiler/CodegenCommon/break/main.cj
-compiler/CodegenCommon/instanceOf/tuple/main_01.cj
-compiler/CodegenCommon/instanceOf/tuple/main_02.cj
-compiler/CodegenCommon/tuple/tuple_assign1.cj
-compiler/CodegenCommon/tuple/tuple_assign2.cj
-compiler/CodegenCommon/tuple/tuple_typecast.cj
-compiler/CodegenCommon/typecast/tuple2tuple/tuple2tuple1.cj
-compiler/CodegenCommon/typecast/tuple2tuple/tuple2tuple2.cj
-compiler/CodegenCommon/typecast/tuple2tuple/tupleptr2tuple2.cj
-compiler/Sema/assign/multipleAssignExpr/case07.cj
-compiler/Sema/function/nest_function_generic_inst02.cj
-compiler/Sema/type/subtype_03.cj
-
 # bug 147 (not supported yet: typeinfo_factory.cpp:960)
 compiler/CodegenCJNative/demangle/decl/exception_throw2.cj
 compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
