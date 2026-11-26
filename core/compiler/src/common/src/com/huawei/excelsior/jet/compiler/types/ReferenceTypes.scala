@@ -285,7 +285,7 @@ object ReferenceTypes {
 
     lazy val cangjieStdCoreObjectSig = SignatureType.Reference("std.core:Object", jbc = false)
     lazy val cangjieStdCoreObject = ClassType(cangjieStdCoreObjectSig)
-    lazy val cangjieStdCoreStackTraceDataSig = SignatureType.Reference("std.core:StackTraceData", jbc = false)
+    lazy val cangjieStdCoreStackTraceDataSig = SignatureType.Record("std.core:StackTraceData")
     lazy val cangjieStdCoreStackTraceData = ClassType(cangjieStdCoreStackTraceDataSig)
 
     object LanguageRoot {
