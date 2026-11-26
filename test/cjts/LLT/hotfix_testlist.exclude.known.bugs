@@ -203,9 +203,6 @@ compiler/Sema/assign/multipleAssignExpr/case07.cj
 compiler/Sema/function/nest_function_generic_inst02.cj
 compiler/Sema/type/subtype_03.cj
 
-# bug 146 (not implemented: cast from b to u64)
-compiler/CodegenCommon/overflow/cmpfuzz/test_3_main.cj
-
 # bug 147 (not supported yet: typeinfo_factory.cpp:960)
 compiler/CodegenCJNative/demangle/decl/exception_throw2.cj
 compiler/CodegenCJNative/demangle/decl/lambda_decl1.cj
