@@ -1084,6 +1084,143 @@ trait CangjieNodes { self: Universe =>
       intrinsic(CJIntrinsicType.FutureNotifyAll, MethodSignature(futureType)(SignatureType.Void))(future)
     }
 
+    /** `extern "C" int CJ_MCC_MutexInit(void* ptr)`
+     * {{{
+     * // Initialize the semaphore backing the mutex and return the raw
+     * // creation status: 0 on success, an error code otherwise. std.sync
+     * // declares the result as Bool and throws on true, so the polarity
+     * // is inverted: success is observed as false, failure as true.
+     * }}}
+     */
+    def mutexInit(mutexType: SignatureType)(mutex: Node): Node = {
+      intrinsic(CJIntrinsicType.MutexInit, MethodSignature(mutexType)(Boolean))(mutex)
+    }
+
+    /** `extern "C" void CJ_MCC_MutexLock(void* ptr)`
+     * {{{
+     * // Lock the mutex. Native LLVM emits an inline fast path and forwards
+     * // only the contended case to CJ_MCC_MutexLockSlowPath; CBC emits no
+     * // fast path, so the full exported CJ_MCC_MutexLock is used, which
+     * // includes the fast-path handling itself.
+     * }}}
+     */
+    def mutexLock(mutexType: SignatureType)(mutex: Node): Node = {
+      intrinsic(CJIntrinsicType.MutexLock, MethodSignature(mutexType)(SignatureType.Void))(mutex)
+    }
+
+    /** `extern "C" bool CJ_MCC_MutexTryLock(void* ptr)`
+     * {{{
+     * // Try to lock the mutex without blocking and report whether it succeeded.
+     * }}}
+     */
+    def mutexTryLock(mutexType: SignatureType)(mutex: Node): Node = {
+      intrinsic(CJIntrinsicType.MutexTryLock, MethodSignature(mutexType)(Boolean))(mutex)
+    }
+
+    /** `extern "C" bool CJ_MCC_MutexCheckStatus(const void* ptr)`
+     * {{{
+     * // Report whether the mutex is currently held by the calling thread.
+     * // std.sync checks it before unlock/wait/notify and throws
+     * // IllegalSynchronizationStateException when it is false.
+     * }}}
+     */
+    def mutexCheckStatus(mutexType: SignatureType)(mutex: Node): Node = {
+      intrinsic(CJIntrinsicType.MutexCheckStatus, MethodSignature(mutexType)(Boolean))(mutex)
+    }
+
+    /** `extern "C" void CJ_MCC_MutexUnlock(void* ptr)`
+     * {{{
+     * // Unlock the mutex and wake a waiter, if any.
+     * }}}
+     */
+    def mutexUnlock(mutexType: SignatureType)(mutex: Node): Node = {
+      intrinsic(CJIntrinsicType.MutexUnlock, MethodSignature(mutexType)(SignatureType.Void))(mutex)
+    }
+
+    /** `extern "C" int CJ_MCC_WaitQueueForMonitorInit(void* ptr)`
+     * {{{
+     * // Initialize the runtime-side waitqueue of the monitor; the exported
+     * // prototype returns the creation status as int: 0 on success. The
+     * // result is observed as Bool with inverted polarity (failure is true).
+     * // Uses the monitor-specific initializer, distinct from
+     * // CJ_MCC_WaitQueueInit used for MultiConditionMonitor conditions.
+     * }}}
+     */
+    def monitorInit(monitorType: SignatureType)(monitor: Node): Node = {
+      intrinsic(CJIntrinsicType.MonitorInit, MethodSignature(monitorType)(Boolean))(monitor)
+    }
+
+    /** `extern "C" int CJ_MCC_WaitQueueInit(void* ptr)`
+     * {{{
+     * // Initialize the runtime-side waitqueue storage; the exported
+     * // prototype returns the creation status as int: 0 on success. The
+     * // result is observed as Bool with inverted polarity (failure is true).
+     * }}}
+     */
+    def waitQueueInit(waitQueueType: SignatureType)(waitQueue: Node): Node = {
+      intrinsic(CJIntrinsicType.WaitQueueInit, MethodSignature(waitQueueType)(Boolean))(waitQueue)
+    }
+
+    /** `extern "C" bool CJ_MCC_MonitorWait(const void* ptr, int64_t timeout)`
+     * {{{
+     * // Release the monitor and block the current thread on its waitqueue
+     * // until notified or the nanosecond timeout expires; the Bool result is
+     * // the runtime wait outcome.
+     * // Moitior* retains the CHIR enum's spelling.
+     * }}}
+     */
+    def monitorWait(monitorType: SignatureType)(monitor: Node, timeout: Node): Node = {
+      intrinsic(CJIntrinsicType.MonitorWait, MethodSignature(monitorType, Int64)(Boolean))(monitor, timeout)
+    }
+
+    /** `extern "C" void CJ_MCC_MonitorNotify(void* ptr)`
+     * {{{
+     * // Wake one thread waiting on the monitor waitqueue.
+     * }}}
+     */
+    def monitorNotify(monitorType: SignatureType)(monitor: Node): Node = {
+      intrinsic(CJIntrinsicType.MonitorNotify, MethodSignature(monitorType)(SignatureType.Void))(monitor)
+    }
+
+    /** `extern "C" void CJ_MCC_MonitorNotifyAll(void* ptr)`
+     * {{{
+     * // Wake all threads waiting on the monitor waitqueue.
+     * }}}
+     */
+    def monitorNotifyAll(monitorType: SignatureType)(monitor: Node): Node = {
+      intrinsic(CJIntrinsicType.MonitorNotifyAll, MethodSignature(monitorType)(SignatureType.Void))(monitor)
+    }
+
+    /** `extern "C" bool CJ_MCC_MultiConditionMonitorWait(const void* ptr, void* waitQueue, int64_t timeout)`
+     * {{{
+     * // Release the monitor and block the current thread on the waitqueue of
+     * // the given condition until notified or the nanosecond timeout expires.
+     * // The waitqueue reference is extracted by the std.sync body; the
+     * // intrinsic receives it directly, not the ConditionID record.
+     * }}}
+     */
+    def multiConditionWait(monitorType: SignatureType, waitQueueType: SignatureType)(monitor: Node, waitQueue: Node, timeout: Node): Node = {
+      intrinsic(CJIntrinsicType.MultiConditionWait, MethodSignature(monitorType, waitQueueType, Int64)(Boolean))(monitor, waitQueue, timeout)
+    }
+
+    /** `extern "C" void CJ_MCC_MultiConditionMonitorNotify(void* ptr, const void* waitQueue)`
+     * {{{
+     * // Wake one thread waiting on the condition waitqueue.
+     * }}}
+     */
+    def multiConditionNotify(monitorType: SignatureType, waitQueueType: SignatureType)(monitor: Node, waitQueue: Node): Node = {
+      intrinsic(CJIntrinsicType.MultiConditionNotify, MethodSignature(monitorType, waitQueueType)(SignatureType.Void))(monitor, waitQueue)
+    }
+
+    /** `extern "C" void CJ_MCC_MultiConditionMonitorNotifyAll(void* ptr, const void* waitQueue)`
+     * {{{
+     * // Wake all threads waiting on the condition waitqueue.
+     * }}}
+     */
+    def multiConditionNotifyAll(monitorType: SignatureType, waitQueueType: SignatureType)(monitor: Node, waitQueue: Node): Node = {
+      intrinsic(CJIntrinsicType.MultiConditionNotifyAll, MethodSignature(monitorType, waitQueueType)(SignatureType.Void))(monitor, waitQueue)
+    }
+
     /** `extern "C" void CJ_MRT_Sleep(int64_t ns)`
      * {{{
      * // Sleep the current thread for ns nanoseconds; non-positive ns just yields.
@@ -1162,6 +1299,19 @@ trait CangjieNodes { self: Universe =>
     case FutureIsComplete extends CJIntrinsicType("CJ_MCC_FutureIsComplete")
     case FutureWait extends CJIntrinsicType("CJ_MCC_FutureWait")
     case FutureNotifyAll extends CJIntrinsicType("CJ_MCC_FutureNotifyAll")
+    case MutexInit extends CJIntrinsicType("CJ_MCC_MutexInit")
+    case MutexLock extends CJIntrinsicType("CJ_MCC_MutexLock")
+    case MutexTryLock extends CJIntrinsicType("CJ_MCC_MutexTryLock")
+    case MutexCheckStatus extends CJIntrinsicType("CJ_MCC_MutexCheckStatus")
+    case MutexUnlock extends CJIntrinsicType("CJ_MCC_MutexUnlock")
+    case MonitorInit extends CJIntrinsicType("CJ_MCC_WaitQueueForMonitorInit")
+    case WaitQueueInit extends CJIntrinsicType("CJ_MCC_WaitQueueInit")
+    case MonitorWait extends CJIntrinsicType("CJ_MCC_MonitorWait")
+    case MonitorNotify extends CJIntrinsicType("CJ_MCC_MonitorNotify")
+    case MonitorNotifyAll extends CJIntrinsicType("CJ_MCC_MonitorNotifyAll")
+    case MultiConditionWait extends CJIntrinsicType("CJ_MCC_MultiConditionMonitorWait")
+    case MultiConditionNotify extends CJIntrinsicType("CJ_MCC_MultiConditionMonitorNotify")
+    case MultiConditionNotifyAll extends CJIntrinsicType("CJ_MCC_MultiConditionMonitorNotifyAll")
     case Sleep extends CJIntrinsicType("CJ_MRT_Sleep")
     case SetThreadObject extends CJIntrinsicType("CJ_MCC_SetCurrentCJThreadObject")
     case IsThreadObjectInited extends CJIntrinsicType("CJ_MCC_IsThreadObjectInited")
