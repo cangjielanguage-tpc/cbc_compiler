@@ -876,6 +876,25 @@ class IdentitiesSuite extends CompilerSuite with Identities with GlobalNodesBuil
     MathIntrinsic(F_LOG)(fc(Float.NaN)).asInstanceOf[FConst].value.isNaN shouldBe true
   }
 
+  test("Float32 floor preserves its type, special values and signed zero") {
+    import Java.Lang.MathIntrinsic.*
+
+    F_FLOOR.typeKind shouldBe TKind.FLOAT
+    F_FLOOR.argsCount shouldBe 1
+    val variableFloor = MathIntrinsic(F_FLOOR)(farg)
+    variableFloor.tpe shouldBe FloatType
+    variableFloor.arg shouldBe farg
+
+    for (value <- Seq(2.25f, 2.5f, -2.25f, -2.5f, 0.0f, -0.0f,
+                     java.lang.Float.MIN_VALUE, -java.lang.Float.MIN_VALUE,
+                     java.lang.Float.MAX_VALUE, Float.PositiveInfinity, Float.NegativeInfinity)) {
+      val result = MathIntrinsic(F_FLOOR)(fc(value)).asInstanceOf[FConst].value
+      java.lang.Float.floatToRawIntBits(result) shouldBe
+        java.lang.Float.floatToRawIntBits(math.floor(value.toDouble).toFloat)
+    }
+    MathIntrinsic(F_FLOOR)(fc(Float.NaN)).asInstanceOf[FConst].value.isNaN shouldBe true
+  }
+
   test("powi identity") {
     for ((base, exp, res) <- Seq(
       (2.0,  10L, math.pow(2.0, 10.0)),

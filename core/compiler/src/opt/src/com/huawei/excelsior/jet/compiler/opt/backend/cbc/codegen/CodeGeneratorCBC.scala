@@ -642,7 +642,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case (D_COS, FReg(dst), Seq(FReg(src))) => asm.fmathunary(COS, width, dst, src)
         case (D_LOG | F_LOG, FReg(dst), Seq(FReg(src))) => asm.fmathunary(LOG, width, dst, src)
         case (D_CEIL, FReg(dst), Seq(FReg(src))) => asm.fmathunary(CEIL, width, dst, src)
-        case (D_FLOOR, FReg(dst), Seq(FReg(src))) => asm.fmathunary(FLOOR, width, dst, src)
+        case (D_FLOOR | F_FLOOR, FReg(dst), Seq(FReg(src))) => asm.fmathunary(FLOOR, width, dst, src)
         case (D_LOG10, FReg(dst), Seq(FReg(src))) => asm.fmathunary(LOG10, width, dst, src)
         case (D_LOG2, FReg(dst), Seq(FReg(src))) => asm.fmathunary(LOG2, width, dst, src)
         case (D_EXP, FReg(dst), Seq(FReg(src))) => asm.fmathunary(EXP, width, dst, src)

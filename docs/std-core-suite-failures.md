@@ -314,6 +314,56 @@ Local evidence:
 - `/tmp/opencode/log-base/aot/`: verified pure AOT logs and output.
 - `/tmp/opencode/std.math.ll`: SDK reference LLVM IR.
 
+## Typed floor and half absolute values for round (2026-11-26)
+
+The SDK's `round` implementation uses ties-to-even rounding implemented in
+CHIR over `fabs` and `floor`; it is not replaced with a native round call
+(whose halfway behavior can differ). LLVM reference code uses
+`llvm.floor.f32` and `llvm.floor.f16` for the narrow overloads.
+
+The compiler selects `F_FLOOR` for Float32 and `D_FLOOR` for Float64. CBC
+emits `floor.32` and `floor.64`. Float16 storage is converted to Float32
+before floor and back afterward. Half `fabs` also needs these conversions:
+half values have integral IR storage, so applying integer Abs to the raw
+bits does not compute the absolute floating-point value. The parser now
+applies floating-point Abs after converting the half operand.
+
+The change includes Float32 constant folding, Java Math lookup exclusion,
+cost models, and typed native fallback to the existing Double `JR_floor`
+entry point. CBC retains its Float32 operation. No stubs, new runtime
+symbols or engine changes are introduced.
+
+The regression in `test/standalone/cj/round/` was committed separately as
+`8f3887a4`. Its O2 build reproduces the original D_FLOOR assertion. It covers
+all three widths, positive/negative halfway cases, values on either side
+of a halfway point, zero, a negative fraction and a large integral value.
+An additional half-absolute-value check covers negative half operands.
+Pure AOT default/O2 runs verify the golden output (33 true checks, status
+zero). All 2,852 optimizer tests pass (two ignored), including floor typing,
+special values, signed zero and native-call conversion checks. The jar is
+built and installed. Disassembly confirms narrow floor operations and half
+conversions.
+
+Default/O2 standalone round and log-base tests compile, but all four runs
+abort before main with the existing primitive-extension metadata conflict
+(`failed to build primitive extension metadata for term kind 5`). There is
+no CBC execution validation from those runs.
+
+Sequential full-closure retries (`-j 1`) for Fibonacci, spawn hello-world
+and round, in both modes, pass the round compilation failure. All six now
+stop in `std.math.sqrt(Float16)`: F_SQRT expects FloatType but receives the
+IntType half-storage operand. That independent half-conversion blocker is
+not repaired here.
+
+Local evidence:
+
+- `/tmp/opencode/round-before.log`: original standalone O2 assertion.
+- `/tmp/opencode/round-build.log`: optimizer tests and jar build.
+- `/tmp/opencode/round-after.log`: serial filtered standalone retry.
+- `/tmp/opencode/round-full-closure.log`: serial full-closure retry.
+- `/tmp/opencode/round.disasm`: generated floor instructions/conversions.
+- `/tmp/opencode/round/aot/`: verified pure AOT logs and output.
+
 ## Mixed interface ABI
 
 The three mixed failures cross the ABI in both directions:

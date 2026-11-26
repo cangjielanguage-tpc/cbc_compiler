@@ -42,4 +42,21 @@ class MathIntrinsicLoweringSuite extends CompilerSuite with GlobalNodesBuilder
       call.invokeArgs shouldBe Seq(ValueConvert(F32, F64)(arg))
     }
   }
+
+  test("Float32 floor runtime fallback converts both sides of the Double call") {
+    val target = new FakeMethod("JR_floor", FakeMethodType.create(TypeKind.DOUBLE, TypeKind.DOUBLE))
+    env.setRtsProc(RTSProc.JR_floor, target)
+
+    currentScope.inState(entryBlock, entryMemory) {
+      val arg = Fake(FloatType)
+      val floor = MathIntrinsic(Java.Lang.MathIntrinsic.F_FLOOR)(arg).asInstanceOf[MathIntrinsic]
+      val result = lowerMathIntrinsic(floor)
+      result.tpe shouldBe FloatType
+      result should matchPattern {
+        case ValueConvert(F64, F32, AnyDirectCall(`target`)) =>
+      }
+      val call = result.arg.asInstanceOf[Call]
+      call.invokeArgs shouldBe Seq(ValueConvert(F32, F64)(arg))
+    }
+  }
 }

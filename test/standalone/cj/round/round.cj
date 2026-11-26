@@ -9,7 +9,7 @@ func check64(x: Float64, rounded: Float64, floored: Float64): Unit {
 }
 
 func check16(x: Float16, rounded: Float16, floored: Float16): Unit {
-    println(round(x) == rounded && floor(x) == floored)
+    println(round(x) == rounded && floor(x) == floored && Float32(abs(x)) == abs(Float32(x)))
 }
 
 func check(x: Float64, rounded: Float64, floored: Float64): Unit {

@@ -1885,7 +1885,12 @@ trait CHIRParser
 
           case CHIR.Intrinsic.Kind.Floor =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_FLOOR)(x)
+              case Seq(x) =>
+                val isHalf = resolver.typeSig(e.resultTpe) == SignatureType.Float16
+                val arg = if (isHalf) ValueConvert(AsmType.F16, AsmType.F32)(x) else x
+                val kind = if (arg.tpe == DoubleType) Java.Lang.MathIntrinsic.D_FLOOR else Java.Lang.MathIntrinsic.F_FLOOR
+                val result = MathIntrinsic(kind)(arg)
+                state(e) = if (isHalf) ValueConvert(AsmType.F32, AsmType.F16)(result) else result
             }
 
           case CHIR.Intrinsic.Kind.Log10 =>
@@ -1921,7 +1926,11 @@ trait CHIRParser
           case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>
             e.args.map(state.apply) match {
               case Seq(x) =>
-                state(e) = Abs(x)
+                state(e) = if (resolver.typeSig(e.resultTpe) == SignatureType.Float16) {
+                  ValueConvert(AsmType.F32, AsmType.F16)(Abs(ValueConvert(AsmType.F16, AsmType.F32)(x)))
+                } else {
+                  Abs(x)
+                }
             }
 
           case CHIR.Intrinsic.Kind.CPointerRead =>

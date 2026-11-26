@@ -849,14 +849,15 @@ trait RTStructs { this: CompilerEnvironment =>
         case D_EXP2 extends MathIntrinsic(RTSProc.JR_exp2)
         case D_TRUNC extends MathIntrinsic(RTSProc.JR_trunc)
         case F_LOG extends MathIntrinsic(RTSProc.JR_log)
+        case F_FLOOR extends MathIntrinsic(RTSProc.JR_floor)
 
         private def hasMethodInJLMath: Boolean = this match {
-          case D_REM | F_REM | F_SQRT | F_LOG => false
+          case D_REM | F_REM | F_SQRT | F_LOG | F_FLOOR => false
           case _ => true
         }
 
         def typeKind: symlevel.TypeKind = this match {
-          case F_ABS | F_REM | F_SQRT | F_LOG => FLOAT
+          case F_ABS | F_REM | F_SQRT | F_LOG | F_FLOOR => FLOAT
           case _ => DOUBLE
         }
 
