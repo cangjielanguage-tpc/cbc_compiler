@@ -2315,6 +2315,7 @@ trait CHIRParser
             case CHIR.BuiltinType.Unit | CHIR.BuiltinType.Nothing => IntegralConst(AddrType)(v)
             case _: CHIR.CustomType | _: CHIR.VArrayType | _: CHIR.TupleType |
                  _: CHIR.CPointerType => IntegralConst(AddrType)(v)
+            case CHIR.BuiltinType.CString => IntegralConst(AddrType)(v)
             case t: CHIR.GenericType =>
               // std.unittest assertion macros might produce this garbage
               assert(v == 0, t.identifier)
