@@ -192,7 +192,7 @@ The assertion reports `arg#2` of the `TreeMapEntryView.key` getter's
 `InvokeSpecialTarget`: expected tag `VALUE` and type `Plain`, but received
 `Param[(LongType,1)]` with tag `VALUE` and type `LongType`. The stack reaches
 `CHIRParser.callMethod` and `InvokeTarget.instance`; the generic-call ABI
-mismatch is the next observed compiler blocker, not fixed in this change.
+mismatch was the next observed compiler blocker, not fixed by the sync change.
 
 The new `test/standalone/cj/sync-primitives/sync-primitives.cj` exercises Mutex,
 Monitor and MultiConditionMonitor operations, including notifications and
@@ -216,6 +216,54 @@ Local evidence under `/tmp/opencode/atexit-design/`:
 - `sync-forwarders-tests.log`: serial Fibonacci/spawn build failures.
 - `sync-primitives-tests.log`: serial synchronization regression build failures.
 - `sync-primitives-aot/`: default/O2 pure AOT build logs and verified output.
+
+## Generic mut-receiver value loads (2026-11-26)
+
+The TreeMapEntryView failure is not a TypeInfo argument ordering problem.
+Its mut value setter receives a payload address plus an owning reference.
+CHIR then loads `this` and calls the non-mut key getter with that value. For
+a variable-size generic struct, `CHIR.Load` previously returned the payload
+address unchanged. The getter's ABI expects a boxed reference, causing the
+`LongType` versus traced-reference (`Plain`) assertion at its receiver edge.
+
+`test/standalone/cj/generic-mut-receiver/generic-mut-receiver.cj`, committed
+separately as `3482e3c8`, reproduces this without any std.collection CBC input:
+a generic struct's mut `replace` method calls its non-mut `get` method. Before
+the fix, the default build fails with the identical receiver assertion. O2
+compiles because the frontend optimizes away that call pattern. Pure AOT
+builds/runs in both modes confirm the expected output `17`, `29`, status zero.
+
+The parser now materializes a boxed value when loading an address-backed
+variable-size value, using its existing `createBox`/generic load path. This
+takes a value snapshot, consistent with fixed-size struct loads, rather than
+casting the address to a reference or aliasing the mut receiver's owner.
+Existing field-reference loads and already-boxed generic values keep their
+existing handling. No call signature or TypeInfo ordering was changed.
+
+All 2,848 optimizer tests passed (two additional tests ignored), and the jar
+built successfully. With the rebuilt compiler installed, both reproducer
+modes compile. Six related cases (`mut-receiver-copy`, `mut-mut-call` and
+`mut-mut-call-spill`, default/O2) also compile. All eight executions abort
+before main at the existing native/CBC primitive metadata collision for Int8;
+they do not establish runtime correctness of this fix.
+
+Fibonacci and spawn hello-world were rerun sequentially (`-j 1`) in default
+and O2 with the full `CBC_STD_PKGS` list above. All four pass the former
+TreeMapEntryView failure and now stop in `std.math.logBase(Float32, Float32)`:
+`MathIntrinsic[D_LOG]` requires `DoubleType` but receives `FloatType`. This is
+a separate math-intrinsic selection blocker; it is not repaired here. No CBC
+program reached execution in the full-closure retry.
+
+Local evidence:
+
+- `/tmp/opencode/generic-call-before.log`: reproducer before the parser fix.
+- `/tmp/opencode/generic-call-build.log`: optimizer tests and jar build.
+- `/tmp/opencode/generic-call-after.log`: reproducer compilation/runtime retry.
+- `/tmp/opencode/generic-call-related.log`: related mut-receiver retries.
+- `/tmp/opencode/generic-call-full-closure.log`: serial Fibonacci/spawn retry.
+- `/tmp/opencode/generic-call/aot/`: verified pure AOT build/output files.
+- `/tmp/opencode/atexit-design/std.collection.chirtxt`: original CHIR load and
+  key-getter call in TreeMapEntryView's mut value setter.
 
 ## Mixed interface ABI
 

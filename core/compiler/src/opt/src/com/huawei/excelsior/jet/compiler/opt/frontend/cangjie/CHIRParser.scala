@@ -2339,6 +2339,10 @@ trait CHIRParser
                 case mem @ GetStaticFieldSeqRef(fields) =>
                   assert(sig == mem.resType, s"$sig != ${mem.resType} in $mem")
                   LoadStaticFieldSeq(DerivedPtr.Global(), fields*)
+                case mem if sig.isVariableSizeType && !mem.tpe.isTraceableRefType =>
+                  // A mut receiver is a payload address, not the boxed value used by
+                  // non-mut calls. Loading it must take a value snapshot, as for FSTs.
+                  createBox(sig, mem)
                 case mem =>
                   if (sig.isRecord || sig.isTraceableReference || sig.isPrimitive || sig.isTypeVariable) {
                     mem
