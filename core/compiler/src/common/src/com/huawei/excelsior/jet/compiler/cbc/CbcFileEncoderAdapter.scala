@@ -95,13 +95,8 @@ object CbcFileEncoderAdapter extends CBCFileGenerator {
     }
 
     val foreignLibs = Option(env.valueOfOrNull(StrOption.ForeignLibs)).toSeq.flatMap(_.split(":"))
-    // stdFFI supplies native helpers, including floating-point exponentiation,
-    // when the SDK has no per-package FFI shared libraries.
-    val implicitForeignLibs = pkgDefs.map(_.getName).collect {
-      case name if name.startsWith("std.")  => s"cangjie-std-${name.stripPrefix("std.")}FFI"
-      case name if name.startsWith("stdx.") => s"${name}FFI"
-    }
-    builder.setForeignLibs(((foreignLibs :+ "stdFFI") ++ implicitForeignLibs).distinct.mkString(":"))
+    // stdFFI supplies native helpers, including floating-point exponentiation.
+    builder.setForeignLibs((foreignLibs :+ "stdFFI").distinct.mkString(":"))
 
     val result = builder.build()
     Using.resource(DataOutput.from(output)) { out =>
