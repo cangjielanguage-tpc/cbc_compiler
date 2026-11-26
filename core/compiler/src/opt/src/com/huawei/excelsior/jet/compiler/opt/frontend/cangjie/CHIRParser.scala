@@ -2092,9 +2092,10 @@ trait CHIRParser
 
           case CHIR.Intrinsic.Kind.DumpAllThreadsInfo =>
             require(e.args.isEmpty)
+            // Runtime allocates the result RawArray<ThreadSnapshotInfo> itself
             val resultType = resolver.typeSig(e.resultTpe).asInstanceOf[SignatureType.CangjieArray]
             val stackTraceType = SignatureType.CangjieArray(ReferenceType.cangjieStdCoreStackTraceData.sigType)
-            // TypeInfo of the ArrayRef<UInt8> the runtime allocates for decoded-name characters.
+            // TypeInfo of the ArrayRef<UInt8> to store strings (thread/class/method/file name)
             val charArrayType = SignatureType.CangjieArray(SignatureType.UInt8)
             state(e) = CJIntrinsic.dumpAllThreadsInfo(resultType)(
               loadTypeInfo(resultType), loadTypeInfo(stackTraceType), loadTypeInfo(charArrayType))
@@ -2103,7 +2104,7 @@ trait CHIRParser
             require(e.args.isEmpty)
             val recordType = resolver.typeSig(e.resultTpe)
             val stackTraceType = SignatureType.CangjieArray(ReferenceType.cangjieStdCoreStackTraceData.sigType)
-            // TypeInfo of the ArrayRef<UInt8> the runtime allocates for decoded-name characters.
+            // TypeInfo of the ArrayRef<UInt8> to store strings (thread/class/method/file name)
             val charArrayType = SignatureType.CangjieArray(SignatureType.UInt8)
             val sret = StackAlloc.Local(recordType, workaroundForNonZeroedTraceableRecords = true)
             CJIntrinsic.dumpCurrentThreadInfo(recordType)(
