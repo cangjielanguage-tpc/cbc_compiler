@@ -1641,6 +1641,9 @@ trait CHIRParser
           case (_: CPointer, _: VArray) =>
             ReinterpretCast(fromTpe, toTpe)(value)
 
+          case (Boolean, _: Integral) =>
+            BFX(toTpe, 0, fromAsm.sizeInBits, signExtension = false, value)
+
           case _ => notImplemented(s"cast from ${from.toJETSignature} to ${to.toJETSignature}")
         }
 
