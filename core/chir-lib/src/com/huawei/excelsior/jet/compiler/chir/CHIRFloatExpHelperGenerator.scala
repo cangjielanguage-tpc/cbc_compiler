@@ -44,6 +44,7 @@ private class CHIRFloatExpHelperGenerator(pkg: CHIR.Package, helperName: String,
       def attributes: Seq[CHIR.Attribute] = Seq(CHIR.Attribute.Foreign, CHIR.Attribute.Imported)
       def declaringDef: Option[CHIR.CustomTypeDef] = None
       def genericDeclaration: Option[CHIR.Func] = None
+      def isCFFIWrapper: Boolean = false
       def genericTypeParams: Seq[CHIR.GenericType] = Seq.empty
       def body: Option[CHIR.BlockGroup] = None
       def params: Seq[CHIR.Parameter] = Seq.empty

@@ -263,7 +263,8 @@ object CHIRBuilder {
             Modifiers(Modifier.CJ_MUT)
           case _ => Modifiers.EMPTY
         }
-        val modifiers = resolver.symModifiers(m) | mutModifiers
+        val cffiModifiers = if (m.isCFFIWrapper) Modifiers(Modifier.CJ_FOREIGN) else Modifiers.EMPTY
+        val modifiers = resolver.symModifiers(m) | mutModifiers | cffiModifiers
         val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
         val genericInfo = resolver.genericInfo(m)
         val genericFuncParamsCount = m.genericTypeParams.size
@@ -371,7 +372,8 @@ object CHIRBuilder {
 
     def restoreGlobalAbstractFunc(m: CHIR.Func, symType: SymClassType, d: CHIR.CustomTypeDef): Method = {
       val name = resolver.symName(m)
-      val modifiers = resolver.symModifiers(m)
+      val cffiModifiers = if (m.isCFFIWrapper) Modifiers(Modifier.CJ_FOREIGN) else Modifiers.EMPTY
+      val modifiers = resolver.symModifiers(m) | cffiModifiers
       assert(modifiers.contains(ABSTRACT), name)
       val (sig, rcv, _, _) = resolver.functionSig(m, hasReceiver = !modifiers.contains(STATIC))
       val genericInfo = resolver.genericInfo(m)
@@ -472,7 +474,8 @@ object CHIRBuilder {
         val symPkg = makePackage(m.packageName)
         val name = resolver.symName(m)
         val (sig, None, isCFunc, vararg) = resolver.functionSig(m, hasReceiver = false)
-        val modifiers = (resolver.symModifiers(m) + Modifier.STATIC).value
+        val cffiModifiers = if (m.isCFFIWrapper) Modifiers(Modifier.CJ_FOREIGN) else Modifiers.EMPTY
+        val modifiers = (resolver.symModifiers(m) | cffiModifiers + Modifier.STATIC).value
         val genericInfo = resolver.genericInfo(m)
         val genericFuncParamsCount = m.genericTypeParams.size
         val linkageName = resolver.linkageName(m)
