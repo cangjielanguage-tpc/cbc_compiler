@@ -90,7 +90,8 @@ trait LoweringAmd64 extends LoweringArch64 with PreLoweringAmd64 { self: Univers
     import Java.Lang.MathIntrinsic._
     node.kind match {
       case D_ASIN | D_ACOS | D_EXP | D_POW | D_CEIL | D_FLOOR | F_FLOOR
-           | D_SIN | D_COS | D_TAN | D_ATAN | D_RINT => super.procForMathIntrinsic(node)
+           | D_SIN | D_COS | D_TAN | D_ATAN | D_RINT
+           | F_SIN | F_COS | F_CEIL | F_LOG10 | F_LOG2 | F_EXP | F_EXP2 | F_TRUNC | F_POW => super.procForMathIntrinsic(node)
       case _ => None
     }
   }

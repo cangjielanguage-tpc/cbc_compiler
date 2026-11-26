@@ -895,6 +895,48 @@ class IdentitiesSuite extends CompilerSuite with Identities with GlobalNodesBuil
     MathIntrinsic(F_FLOOR)(fc(Float.NaN)).asInstanceOf[FConst].value.isNaN shouldBe true
   }
 
+  test("Float32 unary math intrinsics preserve operand and result types") {
+    import Java.Lang.MathIntrinsic.*
+
+    for ((kind, expected) <- Seq(
+      (F_SIN, math.sin(2.25)), (F_COS, math.cos(2.25)),
+      (F_SQRT, math.sqrt(2.25)), (F_CEIL, math.ceil(2.25)),
+      (F_LOG, math.log(2.25)), (F_LOG10, math.log10(2.25)),
+      (F_LOG2, math.log(2.25) / math.log(2.0)), (F_EXP, math.exp(2.25)),
+      (F_EXP2, math.pow(2.0, 2.25)), (F_TRUNC, 2.0), (F_FLOOR, 2.0)
+    )) {
+      kind.typeKind shouldBe TKind.FLOAT
+      kind.argsCount shouldBe 1
+      val variable = MathIntrinsic(kind)(farg)
+      variable.tpe shouldBe FloatType
+      variable.arg shouldBe farg
+      MathIntrinsic(kind)(fc(2.25f)) shouldBe fc(expected.toFloat)
+      MathIntrinsic(kind)(fc(Float.NaN)).asInstanceOf[FConst].value.isNaN shouldBe true
+    }
+    for (kind <- Seq(F_SIN, F_TRUNC, F_CEIL)) {
+      val result = MathIntrinsic(kind)(fc(-0.0f)).asInstanceOf[FConst].value
+      java.lang.Float.floatToRawIntBits(result) shouldBe java.lang.Float.floatToRawIntBits(-0.0f)
+    }
+    MathIntrinsic(F_TRUNC)(fc(-2.25f)) shouldBe fc(-2.0f)
+    MathIntrinsic(F_CEIL)(fc(-2.25f)) shouldBe fc(-2.0f)
+  }
+
+  test("Float32 power is binary and folds both floating-point and integer exponents") {
+    import Java.Lang.MathIntrinsic.*
+
+    F_POW.typeKind shouldBe TKind.FLOAT
+    F_POW.argsCount shouldBe 2
+    val power = MathIntrinsic(F_POW)(farg, fc(2.0f)).asInstanceOf[MathIntrinsic]
+    power.tpe shouldBe FloatType
+    power.l shouldBe farg
+    power.r shouldBe fc(2.0f)
+    MathIntrinsic(F_POW)(fc(2.25f), fc(2.0f)) shouldBe fc(5.0625f)
+    MathIntrinsic(F_POW)(fc(-2.0f), fc(3.0f)) shouldBe fc(-8.0f)
+    MathIntrinsic(F_POW)(fc(-2.0f), fc(0.5f)).asInstanceOf[FConst].value.isNaN shouldBe true
+    PowI(fc(2.0f), lc(-2)) shouldBe fc(0.25f)
+    PowI(fc(-2.0f), lc(3)) shouldBe fc(-8.0f)
+  }
+
   test("powi identity") {
     for ((base, exp, res) <- Seq(
       (2.0,  10L, math.pow(2.0, 10.0)),

@@ -59,4 +59,24 @@ class MathIntrinsicLoweringSuite extends CompilerSuite with GlobalNodesBuilder
       call.invokeArgs shouldBe Seq(ValueConvert(F32, F64)(arg))
     }
   }
+
+  test("all narrow math runtime fallbacks use typed Double arguments and Float results") {
+    import Java.Lang.MathIntrinsic.*
+
+    for (kind <- Seq(F_SIN, F_COS, F_CEIL, F_LOG10, F_LOG2, F_EXP, F_EXP2, F_TRUNC, F_POW)) {
+      val params = Seq.fill(kind.argsCount)(TypeKind.DOUBLE)
+      val target = new FakeMethod(kind.rtProc.toString, FakeMethodType.create(TypeKind.DOUBLE, params: _*))
+      env.setRtsProc(kind.rtProc, target)
+      currentScope.inState(entryBlock, entryMemory) {
+        val args = Seq.fill(kind.argsCount)(Fake(FloatType))
+        val intrinsic = MathIntrinsic(kind)(args: _*).asInstanceOf[MathIntrinsic]
+        val result = lowerMathIntrinsic(intrinsic)
+        result.tpe shouldBe FloatType
+        result should matchPattern {
+          case ValueConvert(F64, F32, AnyDirectCall(`target`)) =>
+        }
+        result.arg.asInstanceOf[Call].invokeArgs shouldBe args.map(arg => ValueConvert(F32, F64)(arg))
+      }
+    }
+  }
 }

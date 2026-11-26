@@ -414,17 +414,21 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
 
       x.kind match {
         case D_SIN    => DConst(math.sin(dArg))
+        case F_SIN    => FConst(math.sin(fArg.toDouble).toFloat)
         case D_COS    => DConst(math.cos(dArg))
+        case F_COS    => FConst(math.cos(fArg.toDouble).toFloat)
         case D_TAN    => DConst(math.tan(dArg))
         case D_ASIN   => DConst(math.asin(dArg))
         case D_ACOS   => DConst(math.acos(dArg))
         case D_ATAN   => DConst(math.atan(dArg))
         case D_EXP    => DConst(math.exp(dArg))
+        case F_EXP    => FConst(math.exp(fArg.toDouble).toFloat)
         case D_LOG    => DConst(math.log(dArg))
         case F_LOG    => FConst(math.log(fArg.toDouble).toFloat)
         case D_SQRT   => DConst(math.sqrt(dArg))
         case F_SQRT   => FConst(math.sqrt(fArg.toDouble).toFloat)
         case D_CEIL   => DConst(math.ceil(dArg))
+        case F_CEIL   => FConst(math.ceil(fArg.toDouble).toFloat)
         case D_FLOOR  => DConst(math.floor(dArg))
         case F_FLOOR  => FConst(math.floor(fArg.toDouble).toFloat)
         case D_RINT   => DConst(math.rint(dArg))
@@ -432,19 +436,25 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
         case F_ABS    => FConst(math.abs(fArg))
         case D_ATAN2  => DConst(math.atan2(dL, dR))
         case D_POW    => DConst(math.pow(dL, dR))
+        case F_POW    => FConst(math.pow(fL.toDouble, fR.toDouble).toFloat)
         case D_REM1   => DConst(math.IEEEremainder(dL, dR))
         case D_REM    => DConst(dL % dR)
         case F_REM    => FConst(fL % fR)
         case D_LOG10  => DConst(math.log10(dArg))
+        case F_LOG10  => FConst(math.log10(fArg.toDouble).toFloat)
         case D_LOG2   => DConst(math.log(dArg) / math.log(2.0))
+        case F_LOG2   => FConst((math.log(fArg.toDouble) / math.log(2.0)).toFloat)
         case D_EXP2   => DConst(math.pow(2.0, dArg))
+        case F_EXP2   => FConst(math.pow(2.0, fArg.toDouble).toFloat)
         case D_TRUNC  => DConst(if (dArg < 0) math.ceil(dArg) else math.floor(dArg))
+        case F_TRUNC  => FConst((if (fArg < 0) math.ceil(fArg.toDouble) else math.floor(fArg.toDouble)).toFloat)
       }
     }
 
     @annotation.strictfp
     private def apply(x: PowI): Node = x match {
       case PowI(DConst(base), LConst(exp)) => DConst(math.pow(base, exp.toDouble))
+      case PowI(FConst(base), LConst(exp)) => FConst(math.pow(base.toDouble, exp.toDouble).toFloat)
       case _ => x
     }
 

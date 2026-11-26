@@ -141,7 +141,8 @@ trait ScalesCBC extends Scales { self: Universe =>
       case n: MathIntrinsic =>
         import Java.Lang.MathIntrinsic._
         n.kind match {
-          case D_ABS | F_ABS | D_SQRT | F_SQRT | F_POW | F_LOG | F_FLOOR => instrSize
+          case D_ABS | F_ABS | D_SQRT | F_SQRT | F_POW | F_LOG | F_FLOOR |
+               F_SIN | F_COS | F_CEIL | F_LOG10 | F_LOG2 | F_EXP | F_EXP2 | F_TRUNC => instrSize
 
           case D_SIN | D_COS | D_TAN | D_ATAN | D_LOG | D_RINT | D_ATAN2 | D_REM1 |
                D_REM | F_REM | D_ASIN | D_ACOS | D_EXP | D_POW | D_CEIL | D_FLOOR |

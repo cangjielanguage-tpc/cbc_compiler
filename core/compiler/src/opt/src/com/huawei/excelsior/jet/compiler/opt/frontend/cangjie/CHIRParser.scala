@@ -1843,84 +1843,45 @@ trait CHIRParser
             val Seq(field) = declaredFields(refType)
             state(e) = AtomicOps.Simple.fetchXor(obj.tpe, field)(obj, value)
 
-          case CHIR.Intrinsic.Kind.Sqrt =>
-            e.args.map(state.apply) match {
-              case Seq(x) =>
-                val kind = if (x.tpe == DoubleType) Java.Lang.MathIntrinsic.D_SQRT else Java.Lang.MathIntrinsic.F_SQRT
-                state(e) = MathIntrinsic(kind)(x)
+          case CHIR.Intrinsic.Kind.Sqrt | CHIR.Intrinsic.Kind.Pow |
+               CHIR.Intrinsic.Kind.Sin | CHIR.Intrinsic.Kind.Cos | CHIR.Intrinsic.Kind.Log |
+               CHIR.Intrinsic.Kind.Ceil | CHIR.Intrinsic.Kind.Floor |
+               CHIR.Intrinsic.Kind.Log10 | CHIR.Intrinsic.Kind.Log2 |
+               CHIR.Intrinsic.Kind.Exp | CHIR.Intrinsic.Kind.Exp2 | CHIR.Intrinsic.Kind.Trunc =>
+            import Java.Lang.MathIntrinsic.*
+            val (doubleKind, floatKind) = e.kind match {
+              case CHIR.Intrinsic.Kind.Sqrt  => (D_SQRT, F_SQRT)
+              case CHIR.Intrinsic.Kind.Pow   => (D_POW, F_POW)
+              case CHIR.Intrinsic.Kind.Sin   => (D_SIN, F_SIN)
+              case CHIR.Intrinsic.Kind.Cos   => (D_COS, F_COS)
+              case CHIR.Intrinsic.Kind.Log   => (D_LOG, F_LOG)
+              case CHIR.Intrinsic.Kind.Ceil  => (D_CEIL, F_CEIL)
+              case CHIR.Intrinsic.Kind.Floor => (D_FLOOR, F_FLOOR)
+              case CHIR.Intrinsic.Kind.Log10 => (D_LOG10, F_LOG10)
+              case CHIR.Intrinsic.Kind.Log2  => (D_LOG2, F_LOG2)
+              case CHIR.Intrinsic.Kind.Exp   => (D_EXP, F_EXP)
+              case CHIR.Intrinsic.Kind.Exp2  => (D_EXP2, F_EXP2)
+              case CHIR.Intrinsic.Kind.Trunc => (D_TRUNC, F_TRUNC)
+              case _ => shouldNotReachHere(e.kind)
             }
-
-          case CHIR.Intrinsic.Kind.Pow =>
-            e.args.map(state.apply) match {
-              case Seq(x, y) =>
-                val kind = if (x.tpe == DoubleType) Java.Lang.MathIntrinsic.D_POW else Java.Lang.MathIntrinsic.F_POW
-                state(e) = MathIntrinsic(kind)(x, y)
+            val sig = resolver.typeSig(e.resultTpe)
+            // Half values use integral storage; round each intrinsic result back to half.
+            val args = e.args.map { arg =>
+              val value = state(arg)
+              if (sig == SignatureType.Float16) ValueConvert(AsmType.F16, AsmType.F32)(value) else value
             }
-
-          case CHIR.Intrinsic.Kind.Sin =>
-            e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_SIN)(x)
-            }
-
-          case CHIR.Intrinsic.Kind.Cos =>
-            e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_COS)(x)
-            }
-
-          case CHIR.Intrinsic.Kind.Log =>
-            e.args.map(state.apply) match {
-              case Seq(x) =>
-                val isHalf = resolver.typeSig(e.resultTpe) == SignatureType.Float16
-                // Half values use integral storage; round each log before any following arithmetic.
-                val arg = if (isHalf) ValueConvert(AsmType.F16, AsmType.F32)(x) else x
-                val kind = if (arg.tpe == DoubleType) Java.Lang.MathIntrinsic.D_LOG else Java.Lang.MathIntrinsic.F_LOG
-                val result = MathIntrinsic(kind)(arg)
-                state(e) = if (isHalf) ValueConvert(AsmType.F32, AsmType.F16)(result) else result
-            }
-
-          case CHIR.Intrinsic.Kind.Ceil =>
-            e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_CEIL)(x)
-            }
-
-          case CHIR.Intrinsic.Kind.Floor =>
-            e.args.map(state.apply) match {
-              case Seq(x) =>
-                val isHalf = resolver.typeSig(e.resultTpe) == SignatureType.Float16
-                val arg = if (isHalf) ValueConvert(AsmType.F16, AsmType.F32)(x) else x
-                val kind = if (arg.tpe == DoubleType) Java.Lang.MathIntrinsic.D_FLOOR else Java.Lang.MathIntrinsic.F_FLOOR
-                val result = MathIntrinsic(kind)(arg)
-                state(e) = if (isHalf) ValueConvert(AsmType.F32, AsmType.F16)(result) else result
-            }
-
-          case CHIR.Intrinsic.Kind.Log10 =>
-            e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG10)(x)
-            }
-
-          case CHIR.Intrinsic.Kind.Log2 =>
-            e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG2)(x)
-            }
-
-          case CHIR.Intrinsic.Kind.Exp =>
-            e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_EXP)(x)
-            }
-
-          case CHIR.Intrinsic.Kind.Exp2 =>
-            e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_EXP2)(x)
-            }
-
-          case CHIR.Intrinsic.Kind.Trunc =>
-            e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_TRUNC)(x)
-            }
+            val kind = if (sig == SignatureType.Float64) doubleKind else floatKind
+            val result = MathIntrinsic(kind)(args: _*)
+            state(e) = if (sig == SignatureType.Float16) ValueConvert(AsmType.F32, AsmType.F16)(result) else result
 
           case CHIR.Intrinsic.Kind.PowI =>
             e.args.map(state.apply) match {
-              case Seq(x, n) => state(e) = PowI(x, n)
+              case Seq(x, n) =>
+                val isHalf = resolver.typeSig(e.resultTpe) == SignatureType.Float16
+                val base = if (isHalf) ValueConvert(AsmType.F16, AsmType.F32)(x) else x
+                val exponent = if (n.tpe == IntType) ValueConvert(AsmType.I32, AsmType.I64)(n) else n
+                val result = PowI(base, exponent)
+                state(e) = if (isHalf) ValueConvert(AsmType.F32, AsmType.F16)(result) else result
             }
 
           case CHIR.Intrinsic.Kind.Abs | CHIR.Intrinsic.Kind.Fabs =>

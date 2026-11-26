@@ -162,7 +162,8 @@ trait ScalesAmd64 extends Scales { self: Universe =>
           case D_ATAN2  => 26
           case D_REM1 | D_REM | F_REM => 35
           case D_ASIN | D_ACOS | D_EXP | D_POW | F_POW | D_CEIL | D_FLOOR | F_FLOOR |
-               D_LOG10 | D_LOG2 | D_EXP2 | D_TRUNC  => directCallWeight(n.kind.argsCount)
+               D_LOG10 | D_LOG2 | D_EXP2 | D_TRUNC |
+               F_SIN | F_COS | F_CEIL | F_LOG10 | F_LOG2 | F_EXP | F_EXP2 | F_TRUNC => directCallWeight(n.kind.argsCount)
         }
 
       case _: Prefetch => 4

@@ -364,6 +364,53 @@ Local evidence:
 - `/tmp/opencode/round.disasm`: generated floor instructions/conversions.
 - `/tmp/opencode/round/aot/`: verified pure AOT logs and output.
 
+## Comprehensive CHIR math widths (2026-11-26)
+
+The remaining floating-point CHIR math intrinsics are handled together:
+`sqrt`, `pow`, `sin`, `cos`, `log`, `ceil`, `floor`, `log10`, `log2`,
+`exp`, `exp2` and `trunc` share width selection. Float32 retains typed
+operations; Float16 operands are converted from half storage to Float32
+and each result is rounded back to half. Existing half `abs`/`fabs`
+handling and the library's ties-to-even `round` algorithm are preserved.
+
+The change adds the missing Float32 intrinsic kinds and fixes `F_POW` to
+have Float32 operands/result and two arguments. Constant folding, Java
+Math lookup exclusions, CBC code generation and all cost models are
+updated. Native lowering uses existing Double runtime procedures with
+explicit conversions of every argument and the result. `powi` converts
+half bases and sign-extends Int32 exponents to the IR's Int64 exponent.
+No stubs, new runtime symbols or engine changes are introduced.
+
+The separate regression commit `008eea3f` adds
+`test/standalone/cj/math-widths/`, covering every SDK-exposed intrinsic
+and width (the SDK has no floating-exponent Float16 `pow` overload).
+The old compiler fails its O2 build at Float32 `D_SIN`; pure AOT default
+and O2 runs match all 39 checks. All 2,855 optimizer tests pass, with two
+ignored, and the rebuilt jar is installed. IR logs confirm typed narrow
+operations, half conversions and signed exponent widening. Standalone
+disassembly confirms Float32/Float64 operations and half rounding; resolved
+full-closure disassembly aborts later in the SDK decoder with `overflow`,
+so it is not evidence of successful whole-image decoding.
+
+Serial retries (`-j 1`) compile all ten selected standalone cases and all
+six full-closure Fibonacci, spawn hello-world and math-widths cases in
+default/O2. The full closure is
+`std.core:std.math:std.collection:std.io:std.convert:std.binary:std.time:std.fs:std.sync:std.sort:std.env`.
+All sixteen executions still abort before main on the existing Int8
+primitive-extension metadata conflict between std.math and the engine
+helper (`failed to build primitive extension metadata for term kind 5`).
+There is no successful CBC execution validation from these retries.
+
+Local evidence:
+
+- `/tmp/opencode/math-widths-build.log`: optimizer tests and jar build.
+- `/tmp/opencode/math-widths-before.log`: original Float32 sin failure.
+- `/tmp/opencode/math-widths-after.log`: targeted standalone retry.
+- `/tmp/opencode/math-widths-full-closure.log`: full-closure retry.
+- `/tmp/opencode/math-widths.disasm`: standalone disassembly.
+- `/tmp/opencode/math-widths/ir-audit/std_math/`: generated IR checks.
+- `/tmp/opencode/math-widths/aot/`: pure AOT reference output.
+
 ## Mixed interface ABI
 
 The three mixed failures cross the ABI in both directions:

@@ -1050,9 +1050,14 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
   private [lowering] final def lowerMathIntrinsic(node: MathIntrinsic): Node = {
     val target = procForMathIntrinsic(node).get
     node.kind match {
-      case Java.Lang.MathIntrinsic.F_LOG | Java.Lang.MathIntrinsic.F_FLOOR =>
+      case Java.Lang.MathIntrinsic.F_LOG | Java.Lang.MathIntrinsic.F_FLOOR |
+           Java.Lang.MathIntrinsic.F_SIN | Java.Lang.MathIntrinsic.F_COS |
+           Java.Lang.MathIntrinsic.F_CEIL | Java.Lang.MathIntrinsic.F_LOG10 |
+           Java.Lang.MathIntrinsic.F_LOG2 | Java.Lang.MathIntrinsic.F_EXP |
+           Java.Lang.MathIntrinsic.F_EXP2 | Java.Lang.MathIntrinsic.F_TRUNC | Java.Lang.MathIntrinsic.F_POW =>
         // Native runtime fallback has a Double signature; CBC keeps the Float32 operation.
-        ValueConvert(F64, F32)(DirectCall(target)(ValueConvert(F32, F64)(node.arg)))
+        val args = node.argsSeq.map(arg => ValueConvert(F32, F64)(arg))
+        ValueConvert(F64, F32)(DirectCall(target)(args: _*))
       case _ => DirectCall(target)(node.argsSeq: _*)
     }
   }
