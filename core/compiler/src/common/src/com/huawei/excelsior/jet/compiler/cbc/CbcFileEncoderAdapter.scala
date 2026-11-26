@@ -171,7 +171,7 @@ object CbcFileEncoderAdapter {
             builder.setEnumKind(TypeEnumKind.Option0)
             val enumType = if (isNullableOption(base)) {
               // Erase to avoid infinite recursion.
-              ReferenceType.cangjieStdCoreObject.sigType.toCbc
+              ReferenceType.cangjieStdCoreObjectSig.toCbc
             } else {
               base.toCbc
             }
@@ -180,7 +180,7 @@ object CbcFileEncoderAdapter {
             builder.setEnumKind(TypeEnumKind.Option1)
             val enumType = if (isNullableOption(base)) {
               // Erase to avoid infinite recursion.
-              ReferenceType.cangjieStdCoreObject.sigType.toCbc
+              ReferenceType.cangjieStdCoreObjectSig.toCbc
             } else {
               base.toCbc
             }

@@ -751,8 +751,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case slot: TypedFrameSlotCBC =>
           slot.tpe match {
             case sig: SignatureType.TypeVariable =>
-              val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc
-              val fieldType = ReferenceType.cangjieStdCoreObject.sigType.toCbc
+              val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObjectSig)).toCbc
+              val fieldType = ReferenceType.cangjieStdCoreObjectSig.toCbc
               asm.ld(dst, slot.typedSlot, CbcFileFormat.ConstIndexFieldReference(refType, 0, fieldType))
             case sig =>
               if (sig.isRecord) {
@@ -889,8 +889,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
         case sa @ StackAlloc.Local(t) =>
           sa.slot match {
             case slot: TypedFrameSlotCBC =>
-              val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc
-              val fieldType = ReferenceType.cangjieStdCoreObject.sigType.toCbc
+              val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObjectSig)).toCbc
+              val fieldType = ReferenceType.cangjieStdCoreObjectSig.toCbc
               asm.ld(dst, slot.typedSlot, CbcFileFormat.ConstIndexFieldReference(refType, 0, fieldType))
             case slot: FrameSlotCBC =>
               assert(t.isTraceableReference || t.isPrimitive)
@@ -953,7 +953,7 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
           val (fieldType, refType) = (store.signature, src) match {
             case (_: SignatureType.Box, _) =>
               assert(!src.isIReg || check(src.asIReg, localTypeOf(store.inValue0)))
-              val fieldSigType = ReferenceType.cangjieStdCoreObject.sigType
+              val fieldSigType = ReferenceType.cangjieStdCoreObjectSig
               (fieldSigType.toCbc, SignatureType.Tuple(Seq(fieldSigType)).toCbc)
             case (_, src: (IR | FR)) =>
               val fieldSigType = store.signature
@@ -1177,8 +1177,8 @@ trait CodeGeneratorCBC extends CodeGenerator with XSitesToolboxCBC with DebugGen
             case slot: TypedFrameSlotCBC =>
               slot.tpe match {
                 case sig: SignatureType.TypeVariable =>
-                  val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObject.sigType)).toCbc
-                  val fieldType = ReferenceType.cangjieStdCoreObject.sigType.toCbc
+                  val refType = SignatureType.Tuple(Seq(ReferenceType.cangjieStdCoreObjectSig)).toCbc
+                  val fieldType = ReferenceType.cangjieStdCoreObjectSig.toCbc
                   asm.ld(dst, slot.typedSlot, CbcFileFormat.ConstIndexFieldReference(refType, 0, fieldType))
                 case sig =>
                   assert(sig.isRecord)

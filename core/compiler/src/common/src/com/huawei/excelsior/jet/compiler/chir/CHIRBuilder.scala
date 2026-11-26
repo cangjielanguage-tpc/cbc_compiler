@@ -406,7 +406,7 @@ object CHIRBuilder {
 
     def getVTable(symType: SymClassType, d: CHIR.CustomTypeDef): CHIRVTable = {
       val objectExtDef = Option.when(!symType.isInterface && !symType.isRecord)(CHIRVTable.ExtDef(
-        ReferenceType.cangjieStdCoreObject.sigType,
+        ReferenceType.cangjieStdCoreObjectSig,
         Seq.empty
       ))
       CHIRVTable(
