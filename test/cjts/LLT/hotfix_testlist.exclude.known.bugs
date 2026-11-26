@@ -433,9 +433,6 @@ API/std/math/numeric/decimal/test_property.cj
 API/std/core/exclusiveScope/c_interop.cj
 API/std/unittest/report_bench_html/report_html_no_gnuplot.cj
 
-# bug 237 (unexpected cast base: 13:UnboxLea)
-compiler/CodegenCJNative/record/record_5.cj
-
 # bug 241 (method from class and interface extend conflicted and wrong one was selected)
 compiler/Sema/generics/generic_member/pkg01/main.cj
 

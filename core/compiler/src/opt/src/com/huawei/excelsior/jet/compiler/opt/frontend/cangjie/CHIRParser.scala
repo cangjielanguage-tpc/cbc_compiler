@@ -2601,7 +2601,7 @@ trait CHIRParser
               createBox(baseType, base)
             }
           case _ =>
-            if (baseType.isVariableSizeType || baseType.isTraceableReference) {
+            if (baseType.isTraceableReference || (baseType.isVariableSizeType && base.tpe.isTraceableRefType)) {
               base
             } else {
               createBox(baseType, base)
