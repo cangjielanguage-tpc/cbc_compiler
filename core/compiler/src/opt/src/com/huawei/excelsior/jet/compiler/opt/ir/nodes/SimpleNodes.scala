@@ -1365,7 +1365,8 @@ trait SimpleNodes { self: Universe with Nodes =>
   }
 
   object HConst {
-    def apply(x: Double) = Prototype.intern(new HConst(com.huawei.excelsior.jet.assembler.cbc.isa12.Float16.bits(x)))()
+    def apply(x: Double) = fromBits(com.huawei.excelsior.jet.assembler.cbc.isa12.Float16.bits(x))
+    def fromBits(bits: Int) = Prototype.intern(new HConst(bits))()
     def unapply(x: HConst) = Some(x.bits)
   }
 

@@ -403,6 +403,7 @@ trait Deserialization extends IOComponent with UCEComponent { self: Universe =>
 
         case IConst => IConst(read.number())
         case LConst => LConst(read.longNumber())
+        case HConst => HConst.fromBits(read.number())
         case FConst => FConst(read.floatNumber())
         case DConst => DConst(read.doubleNumber())
 

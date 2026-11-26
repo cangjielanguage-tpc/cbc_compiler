@@ -155,6 +155,7 @@ trait IOComponent extends BinaryIO { self: Universe =>
     TypeAlign.Proto,
     TypeSizeGeneric.Proto,
     TypeAlignGeneric.Proto,
+    HConst,
     // Add new prototypes above this line.
     "dummy last element for ease of rebase"
   )

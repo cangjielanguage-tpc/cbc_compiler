@@ -155,6 +155,7 @@ trait Serialization extends IOComponent { self: Universe =>
         case _: FrameHeader => FrameHeader
         case _: IConst => IConst
         case _: LConst => LConst
+        case _: HConst => HConst
         case _: FConst => FConst
         case _: DConst => DConst
         case _: AnyNull => AnyNull
@@ -376,6 +377,7 @@ trait Serialization extends IOComponent { self: Universe =>
       n match {
         case n: IConst => write.number(n.value)
         case n: LConst => write.longNumber(n.value)
+        case n: HConst => write.number(n.bits)
         case n: FConst => write.floatNumber(n.value)
         case n: DConst => write.doubleNumber(n.value)
 
