@@ -21,6 +21,7 @@ final class FuncImpl(private val f: FunctionT, val id: Long)(using val provider:
   def srcCodeIdentifier: String = gv.getSrcCodeIdentifier
   def packageName: String = gv.getPackageName
   def genericDeclaration: Option[CHIR.Func] = provider.getValue[CHIR.Func](f.getGenericDecl)
+  def isCFFIWrapper: Boolean = f.getIsCffiwrapper
   def kind: Func.Kind = f.getFuncKind match {
     case FuncKind.DEFAULT => Func.Kind.Default
     case FuncKind.GETTER => Func.Kind.Getter

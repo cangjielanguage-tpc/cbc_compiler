@@ -153,6 +153,8 @@ class CHIRCJEntryGenerator(_pkg: CHIR.Package) extends CHIRFuncGenerator {
       def attributes: Seq[CHIR.Attribute] = Seq.empty
 
       def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
+
+      def isCFFIWrapper: Boolean = false
     }
   )
 }

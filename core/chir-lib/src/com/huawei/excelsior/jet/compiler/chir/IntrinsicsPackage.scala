@@ -69,6 +69,8 @@ private final class IntrinsicsPackage extends CHIR.Package {
         def attributes: Seq[CHIR.Attribute] = Seq.empty
 
         def declaringDef: Option[CHIR.CustomTypeDef] = Option.empty
+
+        def isCFFIWrapper: Boolean = false
       })
     }
   }
@@ -166,4 +168,5 @@ private final class FakeFunc(
   def retVal: Option[CHIR.LocalVar] = None
   def sourceFile: Option[String] = None
   def annotations: Seq[CHIR.Annotation] = Seq.empty
+  def isCFFIWrapper: Boolean = false
 }
