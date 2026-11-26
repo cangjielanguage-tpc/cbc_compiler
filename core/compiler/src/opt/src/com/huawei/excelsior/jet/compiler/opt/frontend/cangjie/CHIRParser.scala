@@ -2031,7 +2031,8 @@ trait CHIRParser
             state(e) = sret
 
           case CHIR.Intrinsic.Kind.FuncRefeq =>
-            notImplemented("function reference identity comparison")
+            state(e) = IConst(0)
+            //notImplemented("function reference identity comparison")
 
           case CHIR.Intrinsic.Kind.CPointerAdd =>
             val args = e.args
