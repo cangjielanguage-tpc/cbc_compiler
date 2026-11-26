@@ -855,12 +855,12 @@ trait RTStructs { this: CompilerEnvironment =>
         }
 
         def typeKind: symlevel.TypeKind = this match {
-          case F_ABS | F_REM | F_SQRT => FLOAT
+          case F_ABS | F_REM | F_SQRT | F_POW => FLOAT
           case _ => DOUBLE
         }
 
         def argsCount: Int = this match {
-          case D_ATAN2 | D_POW | D_REM1 | D_REM | F_REM => 2
+          case D_ATAN2 | D_POW | D_REM1 | D_REM | F_REM | F_POW => 2
           case _ => 1
         }
 
