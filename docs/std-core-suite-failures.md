@@ -265,6 +265,55 @@ Local evidence:
 - `/tmp/opencode/atexit-design/std.collection.chirtxt`: original CHIR load and
   key-getter call in TreeMapEntryView's mut value setter.
 
+## Typed logarithms for logBase (2026-11-26)
+
+CHIR's `log` intrinsic preserves its operand width. The SDK's LLVM also uses
+`llvm.log.f32` for both logarithms in `logBase(Float32, Float32)`, followed by
+a Float32 division; its native implementation calls `logf`. The compiler
+selects `F_LOG` for Float32 and `D_LOG` for Float64. CBC emits `log.32` and
+`log.64`, respectively, rather than widening the whole logBase expression.
+Float16 uses the existing half-storage conversions around `F_LOG`, rounding
+each logarithm to half before the subsequent division. This follows the
+compiler's existing Float16-via-Float32 arithmetic model.
+
+The new intrinsic includes constant folding, Java Math lookup exclusion,
+backend code generation and cost models. The amd64 x87 path uses a Float32
+result slot. For native targets requiring runtime-call lowering, the existing
+Double `JR_log` entry point has explicit input/output conversions; CBC does
+not take that fallback. No new runtime symbol or engine change is required.
+
+The standalone regression at `test/standalone/cj/log-base/` is committed
+separately as `d86785c9`. Its O2 build reproduces the original `D_LOG` type
+assertion before the fix. Pure AOT default/O2 runs verify all six Boolean
+checks and exit status zero. With the fix, default/O2 builds of this test
+and the existing `math-intrinsics` test compile. Disassembly confirms
+`log.32` for Float32, `log.64` for Float64, and half conversions around
+`log.32` for Float16. All 2,850 optimizer tests pass (two ignored), including
+Float32 constant/variable typing and typed native fallback checks. The jar
+builds and is installed in the SDK.
+
+These four standalone executions abort before main with conflicting Int8
+primitive-extension methods between std.math and the engine helper, ending
+at `failed to build primitive extension metadata for term kind 5`. They do
+not provide CBC runtime validation.
+
+Serial full-closure (`-j 1`) default/O2 retries for Fibonacci, spawn hello-world
+and the new log-base test pass the logBase compilation failure. All six now
+stop in `std.math.round(Float32)`: `MathIntrinsic[D_FLOOR]` expects DoubleType
+but receives FloatType. Floor and the other hardcoded-Double math intrinsics
+remain separate blockers, not repaired by the logarithm change.
+
+Local evidence:
+
+- `/tmp/opencode/log-base-before.log`: reproducer before the fix.
+- `/tmp/opencode/log-base-build.log`: optimizer tests and jar build.
+- `/tmp/opencode/log-base-lowering-final.log`: native fallback test recheck.
+- `/tmp/opencode/log-base-final.log`: filtered standalone retry.
+- `/tmp/opencode/log-base-full-final.log`: serial full-closure retry.
+- `/tmp/opencode/log-base.disasm`: generated logarithms and half conversions.
+- `/tmp/opencode/log-base/aot/`: verified pure AOT logs and output.
+- `/tmp/opencode/std.math.ll`: SDK reference LLVM IR.
+
 ## Mixed interface ABI
 
 The three mixed failures cross the ABI in both directions:

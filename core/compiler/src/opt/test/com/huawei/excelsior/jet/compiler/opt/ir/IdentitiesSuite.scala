@@ -858,6 +858,24 @@ class IdentitiesSuite extends CompilerSuite with Identities with GlobalNodesBuil
     MathIntrinsic(F_SQRT)(fc(4.0f)) should be (fc(math.sqrt(4.0f.toDouble).toFloat))
   }
 
+  test("Float32 logarithm preserves its type for variable and constant operands") {
+    import Java.Lang.MathIntrinsic.*
+
+    F_LOG.typeKind shouldBe TKind.FLOAT
+    F_LOG.argsCount shouldBe 1
+    val variableLog = MathIntrinsic(F_LOG)(farg)
+    variableLog.tpe shouldBe FloatType
+    variableLog.arg shouldBe farg
+
+    for (value <- Seq(1.0f, 2.0f, 8.0f, java.lang.Float.MIN_VALUE, java.lang.Float.MAX_VALUE)) {
+      MathIntrinsic(F_LOG)(fc(value)) shouldBe fc(math.log(value.toDouble).toFloat)
+    }
+    MathIntrinsic(F_LOG)(fc(0.0f)) shouldBe fc(Float.NegativeInfinity)
+    MathIntrinsic(F_LOG)(fc(Float.PositiveInfinity)) shouldBe fc(Float.PositiveInfinity)
+    MathIntrinsic(F_LOG)(fc(-1.0f)).asInstanceOf[FConst].value.isNaN shouldBe true
+    MathIntrinsic(F_LOG)(fc(Float.NaN)).asInstanceOf[FConst].value.isNaN shouldBe true
+  }
+
   test("powi identity") {
     for ((base, exp, res) <- Seq(
       (2.0,  10L, math.pow(2.0, 10.0)),

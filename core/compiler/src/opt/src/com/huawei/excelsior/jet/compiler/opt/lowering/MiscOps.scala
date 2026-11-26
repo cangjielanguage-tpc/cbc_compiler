@@ -1047,8 +1047,15 @@ private[lowering] trait MiscOps extends Toolbox { self: Universe =>
   private [lowering] def procForMathIntrinsic(node: MathIntrinsic): Option[Method] =
     Some(env.getRTSProc(node.kind.rtProc))
 
-  private [lowering] final def lowerMathIntrinsic(node: MathIntrinsic): Node =
-    DirectCall(procForMathIntrinsic(node).get)(node.argsSeq: _*)
+  private [lowering] final def lowerMathIntrinsic(node: MathIntrinsic): Node = {
+    val target = procForMathIntrinsic(node).get
+    node.kind match {
+      case Java.Lang.MathIntrinsic.F_LOG =>
+        // Native runtime fallback has a Double signature; CBC keeps the Float32 operation.
+        ValueConvert(F64, F32)(DirectCall(target)(ValueConvert(F32, F64)(node.arg)))
+      case _ => DirectCall(target)(node.argsSeq: _*)
+    }
+  }
 
   private [lowering] def procForMemAtomic(node: MemAtomic): Option[Method] =
     Some(node.rtMethod())

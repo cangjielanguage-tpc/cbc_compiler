@@ -1869,7 +1869,13 @@ trait CHIRParser
 
           case CHIR.Intrinsic.Kind.Log =>
             e.args.map(state.apply) match {
-              case Seq(x) => state(e) = MathIntrinsic(Java.Lang.MathIntrinsic.D_LOG)(x)
+              case Seq(x) =>
+                val isHalf = resolver.typeSig(e.resultTpe) == SignatureType.Float16
+                // Half values use integral storage; round each log before any following arithmetic.
+                val arg = if (isHalf) ValueConvert(AsmType.F16, AsmType.F32)(x) else x
+                val kind = if (arg.tpe == DoubleType) Java.Lang.MathIntrinsic.D_LOG else Java.Lang.MathIntrinsic.F_LOG
+                val result = MathIntrinsic(kind)(arg)
+                state(e) = if (isHalf) ValueConvert(AsmType.F32, AsmType.F16)(result) else result
             }
 
           case CHIR.Intrinsic.Kind.Ceil =>

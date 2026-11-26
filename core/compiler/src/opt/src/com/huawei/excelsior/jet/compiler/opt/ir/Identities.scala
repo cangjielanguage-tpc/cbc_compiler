@@ -421,6 +421,7 @@ trait Identities extends DivByConstMagicNumberComputation with NodeAliases with 
         case D_ATAN   => DConst(math.atan(dArg))
         case D_EXP    => DConst(math.exp(dArg))
         case D_LOG    => DConst(math.log(dArg))
+        case F_LOG    => FConst(math.log(fArg.toDouble).toFloat)
         case D_SQRT   => DConst(math.sqrt(dArg))
         case F_SQRT   => FConst(math.sqrt(fArg.toDouble).toFloat)
         case D_CEIL   => DConst(math.ceil(dArg))

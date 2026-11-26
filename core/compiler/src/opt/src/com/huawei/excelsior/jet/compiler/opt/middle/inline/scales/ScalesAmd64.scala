@@ -153,6 +153,7 @@ trait ScalesAmd64 extends Scales { self: Universe =>
           case D_TAN    => 44
           case D_ATAN   => 20
           case D_LOG    => 20
+          case F_LOG    => 20
           case D_SQRT   => 4
           case F_SQRT   => 4
           case D_RINT   => 18

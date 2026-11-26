@@ -1,0 +1,45 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * This source file is part of the Cangjie project, licensed under Apache-2.0
+ * with Runtime Library Exception.
+ *
+ * See https://cangjie-lang.cn/pages/LICENSE for license information.
+ */
+
+package com.huawei.excelsior.jet.compiler.opt.lowering
+
+import com.huawei.excelsior.jet.assembler.AsmType.*
+import com.huawei.excelsior.jet.compiler.{CompilerSuite, RTSProc}
+import com.huawei.excelsior.jet.compiler.abi.arm64.PlatformArm64
+import com.huawei.excelsior.jet.compiler.opt.CompilerPhases.CompilerPhase
+import com.huawei.excelsior.jet.compiler.opt.lowering.arm64.LoweringArm64
+import com.huawei.excelsior.jet.compiler.opt.middle.Optimize
+import com.huawei.excelsior.jet.compiler.opt.middle.inline.scales.ScalesArm64
+import com.huawei.excelsior.jet.compiler.opt.testutils.DSLs.GlobalNodesBuilder
+import com.huawei.excelsior.jet.compiler.symlevel.TypeKind
+import com.huawei.excelsior.jet.compiler.symlevel.impl.fake.{FakeMethod, FakeMethodType}
+
+class MathIntrinsicLoweringSuite extends CompilerSuite with GlobalNodesBuilder
+    with LoweringArm64 with Optimize with ScalesArm64 {
+
+  override def platformForEnv = new PlatformArm64
+
+  startPhase(CompilerPhase.Lowering)
+
+  test("Float32 log runtime fallback converts both sides of the Double call") {
+    val target = new FakeMethod("JR_log", FakeMethodType.create(TypeKind.DOUBLE, TypeKind.DOUBLE))
+    env.setRtsProc(RTSProc.JR_log, target)
+
+    currentScope.inState(entryBlock, entryMemory) {
+      val arg = Fake(FloatType)
+      val log = MathIntrinsic(Java.Lang.MathIntrinsic.F_LOG)(arg).asInstanceOf[MathIntrinsic]
+      val result = lowerMathIntrinsic(log)
+      result.tpe shouldBe FloatType
+      result should matchPattern {
+        case ValueConvert(F64, F32, AnyDirectCall(`target`)) =>
+      }
+      val call = result.arg.asInstanceOf[Call]
+      call.invokeArgs shouldBe Seq(ValueConvert(F32, F64)(arg))
+    }
+  }
+}

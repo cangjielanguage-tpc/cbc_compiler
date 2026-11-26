@@ -905,7 +905,7 @@ trait CodeGeneratorAmd64 extends CodeGenerator { self: Universe with BackEndAmd6
 
         case D_ATAN2  => binaryFPU(lFirst = true) { asm.x87.fpatan() }
 
-        case D_LOG    => asm.x87.fldln2(); unaryFPU { asm.x87.fyl2x() }
+        case D_LOG | F_LOG => asm.x87.fldln2(); unaryFPU { asm.x87.fyl2x() }
 
         case D_REM1 | D_REM | F_REM => binaryFPU(lFirst = false) {
           assert(spoiledGpr(node) == RAX)
