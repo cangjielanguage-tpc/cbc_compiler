@@ -1080,19 +1080,19 @@ trait CangjieNodes { self: Universe =>
       intrinsic(CJIntrinsicType.GetThreadObject, MethodSignature()(threadType))()
     }
 
-    // ArrayRef CJ_MCC_GetAllThreadSnapshot(TypeInfo* snapshots, TypeInfo* frames, TypeInfo* chars)
-    def dumpAllThreadsInfo(arrayType: CangjieArray)(arrayInfo: Node, stackTraceInfo: Node, charArrayInfo: Node): Node = {
+    // ArrayRef CJ_MCC_GetAllThreadSnapshot(TypeInfo* arraySnapshot, TypeInfo* arrayStackTrace, TypeInfo* charArray)
+    def dumpAllThreadsInfo(arrayType: CangjieArray)(arraySnapshot: Node, arrayStackTrace: Node, charArray: Node): Node = {
       intrinsic(CJIntrinsicType.DumpAllThreadsInfo,
         MethodSignature(CPointer(AddrUInt), CPointer(AddrUInt), CPointer(AddrUInt))(arrayType))(
-        arrayInfo, stackTraceInfo, charArrayInfo)
+        arraySnapshot, arrayStackTrace, charArray)
     }
 
-    // ThreadSnapshotInfo CJ_MCC_GetCurrentThreadSnapshot(TypeInfo* frames, TypeInfo* chars)
+    // ThreadSnapshotInfo CJ_MCC_GetCurrentThreadSnapshot(TypeInfo* arrayStackTrace, TypeInfo* charArray)
     // Like decodeStackTrace, the record result is passed through the ABI's hidden sret.
-    def dumpCurrentThreadInfo(recordType: SignatureType)(sret: Node, stackTraceInfo: Node, charArrayInfo: Node): Node = {
+    def dumpCurrentThreadInfo(recordType: SignatureType)(sret: Node, arrayStackTrace: Node, charArray: Node): Node = {
       intrinsic(CJIntrinsicType.DumpCurrentThreadInfo,
         MethodSignature(CPointer(AddrUInt), CPointer(AddrUInt))(recordType))(
-        sret, stackTraceInfo, charArrayInfo)
+        sret, arrayStackTrace, charArray)
     }
 
     def unapply(call: Call): Option[CJIntrinsicType] = condOpt(call.target) {
