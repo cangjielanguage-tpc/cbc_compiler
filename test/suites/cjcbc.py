@@ -3,12 +3,16 @@ import os
 from pathlib import Path
 
 from .cj import CjTestSuite, mode_flags
-from runner_lib import run_in_toolchain
+from runner_lib import run_in_toolchain, DYLIB_PATH_VAR
 
 # std packages given to cbc-compiler as CHIR inputs (colon-separated, in
 # dependency order). Only these are lowered into the test's cbc; everything
 # else stays AOT. Extend via CBC_STD_PKGS.
-DEFAULT_STD_PKGS = "std.core:std.env"
+# std.env is included for the std.core @C externs implemented there; its
+# dependency closure (collection -> math, fs/sync/time -> collection,
+# convert, io, binary) is listed explicitly so no std package remains AOT.
+DEFAULT_STD_PKGS = ("std.core:std.math:std.convert:std.io:std.binary"
+                    ":std.collection:std.time:std.sync:std.fs:std.env")
 # Foreign libs resolving the @C symbols referenced by the CBC std packages:
 # the Cangjie runtime itself. std.core @C externs implemented in the engine
 # (e.g. the atexit list hooks) resolve through the engine image, which the
@@ -28,11 +32,16 @@ class CjCbcStdTestSuite(CjTestSuite):
 
     SUITE = "cjcbc"
 
-    def launcher_args(self) -> str:
+    def launcher_cmd(self, wdir: Path, name: str) -> str:
         # CBC-only mode: the launcher loads no AOT std libraries; all std code
         # comes from the cbc images (the std packages lowered into the test's
         # cbc) and the engine builtins resolve from the loaded cbc images too.
-        return "-c"
+        # The std native helpers referenced by the cbc as the stdFFI foreign
+        # lib (atexit hooks, print/string/math etc.) live in <toolchain>/lib,
+        # which is not on the envsetup LD_LIBRARY_PATH - add it explicitly.
+        std_ffi_dir = Path(os.environ["TOOLCHAIN"]) / "lib"
+        return (f'{DYLIB_PATH_VAR}="{wdir}:{std_ffi_dir}:${DYLIB_PATH_VAR}" '
+                f'launcher -c "{wdir}/{name}.cbc"')
 
     async def _link(self, wdir: Path, name: str, mode: str, log_io: io.StringIO,
                     aot_names: list[str], native_names: list[str], int_chir_files: list[str]) -> int:

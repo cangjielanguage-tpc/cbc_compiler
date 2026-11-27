@@ -160,9 +160,9 @@ class CjTestSuite(TestSuite):
         (wdir / "build.log").write_text(log_io.getvalue())
         return 0 if res == 0 else 1
 
-    def launcher_args(self) -> str:
-        """Extra args inserted before the cbc path in the launcher command."""
-        return ""
+    def launcher_cmd(self, wdir: Path, name: str) -> str:
+        """The shell command that runs the compiled cbc."""
+        return f'{DYLIB_PATH_VAR}="{wdir}:${DYLIB_PATH_VAR}" launcher "{wdir}/{name}.cbc"'
 
     async def run(self, test_id: TestIdentifier, workdir: Path) -> int:
         name = Path(test_id.test_name).name
@@ -171,7 +171,7 @@ class CjTestSuite(TestSuite):
         if not cbc.is_file():
             raise MissingArtifacts(f"{test_id}: {cbc} not found (run without --skip-build)")
 
-        cmd = f'{DYLIB_PATH_VAR}="{wdir}:${DYLIB_PATH_VAR}" launcher {self.launcher_args()} "{wdir}/{name}.cbc"'
+        cmd = self.launcher_cmd(wdir, name)
         out_io = io.StringIO()
         err_io = io.StringIO()
         res = await run_in_toolchain(["bash", "-c", cmd], cwd=str(wdir), log=out_io, stderr_log=err_io,
