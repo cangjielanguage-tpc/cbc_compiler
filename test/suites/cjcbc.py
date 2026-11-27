@@ -8,7 +8,7 @@ from runner_lib import run_in_toolchain
 # std packages given to cbc-compiler as CHIR inputs (colon-separated, in
 # dependency order). Only these are lowered into the test's cbc; everything
 # else stays AOT. Extend via CBC_STD_PKGS.
-DEFAULT_STD_PKGS = "std.core"
+DEFAULT_STD_PKGS = "std.core:std.env"
 # Foreign libs resolving the @C symbols referenced by the CBC std packages:
 # the Cangjie runtime itself. std.core @C externs implemented in the engine
 # (e.g. the atexit list hooks) resolve through the engine image, which the
@@ -27,6 +27,12 @@ class CjCbcStdTestSuite(CjTestSuite):
     """
 
     SUITE = "cjcbc"
+
+    def launcher_args(self) -> str:
+        # CBC-only mode: the launcher loads no AOT std libraries; all std code
+        # comes from the cbc images (the std packages lowered into the test's
+        # cbc) and the engine builtins resolve from the loaded cbc images too.
+        return "-c"
 
     async def _link(self, wdir: Path, name: str, mode: str, log_io: io.StringIO,
                     aot_names: list[str], native_names: list[str], int_chir_files: list[str]) -> int:
