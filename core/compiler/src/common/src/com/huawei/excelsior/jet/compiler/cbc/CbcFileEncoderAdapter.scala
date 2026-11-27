@@ -94,7 +94,8 @@ object CbcFileEncoderAdapter {
     }
 
     val foreignLibs = Option(env.valueOfOrNull(StrOption.ForeignLibs)).toSeq.flatMap(_.split(":"))
-    builder.addForeignLibs((foreignLibs :+ "cangjie-std-core").distinct.mkString(":"))
+    // stdFFI supplies native helpers, including floating-point exponentiation.
+    builder.addForeignLibs((foreignLibs :+ "stdFFI").distinct.mkString(":"))
 
     val result = builder.build()
     Using.resource(DataOutput.from(output)) { out =>
